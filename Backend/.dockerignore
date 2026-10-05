@@ -1,0 +1,14 @@
+node_modules
+dist
+coverage
+.git
+.gitignore
+.env
+*.log
+npm-debug.log*
+.editorconfig
+.prettierrc
+.prettierignore
+eslint.config.mjs
+vitest.config.ts
+tests

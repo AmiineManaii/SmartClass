@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartClass – Cadrage du projet</title>
+<style>
+  :root {
+    --primary: #2d3e8c;
+    --primary-light: #4a5fc1;
+    --accent: #f5a623;
+    --bg: #f7f8fb;
+    --card-bg: #ffffff;
+    --text: #1e2233;
+    --muted: #5a6178;
+    --border: #e2e5ee;
+    --code-bg: #1e2233;
+    --code-text: #d7e0ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+  }
+  header.hero {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white;
+    padding: 48px 24px 40px;
+    text-align: center;
+  }
+  header.hero h1 {
+    margin: 0 0 8px;
+    font-size: 2.1em;
+  }
+  header.hero p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 1.05em;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  nav.toc {
+    max-width: 900px;
+    margin: -24px auto 0;
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(30,34,51,0.08);
+    padding: 20px 28px;
+    position: relative;
+    z-index: 2;
+  }
+  nav.toc h2 {
+    font-size: 0.95em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin-top: 0;
+    margin-bottom: 12px;
+  }
+  nav.toc ol {
+    columns: 2;
+    padding-left: 20px;
+    margin: 0;
+  }
+  nav.toc a {
+    color: var(--primary);
+    text-decoration: none;
+  }
+  nav.toc a:hover { text-decoration: underline; }
+
+  main {
+    max-width: 900px;
+    margin: 32px auto 64px;
+    padding: 0 24px;
+  }
+  section {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 10px rgba(30,34,51,0.05);
+    border: 1px solid var(--border);
+  }
+  section h2 {
+    color: var(--primary);
+    border-bottom: 3px solid var(--accent);
+    display: inline-block;
+    padding-bottom: 4px;
+    margin-top: 0;
+  }
+  section h3 {
+    color: var(--primary-light);
+    margin-top: 28px;
+  }
+  section h4 {
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #4a3200;
+    font-size: 0.75em;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 20px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .persona-card {
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--primary-light);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 18px;
+    background: #fafbfe;
+  }
+  .persona-card h4 { margin-top: 0; color: var(--primary); }
+  .persona-meta { color: var(--muted); font-size: 0.9em; margin-bottom: 8px; }
+  .uc-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+    background: #fafbfe;
+  }
+  .uc-card h4 {
+    margin: 0 0 6px;
+    color: var(--primary);
+  }
+  .uc-actor {
+    display: inline-block;
+    background: #eef1fb;
+    color: var(--primary);
+    font-size: 0.8em;
+    padding: 2px 10px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+  }
+  .rg-group {
+    margin-bottom: 22px;
+  }
+  .rg-group h4 {
+    color: var(--primary-light);
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: 4px;
+  }
+  .rg-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+    align-items: baseline;
+  }
+  .rg-id {
+    background: var(--primary);
+    color: white;
+    font-size: 0.75em;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    min-width: 42px;
+    text-align: center;
+  }
+  .rg-id.new { background: var(--accent); color: #4a3200; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 0.92em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: #eef1fb;
+    color: var(--primary);
+  }
+  tr:hover td { background: #fafbfe; }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 18px 20px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-size: 0.8em;
+    line-height: 1.5;
+  }
+  code {
+    font-family: 'Consolas', 'Monaco', monospace;
+  }
+  .flow-step {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+  .flow-num {
+    background: var(--primary-light);
+    color: white;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85em;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .note-box {
+    background: #fff8ea;
+    border: 1px solid #f0d68a;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 0.92em;
+  }
+  .note-box strong { color: #8a6200; }
+  .decision-box {
+    background: #eaf7ee;
+    border: 1px solid #a9dfb8;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 0.92em;
+  }
+  .decision-box strong { color: #1f7a3d; }
+  .diagram-wrap {
+    background: #fafbfe;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85em;
+    padding: 20px;
+  }
+  @media (max-width: 700px) {
+    nav.toc ol { columns: 1; }
+    .grid-2 { grid-template-columns: 1fr; }
+    section { padding: 20px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>SmartClass</h1>
+  <p>Plateforme intelligente et collaborative d'apprentissage — Cadrage initial du projet : personas, cas d'usage, règles métier et architecture technique.</p>
+</header>
+
+<nav class="toc">
+  <h2>Sommaire</h2>
+  <ol>
+    <li><a href="#personas">Personas</a></li>
+    <li><a href="#usecases">Use Cases</a></li>
+    <li><a href="#regles">Règles métier</a></li>
+    <li><a href="#archi">Architecture initiale</a></li>
+    <li><a href="#donnees">Modèle de données (entités)</a></li>
+    <li><a href="#ia-locale">Infra IA locale (7-8B)</a></li>
+    <li><a href="#antifraude">Anti-fraude avancé</a></li>
+    <li><a href="#flux">Flux clés</a></li>
+    <li><a href="#sprints">Planification en 6 sprints</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- PERSONAS -->
+<section id="personas">
+  <h2>1. Personas</h2>
+
+  <div class="persona-card">
+    <h4>👨‍🏫 Amine — Enseignant</h4>
+    <div class="persona-meta">35 ans · professeur d'université/lycée · moyennement à l'aise avec le numérique</div>
+    <p><strong>Objectifs :</strong> gagner du temps sur la création de contenu pédagogique, suivre la progression des étudiants, animer des cours à distance.</p>
+    <p><strong>Frustrations :</strong> dispersion des outils (email, Drive, WhatsApp), création manuelle d'exercices chronophage, difficulté à évaluer rapidement une classe.</p>
+    <p><strong>Besoins clés :</strong> générer des cours/tests via IA, réutiliser d'anciens PDF, lancer une visio, obtenir un résumé automatique après le cours.</p>
+  </div>
+
+  <div class="persona-card">
+    <h4>🎓 Salma — Étudiante</h4>
+    <div class="persona-meta">20 ans · étudiante en licence · habituée aux applis mobiles</div>
+    <p><strong>Objectifs :</strong> accéder facilement aux cours, réviser efficacement, collaborer avec ses camarades.</p>
+    <p><strong>Frustrations :</strong> cours éparpillés, absence de replay en cas d'absence, manque d'outils collaboratifs.</p>
+    <p><strong>Besoins clés :</strong> replay des visioconférences, partage d'exercices entre étudiants, organisation de séances de groupe, simulation d'examen réaliste.</p>
+  </div>
+
+  <div class="persona-card">
+    <h4>🛡️ Karim — Administrateur de la plateforme</h4>
+    <div class="persona-meta">Responsable informatique / pédagogique de l'établissement</div>
+    <p><strong>Objectifs :</strong> gérer les comptes, les classes, la sécurité des données, la conformité RGPD.</p>
+    <p><strong>Besoins clés :</strong> gestion des rôles, supervision des groupes/classes, statistiques d'usage, modération, supervision des rapports d'intégrité d'examen.</p>
+  </div>
+
+</section>
+
+<!-- USE CASES -->
+<section id="usecases">
+  <h2>2. Use Cases</h2>
+
+  <h3>Diagramme des cas d'utilisation</h3>
+  <div class="diagram-wrap">
+  <svg viewBox="0 0 860 720" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:'Segoe UI',Roboto,sans-serif;">
+<rect x="320" y="20" width="340" height="690" rx="14" fill="#fafbfe" stroke="#4a5fc1" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="490" y="40" text-anchor="middle" font-size="14" font-weight="700" fill="#2d3e8c">Plateforme SmartClass</text>
+<rect x="20" y="40" width="150" height="44" rx="8" fill="#eef1fb" stroke="#2d3e8c" stroke-width="2"/><text x="95.0" y="66.0" text-anchor="middle" font-size="12" font-weight="700" fill="#1e2233">Utilisateur</text>
+<path d="M40,84 L32,98 L48,98 z" fill="#fff" stroke="#2d3e8c" stroke-width="1.6"/>
+<path d="M40,98 V562" stroke="#2d3e8c" stroke-width="1.6" fill="none" />
+<path d="M40,190 H130" stroke="#2d3e8c" stroke-width="1.6" fill="none" />
+<path d="M40,562 H60" stroke="#2d3e8c" stroke-width="1.6" fill="none" />
+<rect x="130" y="168" width="150" height="44" rx="8" fill="#eef1fb" stroke="#2d3e8c" stroke-width="2"/><text x="205.0" y="187.0" text-anchor="middle" font-size="12" font-weight="700" fill="#1e2233">Membre</text><text x="205.0" y="201.0" text-anchor="middle" font-size="12" font-weight="700" fill="#1e2233">pédagogique</text>
+<path d="M150,212 L142,226 L158,226 z" fill="#fff" stroke="#2d3e8c" stroke-width="1.6"/>
+<path d="M150,226 V402" stroke="#2d3e8c" stroke-width="1.6" fill="none" />
+<path d="M150,312 H175" stroke="#2d3e8c" stroke-width="1.6" fill="none" />
+<path d="M150,402 H175" stroke="#2d3e8c" stroke-width="1.6" fill="none" />
+<rect x="175" y="290" width="115" height="44" rx="8" fill="#fff" stroke="#2d3e8c" stroke-width="2"/><text x="232.5" y="316.0" text-anchor="middle" font-size="12" font-weight="700" fill="#1e2233">Enseignant</text>
+<rect x="175" y="380" width="115" height="44" rx="8" fill="#fff" stroke="#2d3e8c" stroke-width="2"/><text x="232.5" y="406.0" text-anchor="middle" font-size="12" font-weight="700" fill="#1e2233">Étudiant</text>
+<rect x="60" y="540" width="130" height="44" rx="8" fill="#fff" stroke="#2d3e8c" stroke-width="2"/><text x="125.0" y="566.0" text-anchor="middle" font-size="12" font-weight="700" fill="#1e2233">Administrateur</text>
+<rect x="735" y="342" width="100" height="36" rx="8" fill="#fff4e0" stroke="#f5a623" stroke-width="1.5"/><text x="785" y="364" text-anchor="middle" font-size="12" font-weight="600" fill="#8a6200">Service IA</text>
+<ellipse cx="470" cy="82" rx="125" ry="28" fill="#fff" stroke="#4a5fc1" stroke-width="1.6"/>
+<text x="470" y="86" text-anchor="middle" font-size="11.5" fill="#2d3e8c">UC8 · Authentification & profil</text>
+<ellipse cx="470" cy="148" rx="125" ry="28" fill="#fff8ea" stroke="#f5a623" stroke-width="1.6"/>
+<text x="470" y="145" text-anchor="middle" font-size="11.5" fill="#8a6200">UC2 · Générer / reformuler</text>
+<text x="470" y="159" text-anchor="middle" font-size="10.5" fill="#8a6200">un test individuel</text>
+<ellipse cx="470" cy="214" rx="125" ry="28" fill="#fff" stroke="#4a5fc1" stroke-width="1.6"/>
+<text x="470" y="211" text-anchor="middle" font-size="11.5" fill="#2d3e8c">UC3 · Visioconférence</text>
+<text x="470" y="225" text-anchor="middle" font-size="10.5" fill="#2d3e8c">(hôte / participants)</text>
+<ellipse cx="470" cy="280" rx="125" ry="28" fill="#fff8ea" stroke="#f5a623" stroke-width="1.6"/>
+<text x="470" y="277" text-anchor="middle" font-size="11.5" fill="#8a6200">UC9 · Simulation d'examen multi-</text>
+<text x="470" y="291" text-anchor="middle" font-size="10.5" fill="#8a6200">chapitres + anti-fraude</text>
+<ellipse cx="470" cy="346" rx="125" ry="28" fill="#fff8ea" stroke="#f5a623" stroke-width="1.6"/>
+<text x="470" y="343" text-anchor="middle" font-size="11.5" fill="#8a6200">UC1 · Créer un cours</text>
+<text x="470" y="357" text-anchor="middle" font-size="10.5" fill="#8a6200">assisté par IA</text>
+<ellipse cx="470" cy="412" rx="125" ry="28" fill="#fff" stroke="#4a5fc1" stroke-width="1.6"/>
+<text x="470" y="409" text-anchor="middle" font-size="11.5" fill="#2d3e8c">UC7 · Suivre les évaluations</text>
+<text x="470" y="423" text-anchor="middle" font-size="10.5" fill="#2d3e8c">et résultats</text>
+<ellipse cx="470" cy="478" rx="125" ry="28" fill="#fff" stroke="#4a5fc1" stroke-width="1.6"/>
+<text x="470" y="482" text-anchor="middle" font-size="11.5" fill="#2d3e8c">UC6 · Gérer les groupes-classes</text>
+<ellipse cx="470" cy="544" rx="125" ry="28" fill="#fff8ea" stroke="#f5a623" stroke-width="1.6"/>
+<text x="470" y="541" text-anchor="middle" font-size="11.5" fill="#8a6200">UC4 · Consulter replay</text>
+<text x="470" y="555" text-anchor="middle" font-size="10.5" fill="#8a6200">& résumé</text>
+<ellipse cx="470" cy="610" rx="125" ry="28" fill="#fff" stroke="#4a5fc1" stroke-width="1.6"/>
+<text x="470" y="614" text-anchor="middle" font-size="11.5" fill="#2d3e8c">UC5 · Collaborer entre étudiants</text>
+<ellipse cx="470" cy="676" rx="125" ry="28" fill="#fff8ea" stroke="#f5a623" stroke-width="1.6"/>
+<text x="470" y="673" text-anchor="middle" font-size="11.5" fill="#8a6200">UC10 · Questions à l'IA</text>
+<text x="470" y="687" text-anchor="middle" font-size="10.5" fill="#8a6200">(tuteur conversationnel)</text>
+<path d="M170,62 C215,62 300,82 345,82" stroke="#9aa1b8" stroke-width="1.4" fill="none"/>
+<path d="M280,190 C325,190 300,148 345,148" stroke="#9aa1b8" stroke-width="1.4" fill="none"/>
+<path d="M280,190 C325,190 300,214 345,214" stroke="#9aa1b8" stroke-width="1.4" fill="none"/>
+<path d="M280,190 C325,190 300,280 345,280" stroke="#9aa1b8" stroke-width="1.4" fill="none"/>
+<path d="M290,312 C335,312 300,346 345,346" stroke="#9aa1b8" stroke-width="1.4" fill="none"/>
+<path d="M290,312 C335,312 300,412 345,412" stroke="#9aa1b8" stroke-width="1.4" fill="none"/>
+<path d="M290,312 C335,312 300,478 345,478" stroke="#9aa1b8" stroke-width="1.4" fill="none"/>
+<path d="M290,402 C335,402 300,544 345,544" stroke="#9aa1b8" stroke-width="1.4" fill="none"/>
+<path d="M290,402 C335,402 300,610 345,610" stroke="#9aa1b8" stroke-width="1.4" fill="none"/>
+<path d="M290,402 C335,402 300,676 345,676" stroke="#9aa1b8" stroke-width="1.4" fill="none"/>
+<path d="M190,562 C235,562 300,478 345,478" stroke="#9aa1b8" stroke-width="1.4" fill="none"/>
+<path d="M735,360 C690,360 640,148 595,148" stroke="#f5a623" stroke-width="1.4" stroke-dasharray="4 3" fill="none"/>
+<path d="M735,360 C690,360 640,280 595,280" stroke="#f5a623" stroke-width="1.4" stroke-dasharray="4 3" fill="none"/>
+<path d="M735,360 C690,360 640,346 595,346" stroke="#f5a623" stroke-width="1.4" stroke-dasharray="4 3" fill="none"/>
+<path d="M735,360 C690,360 640,544 595,544" stroke="#f5a623" stroke-width="1.4" stroke-dasharray="4 3" fill="none"/>
+<path d="M735,360 C690,360 640,676 595,676" stroke="#f5a623" stroke-width="1.4" stroke-dasharray="4 3" fill="none"/>
+<g font-size="11" fill="#5a6178">
+<path d="M690,600 L682,614 L698,614 z" fill="#fff" stroke="#2d3e8c" stroke-width="1.5"/><text x="708" y="612">Généralisation (héritage)</text>
+<line x1="682" y1="634" x2="702" y2="634" stroke="#9aa1b8" stroke-width="1.4"/><text x="708" y="638">Association</text>
+<line x1="682" y1="654" x2="702" y2="654" stroke="#f5a623" stroke-width="1.4" stroke-dasharray="4 3"/><text x="708" y="658">Appel au Service IA</text>
+</g>
+</svg>
+  </div>
+  <p style="font-size:0.85em;color:var(--muted);text-align:center;margin-top:4px;">Figure 0 — Diagramme des cas d'utilisation avec hiérarchie d'acteurs : les cas d'usage communs sont rattachés au parent et hérités par les acteurs enfants</p>
+
+  <h3>Hiérarchie des acteurs (généralisation)</h3>
+  <p>Plusieurs cas d'usage étaient partagés entre acteurs (UC2, UC3, UC9 entre Étudiant et Enseignant ; UC8 par tous). Plutôt que de dupliquer les liens, on regroupe les acteurs par généralisation : un acteur enfant hérite de tous les cas d'usage de son parent.</p>
+  <table>
+    <tr><th>Acteur</th><th>Hérite de</th><th>Cas d'usage propres</th><th>Cas d'usage hérités</th></tr>
+    <tr><td><strong>Utilisateur</strong> (abstrait)</td><td>—</td><td>UC8 Authentification &amp; profil</td><td>—</td></tr>
+    <tr><td><strong>Membre pédagogique</strong> (abstrait)</td><td>Utilisateur</td><td>UC2 Générer un test · UC3 Visioconférence · UC9 Simulation d'examen</td><td>UC8</td></tr>
+    <tr><td><strong>Enseignant</strong></td><td>Membre pédagogique</td><td>UC1 Créer un cours · UC7 Suivre les évaluations · UC6 Gérer les groupes</td><td>UC2, UC3, UC9, UC8</td></tr>
+    <tr><td><strong>Étudiant</strong></td><td>Membre pédagogique</td><td>UC4 Replay &amp; résumé · UC5 Collaborer · UC10 Questions à l'IA</td><td>UC2, UC3, UC9, UC8</td></tr>
+    <tr><td><strong>Administrateur</strong></td><td>Utilisateur</td><td>UC6 Gérer les groupes-classes</td><td>UC8</td></tr>
+  </table>
+  <div class="note-box"><strong>Lecture :</strong> UC6 reste relié directement à l'Enseignant et à l'Administrateur (seuls acteurs concernés, sans parent commun autre qu'Utilisateur). Dans UC3, l'enseignant joue le rôle d'hôte (RG8) et les étudiants celui de participants ; ces différences de droits restent portées par les règles métier, pas par le diagramme.</div>
+
+    <div class="uc-card">
+    <span class="uc-actor">Enseignant</span>
+    <h4>UC1 — Créer un cours assisté par IA</h4>
+    <p>L'enseignant importe un ancien PDF de cours ou saisit un thème → l'IA génère/reformule un nouveau cours structuré → l'enseignant relit, édite et publie dans son groupe-classe.</p>
+  </div>
+  <div class="uc-card">
+    <span class="uc-actor">Étudiant · Enseignant</span>
+    <h4>UC2 — Générer / reformuler un test pour usage individuel</h4>
+    <p>À partir d'un cours publié, <strong>tout utilisateur (étudiant ou enseignant) peut demander à l'IA de générer ou reformuler un QCM/exercice pour sa propre pratique</strong> (auto-évaluation, révision) → le résultat est immédiatement disponible, <strong>sans validation préalable</strong>, car il reste strictement personnel et n'est jamais diffusé à un tiers.</p>
+    <p>Si l'enseignant souhaite en revanche <strong>publier officiellement</strong> un test à toute la classe (noté, comptant pour l'évaluation), il repasse par le circuit de validation classique (voir RG4) avant diffusion.</p>
+  </div>
+  <div class="uc-card">
+    <span class="uc-actor">Enseignant · Étudiants</span>
+    <h4>UC3 — Lancer une visioconférence de cours</h4>
+    <p>L'enseignant planifie/démarre une session live liée à son groupe → les étudiants rejoignent → la session est enregistrée automatiquement → à la fin, un compte-rendu/résumé est généré par IA à partir de la transcription.</p>
+  </div>
+  <div class="uc-card">
+    <span class="uc-actor">Étudiant</span>
+    <h4>UC4 — Consulter le replay et le résumé</h4>
+    <p>Un étudiant absent accède à l'enregistrement vidéo et au résumé écrit du cours dans l'espace de son groupe-classe.</p>
+  </div>
+  <div class="uc-card">
+    <span class="uc-actor">Étudiant</span>
+    <h4>UC5 — Collaborer entre étudiants</h4>
+    <p>Un étudiant partage un exercice/une ressource avec son groupe, propose une séance de travail (planning commun), discute via un fil de commentaires.</p>
+  </div>
+  <div class="uc-card">
+    <span class="uc-actor">Enseignant · Admin</span>
+    <h4>UC6 — Gérer les groupes-classes</h4>
+    <p>Création d'un groupe-classe, ajout/suppression d'étudiants, attribution des rôles, archivage en fin d'année.</p>
+  </div>
+  <div class="uc-card">
+    <span class="uc-actor">Enseignant</span>
+    <h4>UC7 — Suivre les évaluations et résultats</h4>
+    <p>Consultation des scores des étudiants aux tests officiels et examens simulés, export ou visualisation des statistiques de classe.</p>
+  </div>
+  <div class="uc-card">
+    <span class="uc-actor">Tous</span>
+    <h4>UC8 — Authentification et gestion de profil</h4>
+    <p>Inscription/connexion, gestion du rôle (prof/étudiant), rejoindre une classe via code d'invitation.</p>
+  </div>
+  <div class="uc-card">
+    <span class="uc-actor">Étudiant · Enseignant</span>
+    <h4>UC9 — Simulation d'examen multi-chapitres avec anti-fraude</h4>
+    <p><strong>Scénario principal :</strong></p>
+    <div class="flow-step"><div class="flow-num">1</div><div>L'étudiant (ou l'enseignant pour toute la classe) sélectionne plusieurs chapitres/cours dans un ou plusieurs modules.</div></div>
+  <div class="uc-card">
+    <span class="uc-actor">Étudiant</span>
+    <h4>UC10 — Poser des questions à l'IA sur un cours spécifique</h4>
+    <p>L'étudiant ouvre un cours et interagit avec un assistant IA conversationnel contextualisé sur ce cours (RAG sur le contenu du cours uniquement) : il peut poser des questions de compréhension, demander des reformulations, des exemples supplémentaires ou des explications pas à pas. L'échange reste privé à l'étudiant et n'est pas visible par l'enseignant ni par les autres élèves.</p>
+  </div>
+</section>
+
+<!-- REGLES METIER -->
+<section id="regles">
+  <h2>3. Règles métier</h2>
+
+  <div class="note-box"><strong>Note de révision :</strong> l'ancienne règle RG6 (validation obligatoire du barème par l'enseignant pour tout test IA) a été supprimée et fusionnée dans RG4 — elle ne s'appliquait qu'aux tests officiels, alors que l'essentiel des générations de tests est désormais un usage individuel sans validation (RG6 actuelle). Toutes les règles ci-dessous ont été revérifiées et renumérotées pour rester cohérentes entre elles.</div>
+
+  <div class="rg-group">
+    <h4>Anti-fraude</h4>
+    <div class="rg-item"><span class="rg-id">RG19</span><span>Le mode "examen officiel" active obligatoirement : verrouillage du focus, blocage du copier-coller, plein écran obligatoire.</span></div>
+  <div class="rg-group">
+    <h4>Collaboration</h4>
+    <div class="rg-item"><span class="rg-id">RG12</span><span>Un étudiant ne peut partager une ressource qu'au sein de son/ses groupe(s)-classe(s), pas publiquement hors plateforme.</span></div>
+  <div class="rg-group">
+    <h4>Contenu pédagogique &amp; IA</h4>
+    <div class="rg-item"><span class="rg-id">RG4</span><span>Un cours ou un test généré/reformulé par IA et <strong>destiné à une publication officielle</strong> (visible par tout le groupe-classe, comptant pour l'évaluation) doit être explicitement validé par l'enseignant — y compris le barème et la correction — avant diffusion ; l'IA ne publie jamais automatiquement.</span></div>
+  <div class="rg-group">
+    <h4>IA locale / Fine-tuning</h4>
+    <div class="rg-item"><span class="rg-id">RG27</span><span>Les modèles utilisés (génération de cours, QCM, examens, résumés) doivent être auto-hébergés ou fine-tunés en interne — aucune donnée pédagogique/examen ne transite vers une API LLM tierce non maîtrisée.</span></div>
+  <div class="rg-group">
+    <h4>Rôles &amp; accès</h4>
+    <div class="rg-item"><span class="rg-id">RG1</span><span>Un utilisateur a un rôle unique par compte : Enseignant, Étudiant ou Administrateur.</span></div>
+  <div class="rg-group">
+    <h4>Sécurité / données</h4>
+    <div class="rg-item"><span class="rg-id">RG14</span><span>Les données des mineurs et les enregistrements vidéo doivent être stockés avec chiffrement et durée de rétention définie.</span></div>
+  <div class="rg-group">
+    <h4>Simulation d'examen &amp; sélection de contenu</h4>
+    <div class="rg-item"><span class="rg-id">RG16</span><span>Un examen simulé doit être généré uniquement à partir de chapitres déjà publiés et validés par un enseignant (cf. RG4).</span></div>
+  <div class="rg-group">
+    <h4>Visioconférence</h4>
+    <div class="rg-item"><span class="rg-id">RG8</span><span>Seul l'enseignant (hôte) peut démarrer/arrêter l'enregistrement d'une session.</span></div>
+    <div class="rg-item"><span class="rg-id">RG28</span><span>Un modèle local doit être versionné et évaluable (jeu de test qualité) avant mise en production.</span></div>
+    <div class="rg-item"><span class="rg-id">RG29</span><span>Toute question générée par l'IA locale doit être liée traçablement à un passage source du cours, pour compenser la fiabilité plus faible d'un petit modèle (7-8B).</span></div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section id="archi">
+  <h2>4. Architecture initiale</h2>
+
+  <h3>Vue d'ensemble</h3>
+  <div class="diagram-wrap">
+  <svg viewBox="0 0 900 555" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:'Segoe UI',Roboto,sans-serif;">
+    <defs>
+      <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L0,6 L9,3 z" fill="#5a6178"/>
+      </marker>
+      <marker id="arrowIA" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L0,6 L9,3 z" fill="#c47f00"/>
+      </marker>
+    </defs>
+
+    <!-- Client -->
+    <rect x="300" y="16" width="300" height="56" rx="10" fill="#2d3e8c"/>
+    <text x="450" y="40" text-anchor="middle" fill="white" font-size="15" font-weight="600">Client Flutter</text>
+    <text x="450" y="58" text-anchor="middle" fill="#dfe4fb" font-size="12">Android · iOS · Web (app unique)</text>
+
+    <line x1="450" y1="72" x2="450" y2="108" stroke="#5a6178" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- API Gateway -->
+    <rect x="270" y="110" width="360" height="56" rx="10" fill="#4a5fc1"/>
+    <text x="450" y="134" text-anchor="middle" fill="white" font-size="15" font-weight="600">API Gateway / BFF — Node.js</text>
+    <text x="450" y="152" text-anchor="middle" fill="#e9ecfb" font-size="12">Auth JWT · routage · rate-limiting</text>
+
+    <line x1="450" y1="166" x2="450" y2="196" stroke="#5a6178" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- 5 services row -->
+    <g font-size="12.5">
+      <!-- Users -->
+      <rect x="20" y="198" width="160" height="80" rx="8" fill="#eef1fb" stroke="#4a5fc1" stroke-width="1.5"/>
+      <text x="100" y="222" text-anchor="middle" font-weight="700" fill="#2d3e8c">Utilisateurs</text>
+      <text x="100" y="238" text-anchor="middle" fill="#2d3e8c">&amp; Classes</text>
+      <text x="100" y="258" text-anchor="middle" fill="#5a6178" font-size="11">rôles, groupes,</text>
+      <text x="100" y="271" text-anchor="middle" fill="#5a6178" font-size="11">invitations</text>
+
+      <!-- Cours -->
+      <rect x="196" y="198" width="160" height="80" rx="8" fill="#eef1fb" stroke="#4a5fc1" stroke-width="1.5"/>
+      <text x="276" y="222" text-anchor="middle" font-weight="700" fill="#2d3e8c">Cours</text>
+      <text x="276" y="238" text-anchor="middle" fill="#2d3e8c">&amp; Contenu</text>
+      <text x="276" y="258" text-anchor="middle" fill="#5a6178" font-size="11">CRUD, import PDF,</text>
+      <text x="276" y="271" text-anchor="middle" fill="#5a6178" font-size="11">versioning</text>
+
+      <!-- Visio -->
+      <rect x="372" y="198" width="156" height="80" rx="8" fill="#eef1fb" stroke="#4a5fc1" stroke-width="1.5"/>
+      <text x="450" y="222" text-anchor="middle" font-weight="700" fill="#2d3e8c">Visio &amp;</text>
+      <text x="450" y="238" text-anchor="middle" fill="#2d3e8c">Enregistrement</text>
+      <text x="450" y="258" text-anchor="middle" fill="#5a6178" font-size="11">WebRTC,</text>
+      <text x="450" y="271" text-anchor="middle" fill="#5a6178" font-size="11">replay auto</text>
+
+      <!-- Examen -->
+      <rect x="544" y="198" width="160" height="80" rx="8" fill="#eef1fb" stroke="#4a5fc1" stroke-width="1.5"/>
+      <text x="624" y="222" text-anchor="middle" font-weight="700" fill="#2d3e8c">Examen &amp;</text>
+      <text x="624" y="238" text-anchor="middle" fill="#2d3e8c">Anti-fraude</text>
+      <text x="624" y="258" text-anchor="middle" fill="#5a6178" font-size="11">multi-chapitres,</text>
+      <text x="624" y="271" text-anchor="middle" fill="#5a6178" font-size="11">timer, flags</text>
+
+      <!-- IA -->
+      <rect x="720" y="198" width="160" height="80" rx="8" fill="#fff4e0" stroke="#f5a623" stroke-width="1.5"/>
+      <text x="800" y="222" text-anchor="middle" font-weight="700" fill="#8a6200">Service IA</text>
+      <text x="800" y="238" text-anchor="middle" fill="#8a6200">(self-hosted)</text>
+      <text x="800" y="258" text-anchor="middle" fill="#8a6200" font-size="11">LLM 7-8B local</text>
+      <text x="800" y="271" text-anchor="middle" fill="#8a6200" font-size="11">+ STT Whisper</text>
+    </g>
+
+    <!-- connectors from gateway down to each -->
+    <path d="M420,166 L100,196" stroke="#5a6178" stroke-width="1.5" fill="none"/>
+    <path d="M440,166 L276,196" stroke="#5a6178" stroke-width="1.5" fill="none"/>
+    <path d="M450,166 L450,196" stroke="#5a6178" stroke-width="1.5" fill="none"/>
+    <path d="M460,166 L624,196" stroke="#5a6178" stroke-width="1.5" fill="none"/>
+    <path d="M480,166 L800,196" stroke="#5a6178" stroke-width="1.5" fill="none"/>
+
+    <!-- converge down to storage -->
+    <path d="M100,278 V300 H450" stroke="#5a6178" stroke-width="1.5" fill="none"/>
+    <path d="M276,278 V300" stroke="#5a6178" stroke-width="1.5" fill="none"/>
+    <path d="M450,278 V300" stroke="#5a6178" stroke-width="1.5" fill="none"/>
+    <path d="M624,278 V300 H450" stroke="#5a6178" stroke-width="1.5" fill="none"/>
+    <path d="M745,278 V300 H450" stroke="#5a6178" stroke-width="1.5" fill="none"/>
+    <line x1="450" y1="300" x2="450" y2="396" stroke="#5a6178" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- Serveur GPU dédié (au-dessus de la couche de données) -->
+    <line x1="830" y1="278" x2="830" y2="330" stroke="#c47f00" stroke-width="2.2" stroke-dasharray="6 4" marker-end="url(#arrowIA)"/>
+    <text x="822" y="308" text-anchor="end" fill="#8a6200" font-size="11" font-weight="600">HTTP / gRPC</text>
+    <rect x="600" y="332" width="280" height="60" rx="10" fill="#f5a623"/>
+    <text x="740" y="356" text-anchor="middle" fill="#4a3200" font-size="14" font-weight="700">Serveur GPU dédié</text>
+    <text x="740" y="374" text-anchor="middle" fill="#4a3200" font-size="12">Inférence + fine-tuning QLoRA (7-8B)</text>
+
+    <!-- Storage layer -->
+    <rect x="180" y="398" width="540" height="90" rx="10" fill="#1e2233"/>
+    <text x="450" y="424" text-anchor="middle" fill="white" font-size="14" font-weight="700">Couche de données</text>
+    <text x="450" y="446" text-anchor="middle" fill="#d7e0ff" font-size="12">PostgreSQL (users, classes, cours, tests, examens)</text>
+    <text x="450" y="464" text-anchor="middle" fill="#d7e0ff" font-size="12">Stockage fichiers S3/MinIO (PDF, vidéos, snapshots) · Vector DB pgvector (RAG)</text>
+
+    <!-- Legend -->
+    <rect x="40" y="520" width="18" height="14" fill="#eef1fb" stroke="#4a5fc1"/>
+    <text x="64" y="532" font-size="12" fill="#5a6178">Services applicatifs (Node.js)</text>
+    <rect x="300" y="520" width="18" height="14" fill="#fff4e0" stroke="#f5a623"/>
+    <text x="324" y="532" font-size="12" fill="#5a6178">Composants IA (self-hosted, local)</text>
+    <rect x="580" y="520" width="18" height="14" fill="#1e2233"/>
+    <text x="604" y="532" font-size="12" fill="#5a6178">Stockage / données</text>
+  </svg>
+  </div>
+  <p style="font-size:0.85em;color:var(--muted);text-align:center;margin-top:4px;">Figure 1 — Vue d'ensemble de l'architecture SmartClass (client Flutter, backend Node.js, Service IA relié au Serveur GPU dédié)</p>
+
+  <h3>Explication détaillée du schéma</h3>
+  <p>L'architecture repose sur une séparation claire en 4 couches, du client jusqu'au calcul IA :</p>
+
+  <h4>Couche 1 — Client Flutter</h4>
+  <p>Une <strong>application unique développée en Flutter</strong> couvre Android, iOS et le Web à partir d'une seule base de code. C'est elle qui gère les interfaces des trois profils (enseignant, étudiant, admin), les écrans de visioconférence, la lecture des replays, et l'interface d'examen surveillé. Le choix d'un client unique réduit le coût de maintenance par rapport à trois développements séparés (natif Android/iOS + web React).</p>
+
+  <h4>Couche 2 — API Gateway / BFF (Node.js)</h4>
+  <p>Toutes les requêtes du client Flutter passent par une <strong>API unique en Node.js</strong> (NestJS ou Express), qui joue le rôle de point d'entrée central : elle vérifie l'authentification (JWT), route chaque requête vers le bon micro-service interne, applique le rate-limiting (anti-abus), et gère le versioning des API. Node.js est adapté ici car il gère bien les connexions concurrentes (nombreux étudiants connectés en même temps pendant une visio ou un examen) grâce à son modèle asynchrone non-bloquant.</p>
+
+  <h4>Couche 3 — Services métier</h4>
+  <p>Cinq services applicatifs, chacun responsable d'un domaine fonctionnel précis (découplage = maintenance et scalabilité indépendantes) :</p>
+  <ul>
+    <li><strong>Utilisateurs &amp; Classes</strong> : gestion des comptes, rôles, groupes-classes, invitations (UC6, UC8)</li>
+    <li><strong>Cours &amp; Contenu</strong> : CRUD des cours/exercices, import de PDF, versioning des contenus générés par IA (UC1, UC2)</li>
+    <li><strong>Visio &amp; Enregistrement</strong> : gestion des salles WebRTC, déclenchement de l'enregistrement, stockage du replay (UC3, UC4)</li>
+    <li><strong>Examen &amp; Anti-fraude</strong> : agrégation multi-chapitres, génération de la session d'examen, timer, remontée des flags de surveillance (UC9)</li>
+    <li><strong>Service IA</strong> (encadré en orange) : seul composant qui tourne sur une infrastructure dédiée avec GPU, isolé des autres services pour des raisons de coût et de sécurité (RG27) ; il est relié au <strong>Serveur GPU dédié</strong> auquel il délègue l'inférence du modèle et le fine-tuning (liaison HTTP/gRPC, flèche en pointillés orange sur la Figure 1) ; ce serveur GPU se situe au-dessus de la couche de données</li>
+  </ul>
+
+  <h4>Couche 4 — Données et calcul</h4>
+  <p>Tous les services partagent une base <strong>PostgreSQL</strong> (données structurées : utilisateurs, classes, cours, résultats d'examens) et un stockage objet <strong>S3/MinIO</strong> pour les fichiers volumineux (PDF, vidéos, snapshots anti-fraude). Une <strong>base vectorielle (pgvector)</strong> indexe le contenu des cours pour permettre au Service IA de retrouver les passages pertinents lors d'une génération (technique RAG), ce qui limite les hallucinations du modèle léger 7-8B. Enfin, un <strong>serveur GPU dédié</strong>, physiquement ou logiquement séparé du reste de l'infrastructure, exécute l'inférence du modèle et les cycles de fine-tuning (QLoRA) — isolé pour ne pas impacter la disponibilité des autres services en cas de forte charge de calcul.</p>
+
+  <div class="note-box"><strong>Pourquoi cette séparation ?</strong> Le Service IA est le seul composant gourmand en GPU : l'isoler permet de le faire évoluer (changer de modèle, ajouter du GPU) sans toucher au reste de la plateforme, et de garantir qu'aucune donnée pédagogique ne sort de l'infrastructure interne (RG27).</div>
+
+  <h3>Composants clés</h3>
+  <table>
+    <tr><th>Composant</th><th>Rôle</th><th>Technos indicatives</th></tr>
+    <tr><td>Frontend</td><td>Interfaces prof/étudiant/admin (mobile + web)</td><td>Flutter (app unique multiplateforme : Android, iOS, Web)</td></tr>
+    <tr><td>API Gateway / BFF</td><td>Point d'entrée unique, auth JWT, orchestration</td><td>Node.js (NestJS ou Express)</td></tr>
+    <tr><td>Service Utilisateurs &amp; Classes</td><td>Comptes, rôles, groupes, invitations</td><td>PostgreSQL</td></tr>
+    <tr><td>Service Cours &amp; Contenu</td><td>CRUD cours/exercices, upload PDF, versioning</td><td>PostgreSQL + stockage objet (S3/MinIO)</td></tr>
+    <tr><td>Service IA</td><td>Génération cours, reformulation PDF, QCM, examens</td><td>LLM local 7-8B + RAG sur vector DB</td></tr>
+    <tr><td>Service Visio</td><td>Sessions live, gestion des salles</td><td>WebRTC / LiveKit, Jitsi, Agora</td></tr>
+    <tr><td>Service Transcription &amp; Résumé</td><td>Speech-to-text + résumé post-session</td><td>Whisper (local) + LLM local</td></tr>
+    <tr><td>Service Examen</td><td>Agrégation multi-chapitres, config examen, timer, correction</td><td>Backend + LLM local</td></tr>
+    <tr><td>Service Anti-fraude</td><td>Détection focus/onglet, plein écran, webcam</td><td>JS client + MediaPipe/TF.js</td></tr>
+    <tr><td>Stockage fichiers</td><td>PDF, enregistrements vidéo, snapshots</td><td>S3/MinIO (chiffré)</td></tr>
+    <tr><td>Vector DB</td><td>Indexation des cours pour RAG</td><td>pgvector / Weaviate</td></tr>
+    <tr><td>Notifications</td><td>Emails/push</td><td>Queue + worker asynchrone</td></tr>
+  </table>
+</section>
+
+<!-- MODELE DE DONNEES -->
+<section id="donnees">
+  <h2>5. Modèle de données — entités et attributs</h2>
+  <p>Modèle logique relationnel (PostgreSQL) déduit des use cases, des règles métier et des flux. Il est découpé en trois domaines pour rester lisible. Convention : <strong>PK</strong> = clé primaire, <strong>FK</strong> = clé étrangère, <strong>1 / N / 0..1</strong> = cardinalités, boîtes en pointillés = entité d'un autre domaine rappelée pour le contexte. Les types sont ceux de <strong>PostgreSQL</strong> (à droite de chaque attribut).</p>
+
+  <h3>5.1 Utilisateurs, groupes et contenu pédagogique</h3>
+  <div class="diagram-wrap" style="overflow-x:auto;"><div style="min-width:0;"><svg viewBox="0 0 1270 520" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:'Segoe UI',Roboto,sans-serif;">
+<path d="M340,116.14999999999999 L260,98.3" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="329" y="111.14999999999999" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="271" y="93.3" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="271.2" y="98.225" width="57.6" height="15" rx="4" fill="#fafbfe"/><text x="300.0" y="109.225" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">enseigne</text>
+<path d="M135.0,188 L135.0,260" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="144.0" y="201" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="144.0" y="254" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<path d="M340,210.65 L260,286.0" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="329" y="205.65" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="271" y="281.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="258.8" y="239.325" width="82.4" height="15" rx="4" fill="#fafbfe"/><text x="300.0" y="250.325" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">appartient à</text>
+<path d="M590,116.14999999999999 L670,122.1" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="601" y="111.14999999999999" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="659" y="117.1" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="613.6" y="110.125" width="32.8" height="15" rx="4" fill="#fafbfe"/><text x="630.0" y="121.125" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">crée</text>
+<path d="M135.0,50 L135,50 L135,22 L795,22 L795.0,50" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="144.0" y="44" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="804.0" y="44" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="103.1" y="13" width="63.800000000000004" height="15" rx="4" fill="#fafbfe"/><text x="135" y="24" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">diffuse à</text>
+<path d="M795.0,256 L795.0,320" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="804.0" y="269" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="804.0" y="314" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<path d="M920,132.4 L1000,118.8" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="931" y="127.4" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="989" y="113.8" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="931.2" y="116.6" width="57.6" height="15" rx="4" fill="#fafbfe"/><text x="960.0" y="127.6" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">contient</text>
+<path d="M920,406.0 L1000,389.0" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="931" y="401.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="989" y="384.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="928.1" y="388.5" width="63.800000000000004" height="15" rx="4" fill="#fafbfe"/><text x="960.0" y="399.5" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">indexé en</text>
+<path d="M465.0,239 L465.0,320" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="474.0" y="252" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="474.0" y="314" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="439.3" y="270.5" width="51.4" height="15" rx="4" fill="#fafbfe"/><text x="465.0" y="281.5" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">partage</text>
+<path d="M260,174.2 L340,363.0" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="271" y="169.2" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="329" y="358.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="10" y="50" width="250" height="138" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M10,78 V56 Q10,50 16,50 H254 Q260,50 260,56 V78 z" fill="#2d3e8c"/>
+<text x="135.0" y="69" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">GroupeClasse</text>
+<text x="18" y="97" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="54" y="97" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="252" y="97" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="18" y="114" font-size="11" font-weight="400" fill="#1e2233">nom</text>
+<text x="252" y="114" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(100)</text>
+<text x="18" y="131" font-size="11" font-weight="400" fill="#1e2233">niveau</text>
+<text x="252" y="131" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(50)</text>
+<text x="18" y="148" font-size="11" font-weight="400" fill="#1e2233">code_invitation</text>
+<text x="252" y="148" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(12)</text>
+<text x="18" y="165" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="54" y="165" font-size="11" font-weight="400" fill="#1e2233">id_enseignant</text>
+<text x="252" y="165" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="18" y="182" font-size="11" font-weight="400" fill="#1e2233">date_creation</text>
+<text x="252" y="182" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<rect x="10" y="260" width="250" height="104" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M10,288 V266 Q10,260 16,260 H254 Q260,260 260,266 V288 z" fill="#2d3e8c"/>
+<text x="135.0" y="279" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">MembreGroupe</text>
+<text x="18" y="307" font-size="9.5" font-weight="700" fill="#c47f00">PK·FK</text>
+<text x="54" y="307" font-size="11" font-weight="700" fill="#1e2233">id_groupe</text>
+<text x="252" y="307" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="18" y="324" font-size="9.5" font-weight="700" fill="#c47f00">PK·FK</text>
+<text x="54" y="324" font-size="11" font-weight="700" fill="#1e2233">id_utilisateur</text>
+<text x="252" y="324" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="18" y="341" font-size="11" font-weight="400" fill="#1e2233">date_adhesion</text>
+<text x="252" y="341" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<text x="18" y="358" font-size="11" font-weight="400" fill="#1e2233">statut_invitation</text>
+<text x="252" y="358" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<rect x="340" y="50" width="250" height="189" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M340,78 V56 Q340,50 346,50 H584 Q590,50 590,56 V78 z" fill="#2d3e8c"/>
+<text x="465.0" y="69" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Utilisateur</text>
+<text x="348" y="97" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="384" y="97" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="582" y="97" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="114" font-size="11" font-weight="400" fill="#1e2233">nom</text>
+<text x="582" y="114" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(100)</text>
+<text x="348" y="131" font-size="11" font-weight="400" fill="#1e2233">prenom</text>
+<text x="582" y="131" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(100)</text>
+<text x="348" y="148" font-size="11" font-weight="400" fill="#1e2233">email</text>
+<text x="582" y="148" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(255)</text>
+<text x="348" y="165" font-size="11" font-weight="400" fill="#1e2233">mot_de_passe_hash</text>
+<text x="582" y="165" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(255)</text>
+<text x="348" y="182" font-size="11" font-weight="400" fill="#1e2233">role</text>
+<text x="582" y="182" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="348" y="199" font-size="11" font-weight="400" fill="#1e2233">date_naissance</text>
+<text x="582" y="199" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">DATE</text>
+<text x="348" y="216" font-size="11" font-weight="400" fill="#1e2233">statut</text>
+<text x="582" y="216" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="348" y="233" font-size="11" font-weight="400" fill="#1e2233">date_creation</text>
+<text x="582" y="233" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<rect x="340" y="320" width="250" height="172" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M340,348 V326 Q340,320 346,320 H584 Q590,320 590,326 V348 z" fill="#2d3e8c"/>
+<text x="465.0" y="339" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">RessourcePartagee</text>
+<text x="348" y="367" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="384" y="367" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="582" y="367" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="384" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="384" y="384" font-size="11" font-weight="400" fill="#1e2233">id_auteur</text>
+<text x="582" y="384" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="401" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="384" y="401" font-size="11" font-weight="400" fill="#1e2233">id_groupe</text>
+<text x="582" y="401" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="418" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="384" y="418" font-size="11" font-weight="400" fill="#1e2233">id_cours</text>
+<text x="582" y="418" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="435" font-size="11" font-weight="400" fill="#1e2233">titre</text>
+<text x="582" y="435" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(200)</text>
+<text x="348" y="452" font-size="11" font-weight="400" fill="#1e2233">type</text>
+<text x="582" y="452" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="348" y="469" font-size="11" font-weight="400" fill="#1e2233">cle_stockage</text>
+<text x="582" y="469" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(255)</text>
+<text x="348" y="486" font-size="11" font-weight="400" fill="#1e2233">date_partage</text>
+<text x="582" y="486" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<rect x="670" y="50" width="250" height="206" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M670,78 V56 Q670,50 676,50 H914 Q920,50 920,56 V78 z" fill="#2d3e8c"/>
+<text x="795.0" y="69" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Cours</text>
+<text x="678" y="97" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="714" y="97" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="912" y="97" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="114" font-size="11" font-weight="400" fill="#1e2233">titre</text>
+<text x="912" y="114" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(200)</text>
+<text x="678" y="131" font-size="11" font-weight="400" fill="#1e2233">description</text>
+<text x="912" y="131" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TEXT</text>
+<text x="678" y="148" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="714" y="148" font-size="11" font-weight="400" fill="#1e2233">id_auteur</text>
+<text x="912" y="148" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="165" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="714" y="165" font-size="11" font-weight="400" fill="#1e2233">id_groupe</text>
+<text x="912" y="165" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="182" font-size="11" font-weight="400" fill="#1e2233">origine</text>
+<text x="912" y="182" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="678" y="199" font-size="11" font-weight="400" fill="#1e2233">statut</text>
+<text x="912" y="199" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="678" y="216" font-size="11" font-weight="400" fill="#1e2233">version</text>
+<text x="912" y="216" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">INT</text>
+<text x="678" y="233" font-size="11" font-weight="400" fill="#1e2233">date_creation</text>
+<text x="912" y="233" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<text x="678" y="250" font-size="11" font-weight="400" fill="#1e2233">date_publication</text>
+<text x="912" y="250" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<rect x="670" y="320" width="250" height="172" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M670,348 V326 Q670,320 676,320 H914 Q920,320 920,326 V348 z" fill="#2d3e8c"/>
+<text x="795.0" y="339" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Chapitre</text>
+<text x="678" y="367" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="714" y="367" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="912" y="367" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="384" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="714" y="384" font-size="11" font-weight="400" fill="#1e2233">id_cours</text>
+<text x="912" y="384" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="401" font-size="11" font-weight="400" fill="#1e2233">titre</text>
+<text x="912" y="401" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(200)</text>
+<text x="678" y="418" font-size="11" font-weight="400" fill="#1e2233">ordre</text>
+<text x="912" y="418" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">INT</text>
+<text x="678" y="435" font-size="11" font-weight="400" fill="#1e2233">contenu</text>
+<text x="912" y="435" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TEXT</text>
+<text x="678" y="452" font-size="11" font-weight="400" fill="#1e2233">statut_validation</text>
+<text x="912" y="452" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="678" y="469" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="714" y="469" font-size="11" font-weight="400" fill="#1e2233">id_validateur</text>
+<text x="912" y="469" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="486" font-size="11" font-weight="400" fill="#1e2233">date_validation</text>
+<text x="912" y="486" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<rect x="1000" y="50" width="250" height="172" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M1000,78 V56 Q1000,50 1006,50 H1244 Q1250,50 1250,56 V78 z" fill="#2d3e8c"/>
+<text x="1125.0" y="69" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Document</text>
+<text x="1008" y="97" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="1044" y="97" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="1242" y="97" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="1008" y="114" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="1044" y="114" font-size="11" font-weight="400" fill="#1e2233">id_cours</text>
+<text x="1242" y="114" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="1008" y="131" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="1044" y="131" font-size="11" font-weight="400" fill="#1e2233">id_uploader</text>
+<text x="1242" y="131" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="1008" y="148" font-size="11" font-weight="400" fill="#1e2233">nom_fichier</text>
+<text x="1242" y="148" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(255)</text>
+<text x="1008" y="165" font-size="11" font-weight="400" fill="#1e2233">type_mime</text>
+<text x="1242" y="165" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(100)</text>
+<text x="1008" y="182" font-size="11" font-weight="400" fill="#1e2233">taille_octets</text>
+<text x="1242" y="182" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">BIGINT</text>
+<text x="1008" y="199" font-size="11" font-weight="400" fill="#1e2233">cle_stockage</text>
+<text x="1242" y="199" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(255)</text>
+<text x="1008" y="216" font-size="11" font-weight="400" fill="#1e2233">date_upload</text>
+<text x="1242" y="216" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<rect x="1000" y="320" width="250" height="138" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M1000,348 V326 Q1000,320 1006,320 H1244 Q1250,320 1250,326 V348 z" fill="#2d3e8c"/>
+<text x="1125.0" y="339" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">PassageIndexe</text>
+<text x="1008" y="367" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="1044" y="367" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="1242" y="367" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="1008" y="384" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="1044" y="384" font-size="11" font-weight="400" fill="#1e2233">id_chapitre</text>
+<text x="1242" y="384" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="1008" y="401" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="1044" y="401" font-size="11" font-weight="400" fill="#1e2233">id_document</text>
+<text x="1242" y="401" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="1008" y="418" font-size="11" font-weight="400" fill="#1e2233">texte</text>
+<text x="1242" y="418" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TEXT</text>
+<text x="1008" y="435" font-size="11" font-weight="400" fill="#1e2233">position</text>
+<text x="1242" y="435" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">INT</text>
+<text x="1008" y="452" font-size="11" font-weight="400" fill="#1e2233">embedding</text>
+<text x="1242" y="452" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VECTOR(768)</text>
+
+</svg></div></div>
+  <p style="font-size:0.85em;color:var(--muted);text-align:center;margin-top:4px;">Figure 2 — Entités Utilisateur, GroupeClasse, Cours, Chapitre, Document, PassageIndexe et RessourcePartagee</p>
+
+  <h3>5.2 Évaluations, examens et anti-fraude</h3>
+  <div class="diagram-wrap" style="overflow-x:auto;"><div style="min-width:0;"><svg viewBox="0 0 940 740" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:'Segoe UI',Roboto,sans-serif;">
+<path d="M260,111.8 L340,106.69999999999999" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="271" y="106.8" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="329" y="101.69999999999999" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="271.2" y="100.25" width="57.6" height="15" rx="4" fill="#fafbfe"/><text x="300.0" y="111.25" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">contient</text>
+<path d="M135.0,256 L135.0,300" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="144.0" y="269" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="144.0" y="294" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="103.1" y="269.0" width="63.800000000000004" height="15" rx="4" fill="#fafbfe"/><text x="135.0" y="280.0" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">porte sur</text>
+<path d="M135.0,370 L135.0,420" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="144.0" y="383" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<text x="144.0" y="414" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<path d="M260,225.1 L340,357.8" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="271" y="220.1" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="329" y="352.8" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="255.7" y="282.45" width="88.60000000000001" height="15" rx="4" fill="#fafbfe"/><text x="300.0" y="293.45" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">est passée en</text>
+<path d="M590,125.60000000000001 L670,67.0" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="601" y="120.60000000000001" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<text x="659" y="62.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<rect x="585.7" y="87.30000000000001" width="88.60000000000001" height="15" rx="4" fill="#fafbfe"/><text x="630.0" y="98.30000000000001" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">source (RG29)</text>
+<path d="M590,414.5 L670,389.0" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="601" y="409.5" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="659" y="384.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="595.0" y="392.75" width="70.0" height="15" rx="4" fill="#fafbfe"/><text x="630.0" y="403.75" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">enregistre</text>
+<path d="M745.0,320 L590,220.1" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="754.0" y="314" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<text x="601" y="215.1" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<rect x="638.7" y="261.05" width="57.6" height="15" rx="4" fill="#fafbfe"/><text x="667.5" y="272.05" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">répond à</text>
+<path d="M465.0,509 L465.0,570" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="474.0" y="522" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="474.0" y="564" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="433.1" y="530.5" width="63.800000000000004" height="15" rx="4" fill="#fafbfe"/><text x="465.0" y="541.5" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">déclenche</text>
+<path d="M590,490.1 L670,616.5" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="601" y="485.1" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="659" y="611.5" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">0..1</text>
+<rect x="582.6" y="544.3" width="94.8" height="15" rx="4" fill="#fafbfe"/><text x="630.0" y="555.3" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">synthétisée en</text>
+<path d="M340,480.65 L260,577.0" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="329" y="475.65" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<text x="271" y="572.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<rect x="265.0" y="519.825" width="70.0" height="15" rx="4" fill="#fafbfe"/><text x="300.0" y="530.825" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">passée par</text>
+<rect x="10" y="50" width="250" height="206" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M10,78 V56 Q10,50 16,50 H254 Q260,50 260,56 V78 z" fill="#2d3e8c"/>
+<text x="135.0" y="69" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Evaluation</text>
+<text x="18" y="97" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="54" y="97" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="252" y="97" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="18" y="114" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="54" y="114" font-size="11" font-weight="400" fill="#1e2233">id_createur</text>
+<text x="252" y="114" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="18" y="131" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="54" y="131" font-size="11" font-weight="400" fill="#1e2233">id_groupe</text>
+<text x="252" y="131" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="18" y="148" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="54" y="148" font-size="11" font-weight="400" fill="#1e2233">id_modele</text>
+<text x="252" y="148" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="18" y="165" font-size="11" font-weight="400" fill="#1e2233">titre</text>
+<text x="252" y="165" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(200)</text>
+<text x="18" y="182" font-size="11" font-weight="400" fill="#1e2233">type</text>
+<text x="252" y="182" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="18" y="199" font-size="11" font-weight="400" fill="#1e2233">duree_min</text>
+<text x="252" y="199" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">INT</text>
+<text x="18" y="216" font-size="11" font-weight="400" fill="#1e2233">mode_surveille</text>
+<text x="252" y="216" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">BOOLEAN</text>
+<text x="18" y="233" font-size="11" font-weight="400" fill="#1e2233">statut</text>
+<text x="252" y="233" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="18" y="250" font-size="11" font-weight="400" fill="#1e2233">date_creation</text>
+<text x="252" y="250" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<rect x="10" y="300" width="250" height="70" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M10,328 V306 Q10,300 16,300 H254 Q260,300 260,306 V328 z" fill="#2d3e8c"/>
+<text x="135.0" y="319" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">EvaluationChapitre</text>
+<text x="18" y="347" font-size="9.5" font-weight="700" fill="#c47f00">PK·FK</text>
+<text x="54" y="347" font-size="11" font-weight="700" fill="#1e2233">id_evaluation</text>
+<text x="252" y="347" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="18" y="364" font-size="9.5" font-weight="700" fill="#c47f00">PK·FK</text>
+<text x="54" y="364" font-size="11" font-weight="700" fill="#1e2233">id_chapitre</text>
+<text x="252" y="364" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<rect x="10" y="420" width="250" height="34" rx="6" fill="#f2f3f8" stroke="#9aa1b8" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text x="135.0" y="441" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5a6178">Chapitre <tspan font-weight="400" font-size="10.5">(réf.)</tspan></text>
+<rect x="10" y="560" width="250" height="34" rx="6" fill="#f2f3f8" stroke="#9aa1b8" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text x="135.0" y="581" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5a6178">Utilisateur <tspan font-weight="400" font-size="10.5">(réf.)</tspan></text>
+<rect x="340" y="50" width="250" height="189" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M340,78 V56 Q340,50 346,50 H584 Q590,50 590,56 V78 z" fill="#2d3e8c"/>
+<text x="465.0" y="69" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Question</text>
+<text x="348" y="97" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="384" y="97" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="582" y="97" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="114" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="384" y="114" font-size="11" font-weight="400" fill="#1e2233">id_evaluation</text>
+<text x="582" y="114" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="131" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="384" y="131" font-size="11" font-weight="400" fill="#1e2233">id_chapitre</text>
+<text x="582" y="131" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="148" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="384" y="148" font-size="11" font-weight="400" fill="#1e2233">id_passage_source</text>
+<text x="582" y="148" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="165" font-size="11" font-weight="400" fill="#1e2233">enonce</text>
+<text x="582" y="165" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TEXT</text>
+<text x="348" y="182" font-size="11" font-weight="400" fill="#1e2233">type</text>
+<text x="582" y="182" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="348" y="199" font-size="11" font-weight="400" fill="#1e2233">options</text>
+<text x="582" y="199" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">JSONB</text>
+<text x="348" y="216" font-size="11" font-weight="400" fill="#1e2233">reponse_attendue</text>
+<text x="582" y="216" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TEXT</text>
+<text x="348" y="233" font-size="11" font-weight="400" fill="#1e2233">bareme</text>
+<text x="582" y="233" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">NUMERIC(5,2)</text>
+<rect x="340" y="320" width="250" height="189" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M340,348 V326 Q340,320 346,320 H584 Q590,320 590,326 V348 z" fill="#2d3e8c"/>
+<text x="465.0" y="339" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Tentative</text>
+<text x="348" y="367" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="384" y="367" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="582" y="367" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="384" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="384" y="384" font-size="11" font-weight="400" fill="#1e2233">id_evaluation</text>
+<text x="582" y="384" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="401" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="384" y="401" font-size="11" font-weight="400" fill="#1e2233">id_etudiant</text>
+<text x="582" y="401" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="418" font-size="11" font-weight="400" fill="#1e2233">date_debut</text>
+<text x="582" y="418" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<text x="348" y="435" font-size="11" font-weight="400" fill="#1e2233">date_fin</text>
+<text x="582" y="435" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<text x="348" y="452" font-size="11" font-weight="400" fill="#1e2233">score_global</text>
+<text x="582" y="452" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">NUMERIC(5,2)</text>
+<text x="348" y="469" font-size="11" font-weight="400" fill="#1e2233">statut</text>
+<text x="582" y="469" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="348" y="486" font-size="11" font-weight="400" fill="#1e2233">consentement_webcam</text>
+<text x="582" y="486" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">BOOLEAN</text>
+<text x="348" y="503" font-size="11" font-weight="400" fill="#1e2233">date_consentement</text>
+<text x="582" y="503" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<rect x="340" y="570" width="250" height="155" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M340,598 V576 Q340,570 346,570 H584 Q590,570 590,576 V598 z" fill="#2d3e8c"/>
+<text x="465.0" y="589" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">EvenementFraude</text>
+<text x="348" y="617" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="384" y="617" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="582" y="617" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="634" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="384" y="634" font-size="11" font-weight="400" fill="#1e2233">id_tentative</text>
+<text x="582" y="634" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="651" font-size="11" font-weight="400" fill="#1e2233">type</text>
+<text x="582" y="651" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="348" y="668" font-size="11" font-weight="400" fill="#1e2233">gravite</text>
+<text x="582" y="668" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="348" y="685" font-size="11" font-weight="400" fill="#1e2233">horodatage</text>
+<text x="582" y="685" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMPTZ</text>
+<text x="348" y="702" font-size="11" font-weight="400" fill="#1e2233">snapshot_cle</text>
+<text x="582" y="702" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(255)</text>
+<text x="348" y="719" font-size="11" font-weight="400" fill="#1e2233">confirme</text>
+<text x="582" y="719" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">BOOLEAN</text>
+<rect x="670" y="50" width="250" height="34" rx="6" fill="#f2f3f8" stroke="#9aa1b8" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text x="795.0" y="71" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5a6178">PassageIndexe <tspan font-weight="400" font-size="10.5">(réf.)</tspan></text>
+<rect x="670" y="320" width="250" height="138" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M670,348 V326 Q670,320 676,320 H914 Q920,320 920,326 V348 z" fill="#2d3e8c"/>
+<text x="795.0" y="339" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Reponse</text>
+<text x="678" y="367" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="714" y="367" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="912" y="367" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="384" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="714" y="384" font-size="11" font-weight="400" fill="#1e2233">id_tentative</text>
+<text x="912" y="384" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="401" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="714" y="401" font-size="11" font-weight="400" fill="#1e2233">id_question</text>
+<text x="912" y="401" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="418" font-size="11" font-weight="400" fill="#1e2233">valeur</text>
+<text x="912" y="418" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TEXT</text>
+<text x="678" y="435" font-size="11" font-weight="400" fill="#1e2233">est_correcte</text>
+<text x="912" y="435" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">BOOLEAN</text>
+<text x="678" y="452" font-size="11" font-weight="400" fill="#1e2233">points_obtenus</text>
+<text x="912" y="452" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">NUMERIC(5,2)</text>
+<rect x="670" y="570" width="250" height="155" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M670,598 V576 Q670,570 676,570 H914 Q920,570 920,576 V598 z" fill="#2d3e8c"/>
+<text x="795.0" y="589" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">RapportIntegrite</text>
+<text x="678" y="617" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="714" y="617" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="912" y="617" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="634" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="714" y="634" font-size="11" font-weight="400" fill="#1e2233">id_tentative</text>
+<text x="912" y="634" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="651" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="714" y="651" font-size="11" font-weight="400" fill="#1e2233">id_destinataire</text>
+<text x="912" y="651" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="668" font-size="11" font-weight="400" fill="#1e2233">score_risque</text>
+<text x="912" y="668" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">NUMERIC(5,2)</text>
+<text x="678" y="685" font-size="11" font-weight="400" fill="#1e2233">nb_evenements</text>
+<text x="912" y="685" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">INT</text>
+<text x="678" y="702" font-size="11" font-weight="400" fill="#1e2233">synthese</text>
+<text x="912" y="702" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TEXT</text>
+<text x="678" y="719" font-size="11" font-weight="400" fill="#1e2233">date_generation</text>
+<text x="912" y="719" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+
+</svg></div></div>
+  <p style="font-size:0.85em;color:var(--muted);text-align:center;margin-top:4px;">Figure 3 — Entités Evaluation, Question, Tentative, Reponse, EvenementFraude et RapportIntegrite</p>
+
+  <h3>5.3 Visioconférence et IA</h3>
+  <div class="diagram-wrap" style="overflow-x:auto;"><div style="min-width:0;"><svg viewBox="0 0 1270 660" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:'Segoe UI',Roboto,sans-serif;">
+<path d="M260,67.0 L340,75.8" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="271" y="62.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="329" y="70.8" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="271.2" y="62.400000000000006" width="57.6" height="15" rx="4" fill="#fafbfe"/><text x="300.0" y="73.4" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">planifie</text>
+<path d="M590,93.0 L670,84.5" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="601" y="88.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="659" y="79.5" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">0..1</text>
+<rect x="604.3" y="79.75" width="51.4" height="15" rx="4" fill="#fafbfe"/><text x="630.0" y="90.75" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">produit</text>
+<path d="M465.0,222 L465.0,300" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="474.0" y="235" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="474.0" y="294" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<path d="M260,317.0 L340,352.0" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="271" y="312.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="329" y="347.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="268.1" y="325.5" width="63.800000000000004" height="15" rx="4" fill="#fafbfe"/><text x="300.0" y="336.5" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">participe</text>
+<path d="M590,196.2 L670,305.8" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="601" y="191.2" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="659" y="300.8" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">0..1</text>
+<rect x="595.0" y="242.0" width="70.0" height="15" rx="4" fill="#fafbfe"/><text x="630.0" y="253.0" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">résumée en</text>
+<path d="M920,366.0 L1000,357.5" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="931" y="361.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<text x="989" y="352.5" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<rect x="925.0" y="352.75" width="70.0" height="15" rx="4" fill="#fafbfe"/><text x="960.0" y="363.75" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">généré par</text>
+<path d="M260,330.6 L340,496.0" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="271" y="325.6" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="329" y="491.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="280.5" y="404.3" width="39.0" height="15" rx="4" fill="#fafbfe"/><text x="300.0" y="415.3" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">ouvre</text>
+<path d="M260,557.0 L340,558.4" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="271" y="552.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="329" y="553.4" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="268.1" y="548.7" width="63.800000000000004" height="15" rx="4" fill="#fafbfe"/><text x="300.0" y="559.7" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">porte sur</text>
+<path d="M590,522.0 L670,569.0" stroke="#8a93b2" stroke-width="1.5" fill="none"/>
+<text x="601" y="517.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">1</text>
+<text x="659" y="564.0" text-anchor="middle" font-size="11" font-weight="700" fill="#c47f00">N</text>
+<rect x="601.2" y="536.5" width="57.6" height="15" rx="4" fill="#fafbfe"/><text x="630.0" y="547.5" text-anchor="middle" font-size="10.5" font-style="italic" fill="#5a6178">contient</text>
+<rect x="10" y="50" width="250" height="34" rx="6" fill="#f2f3f8" stroke="#9aa1b8" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text x="135.0" y="71" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5a6178">GroupeClasse <tspan font-weight="400" font-size="10.5">(réf.)</tspan></text>
+<rect x="10" y="300" width="250" height="34" rx="6" fill="#f2f3f8" stroke="#9aa1b8" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text x="135.0" y="321" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5a6178">Utilisateur <tspan font-weight="400" font-size="10.5">(réf.)</tspan></text>
+<rect x="10" y="540" width="250" height="34" rx="6" fill="#f2f3f8" stroke="#9aa1b8" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text x="135.0" y="561" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5a6178">Cours <tspan font-weight="400" font-size="10.5">(réf.)</tspan></text>
+<rect x="340" y="50" width="250" height="172" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M340,78 V56 Q340,50 346,50 H584 Q590,50 590,56 V78 z" fill="#2d3e8c"/>
+<text x="465.0" y="69" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">SessionVisio</text>
+<text x="348" y="97" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="384" y="97" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="582" y="97" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="114" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="384" y="114" font-size="11" font-weight="400" fill="#1e2233">id_groupe</text>
+<text x="582" y="114" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="131" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="384" y="131" font-size="11" font-weight="400" fill="#1e2233">id_hote</text>
+<text x="582" y="131" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="148" font-size="11" font-weight="400" fill="#1e2233">titre</text>
+<text x="582" y="148" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(200)</text>
+<text x="348" y="165" font-size="11" font-weight="400" fill="#1e2233">date_debut</text>
+<text x="582" y="165" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<text x="348" y="182" font-size="11" font-weight="400" fill="#1e2233">date_fin</text>
+<text x="582" y="182" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<text x="348" y="199" font-size="11" font-weight="400" fill="#1e2233">statut</text>
+<text x="582" y="199" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="348" y="216" font-size="11" font-weight="400" fill="#1e2233">enregistrement_actif</text>
+<text x="582" y="216" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">BOOLEAN</text>
+<rect x="340" y="300" width="250" height="104" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M340,328 V306 Q340,300 346,300 H584 Q590,300 590,306 V328 z" fill="#2d3e8c"/>
+<text x="465.0" y="319" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">ParticipantSession</text>
+<text x="348" y="347" font-size="9.5" font-weight="700" fill="#c47f00">PK·FK</text>
+<text x="384" y="347" font-size="11" font-weight="700" fill="#1e2233">id_session</text>
+<text x="582" y="347" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="364" font-size="9.5" font-weight="700" fill="#c47f00">PK·FK</text>
+<text x="384" y="364" font-size="11" font-weight="700" fill="#1e2233">id_utilisateur</text>
+<text x="582" y="364" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="381" font-size="11" font-weight="400" fill="#1e2233">heure_entree</text>
+<text x="582" y="381" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<text x="348" y="398" font-size="11" font-weight="400" fill="#1e2233">heure_sortie</text>
+<text x="582" y="398" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<rect x="340" y="470" width="250" height="104" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M340,498 V476 Q340,470 346,470 H584 Q590,470 590,476 V498 z" fill="#2d3e8c"/>
+<text x="465.0" y="489" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">ConversationIA</text>
+<text x="348" y="517" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="384" y="517" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="582" y="517" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="534" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="384" y="534" font-size="11" font-weight="400" fill="#1e2233">id_etudiant</text>
+<text x="582" y="534" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="551" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="384" y="551" font-size="11" font-weight="400" fill="#1e2233">id_cours</text>
+<text x="582" y="551" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="348" y="568" font-size="11" font-weight="400" fill="#1e2233">date_creation</text>
+<text x="582" y="568" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<rect x="670" y="50" width="250" height="138" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M670,78 V56 Q670,50 676,50 H914 Q920,50 920,56 V78 z" fill="#2d3e8c"/>
+<text x="795.0" y="69" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Enregistrement</text>
+<text x="678" y="97" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="714" y="97" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="912" y="97" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="114" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="714" y="114" font-size="11" font-weight="400" fill="#1e2233">id_session</text>
+<text x="912" y="114" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="131" font-size="11" font-weight="400" fill="#1e2233">cle_stockage</text>
+<text x="912" y="131" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(255)</text>
+<text x="678" y="148" font-size="11" font-weight="400" fill="#1e2233">duree_sec</text>
+<text x="912" y="148" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">INT</text>
+<text x="678" y="165" font-size="11" font-weight="400" fill="#1e2233">taille_octets</text>
+<text x="912" y="165" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">BIGINT</text>
+<text x="678" y="182" font-size="11" font-weight="400" fill="#1e2233">date_expiration</text>
+<text x="912" y="182" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<rect x="670" y="280" width="250" height="172" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M670,308 V286 Q670,280 676,280 H914 Q920,280 920,286 V308 z" fill="#2d3e8c"/>
+<text x="795.0" y="299" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">CompteRendu</text>
+<text x="678" y="327" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="714" y="327" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="912" y="327" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="344" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="714" y="344" font-size="11" font-weight="400" fill="#1e2233">id_session</text>
+<text x="912" y="344" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="361" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="714" y="361" font-size="11" font-weight="400" fill="#1e2233">id_modele</text>
+<text x="912" y="361" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="378" font-size="11" font-weight="400" fill="#1e2233">transcription</text>
+<text x="912" y="378" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TEXT</text>
+<text x="678" y="395" font-size="11" font-weight="400" fill="#1e2233">resume</text>
+<text x="912" y="395" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TEXT</text>
+<text x="678" y="412" font-size="11" font-weight="400" fill="#1e2233">statut</text>
+<text x="912" y="412" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="678" y="429" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="714" y="429" font-size="11" font-weight="400" fill="#1e2233">id_validateur</text>
+<text x="912" y="429" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="446" font-size="11" font-weight="400" fill="#1e2233">date_validation</text>
+<text x="912" y="446" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<rect x="670" y="500" width="250" height="138" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M670,528 V506 Q670,500 676,500 H914 Q920,500 920,506 V528 z" fill="#2d3e8c"/>
+<text x="795.0" y="519" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">MessageIA</text>
+<text x="678" y="547" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="714" y="547" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="912" y="547" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="564" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="714" y="564" font-size="11" font-weight="400" fill="#1e2233">id_conversation</text>
+<text x="912" y="564" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="678" y="581" font-size="11" font-weight="400" fill="#1e2233">role</text>
+<text x="912" y="581" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="678" y="598" font-size="11" font-weight="400" fill="#1e2233">contenu</text>
+<text x="912" y="598" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TEXT</text>
+<text x="678" y="615" font-size="11" font-weight="400" fill="#1e2233">ids_passages_sources</text>
+<text x="912" y="615" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID[]</text>
+<text x="678" y="632" font-size="11" font-weight="400" fill="#1e2233">date_envoi</text>
+<text x="912" y="632" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<rect x="1000" y="280" width="250" height="155" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M1000,308 V286 Q1000,280 1006,280 H1244 Q1250,280 1250,286 V308 z" fill="#2d3e8c"/>
+<text x="1125.0" y="299" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">ModeleIA</text>
+<text x="1008" y="327" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="1044" y="327" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="1242" y="327" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="1008" y="344" font-size="11" font-weight="400" fill="#1e2233">nom</text>
+<text x="1242" y="344" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(100)</text>
+<text x="1008" y="361" font-size="11" font-weight="400" fill="#1e2233">type</text>
+<text x="1242" y="361" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="1008" y="378" font-size="11" font-weight="400" fill="#1e2233">version</text>
+<text x="1242" y="378" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">VARCHAR(20)</text>
+<text x="1008" y="395" font-size="11" font-weight="400" fill="#1e2233">date_deploiement</text>
+<text x="1242" y="395" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+<text x="1008" y="412" font-size="11" font-weight="400" fill="#1e2233">score_eval</text>
+<text x="1242" y="412" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">NUMERIC(5,2)</text>
+<text x="1008" y="429" font-size="11" font-weight="400" fill="#1e2233">statut</text>
+<text x="1242" y="429" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<rect x="1000" y="500" width="250" height="138" rx="6" fill="#ffffff" stroke="#2d3e8c" stroke-width="1.5"/>
+<path d="M1000,528 V506 Q1000,500 1006,500 H1244 Q1250,500 1250,506 V528 z" fill="#2d3e8c"/>
+<text x="1125.0" y="519" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Notification</text>
+<text x="1008" y="547" font-size="9.5" font-weight="700" fill="#c47f00">PK</text>
+<text x="1044" y="547" font-size="11" font-weight="700" fill="#1e2233">id</text>
+<text x="1242" y="547" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="1008" y="564" font-size="9.5" font-weight="700" fill="#4a5fc1">FK</text>
+<text x="1044" y="564" font-size="11" font-weight="400" fill="#1e2233">id_destinataire</text>
+<text x="1242" y="564" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">UUID</text>
+<text x="1008" y="581" font-size="11" font-weight="400" fill="#1e2233">type</text>
+<text x="1242" y="581" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">ENUM</text>
+<text x="1008" y="598" font-size="11" font-weight="400" fill="#1e2233">contenu</text>
+<text x="1242" y="598" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TEXT</text>
+<text x="1008" y="615" font-size="11" font-weight="400" fill="#1e2233">lu</text>
+<text x="1242" y="615" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">BOOLEAN</text>
+<text x="1008" y="632" font-size="11" font-weight="400" fill="#1e2233">date_envoi</text>
+<text x="1242" y="632" text-anchor="end" font-size="10" font-family="Consolas,Menlo,monospace" fill="#6b7391">TIMESTAMP</text>
+
+</svg></div></div>
+  <p style="font-size:0.85em;color:var(--muted);text-align:center;margin-top:4px;">Figure 4 — Entités SessionVisio, Enregistrement, CompteRendu, ConversationIA, MessageIA, ModeleIA et Notification</p>
+
+  <h3>Valeurs des énumérations (ENUM)</h3>
+  <table>
+    <tr><th>Attribut</th><th>Valeurs possibles</th></tr>
+    <tr><td><code>Utilisateur.role</code></td><td>ENSEIGNANT, ETUDIANT, ADMIN</td></tr>
+    <tr><td><code>Utilisateur.statut</code></td><td>ACTIF, SUSPENDU</td></tr>
+    <tr><td><code>MembreGroupe.statut_invitation</code></td><td>EN_ATTENTE, ACCEPTEE, REFUSEE</td></tr>
+    <tr><td><code>Cours.origine</code></td><td>MANUEL, IA</td></tr>
+    <tr><td><code>Cours.statut</code></td><td>BROUILLON, VALIDE, PUBLIE</td></tr>
+    <tr><td><code>Chapitre.statut_validation</code></td><td>EN_ATTENTE, VALIDE, REJETE</td></tr>
+    <tr><td><code>RessourcePartagee.type</code></td><td>DOCUMENT, LIEN, NOTE</td></tr>
+    <tr><td><code>Evaluation.type</code></td><td>TEST, EXAMEN_SIMULE, EXAMEN_OFFICIEL</td></tr>
+    <tr><td><code>Evaluation.statut</code></td><td>BROUILLON, VALIDE, PUBLIE, CLOS</td></tr>
+    <tr><td><code>Question.type</code></td><td>QCM, VRAI_FAUX, REPONSE_COURTE</td></tr>
+    <tr><td><code>Tentative.statut</code></td><td>EN_COURS, TERMINEE, INTERROMPUE</td></tr>
+    <tr><td><code>EvenementFraude.type</code></td><td>PERTE_FOCUS, SORTIE_PLEIN_ECRAN, ABSENCE_VISAGE, MULTI_VISAGES, REGARD_HORS_ECRAN</td></tr>
+    <tr><td><code>EvenementFraude.gravite</code></td><td>FAIBLE, MOYENNE, ELEVEE</td></tr>
+    <tr><td><code>SessionVisio.statut</code></td><td>PLANIFIEE, EN_COURS, TERMINEE</td></tr>
+    <tr><td><code>CompteRendu.statut</code></td><td>BROUILLON, VALIDE</td></tr>
+    <tr><td><code>MessageIA.role</code></td><td>USER, ASSISTANT</td></tr>
+    <tr><td><code>ModeleIA.type</code></td><td>LLM, STT</td></tr>
+    <tr><td><code>ModeleIA.statut</code></td><td>EN_EVALUATION, PRODUCTION, RETIRE</td></tr>
+    <tr><td><code>Notification.type</code></td><td>EMAIL, PUSH</td></tr>
+  </table>
+  <div class="note-box"><strong>Conventions de typage :</strong> identifiants en <code>UUID</code> ; dates en <code>TIMESTAMP</code> (<code>TIMESTAMPTZ</code> pour les événements anti-fraude horodatés, <code>DATE</code> pour la date de naissance) ; notes et scores en <code>NUMERIC(5,2)</code> ; <code>VECTOR(768)</code> via l'extension pgvector (la dimension dépend du modèle d'embedding retenu) ; <code>JSONB</code> pour les options de QCM. <code>Utilisateur.email</code> porte une contrainte d'unicité.</div>
+  
+  <h3>Récapitulatif des entités</h3>
+  <table>
+    <tr><th>Entité</th><th>Rôle</th><th>Use cases</th></tr>
+    <tr><td><strong>Utilisateur</strong></td><td>Compte unique avec rôle (RG1) ; date de naissance pour repérer les mineurs (RG14)</td><td>UC8</td></tr>
+    <tr><td><strong>GroupeClasse</strong></td><td>Classe pilotée par un enseignant, accès par code d'invitation</td><td>UC6</td></tr>
+    <tr><td><strong>MembreGroupe</strong></td><td>Table d'association Utilisateur ↔ GroupeClasse (N-N)</td><td>UC6</td></tr>
+    <tr><td><strong>Cours</strong></td><td>Cours manuel ou généré par IA, avec statut de validation et version (RG4)</td><td>UC1, UC4</td></tr>
+    <tr><td><strong>Chapitre</strong></td><td>Unité pédagogique validable ; base de sélection des examens (RG16)</td><td>UC1, UC9</td></tr>
+    <tr><td><strong>Document</strong></td><td>Fichier source (PDF…) stocké sur S3/MinIO, chiffré</td><td>UC1</td></tr>
+    <tr><td><strong>PassageIndexe</strong></td><td>Extrait de cours vectorisé (pgvector) pour le RAG</td><td>UC1, UC2, UC10</td></tr>
+    <tr><td><strong>RessourcePartagee</strong></td><td>Ressource partagée dans un groupe uniquement (RG12)</td><td>UC5</td></tr>
+    <tr><td><strong>Evaluation</strong></td><td>Test individuel, examen simulé ou officiel ; mode surveillé (RG19)</td><td>UC2, UC9</td></tr>
+    <tr><td><strong>EvaluationChapitre</strong></td><td>Chapitres couverts par une évaluation (N-N)</td><td>UC9</td></tr>
+    <tr><td><strong>Question</strong></td><td>Question tracée vers son passage source (RG29)</td><td>UC2, UC9</td></tr>
+    <tr><td><strong>Tentative</strong></td><td>Passage d'une évaluation par un étudiant ; consentement webcam (RG25)</td><td>UC9, UC7</td></tr>
+    <tr><td><strong>Reponse</strong></td><td>Réponse à une question, correction automatique</td><td>UC9, UC7</td></tr>
+    <tr><td><strong>EvenementFraude</strong></td><td>Flag horodaté (focus, visage, plein écran) + snapshot éventuel</td><td>UC9</td></tr>
+    <tr><td><strong>RapportIntegrite</strong></td><td>Synthèse d'intégrité transmise à l'enseignant (RG21, RG26)</td><td>UC9, UC7</td></tr>
+    <tr><td><strong>SessionVisio</strong></td><td>Session live animée par l'enseignant hôte (RG8)</td><td>UC3</td></tr>
+    <tr><td><strong>ParticipantSession</strong></td><td>Présence des utilisateurs dans une session (N-N)</td><td>UC3</td></tr>
+    <tr><td><strong>Enregistrement</strong></td><td>Vidéo de la session avec date d'expiration (RG14)</td><td>UC3, UC4</td></tr>
+    <tr><td><strong>CompteRendu</strong></td><td>Transcription Whisper + résumé LLM, validé par l'enseignant (RG11)</td><td>UC4</td></tr>
+    <tr><td><strong>ConversationIA</strong></td><td>Fil de discussion privé étudiant ↔ tuteur IA sur un cours (RG7)</td><td>UC10</td></tr>
+    <tr><td><strong>MessageIA</strong></td><td>Message d'une conversation, avec passages sources cités</td><td>UC10</td></tr>
+    <tr><td><strong>ModeleIA</strong></td><td>Modèle versionné et évalué avant mise en production (RG28)</td><td>UC1, UC2, UC4, UC9, UC10</td></tr>
+    <tr><td><strong>Notification</strong></td><td>Emails / push envoyés via file d'attente asynchrone</td><td>Transverse</td></tr>
+  </table>
+  <div class="note-box"><strong>Choix de modélisation :</strong> le score par chapitre est calculé (Reponse → Question → Chapitre) plutôt que stocké. Pour la lisibilité, certaines clés étrangères vers Utilisateur (par ex. <code>Chapitre.id_validateur</code>, <code>Document.id_uploader</code>, <code>Notification.id_destinataire</code>) figurent dans les attributs mais ne sont pas tracées. Les fichiers volumineux (vidéos, PDF, snapshots) ne sont pas en base : seule leur clé S3/MinIO est conservée.</div>
+</section>
+
+<!-- IA LOCALE -->
+<section id="ia-locale">
+  <h2>6. Infra IA locale — Modèle léger (7-8B)</h2>
+  <div class="decision-box"><strong>Choix retenu :</strong> priorité au budget GPU limité → modèle local 7-8B paramètres.</div>
+
+  <table>
+    <tr><th>Aspect</th><th>Détail</th></tr>
+    <tr><td>Modèles candidats</td><td>Mistral 7B Instruct, Llama 3.1 8B, Qwen2.5 7B/14B</td></tr>
+    <tr><td>Serving</td><td>Ollama (simplicité) ou vLLM (perf/concurrence) sur 1 GPU (RTX 4090 24GB ou A10G/L4 cloud privé)</td></tr>
+    <tr><td>Fine-tuning</td><td>QLoRA obligatoire (pas de full fine-tuning sur cette taille de GPU), ré-entraînable régulièrement</td></tr>
+    <tr><td>Limite à anticiper</td><td>Moins fiable qu'un gros modèle pour QCM complexes/cours longs → pipeline de validation qualité obligatoire (RG24)</td></tr>
+    <tr><td>Stratégie compensatoire</td><td>RAG soigné (contexte précis injecté) + prompts contraints (sortie JSON stricte pour les QCM) + traçabilité source (RG25)</td></tr>
+  </table>
+</section>
+
+<!-- ANTI-FRAUDE -->
+<section id="antifraude">
+  <h2>7. Anti-fraude avancé (webcam + détection visage)</h2>
+  <div class="decision-box"><strong>Choix retenu :</strong> niveau avancé au MVP, avec traitement vision côté client pour limiter les coûts serveur et les risques RGPD.</div>
+
+  <table>
+    <tr><th>Fonction</th><th>Techno indicative</th><th>Traitement</th></tr>
+    <tr><td>Détection présence visage</td><td>MediaPipe Face Detection / ONNX léger</td><td>Client (navigateur)</td></tr>
+    <tr><td>Détection multi-visages</td><td>Même pipeline, comptage</td><td>Client</td></tr>
+    <tr><td>Détection regard hors écran</td><td>MediaPipe FaceMesh (landmarks yeux)</td><td>Client</td></tr>
+    <tr><td>Changement d'onglet / perte focus</td><td>Page Visibility API / Fullscreen API</td><td>Client, natif navigateur</td></tr>
+    <tr><td>Remontée au serveur</td><td>Flags horodatés uniquement (+ snapshot ponctuel si anomalie confirmée)</td><td>Serveur (léger)</td></tr>
+  </table>
+
+  <h3>Schéma du flux anti-fraude</h3>
+  <div class="diagram-wrap">
+  <svg viewBox="0 0 820 620" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:'Segoe UI',Roboto,sans-serif;">
+    <defs>
+      <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L0,6 L9,3 z" fill="#5a6178"/>
+      </marker>
+    </defs>
+
+    <!-- Client container -->
+    <rect x="30" y="20" width="760" height="240" rx="12" fill="#eef1fb" stroke="#4a5fc1" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="410" y="46" text-anchor="middle" font-size="14" font-weight="700" fill="#2d3e8c">CLIENT — App Flutter (poste étudiant)</text>
+
+    <!-- Focus/Fullscreen box -->
+    <rect x="60" y="66" width="330" height="160" rx="10" fill="white" stroke="#4a5fc1" stroke-width="1.5"/>
+    <text x="225" y="92" text-anchor="middle" font-size="13" font-weight="700" fill="#2d3e8c">Surveillance système</text>
+    <text x="225" y="116" text-anchor="middle" font-size="12" fill="#1e2233">Détection perte de focus</text>
+    <text x="225" y="136" text-anchor="middle" font-size="12" fill="#1e2233">Changement d'application/onglet</text>
+    <text x="225" y="156" text-anchor="middle" font-size="12" fill="#1e2233">Mode plein écran obligatoire</text>
+    <text x="225" y="176" text-anchor="middle" font-size="12" fill="#1e2233">Blocage copier-coller</text>
+    <text x="225" y="204" text-anchor="middle" font-size="11" fill="#5a6178">(natif : Fullscreen / Lifecycle API)</text>
+
+    <!-- Vision box -->
+    <rect x="420" y="66" width="330" height="160" rx="10" fill="white" stroke="#f5a623" stroke-width="1.5"/>
+    <text x="585" y="92" text-anchor="middle" font-size="13" font-weight="700" fill="#8a6200">Détection vision locale (webcam)</text>
+    <text x="585" y="116" text-anchor="middle" font-size="12" fill="#1e2233">Présence de visage</text>
+    <text x="585" y="136" text-anchor="middle" font-size="12" fill="#1e2233">Détection multi-visages</text>
+    <text x="585" y="156" text-anchor="middle" font-size="12" fill="#1e2233">Regard hors écran (approx.)</text>
+    <text x="585" y="176" text-anchor="middle" font-size="12" fill="#1e2233">Traitement embarqué (on-device ML)</text>
+    <text x="585" y="204" text-anchor="middle" font-size="11" fill="#5a6178">(MediaPipe / TFLite, modèle léger local)</text>
+
+    <!-- merge arrows -->
+    <path d="M225,226 L225,244 L410,244" stroke="#5a6178" stroke-width="1.5" fill="none"/>
+    <path d="M585,226 L585,244 L410,244" stroke="#5a6178" stroke-width="1.5" fill="none"/>
+    <line x1="410" y1="244" x2="410" y2="272" stroke="#5a6178" stroke-width="2" marker-end="url(#arrow2)"/>
+
+    <text x="590" y="264" font-size="11" fill="#5a6178" font-style="italic">Envoi : flags horodatés uniquement</text>
+    <text x="590" y="278" font-size="11" fill="#5a6178" font-style="italic">(+ snapshot ponctuel si anomalie confirmée)</text>
+
+    <!-- Backend service -->
+    <rect x="230" y="290" width="360" height="80" rx="10" fill="#2d3e8c"/>
+    <text x="410" y="316" text-anchor="middle" fill="white" font-size="14" font-weight="700">Service Anti-fraude (backend Node.js)</text>
+    <text x="410" y="336" text-anchor="middle" fill="#dfe4fb" font-size="12">Agrège les flags · horodatage</text>
+    <text x="410" y="353" text-anchor="middle" fill="#dfe4fb" font-size="12">Génère le rapport d'intégrité</text>
+
+    <line x1="410" y1="370" x2="410" y2="398" stroke="#5a6178" stroke-width="2" marker-end="url(#arrow2)"/>
+
+    <!-- Storage -->
+    <rect x="250" y="400" width="320" height="70" rx="10" fill="#1e2233"/>
+    <text x="410" y="426" text-anchor="middle" fill="white" font-size="13" font-weight="700">Stockage chiffré</text>
+    <text x="410" y="446" text-anchor="middle" fill="#d7e0ff" font-size="12">Logs + snapshots · rétention 30-90 jours (RG21)</text>
+
+    <line x1="410" y1="470" x2="410" y2="498" stroke="#5a6178" stroke-width="2" marker-end="url(#arrow2)"/>
+
+    <!-- Teacher -->
+    <rect x="260" y="500" width="300" height="60" rx="10" fill="#f5a623"/>
+    <text x="410" y="524" text-anchor="middle" fill="#4a3200" font-size="13" font-weight="700">Enseignant</text>
+    <text x="410" y="544" text-anchor="middle" fill="#4a3200" font-size="12">Consulte le rapport · décision finale (RG20)</text>
+
+    <text x="410" y="590" text-anchor="middle" font-size="11.5" fill="#5a6178">Consentement webcam demandé avant chaque examen officiel (RG27) — refus → mode entraînement</text>
+  </svg>
+  </div>
+  <p style="font-size:0.85em;color:var(--muted);text-align:center;margin-top:4px;">Figure 2 — Flux de surveillance anti-fraude pendant un examen officiel</p>
+</section>
+
+<!-- FLUX -->
+<section id="flux">
+  <h2>8. Flux clés</h2>
+
+  <h3>Cours généré par IA à partir d'un PDF</h3>
+  <div class="flow-step"><div class="flow-num">1</div><div>Prof upload PDF → Service Cours stocke le fichier + extrait le texte</div></div>
+  <div class="flow-step"><div class="flow-num">2</div><div>Texte envoyé au Service IA local → génère une reformulation structurée</div></div>
+  <div class="flow-step"><div class="flow-num">3</div><div>Résultat renvoyé au prof pour édition/validation (RG4)</div></div>
+  <div class="flow-step"><div class="flow-num">4</div><div>Publication → visible aux étudiants du groupe-classe</div></div>
+
+  <h3>Visioconférence → Compte-rendu</h3>
+  <div class="flow-step"><div class="flow-num">1</div><div>Prof démarre la session (Service Visio) → étudiants rejoignent</div></div>
+  <div class="flow-step"><div class="flow-num">2</div><div>Enregistrement activé (RG8, RG10) → flux audio/vidéo stocké</div></div>
+  <div class="flow-step"><div class="flow-num">3</div><div>Fin de session → Whisper local convertit l'audio en texte</div></div>
+  <div class="flow-step"><div class="flow-num">4</div><div>LLM local génère un résumé/compte-rendu structuré</div></div>
+  <div class="flow-step"><div class="flow-num">5</div><div>Résumé + replay rattachés au groupe-classe, éditable par le prof (RG11) avant diffusion</div></div>
+
+  <h3>Génération individuelle (test/reformulation ou question à l'IA)</h3>
+  <div class="flow-step"><div class="flow-num">1</div><div>L'étudiant sélectionne un cours publié et demande une reformulation, un test personnel, ou pose une question au tuteur IA (UC2, UC10)</div></div>
+  <div class="flow-step"><div class="flow-num">2</div><div>Le Service IA local génère la réponse via RAG contraint au contenu du cours (RG7)</div></div>
+  <div class="flow-step"><div class="flow-num">3</div><div>Le résultat est disponible immédiatement, sans validation, car strictement personnel (RG6)</div></div>
+  <div class="flow-step"><div class="flow-num">4</div><div>Aucune trace n'est partagée avec l'enseignant ni les autres étudiants (RG7)</div></div>
+
+  <h3>Simulation d'examen multi-chapitres</h3>
+  <div class="flow-step"><div class="flow-num">1</div><div>Sélection des chapitres validés (RG16) par l'étudiant ou l'enseignant</div></div>
+  <div class="flow-step"><div class="flow-num">2</div><div>Génération de l'examen via LLM local + RAG (questions tracées source, RG29)</div></div>
+  <div class="flow-step"><div class="flow-num">3</div><div>Consentement webcam demandé (RG25) → démarrage mode surveillé</div></div>
+  <div class="flow-step"><div class="flow-num">4</div><div>Surveillance active côté client (focus, plein écran, vision) pendant la session</div></div>
+  <div class="flow-step"><div class="flow-num">5</div><div>Fin d'examen → correction automatique + score par chapitre</div></div>
+  <div class="flow-step"><div class="flow-num">6</div><div>Rapport d'intégrité généré et transmis au prof (RG21, RG26)</div></div>
+</section>
+
+<!-- SPRINTS -->
+<section id="sprints">
+  <h2>9. Planification en 6 sprints</h2>
+  <p>Découpage proposé pour un développement agile, en s'appuyant sur la priorisation MoSCoW des use cases. Chaque sprint est pensé pour livrer un incrément testable, en démarrant par les fondations (auth, groupes) avant les fonctionnalités IA et les fonctions avancées (examen, anti-fraude).</p>
+
+  <table>
+    <tr><th>Sprint</th><th>Objectif</th><th>Use Cases livrés</th><th>Éléments techniques clés</th></tr>
+    <tr>
+      <td><strong>Sprint 1</strong></td>
+      <td>Fondations &amp; comptes</td>
+      <td>UC8 (Auth &amp; profil), UC6 (Gestion des groupes-classes)</td>
+      <td>Setup Node.js/API Gateway, base PostgreSQL, JWT, app Flutter (écrans auth), RG1-RG3</td>
+    </tr>
+    <tr>
+      <td><strong>Sprint 2</strong></td>
+      <td>Contenu pédagogique de base</td>
+      <td>UC1 (Cours assisté par IA)</td>
+      <td>Service Cours &amp; Contenu, upload/extraction PDF, 1er déploiement du LLM local (Mistral 3 8B), circuit de validation prof, RG4-RG5</td>
+    </tr>
+    <tr>
+      <td><strong>Sprint 3</strong></td>
+      <td>Visioconférence</td>
+      <td>UC3 (Visio), UC4 (Replay &amp; résumé)</td>
+      <td>Intégration WebRTC (LiveKit/Jitsi), enregistrement, Whisper local (STT), génération de résumé IA, RG8-RG11</td>
+    </tr>
+    <tr>
+      <td><strong>Sprint 4</strong></td>
+      <td>IA individuelle &amp; auto-apprentissage</td>
+      <td>UC2 (Test/reformulation individuel), UC10 (Tuteur conversationnel IA)</td>
+      <td>Pipeline RAG (pgvector), prompts contraints, chat contextualisé sur cours, RG6-RG7, RG29</td>
+    </tr>
+    <tr>
+      <td><strong>Sprint 5</strong></td>
+      <td>Collaboration &amp; examen (bases)</td>
+      <td>UC5 (Collaboration entre étudiants), UC9 — v1 (examen multi-chapitres sans anti-fraude avancée)</td>
+      <td>Partage de ressources, planning de séances, Service Examen (agrégation chapitres, timer), anti-fraude basique (focus/plein écran), RG12-RG13, RG16-RG19</td>
+    </tr>
+    <tr>
+      <td><strong>Sprint 6</strong></td>
+      <td>Anti-fraude avancée &amp; suivi</td>
+      <td>UC9 — v2 (webcam &amp; détection visage), UC7 (Suivi des évaluations)</td>
+      <td>Détection vision on-device (MediaPipe/TFLite), rapport d'intégrité, tableau de bord résultats/statistiques, RG20-RG28, tests de charge et stabilisation globale</td>
+    </tr>
+  </table>
+
+  <div class="note-box"><strong>Remarque :</strong> l'anti-fraude avancée (webcam) est volontairement repoussée au dernier sprint car c'est la fonctionnalité la plus complexe techniquement et la plus sensible en termes de RGPD — elle bénéficie ainsi du temps de développement maximal et peut s'appuyer sur un examen "v1" déjà fonctionnel dès le Sprint 5.</div>
+</section>
+
+</main>
+
+<footer>
+  SmartClass — Document de cadrage initial · Généré le 14 septembre 2026
+</footer>
+
+</body>
+</html>

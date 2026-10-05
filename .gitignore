@@ -1,0 +1,12 @@
+# Frontend has its own git repository
+Frontend/
+frontend/
+front/
+
+# Dependencies and caches
+node_modules/
+.npm/
+
+# OS files
+.DS_Store
+Thumbs.db

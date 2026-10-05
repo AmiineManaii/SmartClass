@@ -1,0 +1,11 @@
+# Ensure LF line endings on all text files (Windows / WSL / Linux container compatibility)
+* text=auto eol=lf
+*.sh text eol=lf
+*.json text eol=lf
+*.ts text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.prisma text eol=lf
