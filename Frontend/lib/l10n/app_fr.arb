@@ -1,0 +1,692 @@
+{
+  "@@locale": "fr",
+  "app_name": "SmartClass",
+  "loading": "Chargement...",
+  "error": "Erreur",
+  "success": "Succès",
+  "retry": "Réessayer",
+  "cancel": "Annuler",
+  "confirm": "Confirmer",
+  "save": "Enregistrer",
+  "delete": "Supprimer",
+  "edit": "Modifier",
+  "create": "Créer",
+  "search": "Rechercher",
+  "filter": "Filtrer",
+  "sort": "Trier",
+  "close": "Fermer",
+  "back": "Retour",
+  "next": "Suivant",
+  "previous": "Précédent",
+  "done": "Terminé",
+  "skip": "Ignorer",
+  "continue_action": "Continuer",
+  "yes": "Oui",
+  "no": "Non",
+  "ok": "OK",
+  "no_data": "Aucune donnée disponible",
+  "empty_state": "Aucun élément",
+  "try_again": "Réessayer",
+  "something_went_wrong": "Quelque chose s'est mal passé",
+  "connection_error": "Erreur de connexion",
+  "permission_denied": "Permission refusée",
+  "not_found": "Non trouvé",
+  "login": "Connexion",
+  "logout": "Déconnexion",
+  "register": "Inscription",
+  "email": "Email",
+  "password": "Mot de passe",
+  "confirm_password": "Confirmer le mot de passe",
+  "forgot_password": "Mot de passe oublié ?",
+  "reset_password": "Réinitialiser le mot de passe",
+  "remember_me": "Se souvenir de moi",
+  "login_with_google": "Se connecter avec Google",
+  "login_with_apple": "Se connecter avec Apple",
+  "or_continue_with": "Ou continuer avec",
+  "dont_have_account": "Pas encore de compte ?",
+  "already_have_account": "Déjà un compte ?",
+  "sign_up": "S'inscrire",
+  "sign_in": "Se connecter",
+  "welcome_back": "Bon retour",
+  "create_account": "Créer un compte",
+  "enter_email": "Entrez votre email",
+  "enter_password": "Entrez votre mot de passe",
+  "invalid_email": "Email invalide",
+  "password_too_short": "Le mot de passe doit contenir au moins 8 caractères",
+  "passwords_dont_match": "Les mots de passe ne correspondent pas",
+  "login_failed": "Échec de la connexion",
+  "registration_failed": "Échec de l'inscription",
+  "email_already_exists": "Cet email est déjà utilisé",
+  "invalid_credentials": "Identifiants invalides",
+  "welcome_title": "Bienvenue sur SmartClass",
+  "welcome_subtitle": "Accédez à votre espace d'apprentissage intelligent",
+  "email_label": "Adresse e-mail",
+  "email_hint": "nom@exemple.edu",
+  "password_hint": "••••••••",
+  "login_button": "Se connecter",
+  "signup_button": "S'inscrire",
+  "full_name_label": "Nom complet",
+  "full_name_hint": "ex. Thomas Laurent",
+  "required_badge": "Requis",
+  "academic_format_hint": "Format académique recommandé",
+  "password_rule": "Au moins 8 car., 1 chiffre",
+  "accept_terms_prefix": "J'accepte les",
+  "and": "et la",
+  "or_signup_with": "ou s'inscrire avec",
+  "login_with_microsoft": "Se connecter avec Microsoft",
+  "signup_with_microsoft": "S'inscrire avec Microsoft",
+  "brand_badge_edtech": "EdTech",
+  "brand_badge_ai": "AI Assisted",
+  "step_2_profile": "Étape 2 · Profil",
+  "step_3_final": "Étape 3 · Finalisation",
+  "who_are_you": "Qui êtes-vous ?",
+  "role_intro": "Choisissez votre profil pour personnaliser vos espaces d'apprentissage et vos outils IA.",
+  "recommended": "Recommandé",
+  "role_student_desc": "Accédez à vos cours interactifs, devoirs assistés par IA, quiz et suivez votre progression en temps réel.",
+  "role_teacher_desc": "Gérez vos promotions, concevez des modules dynamiques et générez des évaluations automatisées.",
+  "role_admin_desc": "Supervisez l'ensemble de votre établissement, orchestrez les accès et pilotez les métriques globales.",
+  "tag_homework": "Devoirs",
+  "tag_ai_tutor": "Tuteur IA",
+  "tag_corrections": "Corrigés",
+  "tag_classes": "Classes",
+  "tag_dashboard": "Tableau de bord",
+  "tag_security": "Sécurité",
+  "trust_rgpd": "Configuration sécurisée conforme aux standards académiques et protection RGPD renforcée.",
+  "change_role_later": "Vous pourrez changer de rôle ultérieurement dans les paramètres de votre compte.",
+  "profile_setup_title": "Configurez votre profil",
+  "profile_setup_subtitle": "Personnalisez vos informations académiques pour adapter les recommandations de vos cours et tuteurs IA.",
+  "avatar_optional": "Ajouter une photo de profil (Optionnel)",
+  "institution_label": "Établissement / Université",
+  "level_label": "Niveau d'études / Spécialité",
+  "interests_label": "Centres d'intérêt",
+  "interests_hint": "Sélectionnez au moins 3 matières pour nourrir votre Tuteur IA",
+  "selected_count": "{count} sélectionnés",
+  "@selected_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "other_interest": "Autre intérêt",
+  "validate_profile": "Valider mon profil",
+  "profile_edit_later": "Vous pourrez modifier ces informations à tout moment dans vos Réglages.",
+  "forgot_title": "Mot de passe oublié ?",
+  "forgot_subtitle": "Saisissez votre adresse email académique pour recevoir un code d'authentification à 4 chiffres.",
+  "security_recovery": "Sécurité & Récupération",
+  "institutional_email": "Adresse e-mail institutionnelle",
+  "verified": "Vérifiée",
+  "pending_badge": "En attente",
+  "resend_email": "Renvoyer l'e-mail",
+  "otp_title": "Code de vérification",
+  "otp_hint": "Entrez le code temporaire envoyé à",
+  "expires_in": "Expire dans :",
+  "resend_code": "Renvoyer le code",
+  "verify_code": "Vérifier le code",
+  "security_guaranteed_title": "Sécurité académique garantie",
+  "security_guaranteed_desc": "Vos identifiants et clés de chiffrement sont protégés selon le protocole universitaire RGPD & SSO.",
+  "back_to_login": "Retour à la connexion",
+  "role_teacher": "Enseignant",
+  "role_student": "Étudiant",
+  "role_admin": "Administrateur",
+  "select_role": "Sélectionnez votre rôle",
+  "teacher_description": "Créer des cours, gérer des classes, évaluer les étudiants",
+  "student_description": "Accéder aux cours, participer aux examens, collaborer",
+  "admin_description": "Gérer la plateforme, superviser les utilisateurs",
+  "home": "Accueil",
+  "courses": "Cours",
+  "groups": "Groupes",
+  "exams": "Examens",
+  "videoconference": "Visioconférence",
+  "collaboration": "Collaboration",
+  "ai_assistant": "Assistant IA",
+  "community": "Communauté",
+  "profile": "Profil",
+  "settings": "Paramètres",
+  "notifications": "Notifications",
+  "calendar": "Calendrier",
+  "messages": "Messages",
+  "nav_my_courses": "Mes Cours",
+  "my_courses": "Mes cours",
+  "create_course": "Créer un cours",
+  "edit_course": "Modifier le cours",
+  "course_title": "Titre du cours",
+  "course_description": "Description",
+  "course_content": "Contenu du cours",
+  "import_pdf": "Importer un PDF",
+  "generate_with_ai": "Générer avec l'IA",
+  "publish_course": "Publier le cours",
+  "draft": "Brouillon",
+  "published": "Publié",
+  "archived": "Archivé",
+  "course_created": "Cours créé avec succès",
+  "course_updated": "Cours mis à jour",
+  "course_deleted": "Cours supprimé",
+  "delete_course_confirm": "Êtes-vous sûr de vouloir supprimer ce cours ?",
+  "course_details": "Détails du cours",
+  "course_progress": "Progression",
+  "lessons": "Leçons",
+  "resources": "Ressources",
+  "no_courses": "Aucun cours disponible",
+  "join_course": "Rejoindre un cours",
+  "leave_course": "Quitter le cours",
+  "my_groups": "Mes groupes",
+  "create_group": "Créer un groupe",
+  "group_name": "Nom du groupe",
+  "group_code": "Code d'invitation",
+  "join_group": "Rejoindre un groupe",
+  "leave_group": "Quitter le groupe",
+  "group_members": "Membres du groupe",
+  "invite_students": "Inviter des étudiants",
+  "remove_student": "Retirer l'étudiant",
+  "group_created": "Groupe créé",
+  "group_updated": "Groupe mis à jour",
+  "invalid_group_code": "Code de groupe invalide",
+  "join_group_success": "Vous avez rejoint le groupe",
+  "no_groups": "Aucun groupe",
+  "manage_groups": "Gérer les groupes",
+  "teacher": "Enseignant",
+  "students": "Étudiants",
+  "pending_invitations": "Invitations en attente",
+  "accept_invitation": "Accepter",
+  "decline_invitation": "Refuser",
+  "my_exams": "Mes examens",
+  "create_exam": "Créer un examen",
+  "exam_title": "Titre de l'examen",
+  "exam_duration": "Durée",
+  "exam_date": "Date de l'examen",
+  "select_chapters": "Sélectionner les chapitres",
+  "generate_exam": "Générer l'examen",
+  "start_exam": "Commencer l'examen",
+  "submit_exam": "Soumettre l'examen",
+  "exam_results": "Résultats de l'examen",
+  "exam_completed": "Examen terminé",
+  "exam_in_progress": "Examen en cours",
+  "exam_not_started": "Examen non commencé",
+  "time_remaining": "Temps restant",
+  "anti_fraude_active": "Mode anti-fraude activé",
+  "fullscreen_required": "Plein écran requis",
+  "focus_lock_active": "Verrouillage du focus actif",
+  "copy_paste_blocked": "Copier-coller bloqué",
+  "exam_submitted": "Examen soumis avec succès",
+  "score": "Score",
+  "passed": "Réussi",
+  "failed": "Échoué",
+  "review_answers": "Revoir les réponses",
+  "correct_answer": "Bonne réponse",
+  "incorrect_answer": "Mauvaise réponse",
+  "no_exams": "Aucun examen disponible",
+  "simulation_exam": "Simulation d'examen",
+  "official_exam": "Examen officiel",
+  "practice_mode": "Mode entraînement",
+  "live_sessions": "Sessions en direct",
+  "scheduled_sessions": "Sessions programmées",
+  "past_sessions": "Sessions passées",
+  "start_session": "Démarrer la session",
+  "join_session": "Rejoindre la session",
+  "session_title": "Titre de la session",
+  "session_description": "Description",
+  "session_date": "Date",
+  "session_duration": "Durée",
+  "recording": "Enregistrement",
+  "recording_started": "Enregistrement démarré",
+  "recording_stopped": "Enregistrement arrêté",
+  "replay_available": "Replay disponible",
+  "summary": "Résumé",
+  "transcription": "Transcription",
+  "participants": "Participants",
+  "host": "Hôte",
+  "no_sessions": "Aucune session",
+  "session_ended": "Session terminée",
+  "waiting_for_host": "En attente de l'hôte",
+  "microphone": "Microphone",
+  "camera": "Caméra",
+  "screen_share": "Partage d'écran",
+  "chat": "Discussion",
+  "raise_hand": "Lever la main",
+  "shared_resources": "Ressources partagées",
+  "share_resource": "Partager une ressource",
+  "my_shares": "Mes partages",
+  "resource_title": "Titre de la ressource",
+  "resource_type": "Type de ressource",
+  "resource_file": "Fichier",
+  "resource_link": "Lien",
+  "study_sessions": "Sessions d'étude",
+  "create_study_session": "Créer une session d'étude",
+  "session_topic": "Sujet",
+  "session_date_time": "Date et heure",
+  "comments": "Commentaires",
+  "add_comment": "Ajouter un commentaire",
+  "no_resources": "Aucune ressource partagée",
+  "no_study_sessions": "Aucune session d'étude",
+  "join_study_session": "Rejoindre la session",
+  "resource_shared": "Ressource partagée",
+  "session_created": "Session créée",
+  "ask_ai": "Poser une question à l'IA",
+  "ai_tutor": "Tuteur IA",
+  "ai_generating": "L'IA génère...",
+  "ai_response": "Réponse de l'IA",
+  "generate_test": "Générer un test",
+  "generate_course": "Générer un cours",
+  "reformulate": "Reformuler",
+  "summarize": "Résumer",
+  "explain": "Expliquer",
+  "give_examples": "Donner des exemples",
+  "step_by_step": "Pas à pas",
+  "ai_context": "Contexte : ce cours uniquement",
+  "private_conversation": "Conversation privée",
+  "no_ai_history": "Aucune conversation",
+  "clear_history": "Effacer l'historique",
+  "ai_error": "Erreur de l'IA, réessayez plus tard",
+  "student_greeting": "Bonjour {name}",
+  "@student_greeting": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "1"
+      }
+    }
+  },
+  "student_greeting_default": "Bonjour Salma",
+  "student_degree_info": "Licence 3 Informatique · Semestre 1",
+  "active_streak": "Série active",
+  "streak_consecutive_days": "{count} jours consécutifs",
+  "@streak_consecutive_days": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "weekly_goal": "Objectif hebdo",
+  "goal_reached": "{pct}% atteint",
+  "@goal_reached": {
+    "placeholders": {
+      "pct": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "live_imminent": "LIVE IMMINENT",
+  "in_minutes": "Dans {min} min",
+  "@in_minutes": {
+    "placeholders": {
+      "min": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "join_live": "Rejoindre le Live",
+  "studio_ia_title": "Studio IA · Révisions & Quiz",
+  "studio_ia_desc": "Génère un résumé de cours instantané ou crée un quiz d'entraînement sur-mesure.",
+  "course_summary": "Résumé de cours",
+  "course_summary_desc": "Fiches & synthèse intelligente",
+  "generate_action": "Générer ✨",
+  "practice_quiz": "Quiz d'entraînement",
+  "practice_quiz_desc": "Questions sur-mesure & QCM",
+  "create_action": "Créer ⚡",
+  "enrolled_count": "({count} inscrits)",
+  "@enrolled_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "student_course_progress": "Progression du cours",
+  "up_to_date": "À jour",
+  "in_progress": "En cours",
+  "upcoming_homework": "Prochains Devoirs",
+  "pending_count": "{count} en attente",
+  "@pending_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "history": "Historique",
+  "questions_count": "{count} questions",
+  "@questions_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "est_time": "~{min} min",
+  "@est_time": {
+    "placeholders": {
+      "min": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "today_time": "Aujourd'hui, {time}",
+  "@today_time": {
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "1"
+      }
+    }
+  },
+  "tomorrow_time": "Demain, {time}",
+  "@tomorrow_time": {
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "1"
+      }
+    }
+  },
+  "starts_action": "Commencer",
+  "deposit_action": "Déposer",
+  "cc_grade_weight": "Comptant pour {pct}% de la note CC",
+  "@cc_grade_weight": {
+    "placeholders": {
+      "pct": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "auto_ai_validation": "Validation automatique par l'IA activée",
+  "git_or_file_desc": "Dépôt Git ou fichier .py",
+  "online_scheduled": "Prévu en ligne",
+  "view_all": "Voir tout",
+  "last_lesson": "Dernière leçon",
+  "next_step": "Prochaine étape",
+  "greeting_hello": "Bonjour,",
+  "teacher_badge": "Enseignant",
+  "next_live": "Prochain direct · {time}",
+  "@next_live": {
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "1"
+      }
+    }
+  },
+  "stat_students": "Étudiants",
+  "stat_active_courses": "Cours Actifs",
+  "stat_to_grade": "À corriger",
+  "stat_this_week": "+8 sem.",
+  "stat_semester_2": "Semestre 2",
+  "stat_urgent": "Urgent",
+  "ai_banner_kicker": "Assistant Pédagogique IA",
+  "ai_banner_title": "Créer un cours avec l'IA",
+  "ai_banner_desc": "Générez un plan de cours interactif, des quiz et exercices en quelques secondes.",
+  "generate_now": "Générer maintenant",
+  "my_classes": "Mes Classes",
+  "view_all_count": "Voir tout ({count})",
+  "@view_all_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "completion_rate": "Taux de complétion",
+  "access_class": "Accéder à la classe",
+  "homework_count": "Devoirs ({count})",
+  "@homework_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "course_editor": "Course Editor",
+  "ai_engine_banner": "Moteur Pédagogique IA v3.2",
+  "ai_create_title": "Créer un cours assisté par IA",
+  "ai_create_desc": "Fournissez vos supports de cours ou décrivez vos objectifs. L'IA structure le plan, les leçons, les quiz et les exercices interactifs.",
+  "smart_designer": "Concepteur intelligent",
+  "smart_designer_desc": "Structurez vos unités d'enseignement conformément aux normes LMD et référentiels européens.",
+  "drop_pdf_title": "Glisser un PDF/Document source ici",
+  "drop_pdf_formats": "Formats acceptés : PDF, Word (.docx), PPTX ou Markdown (max 50 Mo)",
+  "browse_files": "Parcourir les fichiers",
+  "or_divider": "OU",
+  "topic_label": "Sujet ou consignes spécifiques",
+  "topic_hint": "Ou décrivez le sujet du cours... Ex: 'Introduction aux bases de données relationnelles et requêtes SQL avancées pour Licence 3 Informatique avec 4 chapitres et exercices corrigés'",
+  "module_suggestions": "Suggestions de modules",
+  "chip_detailed_plan": "Plan détaillé",
+  "chip_quiz": "Quiz interactif inclus",
+  "chip_exercises": "Exercices pratiques",
+  "chip_cases": "Études de cas",
+  "subject_label": "Matière académique",
+  "academic_level_label": "Niveau académique",
+  "ai_params": "Paramètres d'alignement IA",
+  "opt_quiz_title": "Générer un quiz d'évaluation automatique",
+  "opt_quiz_desc": "Intègre 10 QCM d'assimilation avec barème et corrigés commentés",
+  "opt_tone_title": "Adapter le ton pédagogique universitaire",
+  "opt_tone_desc": "Vocabulaire soutenu, rigueur méthodologique et contextualisations",
+  "generate_course_full": "Générer le cours complet",
+  "generating_course": "Structuration IA en cours...",
+  "course_generated": "Cours généré avec succès !",
+  "estimate_rgpd": "Estimation : ~20 secondes • Modèle certifié RGPD Pédagogie Sup",
+  "my_profile": "Mon profil",
+  "edit_profile": "Modifier le profil",
+  "first_name": "Prénom",
+  "last_name": "Nom",
+  "date_of_birth": "Date de naissance",
+  "phone": "Téléphone",
+  "address": "Adresse",
+  "bio": "Bio",
+  "avatar": "Photo de profil",
+  "change_avatar": "Changer la photo",
+  "profile_updated": "Profil mis à jour",
+  "account_settings": "Paramètres du compte",
+  "change_password": "Changer le mot de passe",
+  "current_password": "Mot de passe actuel",
+  "new_password": "Nouveau mot de passe",
+  "password_changed": "Mot de passe modifié",
+  "delete_account": "Supprimer le compte",
+  "delete_account_confirm": "Cette action est irréversible. Êtes-vous sûr ?",
+  "appearance": "Apparence",
+  "language": "Langue",
+  "font_size": "Taille du texte",
+  "font_family": "Police",
+  "theme_mode": "Mode de thème",
+  "light_mode": "Mode clair",
+  "dark_mode": "Mode sombre",
+  "system_mode": "Système",
+  "notifications_settings": "Notifications",
+  "push_notifications": "Notifications push",
+  "email_notifications": "Notifications email",
+  "data_privacy": "Données et confidentialité",
+  "export_data": "Exporter mes données",
+  "clear_cache": "Vider le cache",
+  "about": "À propos",
+  "version": "Version",
+  "terms_of_service": "Conditions d'utilisation",
+  "privacy_policy": "Politique de confidentialité",
+  "open_source_licenses": "Licences open source",
+  "send_feedback": "Envoyer un retour",
+  "rate_app": "Noter l'application",
+  "small": "Petit",
+  "medium": "Moyen",
+  "large": "Grand",
+  "extra_large": "Très grand",
+  "font_size_changed": "Taille de police modifiée",
+  "language_changed": "Langue modifiée",
+  "theme_changed": "Thème modifié",
+  "settings_saved": "Paramètres enregistrés",
+  "no_internet": "Pas de connexion internet",
+  "check_connection": "Vérifiez votre connexion",
+  "server_error": "Erreur du serveur",
+  "unauthorized": "Non autorisé",
+  "session_expired": "Session expirée",
+  "please_login_again": "Veuillez vous reconnecter",
+  "feature_coming_soon": "Fonctionnalité à venir",
+  "under_development": "En développement",
+  "required_field": "Ce champ est obligatoire",
+  "invalid_format": "Format invalide",
+  "min_length": "Minimum {count} caractères",
+  "@min_length": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "max_length": "Maximum {count} caractères",
+  "@max_length": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "invalid_number": "Nombre invalide",
+  "invalid_date": "Date invalide",
+  "future_date_required": "La date doit être dans le futur",
+  "past_date_required": "La date doit être dans le passé",
+  "ai_revision_title": "Générer Mes Révisions",
+  "ai_revision_header": "Assistant de Révision IA",
+  "ai_model_l3_badge": "Modèle L3 Optimisé ✨",
+  "ai_revision_subtitle": "Transformez instantanément vos supports universitaires en synthèses dynamiques et cartes mémorielles.",
+  "ai_source_step_title": "Source du cours",
+  "ai_ent_presynced": "Pré-synchronisé ENT",
+  "ai_select_module": "SÉLECTIONNER UN MODULE",
+  "ai_select_module_modal_title": "Sélectionner votre module",
+  "ai_import_doc_title": "Importer un PDF / Doc personnel",
+  "ai_import_doc_subtitle": "Glissez votre cours ou TD (PDF, DOCX, TXT max 25 Mo)",
+  "ai_import_doc_ready": "Document prêt pour la synthèse sémantique",
+  "ai_import_doc_success": "Document universitaire importé avec succès !",
+  "ai_format_step_title": "Format souhaité",
+  "ai_active_selection": "Sélection active",
+  "ai_format_step_subtitle": "Choisissez la structure d'assimilation cognitive la plus adaptée à vos révisions.",
+  "ai_format_express": "Résumé express",
+  "ai_format_express_badge": "⏱️ Lecture 3 min",
+  "ai_format_express_desc": "Synthèse dense avec points-clés et théorèmes majeurs.",
+  "ai_format_flashcards": "Fiches mémo (Flashcards)",
+  "ai_format_flashcards_badge": "🗂️ 15 cartes",
+  "ai_format_flashcards_desc": "Répétition espacée idéale pour mémoriser les formules.",
+  "ai_format_mindmap": "Carte mentale",
+  "ai_format_mindmap_badge": "🧠 Arborescence",
+  "ai_format_mindmap_desc": "Vision panoramique et interdépendances logiques.",
+  "ai_granularity_step_title": "Niveau de détail",
+  "ai_granularity_concise": "Concis",
+  "ai_granularity_balanced": "Équilibré",
+  "ai_granularity_detailed": "Détaillé",
+  "ai_granularity_desc_concise": "Focus ultra-rapide : définitions directes, axiomes vitaux et aide-mémoire condensé pour les 10 dernières minutes avant l'examen.",
+  "ai_granularity_desc_balanced": "Inclusions automatiques : théorèmes majeurs, extraits de code syntaxiques et calculs de complexité asymptotique O(n).",
+  "ai_granularity_desc_detailed": "Exhaustivité académique : démonstrations complètes pas à pas, variantes d'exercices d'annales et cas limites d'implémentation.",
+  "ai_generate_summary_btn": "Générer le résumé via IA ✨",
+  "ai_generating_analysis": "Analyse sémantique en cours...",
+  "ai_generate_subtext": "Génération moyenne en 15 secondes • 100% aligné sur le programme",
+  "ai_recent_summaries_title": "Mes derniers résumés",
+  "ai_see_all_count": "Voir tout ({count})",
+  "@ai_see_all_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "ai_share_link_copied": "Lien de partage copié dans le presse-papiers !",
+  "ai_summary_modal_title": "Synthèse générée via IA ✨",
+  "ai_export_pdf": "Exporter PDF",
+  "ai_practice_action": "S'entraîner",
+  "ai_quiz_title": "S'Entraîner Avec L'IA",
+  "ai_quiz_generator_badge": "Générateur de Quiz IA",
+  "ai_quiz_subtitle": "Générez un test sur mesure pour évaluer et consolider vos connaissances académiques.",
+  "ai_change": "Changer",
+  "ai_select_course_title": "Sélectionner la matière à entraîner",
+  "ai_chapters_selection": "Sélection des chapitres",
+  "ai_chapters_selected_count": "({count} sélectionnés)",
+  "@ai_chapters_selected_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "select_all": "Tout sélectionner",
+  "deselect_all": "Tout désélectionner",
+  "ai_all_module": "Tout le module",
+  "ai_difficulty_level": "Niveau de difficulté",
+  "ai_adapted_exams": "Adapté aux partiels S1",
+  "ai_diff_beginner": "Débutant",
+  "ai_diff_beginner_sub": "Notions socles",
+  "ai_diff_intermediate": "Intermédiaire",
+  "ai_diff_intermediate_sub": "Pièges & cas type",
+  "ai_diff_expert": "Expert",
+  "ai_diff_expert_sub": "Démonstrations",
+  "ai_question_count_title": "Nombre de questions",
+  "ai_question_count_subtitle": "Personnalisez la profondeur",
+  "ai_questions_badge": "{count} questions",
+  "@ai_questions_badge": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "ai_5_express": "5 (Express)",
+  "ai_15_standard": "15 (Standard)",
+  "ai_30_intensive": "30 (Intensif)",
+  "ai_duration_estimate": "Durée estimée : ~{min} minutes • ~1.2 min par question",
+  "@ai_duration_estimate": {
+    "placeholders": {
+      "min": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "ai_evaluation_modalities": "Modalités d'évaluation",
+  "ai_detailed_explanations": "Explications détaillées",
+  "ai_detailed_exp_sub": "L'IA analyse vos erreurs et affiche la méthodologie immédiatement après chaque réponse.",
+  "ai_restitution_format": "Format de restitution",
+  "ai_timed_mode": "Mode Chronométré",
+  "ai_mcq_tf": "QCM & Vrai/Faux",
+  "ai_reassurance_badge": "Propulsé par le modèle SmartClass L3 • Formulé à partir des annales et objectifs du syllabus officiel 2024.",
+  "ai_start_quiz_btn": "Créer et Démarrer le Quiz",
+  "ai_generating_quiz": "Génération du quiz académique...",
+  "ai_quiz_subtext": "Progression synchronisée • Historique disponible dans votre profil",
+  "ai_question_counter": "Question {current} / {total}",
+  "@ai_question_counter": {
+    "placeholders": {
+      "current": {
+        "type": "String",
+        "example": "1"
+      },
+      "total": {
+        "type": "String",
+        "example": "1"
+      }
+    }
+  },
+  "ai_next_question": "Question suivante",
+  "ai_quit_test": "Quitter l'épreuve",
+  "ai_explanation_prefix": "Explication IA : ",
+  "or": "Ou",
+  "open": "Ouvrir",
+  "share": "Partager",
+  "upcoming": "À venir",
+  "completed": "Terminé",
+  "level": "Niveau d'études",
+  "all": "Tous",
+  "drafts": "Brouillons",
+  "splash_tagline": "Écosystème Éducatif Augmenté par l'IA",
+  "splash_loading_1": "Initialisation de l'espace académique...",
+  "splash_loading_2": "Synchronisation du moteur IA...",
+  "splash_loading_3": "Prêt pour l'excellence académique"
+}

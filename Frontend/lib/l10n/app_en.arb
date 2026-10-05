@@ -1,0 +1,692 @@
+{
+  "@@locale": "en",
+  "app_name": "SmartClass",
+  "loading": "Loading...",
+  "error": "Error",
+  "success": "Success",
+  "retry": "Retry",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "save": "Save",
+  "delete": "Delete",
+  "edit": "Edit",
+  "create": "Create",
+  "search": "Search",
+  "filter": "Filter",
+  "sort": "Sort",
+  "close": "Close",
+  "back": "Back",
+  "next": "Next",
+  "previous": "Previous",
+  "done": "Done",
+  "skip": "Skip",
+  "continue_action": "Continue",
+  "yes": "Yes",
+  "no": "No",
+  "ok": "OK",
+  "no_data": "No data available",
+  "empty_state": "No items",
+  "try_again": "Try again",
+  "something_went_wrong": "Something went wrong",
+  "connection_error": "Connection error",
+  "permission_denied": "Permission denied",
+  "not_found": "Not found",
+  "login": "Login",
+  "logout": "Logout",
+  "register": "Register",
+  "email": "Email",
+  "password": "Password",
+  "confirm_password": "Confirm password",
+  "forgot_password": "Forgot password?",
+  "reset_password": "Reset password",
+  "remember_me": "Remember me",
+  "login_with_google": "Sign in with Google",
+  "login_with_apple": "Sign in with Apple",
+  "or_continue_with": "Or continue with",
+  "dont_have_account": "Don't have an account?",
+  "already_have_account": "Already have an account?",
+  "sign_up": "Sign up",
+  "sign_in": "Sign in",
+  "welcome_back": "Welcome back",
+  "create_account": "Create account",
+  "enter_email": "Enter your email",
+  "enter_password": "Enter your password",
+  "invalid_email": "Invalid email",
+  "password_too_short": "Password must be at least 8 characters",
+  "passwords_dont_match": "Passwords do not match",
+  "login_failed": "Login failed",
+  "registration_failed": "Registration failed",
+  "email_already_exists": "This email is already in use",
+  "invalid_credentials": "Invalid credentials",
+  "welcome_title": "Welcome to SmartClass",
+  "welcome_subtitle": "Access your intelligent learning space",
+  "email_label": "Email address",
+  "email_hint": "name@example.edu",
+  "password_hint": "••••••••",
+  "login_button": "Sign in",
+  "signup_button": "Sign up",
+  "full_name_label": "Full name",
+  "full_name_hint": "e.g. Thomas Laurent",
+  "required_badge": "Required",
+  "academic_format_hint": "Academic format recommended",
+  "password_rule": "At least 8 chars, 1 digit",
+  "accept_terms_prefix": "I accept the",
+  "and": "and",
+  "or_signup_with": "or sign up with",
+  "login_with_microsoft": "Sign in with Microsoft",
+  "signup_with_microsoft": "Sign up with Microsoft",
+  "brand_badge_edtech": "EdTech",
+  "brand_badge_ai": "AI Assisted",
+  "step_2_profile": "Step 2 · Profile",
+  "step_3_final": "Step 3 · Finalization",
+  "who_are_you": "Who are you?",
+  "role_intro": "Choose your profile to personalize your learning spaces and AI tools.",
+  "recommended": "Recommended",
+  "role_student_desc": "Access your interactive courses, AI-assisted homework, quizzes and track your progress in real time.",
+  "role_teacher_desc": "Manage your cohorts, design dynamic modules and generate automated assessments.",
+  "role_admin_desc": "Supervise your entire institution, orchestrate access and steer global metrics.",
+  "tag_homework": "Homework",
+  "tag_ai_tutor": "AI Tutor",
+  "tag_corrections": "Corrections",
+  "tag_classes": "Classes",
+  "tag_dashboard": "Dashboard",
+  "tag_security": "Security",
+  "trust_rgpd": "Secure setup compliant with academic standards and reinforced GDPR protection.",
+  "change_role_later": "You can change your role later in your account settings.",
+  "profile_setup_title": "Set up your profile",
+  "profile_setup_subtitle": "Customize your academic information to tailor your course and AI tutor recommendations.",
+  "avatar_optional": "Add a profile picture (Optional)",
+  "institution_label": "Institution / University",
+  "level_label": "Study level / Major",
+  "interests_label": "Interests",
+  "interests_hint": "Select at least 3 subjects to feed your AI Tutor",
+  "selected_count": "{count} selected",
+  "@selected_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "other_interest": "Other interest",
+  "validate_profile": "Validate my profile",
+  "profile_edit_later": "You can edit this information at any time in your Settings.",
+  "forgot_title": "Forgot password?",
+  "forgot_subtitle": "Enter your academic email address to receive a 4-digit authentication code.",
+  "security_recovery": "Security & Recovery",
+  "institutional_email": "Institutional email address",
+  "verified": "Verified",
+  "pending_badge": "Pending",
+  "resend_email": "Resend email",
+  "otp_title": "Verification code",
+  "otp_hint": "Enter the temporary code sent to",
+  "expires_in": "Expires in:",
+  "resend_code": "Resend code",
+  "verify_code": "Verify code",
+  "security_guaranteed_title": "Guaranteed academic security",
+  "security_guaranteed_desc": "Your credentials and encryption keys are protected under the university GDPR & SSO protocol.",
+  "back_to_login": "Back to login",
+  "role_teacher": "Teacher",
+  "role_student": "Student",
+  "role_admin": "Administrator",
+  "select_role": "Select your role",
+  "teacher_description": "Create courses, manage classes, assess students",
+  "student_description": "Access courses, take exams, collaborate",
+  "admin_description": "Manage platform, supervise users",
+  "home": "Home",
+  "courses": "Courses",
+  "groups": "Groups",
+  "exams": "Exams",
+  "videoconference": "Videoconference",
+  "collaboration": "Collaboration",
+  "ai_assistant": "AI Assistant",
+  "community": "Community",
+  "profile": "Profile",
+  "settings": "Settings",
+  "notifications": "Notifications",
+  "calendar": "Calendar",
+  "messages": "Messages",
+  "nav_my_courses": "My Courses",
+  "my_courses": "My courses",
+  "create_course": "Create a course",
+  "edit_course": "Edit course",
+  "course_title": "Course title",
+  "course_description": "Description",
+  "course_content": "Course content",
+  "import_pdf": "Import PDF",
+  "generate_with_ai": "Generate with AI",
+  "publish_course": "Publish course",
+  "draft": "Draft",
+  "published": "Published",
+  "archived": "Archived",
+  "course_created": "Course created successfully",
+  "course_updated": "Course updated",
+  "course_deleted": "Course deleted",
+  "delete_course_confirm": "Are you sure you want to delete this course?",
+  "course_details": "Course details",
+  "course_progress": "Progress",
+  "lessons": "Lessons",
+  "resources": "Resources",
+  "no_courses": "No courses available",
+  "join_course": "Join a course",
+  "leave_course": "Leave course",
+  "my_groups": "My groups",
+  "create_group": "Create a group",
+  "group_name": "Group name",
+  "group_code": "Invitation code",
+  "join_group": "Join a group",
+  "leave_group": "Leave group",
+  "group_members": "Group members",
+  "invite_students": "Invite students",
+  "remove_student": "Remove student",
+  "group_created": "Group created",
+  "group_updated": "Group updated",
+  "invalid_group_code": "Invalid group code",
+  "join_group_success": "You joined the group",
+  "no_groups": "No groups",
+  "manage_groups": "Manage groups",
+  "teacher": "Teacher",
+  "students": "Students",
+  "pending_invitations": "Pending invitations",
+  "accept_invitation": "Accept",
+  "decline_invitation": "Decline",
+  "my_exams": "My exams",
+  "create_exam": "Create an exam",
+  "exam_title": "Exam title",
+  "exam_duration": "Duration",
+  "exam_date": "Exam date",
+  "select_chapters": "Select chapters",
+  "generate_exam": "Generate exam",
+  "start_exam": "Start exam",
+  "submit_exam": "Submit exam",
+  "exam_results": "Exam results",
+  "exam_completed": "Exam completed",
+  "exam_in_progress": "Exam in progress",
+  "exam_not_started": "Exam not started",
+  "time_remaining": "Time remaining",
+  "anti_fraude_active": "Anti-cheat mode active",
+  "fullscreen_required": "Fullscreen required",
+  "focus_lock_active": "Focus lock active",
+  "copy_paste_blocked": "Copy-paste blocked",
+  "exam_submitted": "Exam submitted successfully",
+  "score": "Score",
+  "passed": "Passed",
+  "failed": "Failed",
+  "review_answers": "Review answers",
+  "correct_answer": "Correct answer",
+  "incorrect_answer": "Incorrect answer",
+  "no_exams": "No exams available",
+  "simulation_exam": "Simulation exam",
+  "official_exam": "Official exam",
+  "practice_mode": "Practice mode",
+  "live_sessions": "Live sessions",
+  "scheduled_sessions": "Scheduled sessions",
+  "past_sessions": "Past sessions",
+  "start_session": "Start session",
+  "join_session": "Join session",
+  "session_title": "Session title",
+  "session_description": "Description",
+  "session_date": "Date",
+  "session_duration": "Duration",
+  "recording": "Recording",
+  "recording_started": "Recording started",
+  "recording_stopped": "Recording stopped",
+  "replay_available": "Replay available",
+  "summary": "Summary",
+  "transcription": "Transcription",
+  "participants": "Participants",
+  "host": "Host",
+  "no_sessions": "No sessions",
+  "session_ended": "Session ended",
+  "waiting_for_host": "Waiting for host",
+  "microphone": "Microphone",
+  "camera": "Camera",
+  "screen_share": "Screen share",
+  "chat": "Chat",
+  "raise_hand": "Raise hand",
+  "shared_resources": "Shared resources",
+  "share_resource": "Share a resource",
+  "my_shares": "My shares",
+  "resource_title": "Resource title",
+  "resource_type": "Resource type",
+  "resource_file": "File",
+  "resource_link": "Link",
+  "study_sessions": "Study sessions",
+  "create_study_session": "Create study session",
+  "session_topic": "Topic",
+  "session_date_time": "Date and time",
+  "comments": "Comments",
+  "add_comment": "Add comment",
+  "no_resources": "No shared resources",
+  "no_study_sessions": "No study sessions",
+  "join_study_session": "Join session",
+  "resource_shared": "Resource shared",
+  "session_created": "Session created",
+  "ask_ai": "Ask AI a question",
+  "ai_tutor": "AI Tutor",
+  "ai_generating": "AI is generating...",
+  "ai_response": "AI Response",
+  "generate_test": "Generate a test",
+  "generate_course": "Generate a course",
+  "reformulate": "Reformulate",
+  "summarize": "Summarize",
+  "explain": "Explain",
+  "give_examples": "Give examples",
+  "step_by_step": "Step by step",
+  "ai_context": "Context: this course only",
+  "private_conversation": "Private conversation",
+  "no_ai_history": "No conversation history",
+  "clear_history": "Clear history",
+  "ai_error": "AI error, please try again later",
+  "student_greeting": "Hello {name}",
+  "@student_greeting": {
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "1"
+      }
+    }
+  },
+  "student_greeting_default": "Hello Salma",
+  "student_degree_info": "Bachelor 3 in Computer Science · Semester 1",
+  "active_streak": "Active streak",
+  "streak_consecutive_days": "{count} consecutive days",
+  "@streak_consecutive_days": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "weekly_goal": "Weekly goal",
+  "goal_reached": "{pct}% reached",
+  "@goal_reached": {
+    "placeholders": {
+      "pct": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "live_imminent": "LIVE IMMINENT",
+  "in_minutes": "In {min} min",
+  "@in_minutes": {
+    "placeholders": {
+      "min": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "join_live": "Join Live",
+  "studio_ia_title": "AI Studio · Revision & Quiz",
+  "studio_ia_desc": "Generate an instant course summary or create a tailored practice quiz.",
+  "course_summary": "Course summary",
+  "course_summary_desc": "Smart flashcards & summary",
+  "generate_action": "Generate ✨",
+  "practice_quiz": "Practice quiz",
+  "practice_quiz_desc": "Tailored questions & MCQ",
+  "create_action": "Create ⚡",
+  "enrolled_count": "({count} enrolled)",
+  "@enrolled_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "student_course_progress": "Course progress",
+  "up_to_date": "Up to date",
+  "in_progress": "In progress",
+  "upcoming_homework": "Upcoming Homework",
+  "pending_count": "{count} pending",
+  "@pending_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "history": "History",
+  "questions_count": "{count} questions",
+  "@questions_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "est_time": "~{min} min",
+  "@est_time": {
+    "placeholders": {
+      "min": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "today_time": "Today, {time}",
+  "@today_time": {
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "1"
+      }
+    }
+  },
+  "tomorrow_time": "Tomorrow, {time}",
+  "@tomorrow_time": {
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "1"
+      }
+    }
+  },
+  "starts_action": "Start",
+  "deposit_action": "Submit",
+  "cc_grade_weight": "Counts for {pct}% of continuous assessment",
+  "@cc_grade_weight": {
+    "placeholders": {
+      "pct": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "auto_ai_validation": "Automated AI validation enabled",
+  "git_or_file_desc": "Git repository or .py file",
+  "online_scheduled": "Scheduled online",
+  "view_all": "See all",
+  "last_lesson": "Last lesson",
+  "next_step": "Next step",
+  "greeting_hello": "Hello,",
+  "teacher_badge": "Teacher",
+  "next_live": "Next live · {time}",
+  "@next_live": {
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "1"
+      }
+    }
+  },
+  "stat_students": "Students",
+  "stat_active_courses": "Active courses",
+  "stat_to_grade": "To grade",
+  "stat_this_week": "+8 wk.",
+  "stat_semester_2": "Semester 2",
+  "stat_urgent": "Urgent",
+  "ai_banner_kicker": "AI Teaching Assistant",
+  "ai_banner_title": "Create a course with AI",
+  "ai_banner_desc": "Generate an interactive lesson plan, quizzes and exercises in seconds.",
+  "generate_now": "Generate now",
+  "my_classes": "My Classes",
+  "view_all_count": "See all ({count})",
+  "@view_all_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "completion_rate": "Completion rate",
+  "access_class": "Open class",
+  "homework_count": "Homework ({count})",
+  "@homework_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "course_editor": "Course Editor",
+  "ai_engine_banner": "AI Teaching Engine v3.2",
+  "ai_create_title": "Create an AI-assisted course",
+  "ai_create_desc": "Provide your course materials or describe your goals. AI structures the outline, lessons, quizzes and interactive exercises.",
+  "smart_designer": "Smart designer",
+  "smart_designer_desc": "Structure your teaching units in line with LMD standards and European frameworks.",
+  "drop_pdf_title": "Drop a PDF/source document here",
+  "drop_pdf_formats": "Accepted formats: PDF, Word (.docx), PPTX or Markdown (max 50 MB)",
+  "browse_files": "Browse files",
+  "or_divider": "OR",
+  "topic_label": "Topic or specific instructions",
+  "topic_hint": "Or describe the course topic... E.g. 'Introduction to relational databases and advanced SQL queries for 3rd-year Computer Science with 4 chapters and corrected exercises'",
+  "module_suggestions": "Module suggestions",
+  "chip_detailed_plan": "Detailed outline",
+  "chip_quiz": "Interactive quiz included",
+  "chip_exercises": "Practical exercises",
+  "chip_cases": "Case studies",
+  "subject_label": "Academic subject",
+  "academic_level_label": "Academic level",
+  "ai_params": "AI alignment settings",
+  "opt_quiz_title": "Generate an automatic assessment quiz",
+  "opt_quiz_desc": "Includes 10 assimilation MCQs with grading scheme and commented corrections",
+  "opt_tone_title": "Adapt the academic pedagogical tone",
+  "opt_tone_desc": "Formal vocabulary, methodological rigor and contextualization",
+  "generate_course_full": "Generate full course",
+  "generating_course": "AI structuring in progress...",
+  "course_generated": "Course generated successfully!",
+  "estimate_rgpd": "Estimate: ~20 seconds • GDPR-certified Higher-Ed model",
+  "my_profile": "My profile",
+  "edit_profile": "Edit profile",
+  "first_name": "First name",
+  "last_name": "Last name",
+  "date_of_birth": "Date of birth",
+  "phone": "Phone",
+  "address": "Address",
+  "bio": "Bio",
+  "avatar": "Profile picture",
+  "change_avatar": "Change picture",
+  "profile_updated": "Profile updated",
+  "account_settings": "Account settings",
+  "change_password": "Change password",
+  "current_password": "Current password",
+  "new_password": "New password",
+  "password_changed": "Password changed",
+  "delete_account": "Delete account",
+  "delete_account_confirm": "This action is irreversible. Are you sure?",
+  "appearance": "Appearance",
+  "language": "Language",
+  "font_size": "Font size",
+  "font_family": "Font family",
+  "theme_mode": "Theme mode",
+  "light_mode": "Light mode",
+  "dark_mode": "Dark mode",
+  "system_mode": "System",
+  "notifications_settings": "Notifications",
+  "push_notifications": "Push notifications",
+  "email_notifications": "Email notifications",
+  "data_privacy": "Data & privacy",
+  "export_data": "Export my data",
+  "clear_cache": "Clear cache",
+  "about": "About",
+  "version": "Version",
+  "terms_of_service": "Terms of service",
+  "privacy_policy": "Privacy policy",
+  "open_source_licenses": "Open source licenses",
+  "send_feedback": "Send feedback",
+  "rate_app": "Rate app",
+  "small": "Small",
+  "medium": "Medium",
+  "large": "Large",
+  "extra_large": "Extra large",
+  "font_size_changed": "Font size changed",
+  "language_changed": "Language changed",
+  "theme_changed": "Theme changed",
+  "settings_saved": "Settings saved",
+  "no_internet": "No internet connection",
+  "check_connection": "Check your connection",
+  "server_error": "Server error",
+  "unauthorized": "Unauthorized",
+  "session_expired": "Session expired",
+  "please_login_again": "Please log in again",
+  "feature_coming_soon": "Feature coming soon",
+  "under_development": "Under development",
+  "required_field": "This field is required",
+  "invalid_format": "Invalid format",
+  "min_length": "Minimum {count} characters",
+  "@min_length": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "max_length": "Maximum {count} characters",
+  "@max_length": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "invalid_number": "Invalid number",
+  "invalid_date": "Invalid date",
+  "future_date_required": "Date must be in the future",
+  "past_date_required": "Date must be in the past",
+  "ai_revision_title": "Generate My Revisions",
+  "ai_revision_header": "AI Revision Assistant",
+  "ai_model_l3_badge": "Optimized L3 Model ✨",
+  "ai_revision_subtitle": "Instantly turn university course materials into dynamic summaries and memory cards.",
+  "ai_source_step_title": "Course Source",
+  "ai_ent_presynced": "ENT Pre-synchronized",
+  "ai_select_module": "SELECT A MODULE",
+  "ai_select_module_modal_title": "Select your module",
+  "ai_import_doc_title": "Import a personal PDF / Doc",
+  "ai_import_doc_subtitle": "Drag your lecture notes or tutorial (PDF, DOCX, TXT max 25 MB)",
+  "ai_import_doc_ready": "Document ready for semantic synthesis",
+  "ai_import_doc_success": "University document imported successfully!",
+  "ai_format_step_title": "Desired Format",
+  "ai_active_selection": "Active selection",
+  "ai_format_step_subtitle": "Choose the cognitive learning structure best suited for your study session.",
+  "ai_format_express": "Express Summary",
+  "ai_format_express_badge": "⏱️ 3 min read",
+  "ai_format_express_desc": "Dense synthesis highlighting key points and major theorems.",
+  "ai_format_flashcards": "Flashcards",
+  "ai_format_flashcards_badge": "🗂️ 15 cards",
+  "ai_format_flashcards_desc": "Spaced repetition designed to memorize formulas.",
+  "ai_format_mindmap": "Mind Map",
+  "ai_format_mindmap_badge": "🧠 Tree structure",
+  "ai_format_mindmap_desc": "Panoramic overview and logical dependencies.",
+  "ai_granularity_step_title": "Detail Level",
+  "ai_granularity_concise": "Concise",
+  "ai_granularity_balanced": "Balanced",
+  "ai_granularity_detailed": "Detailed",
+  "ai_granularity_desc_concise": "Ultra-fast focus: direct definitions, vital axioms, and condensed cheat-sheet for the last 10 minutes before an exam.",
+  "ai_granularity_desc_balanced": "Automatic inclusions: major theorems, code snippets, and asymptotic complexity calculations O(n).",
+  "ai_granularity_desc_detailed": "Academic comprehensiveness: step-by-step demonstrations, exam problem variants, and edge-case implementations.",
+  "ai_generate_summary_btn": "Generate summary with AI ✨",
+  "ai_generating_analysis": "Semantic analysis in progress...",
+  "ai_generate_subtext": "Average generation in 15 seconds • 100% curriculum aligned",
+  "ai_recent_summaries_title": "My Recent Summaries",
+  "ai_see_all_count": "See all ({count})",
+  "@ai_see_all_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "ai_share_link_copied": "Share link copied to clipboard!",
+  "ai_summary_modal_title": "AI Generated Summary ✨",
+  "ai_export_pdf": "Export PDF",
+  "ai_practice_action": "Practice",
+  "ai_quiz_title": "Practice with AI",
+  "ai_quiz_generator_badge": "AI Quiz Generator",
+  "ai_quiz_subtitle": "Generate a tailored test to assess and consolidate your academic knowledge.",
+  "ai_change": "Change",
+  "ai_select_course_title": "Select subject to practice",
+  "ai_chapters_selection": "Chapter Selection",
+  "ai_chapters_selected_count": "({count} selected)",
+  "@ai_chapters_selected_count": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "select_all": "Select all",
+  "deselect_all": "Deselect all",
+  "ai_all_module": "All module",
+  "ai_difficulty_level": "Difficulty Level",
+  "ai_adapted_exams": "Adapted for S1 exams",
+  "ai_diff_beginner": "Beginner",
+  "ai_diff_beginner_sub": "Core concepts",
+  "ai_diff_intermediate": "Intermediate",
+  "ai_diff_intermediate_sub": "Traps & standard cases",
+  "ai_diff_expert": "Expert",
+  "ai_diff_expert_sub": "Demonstrations",
+  "ai_question_count_title": "Number of questions",
+  "ai_question_count_subtitle": "Customize depth",
+  "ai_questions_badge": "{count} questions",
+  "@ai_questions_badge": {
+    "placeholders": {
+      "count": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "ai_5_express": "5 (Express)",
+  "ai_15_standard": "15 (Standard)",
+  "ai_30_intensive": "30 (Intensive)",
+  "ai_duration_estimate": "Estimated duration: ~{min} minutes • ~1.2 min per question",
+  "@ai_duration_estimate": {
+    "placeholders": {
+      "min": {
+        "type": "Object",
+        "example": "1"
+      }
+    }
+  },
+  "ai_evaluation_modalities": "Assessment Modalities",
+  "ai_detailed_explanations": "Detailed Explanations",
+  "ai_detailed_exp_sub": "AI analyzes your errors and reveals methodology immediately after each answer.",
+  "ai_restitution_format": "Response Format",
+  "ai_timed_mode": "Timed Mode",
+  "ai_mcq_tf": "MCQ & True/False",
+  "ai_reassurance_badge": "Powered by SmartClass L3 model • Formulated from past exams and official 2024 syllabus objectives.",
+  "ai_start_quiz_btn": "Create and Start Quiz",
+  "ai_generating_quiz": "Generating academic quiz...",
+  "ai_quiz_subtext": "Synchronized progress • History available in your profile",
+  "ai_question_counter": "Question {current} / {total}",
+  "@ai_question_counter": {
+    "placeholders": {
+      "current": {
+        "type": "String",
+        "example": "1"
+      },
+      "total": {
+        "type": "String",
+        "example": "1"
+      }
+    }
+  },
+  "ai_next_question": "Next question",
+  "ai_quit_test": "Quit test",
+  "ai_explanation_prefix": "AI Explanation: ",
+  "or": "Or",
+  "open": "Open",
+  "share": "Share",
+  "upcoming": "Upcoming",
+  "completed": "Completed",
+  "level": "Study level",
+  "all": "All",
+  "drafts": "Drafts",
+  "splash_tagline": "AI-Powered Academic Ecosystem",
+  "splash_loading_1": "Initializing academic workspace...",
+  "splash_loading_2": "Synchronizing AI engine...",
+  "splash_loading_3": "Ready for academic excellence"
+}

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-low": "#f3f2ff", "primary-fixed-dim": "#b9c3ff", "outline-variant": "#c6c5d3", "on-surface": "#151b2f", "on-secondary-fixed": "#001257", "tertiary-fixed-dim": "#65dbb2", "inverse-primary": "#b9c3ff", "primary-container": "#2d3e8c", "on-surface-variant": "#454651", "surface": "#faf8ff", "on-tertiary": "#ffffff", "surface-variant": "#dce1fe", "secondary-fixed": "#dde1ff", "on-tertiary-fixed": "#002116", "surface-container-lowest": "#ffffff", "surface-dim": "#d4d9f5", "inverse-surface": "#2a3045", "secondary-container": "#8197ff", "surface-bright": "#faf8ff", "background": "#faf8ff", "primary": "#122675", "on-primary-fixed": "#001258", "surface-container-highest": "#dce1fe", "on-error": "#ffffff", "outline": "#757682", "on-primary-container": "#9eaeff", "on-tertiary-fixed-variant": "#00513c", "tertiary-container": "#004f3b", "surface-tint": "#4858a8", "on-primary": "#ffffff", "on-tertiary-container": "#4ec69f", "on-secondary": "#ffffff", "primary-fixed": "#dee1ff", "on-secondary-fixed-variant": "#243da0", "surface-container": "#ebedff", "on-secondary-container": "#09288e", "surface-container-high": "#e3e7ff", "tertiary": "#003627", "on-primary-fixed-variant": "#2f408e", "on-background": "#151b2f", "error-container": "#ffdad6", "tertiary-fixed": "#83f8cd", "inverse-on-surface": "#eff0ff", "secondary-fixed-dim": "#b9c3ff", "secondary": "#4056b9", "error": "#ba1a1a", "on-error-container": "#93000a" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-sm": "1rem", "margin-lg": "2rem", "gutter-sm": "0.75rem", "space-md": "1rem", "space-lg": "1.5rem", "space-xl": "2rem", "gutter": "1rem", "gutter-lg": "1.5rem", "space-sm": "0.5rem", "margin": "1.25rem", "space-xs": "0.25rem" }, "fontFamily": { "headline-sm": ["Inter"], "body-sm": ["Inter"], "body-lg": ["Inter"], "headline-lg": ["Inter"], "body-md": ["Inter"], "label-lg": ["Inter"], "caption": ["Inter"], "label-md": ["Inter"], "label-sm": ["Inter"], "headline-md": ["Inter"], "display-lg": ["Inter"] }, "fontSize": { "headline-sm": ["20px", {"lineHeight": "25px", "letterSpacing": "-0.012em", "fontWeight": "600"}], "body-sm": ["13px", {"lineHeight": "18px", "letterSpacing": "-0.003em", "fontWeight": "400"}], "body-lg": ["17px", {"lineHeight": "22px", "letterSpacing": "-0.011em", "fontWeight": "400"}], "headline-lg": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.019em", "fontWeight": "600"}], "body-md": ["15px", {"lineHeight": "20px", "letterSpacing": "-0.008em", "fontWeight": "400"}], "label-lg": ["17px", {"lineHeight": "22px", "letterSpacing": "-0.011em", "fontWeight": "600"}], "caption": ["11px", {"lineHeight": "13px", "letterSpacing": "0.006em", "fontWeight": "500"}], "label-md": ["15px", {"lineHeight": "20px", "letterSpacing": "-0.008em", "fontWeight": "600"}], "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.002em", "fontWeight": "600"}], "headline-md": ["22px", {"lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600"}], "display-lg": ["34px", {"lineHeight": "41px", "letterSpacing": "-0.022em", "fontWeight": "700"}] } } } };</script><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-xs"><button aria-label="Go back" class="w-11 h-11 -ml-2 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container-high transition-colors" onclick="history.back()"><span class="material-symbols-outlined">arrow_back_ios_new</span></button><div class="flex flex-col"><span class="font-label-sm text-label-sm text-secondary leading-none uppercase tracking-wide">SmartClass</span><h1 class="font-headline-sm text-headline-sm text-on-surface leading-tight truncate max-w-[190px]">Course Editor</h1></div></div><div class="flex items-center gap-space-sm"><div class="w-9 h-9 rounded-full ring-2 ring-primary/10 overflow-hidden"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1Wv7Wn2F3idMC4_-qPh4SIq37hvqhDspPDXgrhSPsd3EcbPFICkVf30ShGP6wFOdjd5r6u1XT6bC521uRW-t068yfXOw-LIo2kAQ0fDpb9oNHz0sNzpzHoYrV3RjeiS35GnEh9Lq4lgnnv_IcyH9-Y_RbovYgUOttppfo6mnhPYKL6cv2KqWmBWCy1BpihoQvh3S8UcbnncC83bNDFR2X8E4bj8ksD1rIqTCrmnB0RVKVVProJMwbRI5Fry"/></div></div></div></header><main class="flex flex-col relative w-full pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full pb-safe">
+<div class="px-margin pt-space-md space-y-space-lg">
+<!-- Header & AI Sparks Banner -->
+<div class="space-y-space-xs">
+<div class="inline-flex items-center gap-space-xs px-3 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed text-caption font-caption tracking-wider uppercase shadow-sm">
+<span class="material-symbols-outlined text-sm leading-none" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span>Moteur Pédagogique IA v3.2</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">
+        Créer un cours assisté par IA
+      </h2>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+        Fournissez vos supports de cours ou décrivez vos objectifs. L'IA structure le plan, les leçons, les quiz et les exercices interactifs.
+      </p>
+</div>
+<!-- Visual Inspiration Card / Educational Assistant Prompt -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container p-space-md shadow-sm">
+<div class="flex items-center gap-space-md">
+<img class="w-16 h-16 rounded-lg object-cover shadow-sm flex-shrink-0" data-alt="Warm modern educational university library with illuminated smart tablets, digital syllabus holographic guides, student study ambient lighting with soft royal blue and golden accents, clean aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBy-GhrezFFEXT5pqz54UrWTiZs86oBjbzDLiQiwhf5ASy1RL3KIXhnJCTsje-BKxWP_vJF4bYDUSm0O_E-TAAI9HzhwLKbcitKAFzQZZ_c_hDOdvy5feWGskFyEJmu5m299J_ExLcQ5vK_LSCYGtWjsZozuTMcqyMqTEHimuFP12wlgX-X9lo8s10y0rON0Ds0yXjVBlqXavPmNrrGtvoJ5oERB1wniH4t3Jq1iwx39I2o4DsuvvIUrA"/>
+<div class="min-w-0 flex-1">
+<p class="font-label-md text-label-md text-primary leading-tight truncate">Concepteur intelligent</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2 mt-0.5">Structurez vos unités d'enseignement conformément aux normes LMD et référentiels européens.</p>
+</div>
+</div>
+</div>
+<!-- Upload Zone (Drag & Drop styled container) -->
+<div class="relative group">
+<div class="bg-surface-container-lowest rounded-xl p-space-lg text-center shadow-sm transition-all duration-200 cursor-pointer active:scale-[0.99] flex flex-col items-center justify-center" id="drop-zone">
+<div class="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center text-primary mb-space-sm shadow-sm group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[28px]">cloud_upload</span>
+</div>
+<p class="font-label-lg text-label-lg text-on-surface mb-space-xs">
+          Glisser un PDF/Document source ici
+        </p>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-xs mb-space-md">
+          Formats acceptés : PDF, Word (.docx), PPTX ou Markdown (max 50 Mo)
+        </p>
+<button class="h-10 px-space-md bg-surface-container text-primary font-label-sm text-label-sm rounded-lg flex items-center gap-space-xs hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+<span>Parcourir les fichiers</span>
+</button>
+</div>
+</div>
+<!-- Subtle Divider with 'OU' Badge -->
+<div class="relative flex items-center justify-center my-space-xs">
+<div class="w-full h-px bg-surface-container-highest"></div>
+<span class="absolute px-3 py-0.5 bg-surface-container-high text-on-surface-variant text-caption font-caption rounded-full uppercase tracking-widest shadow-sm">
+        OU
+      </span>
+</div>
+<!-- Textarea Topic Description -->
+<div class="space-y-space-xs">
+<div class="flex items-center justify-between">
+<label class="font-label-md text-label-md text-on-surface" for="course-prompt">
+          Sujet ou consignes spécifiques
+        </label>
+<span class="font-caption text-caption text-secondary font-medium">Recommandé</span>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-space-sm shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+<textarea class="w-full bg-transparent text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none resize-none p-space-xs" id="course-prompt" placeholder="Ou décrivez le sujet du cours... Ex: 'Introduction aux bases de données relationnelles et requêtes SQL avancées pour Licence 3 Informatique avec 4 chapitres et exercices corrigés'" rows="4"></textarea>
+</div>
+<!-- Quick Chips / Smart Suggestions -->
+<div class="pt-space-xs">
+<p class="font-caption text-caption text-on-surface-variant mb-space-xs uppercase tracking-wider">Suggestions de modules</p>
+<div class="flex flex-wrap gap-space-xs" id="chips-container">
+<button class="px-3 py-1.5 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm transition-all hover:bg-surface-container-high active:scale-95 flex items-center gap-1 shadow-sm" onclick="toggleChip(this, 'Plan détaillé')" type="button">
+<span class="material-symbols-outlined text-[15px] text-secondary">format_list_numbered</span>
+<span>Plan détaillé</span>
+</button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm transition-all hover:bg-surface-container-high active:scale-95 flex items-center gap-1 shadow-sm" onclick="toggleChip(this, 'Quiz interactif inclus')" type="button">
+<span class="material-symbols-outlined text-[15px] text-secondary">quiz</span>
+<span>Quiz interactif inclus</span>
+</button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm transition-all hover:bg-surface-container-high active:scale-95 flex items-center gap-1 shadow-sm" onclick="toggleChip(this, 'Exercices pratiques')" type="button">
+<span class="material-symbols-outlined text-[15px] text-secondary">code_blocks</span>
+<span>Exercices pratiques</span>
+</button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm transition-all hover:bg-surface-container-high active:scale-95 flex items-center gap-1 shadow-sm" onclick="toggleChip(this, 'Études de cas réelles')" type="button">
+<span class="material-symbols-outlined text-[15px] text-secondary">cases</span>
+<span>Études de cas</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Dropdown Selectors Grid -->
+<div class="grid grid-cols-1 gap-space-md">
+<!-- Selector: Subject -->
+<div class="space-y-space-xs">
+<label class="font-label-md text-label-md text-on-surface">Matière académique</label>
+<div class="relative bg-surface-container-lowest rounded-xl shadow-sm px-space-md py-3 flex items-center justify-between cursor-pointer active:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">laptop_mac</span>
+</div>
+<div class="truncate">
+<span class="font-body-md text-body-md text-on-surface font-medium truncate block">Informatique & Algorithmique</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[20px] flex-shrink-0">unfold_more</span>
+</div>
+</div>
+<!-- Selector: Level -->
+<div class="space-y-space-xs">
+<label class="font-label-md text-label-md text-on-surface">Niveau académique</label>
+<div class="relative bg-surface-container-lowest rounded-xl shadow-sm px-space-md py-3 flex items-center justify-between cursor-pointer active:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">school</span>
+</div>
+<div class="truncate">
+<span class="font-body-md text-body-md text-on-surface font-medium truncate block">Licence 3 (Intermédiaire / Avancé)</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[20px] flex-shrink-0">unfold_more</span>
+</div>
+</div>
+</div>
+<!-- Options complémentaires d'enrichissement IA -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-md">
+<div class="flex items-center gap-space-xs text-primary font-label-md text-label-md">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+<span>Paramètres d'alignement IA</span>
+</div>
+<!-- Option 1: Quiz auto -->
+<label class="flex items-start gap-space-md cursor-pointer select-none">
+<div class="pt-0.5">
+<input checked="" class="hidden peer" id="opt-quiz" type="checkbox"/>
+<div class="w-5 h-5 rounded bg-surface-container peer-checked:bg-primary flex items-center justify-center text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[16px] peer-checked:block">check</span>
+</div>
+</div>
+<div class="flex-1">
+<p class="font-body-md text-body-md text-on-surface font-medium">Générer un quiz d'évaluation automatique</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Intègre 10 QCM d'assimilation avec barème et corrigés commentés</p>
+</div>
+</label>
+<!-- Option 2: Tone -->
+<label class="flex items-start gap-space-md cursor-pointer select-none">
+<div class="pt-0.5">
+<input checked="" class="hidden peer" id="opt-tone" type="checkbox"/>
+<div class="w-5 h-5 rounded bg-surface-container peer-checked:bg-primary flex items-center justify-center text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[16px] peer-checked:block">check</span>
+</div>
+</div>
+<div class="flex-1">
+<p class="font-body-md text-body-md text-on-surface font-medium">Adapter le ton pédagogique universitaire</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Vocabulaire soutenu, rigueur méthodologique et contextualisations</p>
+</div>
+</label>
+</div>
+<!-- Main Action CTA Button & Security Badge -->
+<div class="space-y-space-sm pb-space-lg">
+<button class="w-full h-[52px] bg-secondary-container hover:bg-secondary text-on-secondary-container hover:text-on-secondary font-label-lg text-label-lg rounded-xl shadow-md flex items-center justify-center gap-space-xs transition-all active:scale-[0.98]" id="btn-generate" onclick="handleGenerate()" type="button">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span>Générer le cours complet</span>
+</button>
+<div class="flex items-center justify-center gap-1.5 text-center text-on-surface-variant font-caption text-caption px-space-xs">
+<span class="material-symbols-outlined text-[15px] text-secondary">timer</span>
+<span>Estimation : ~20 secondes • Modèle certifié RGPD Pédagogie Sup</span>
+</div>
+</div>
+</div>
+</div>
+<script>
+  function toggleChip(button, text) {
+    const textarea = document.getElementById('course-prompt');
+    const isSelected = button.classList.contains('bg-primary');
+    
+    if (isSelected) {
+      button.classList.remove('bg-primary', 'text-on-primary');
+      button.classList.add('bg-surface-container', 'text-on-surface');
+      textarea.value = textarea.value.replace(text + ', ', '').replace(text, '').trim();
+    } else {
+      button.classList.remove('bg-surface-container', 'text-on-surface');
+      button.classList.add('bg-primary', 'text-on-primary');
+      if (textarea.value.length > 0 && !textarea.value.endsWith(' ')) {
+        textarea.value += ' ';
+      }
+      textarea.value += text + ', ';
+    }
+  }
+
+  function handleGenerate() {
+    const btn = document.getElementById('btn-generate');
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = `
+      <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+      </svg>
+      <span>Structuration IA en cours...</span>
+    `;
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.innerHTML = `
+        <span class="material-symbols-outlined text-[22px]">check_circle</span>
+        <span>Cours généré avec succès !</span>
+      `;
+      btn.classList.add('bg-tertiary-fixed', 'text-on-tertiary-fixed');
+    }, 1800);
+  }
+</script></main></body></html>
