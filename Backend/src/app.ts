@@ -37,8 +37,11 @@ export const createApp = (options: CreateAppOptions = {}): Express => {
       pinoHttp({
         logger,
         genReqId: (req) => req.id || 'unknown',
-        customLogLevel: (res, err) => {
-          const statusCode = res.statusCode ?? 200;
+        autoLogging: {
+          ignore: (req) => req.url === '/health/live',
+        },
+        customLogLevel: (req, res, err) => {
+          const statusCode = res?.statusCode ?? 200;
           if (statusCode >= 500 || err) return 'error';
           if (statusCode >= 400) return 'warn';
           return 'info';
