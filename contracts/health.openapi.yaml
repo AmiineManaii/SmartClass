@@ -1,0 +1,125 @@
+openapi: 3.1.0
+info:
+  title: SmartClass API — Health
+  version: 0.1.0
+  description: >
+    Health check endpoints for the SmartClass API.
+    These endpoints live outside `/api/v1` and are exempt from rate limiting.
+
+servers:
+  - url: /
+    description: Health routes are at the root (outside /api/v1)
+
+tags:
+  - name: health
+    description: Service health and readiness checks
+
+paths:
+  /health/live:
+    get:
+      operationId: getHealthLive
+      tags:
+        - health
+      summary: Liveness probe
+      description: >
+        Returns 200 if the API process is running.
+        Does not check any downstream dependency.
+        Used by container orchestrators (Docker, K8s) to detect crashed processes.
+      security: []
+      x-status: implemented
+      responses:
+        '200':
+          description: The service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - uptime
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                    description: Always "ok" when the process is alive
+                  uptime:
+                    type: number
+                    format: double
+                    description: Process uptime in seconds
+                additionalProperties: false
+              example:
+                status: ok
+                uptime: 1234.567
+
+  /health/ready:
+    get:
+      operationId: getHealthReady
+      tags:
+        - health
+      summary: Readiness probe
+      description: >
+        Returns 200 when the API is ready to serve traffic — i.e. all critical
+        downstream services (currently: PostgreSQL database) are reachable.
+        Returns 503 with per-dependency detail when one or more services are down.
+      security: []
+      x-status: implemented
+      responses:
+        '200':
+          description: All downstream services are healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - timestamp
+                  - services
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  services:
+                    type: object
+                    required:
+                      - database
+                    properties:
+                      database:
+                        type: object
+                        required:
+                          - status
+                          - latencyMs
+                        properties:
+                          status:
+                            type: string
+                            enum: [up]
+                          latencyMs:
+                            type: number
+                        additionalProperties: false
+                    additionalProperties: false
+                additionalProperties: false
+              example:
+                status: ok
+                timestamp: '2026-10-05T20:00:00.000Z'
+                services:
+                  database:
+                    status: up
+                    latencyMs: 3
+
+        '503':
+          description: One or more services are unavailable
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: SERVICE_UNAVAILABLE
+                  message: Database service unavailable
+                  details:
+                    - service: database
+                      status: down
+                      error: Connection refused
+                  requestId: 550e8400-e29b-41d4-a716-446655440000

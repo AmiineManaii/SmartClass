@@ -16,6 +16,7 @@ ENV NODE_ENV=development
 COPY package*.json ./
 RUN npm install
 COPY . .
+RUN npx prisma generate || true
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
 

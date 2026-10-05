@@ -435,7 +435,7 @@ Enums : `ENSEIGNANT→TEACHER`, `ETUDIANT→STUDENT`, `ADMIN→ADMIN` · `ACTIF�
 
 | Sprint | Périmètre backend | Statut |
 |--------|-------------------|--------|
-| 0 | Init : squelette, Docker (api+db), health, kernel (erreurs, validation, pagination, rate limit, logs), Prisma + `User`, dossier `contracts/` (README, `common.yaml`, `health.openapi.yaml`) | ⬜ À faire |
+| 0 | Init : squelette, Docker (api+db), health, kernel (erreurs, validation, pagination, rate limit, logs), Prisma + `User`, dossier `contracts/` (README, `common.yaml`, `health.openapi.yaml`) | ✅ Terminé |
 | 1 | UC8 Auth & profil, UC6 Groupes-classes (RG1-RG3) | ⬜ |
 | 2 | UC1 Cours + upload/extraction PDF + LLM local + validation prof (RG4-RG5) | ⬜ |
 | 3 | UC3/UC4 Visio, enregistrement, Whisper, résumé (RG8-RG11) | ⬜ |
@@ -475,7 +475,8 @@ docker compose exec api npm run db:migrate -- --name <nom>
 **Journal**
 - 2026-10-05 — v1.0.0 — Création du contexte backend (périmètre : initialisation).
 - 2026-10-05 — v1.1.0 — Monorepo (`front/ backend/ docs/ contracts/`) ; ajout des contrats OpenAPI contract-first (§5.1).
+- 2026-10-05 — v1.2.0 — Initialisation backend complète (Sprint 0) : scaffold Express 5 / Node 24 / TS strict, Dockerfile multi-stage, docker-compose avec healthchecks (`api` et `db` postgres17+pgvector), shared kernel (env fail-fast, Pino avec redaction, AppError, validation Zod, pagination offset/cursor, rate limiter), schéma Prisma 7 avec User & extension vector, module de référence Health (Clean Architecture 4 couches), contrats OpenAPI 3.1 (`common.yaml`, `health.openapi.yaml`), suite de 46 tests unitaires et d'intégration 100% verts, README technique.
 
 ---
 
-*Dernière mise à jour : 2026-10-05 · Version : 1.1.0*
+*Dernière mise à jour : 2026-10-05 · Version : 1.2.0*

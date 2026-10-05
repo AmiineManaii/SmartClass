@@ -6,10 +6,15 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    env: {
+      NODE_ENV: 'test',
+      DATABASE_URL: 'postgresql://smartclass:smartclass_dev_password@localhost:5432/smartclass?schema=public',
+      PORT: '3000',
+    },
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
 });

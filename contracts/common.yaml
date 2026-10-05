@@ -1,0 +1,311 @@
+openapi: 3.1.0
+info:
+  title: SmartClass API — Shared Components
+  version: 0.1.0
+  description: >
+    Shared schemas, parameters, security schemes, and error responses
+    used across all SmartClass API modules.
+
+paths: {}
+
+components:
+  # ────────────────────────────────────────────
+  # Security Schemes
+  # ────────────────────────────────────────────
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token
+
+  # ────────────────────────────────────────────
+  # Parameters
+  # ────────────────────────────────────────────
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number (1-indexed)
+
+    LimitParam:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Number of items per page (max 100)
+
+    CursorParam:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Opaque base64url cursor for keyset pagination
+
+    SortParam:
+      name: sort
+      in: query
+      required: false
+      schema:
+        type: string
+        pattern: '^[a-zA-Z]+:(asc|desc)$'
+      description: >
+        Sort field and order, e.g. `createdAt:desc`.
+        Allowed fields depend on the endpoint.
+
+  # ────────────────────────────────────────────
+  # Schemas
+  # ────────────────────────────────────────────
+  schemas:
+    ErrorDetail:
+      type: object
+      required:
+        - path
+        - message
+      properties:
+        path:
+          type: string
+          description: JSON path of the invalid field
+          example: email
+        message:
+          type: string
+          description: Human-readable validation message
+          example: Required
+      additionalProperties: false
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - details
+            - requestId
+          properties:
+            code:
+              type: string
+              enum:
+                - BAD_REQUEST
+                - AUTH_INVALID_CREDENTIALS
+                - AUTH_TOKEN_EXPIRED
+                - AUTH_TOKEN_INVALID
+                - AUTH_REFRESH_REUSED
+                - FORBIDDEN
+                - ROLE_ALREADY_ASSIGNED
+                - NOT_FOUND
+                - EMAIL_ALREADY_USED
+                - CONFLICT
+                - VALIDATION_ERROR
+                - RATE_LIMITED
+                - INTERNAL_ERROR
+                - SERVICE_UNAVAILABLE
+              description: Stable error code (never renamed)
+            message:
+              type: string
+              description: Neutral English message (not for display; Flutter translates by code)
+            details:
+              type: array
+              items: {}
+              description: Additional error details (validation issues, service statuses, etc.)
+            requestId:
+              type: string
+              description: Request tracking identifier (from X-Request-Id header)
+          additionalProperties: false
+      additionalProperties: false
+
+    PaginationOffsetMeta:
+      type: object
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+        - hasNextPage
+        - hasPreviousPage
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 42
+        totalPages:
+          type: integer
+          example: 3
+        hasNextPage:
+          type: boolean
+          example: true
+        hasPreviousPage:
+          type: boolean
+          example: false
+      additionalProperties: false
+
+    PaginationCursorMeta:
+      type: object
+      required:
+        - limit
+        - nextCursor
+        - hasMore
+      properties:
+        limit:
+          type: integer
+          example: 20
+        nextCursor:
+          type:
+            - string
+            - 'null'
+          example: eyJjcmVhdGVkQXQiOiIyMDI2LTAxLTAxVDAwOjAwOjAwLjAwMFoiLCJpZCI6ImFiYzEyMyJ9
+        hasMore:
+          type: boolean
+          example: true
+      additionalProperties: false
+
+  # ────────────────────────────────────────────
+  # Reusable Responses
+  # ────────────────────────────────────────────
+  responses:
+    BadRequest:
+      description: Bad request — malformed JSON or invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: BAD_REQUEST
+              message: Malformed JSON body
+              details: []
+              requestId: 550e8400-e29b-41d4-a716-446655440000
+
+    Unauthorized:
+      description: Authentication required or token invalid/expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: AUTH_TOKEN_INVALID
+              message: Invalid or missing authentication token
+              details: []
+              requestId: 550e8400-e29b-41d4-a716-446655440000
+
+    Forbidden:
+      description: Authenticated but insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: FORBIDDEN
+              message: You do not have permission to perform this action
+              details: []
+              requestId: 550e8400-e29b-41d4-a716-446655440000
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: NOT_FOUND
+              message: Resource not found
+              details: []
+              requestId: 550e8400-e29b-41d4-a716-446655440000
+
+    Conflict:
+      description: Conflict — resource already exists or state conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: CONFLICT
+              message: Resource already exists
+              details: []
+              requestId: 550e8400-e29b-41d4-a716-446655440000
+
+    ValidationError:
+      description: Validation failed — request body/query/params did not pass Zod schema
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Validation failed
+              details:
+                - path: email
+                  message: Required
+                - path: password
+                  message: String must contain at least 8 character(s)
+              requestId: 550e8400-e29b-41d4-a716-446655440000
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds until the rate limit window resets
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: RATE_LIMITED
+              message: Too many requests, please try again later
+              details: []
+              requestId: 550e8400-e29b-41d4-a716-446655440000
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: Internal server error
+              details: []
+              requestId: 550e8400-e29b-41d4-a716-446655440000
+
+    ServiceUnavailable:
+      description: One or more downstream services are unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: SERVICE_UNAVAILABLE
+              message: Service unavailable
+              details:
+                - service: database
+                  status: down
+                  error: Connection refused
+              requestId: 550e8400-e29b-41d4-a716-446655440000
