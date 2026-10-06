@@ -463,6 +463,88 @@ paths:
         '401':
           $ref: 'common.yaml#/components/responses/UnauthorizedError'
 
+  /auth/profile:
+    get:
+      summary: Get account profile data for mobile profile screen
+      description: Returns full account information (names, email, role, birth date, verification status) for the authenticated user.
+      operationId: getProfile
+      tags:
+        - Authentication
+        - Profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Account data retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/SafeUser'
+        '401':
+          $ref: 'common.yaml#/components/responses/UnauthorizedError'
+    patch:
+      summary: Update account profile data
+      description: Update user profile fields (firstName, lastName, birthDate, onboardingCompleted) from the mobile profile screen.
+      operationId: updateProfile
+      tags:
+        - Authentication
+        - Profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                  example: Salma
+                lastName:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                  example: Benali
+                birthDate:
+                  type: string
+                  format: date
+                  nullable: true
+                  example: '2004-05-14'
+                onboardingCompleted:
+                  type: boolean
+                  example: true
+      responses:
+        '200':
+          description: Profile updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Profile updated successfully
+                      user:
+                        $ref: '#/components/schemas/SafeUser'
+        '400':
+          $ref: 'common.yaml#/components/responses/BadRequestError'
+        '401':
+          $ref: 'common.yaml#/components/responses/UnauthorizedError'
+        '422':
+          $ref: 'common.yaml#/components/responses/ValidationError'
+
 components:
   schemas:
     SafeUser:

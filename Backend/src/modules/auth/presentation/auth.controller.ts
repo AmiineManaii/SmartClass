@@ -8,6 +8,7 @@ import type { ForgotPasswordUseCase } from '../application/forgot-password.use-c
 import type { ResetPasswordUseCase } from '../application/reset-password.use-case.js';
 import type { LogoutUseCase } from '../application/logout.use-case.js';
 import type { GetMeUseCase } from '../application/get-me.use-case.js';
+import type { UpdateProfileUseCase } from '../application/update-profile.use-case.js';
 import { UnauthorizedError } from '../../../shared/errors/app-error.js';
 import { ErrorCodes } from '../../../shared/errors/error-codes.js';
 
@@ -22,6 +23,7 @@ export class AuthController {
     private readonly resetPasswordUseCase: ResetPasswordUseCase,
     private readonly logoutUseCase: LogoutUseCase,
     private readonly getMeUseCase: GetMeUseCase,
+    private readonly updateProfileUseCase: UpdateProfileUseCase,
   ) {}
 
   public register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -118,6 +120,20 @@ export class AuthController {
         throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
       }
       const result = await this.getMeUseCase.execute(req.user.id);
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const result = await this.updateProfileUseCase.execute(req.user.id, req.body);
       res.status(200).json({
         data: result,
       });

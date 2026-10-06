@@ -76,9 +76,9 @@ On n'invente **jamais** une règle métier. Cadrage muet ou ambigu → on le not
 | `typescript`, `tsx`, `@types/node`, `@types/express`, `@types/cors` | Compilation / dev avec hot reload |
 | `vitest`, `supertest`, `@types/supertest` | Tests |
 | `eslint`, `typescript-eslint`, `@eslint/js`, `eslint-config-prettier`, `prettier` | Qualité |
-| `pino-pretty` (dev) | Logs lisibles en local |
 | `argon2` | Hachage sécurisé des mots de passe (Argon2id, Sprint 1) |
 | `jose` | Gestion et vérification JWT ESM sans dépendance native (Sprint 1) |
+| `nodemailer`, `@types/nodemailer` | Envoi d'emails transactionnels via SMTP Gmail (Sprint 1) |
 
 **Volontairement PAS installés maintenant** : `ioredis` / `rate-limit-redis`, `bullmq`, `socket.io`, `@aws-sdk/*`, `multer`, libs OpenAPI, `husky`, plugins de frontières ESLint. Chacun arrive avec la feature qui en a besoin.
 
@@ -465,6 +465,7 @@ docker compose exec api npm run db:migrate -- --name <nom>
 
 **Décisions ouvertes**
 - [x] Packages d'auth (Sprint 1) — `argon2` (Argon2id) + `jose` (JWT ES/HS256) validés et installés
+- [x] Fournisseur e-mail/push (Sprint 1) — `nodemailer` configuré via SMTP Gmail (`faroukmessay006@gmail.com`) avec templates HTML réactifs
 - [ ] Validation/génération automatique des contrats (lint OpenAPI, client Dart pour Dio/Retrofit) — quand le front branche l'API
 - [ ] Redis (rate limit partagé / jobs) — quand 2+ instances
 - [ ] Moteur S3 (SeaweedFS / Garage / RustFS / managé) — Sprint 2
@@ -472,14 +473,14 @@ docker compose exec api npm run db:migrate -- --name <nom>
 - [ ] Modèle d'embedding → dimension du `vector(n)` — Sprint 2/4
 - [ ] Durées de rétention (vidéos, snapshots) — RG14/RG21
 - [ ] Énoncés de RG2, RG3, RG5, RG10, RG13, RG24 + correction de la numérotation RG25/RG27
-- [ ] Fournisseur e-mail/push (adaptateur console dev actuellement en place)
 
 **Journal**
 - 2026-10-05 — v1.0.0 — Création du contexte backend (périmètre : initialisation).
 - 2026-10-05 — v1.1.0 — Monorepo (`front/ backend/ docs/ contracts/`) ; ajout des contrats OpenAPI contract-first (§5.1).
 - 2026-10-05 — v1.2.0 — Initialisation backend complète (Sprint 0) : scaffold Express 5 / Node 24 / TS strict, Dockerfile multi-stage, docker-compose avec healthchecks (`api` et `db` postgres17+pgvector), shared kernel (env fail-fast, Pino avec redaction, AppError, validation Zod, pagination offset/cursor, rate limiter), schéma Prisma 7 avec User & extension vector, module de référence Health (Clean Architecture 4 couches), contrats OpenAPI 3.1 (`common.yaml`, `health.openapi.yaml`), suite de 46 tests unitaires et d'intégration 100% verts, README technique.
 - 2026-10-06 — v1.3.0 — Implémentation complète du système d'authentification (Sprint 1, UC8) : 9 endpoints REST (`/auth/*`), schéma relationnel complet (`User`, `RefreshToken`, `EmailVerificationCode`, `PasswordResetCode`), hachage Argon2id, tokens rotatifs avec détection de réutilisation, OTP par email (6 chiffres, 15 min, max 3 tentatives), blocage temporaire automatique de 5 minutes après 3 tentatives de mot de passe erronées (HTTP 423 `AUTH_ACCOUNT_LOCKED`), Zod strict, contrat OpenAPI 3.1 `contracts/auth.openapi.yaml`, 14 nouveaux tests unitaires/intégration (60/60 tests au total verts).
+- 2026-10-06 — v1.3.1 — Support des 3 types de comptes (`STUDENT`, `TEACHER`, `ADMIN` avec normalisation des alias FR/EN), endpoints d'accès et mise à jour du profil (`GET /auth/profile`, `PATCH /auth/profile`), adaptateur Nodemailer SMTP Gmail (`faroukmessay006@gmail.com`), middleware de contrôle d'accès par rôle (`createRequireRoleMiddleware`), contrat OpenAPI 3.1 mis à jour, 65/65 tests verts.
 
 ---
 
-*Dernière mise à jour : 2026-10-06 · Version : 1.3.0*
+*Dernière mise à jour : 2026-10-06 · Version : 1.3.1*

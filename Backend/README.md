@@ -128,16 +128,22 @@ If running PostgreSQL locally or via Docker:
 | `LOCKOUT_DURATION_MINUTES` | `number` | `5` | Lockout duration in minutes (HTTP 423) |
 | `VERIFICATION_CODE_EXPIRATION_MINUTES` | `number` | `15` | Expiration of email OTP verification code |
 | `PASSWORD_RESET_EXPIRATION_MINUTES` | `number` | `15` | Expiration of password reset OTP code |
+| `SMTP_HOST` | `string` | `smtp.gmail.com` | SMTP email gateway host |
+| `SMTP_PORT` | `number` | `587` | SMTP port |
+| `SMTP_SECURE` | `boolean` | `false` | TLS secure connection |
+| `SMTP_USER` | `string` | `faroukmessay006@gmail.com` | SMTP authenticated email username |
+| `SMTP_PASS` | `string` | Empty (dev fallback) | Gmail App Password (16 characters) |
+| `SMTP_FROM` | `string` | `SmartClass <faroukmessay006@gmail.com>` | Sender header address |
 
 ---
 
 ## Authentication Endpoints (Sprint 1, UC8)
 
-All authentication endpoints are mounted under `/api/v1/auth`:
+All authentication endpoints are mounted under `/api/v1/auth`. Supports **3 account roles**: `STUDENT` (Étudiant), `TEACHER` (Professeur), `ADMIN` (Administrateur).
 
 | Method | Endpoint | Description | Auth Required |
 |---|---|---|---|
-| `POST` | `/api/v1/auth/register` | Register user (STUDENT / TEACHER), sends 6-digit email OTP | No |
+| `POST` | `/api/v1/auth/register` | Register user (`STUDENT`, `TEACHER`, or `ADMIN`), sends 6-digit email OTP | No |
 | `POST` | `/api/v1/auth/verify-email` | Verify email with OTP, marks account verified | No |
 | `POST` | `/api/v1/auth/resend-verification` | Request a new verification OTP | No |
 | `POST` | `/api/v1/auth/login` | Login with email + password (3 failed attempts -> 5 min lockout) | No |
@@ -146,6 +152,8 @@ All authentication endpoints are mounted under `/api/v1/auth`:
 | `POST` | `/api/v1/auth/reset-password` | Reset password using email OTP, revokes all sessions | No |
 | `POST` | `/api/v1/auth/logout` | Revoke current refresh token session | No |
 | `GET` | `/api/v1/auth/me` | Fetch authenticated user profile | Yes (`Bearer <token>`) |
+| `GET` | `/api/v1/auth/profile` | Fetch complete account & profile data for mobile screen | Yes (`Bearer <token>`) |
+| `PATCH` | `/api/v1/auth/profile` | Update account profile (`firstName`, `lastName`, `birthDate`, `onboardingCompleted`) | Yes (`Bearer <token>`) |
 
 ---
 

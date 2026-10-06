@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import type { TokenServicePort } from '../domain/token-service.port.js';
 import type { Role, UserStatus } from '../domain/user.entity.js';
-import { UnauthorizedError } from '../../../shared/errors/app-error.js';
+import { UnauthorizedError, ForbiddenError } from '../../../shared/errors/app-error.js';
 import { ErrorCodes } from '../../../shared/errors/error-codes.js';
 
 export interface AuthenticatedUser {
@@ -53,5 +53,20 @@ export const createAuthenticateMiddleware = (
     } catch (err) {
       next(err);
     }
+  };
+};
+
+export const createRequireRoleMiddleware = (allowedRoles: Role[]): RequestHandler => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      throw new UnauthorizedError('Authentication required', ErrorCodes.AUTH_TOKEN_INVALID);
+    }
+    if (!req.user.role || !allowedRoles.includes(req.user.role)) {
+      throw new ForbiddenError(
+        `Access denied. Requires one of the following roles: [${allowedRoles.join(', ')}]`,
+        ErrorCodes.FORBIDDEN,
+      );
+    }
+    next();
   };
 };

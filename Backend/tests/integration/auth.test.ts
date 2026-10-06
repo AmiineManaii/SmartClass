@@ -211,4 +211,86 @@ describe('Integration: Auth Endpoints', () => {
     expect(newLoginRes.status).toBe(200);
     expect(newLoginRes.body.data.accessToken).toBeDefined();
   });
+
+  it('supports 3 account roles (STUDENT, TEACHER, ADMIN) with French/English inputs', async () => {
+    // 1. Register with 'profesor' -> normalized to TEACHER
+    const teacherRes = await request(app).post('/api/v1/auth/register').send({
+      email: `prof_${Date.now()}@test.com`,
+      password: 'ProfPassword123!',
+      firstName: 'Farouk',
+      lastName: 'Messay',
+      role: 'profesor',
+    });
+    expect(teacherRes.status).toBe(201);
+    expect(teacherRes.body.data.user.role).toBe('TEACHER');
+
+    // 2. Register with 'administrateur' -> normalized to ADMIN
+    const adminRes = await request(app).post('/api/v1/auth/register').send({
+      email: `admin_${Date.now()}@test.com`,
+      password: 'AdminPassword123!',
+      firstName: 'Karim',
+      lastName: 'Admin',
+      role: 'administrateur',
+    });
+    expect(adminRes.status).toBe(201);
+    expect(adminRes.body.data.user.role).toBe('ADMIN');
+
+    // 3. Register with default (omitted role) -> defaults to STUDENT
+    const studentRes = await request(app).post('/api/v1/auth/register').send({
+      email: `student_default_${Date.now()}@test.com`,
+      password: 'StudentPass123!',
+      firstName: 'Salma',
+      lastName: 'Eleve',
+    });
+    expect(studentRes.status).toBe(201);
+    expect(studentRes.body.data.user.role).toBe('STUDENT');
+  });
+
+  it('supports fetching and updating account profile data via /auth/profile', async () => {
+    const email = `account_profile_${Date.now()}@test.com`;
+    const password = 'ProfilePassword123!';
+
+    // Register & verify
+    await request(app).post('/api/v1/auth/register').send({
+      email,
+      password,
+      firstName: 'InitialFirst',
+      lastName: 'InitialLast',
+      role: 'TEACHER',
+    });
+    const otp = emailService.getSentEmails()[0]?.code;
+    await request(app).post('/api/v1/auth/verify-email').send({ email, code: otp });
+
+    // Login
+    const loginRes = await request(app).post('/api/v1/auth/login').send({ email, password });
+    const token = loginRes.body.data.accessToken;
+
+    // GET /api/v1/auth/profile
+    const getProfileRes = await request(app)
+      .get('/api/v1/auth/profile')
+      .set('Authorization', `Bearer ${token}`);
+    expect(getProfileRes.status).toBe(200);
+    expect(getProfileRes.body.data.user.email).toBe(email);
+    expect(getProfileRes.body.data.user.firstName).toBe('InitialFirst');
+    expect(getProfileRes.body.data.user.role).toBe('TEACHER');
+
+    // PATCH /api/v1/auth/profile
+    const patchRes = await request(app)
+      .patch('/api/v1/auth/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        firstName: 'UpdatedFarouk',
+        lastName: 'UpdatedMessay',
+        birthDate: '1995-12-10',
+        onboardingCompleted: true,
+      });
+
+    expect(patchRes.status).toBe(200);
+    expect(patchRes.body.data.message).toBe('Profile updated successfully');
+    expect(patchRes.body.data.user.firstName).toBe('UpdatedFarouk');
+    expect(patchRes.body.data.user.lastName).toBe('UpdatedMessay');
+    expect(patchRes.body.data.user.birthDate).toBe('1995-12-10');
+    expect(patchRes.body.data.user.onboardingCompleted).toBe(true);
+  });
 });
+

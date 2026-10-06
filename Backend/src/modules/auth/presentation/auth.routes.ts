@@ -10,6 +10,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   logoutSchema,
+  updateProfileSchema,
 } from './auth.validation.js';
 
 export interface AuthRouterOptions {
@@ -80,6 +81,19 @@ export const createAuthRouter = (options: AuthRouterOptions): Router => {
     '/me',
     authenticateMiddleware,
     controller.getMe,
+  );
+
+  router.get(
+    '/profile',
+    authenticateMiddleware,
+    controller.getMe,
+  );
+
+  router.patch(
+    '/profile',
+    authenticateMiddleware,
+    validate({ body: updateProfileSchema }),
+    controller.updateProfile,
   );
 
   return router;

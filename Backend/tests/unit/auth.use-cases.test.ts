@@ -1,10 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { Request, Response } from 'express';
 import crypto from 'node:crypto';
 import { RegisterUseCase } from '../../src/modules/auth/application/register.use-case.js';
 import { VerifyEmailUseCase } from '../../src/modules/auth/application/verify-email.use-case.js';
 import { LoginUseCase } from '../../src/modules/auth/application/login.use-case.js';
 import { RefreshTokenUseCase } from '../../src/modules/auth/application/refresh-token.use-case.js';
 import { ResetPasswordUseCase } from '../../src/modules/auth/application/reset-password.use-case.js';
+import { UpdateProfileUseCase } from '../../src/modules/auth/application/update-profile.use-case.js';
+import { roleSchema } from '../../src/modules/auth/presentation/auth.validation.js';
+import { createRequireRoleMiddleware } from '../../src/modules/auth/presentation/auth.middleware.js';
 import { UserEntity } from '../../src/modules/auth/domain/user.entity.js';
 import type {
   AuthRepositoryPort,
@@ -68,7 +72,12 @@ class MockAuthRepository implements AuthRepositoryPort {
     id: string,
     params: Partial<{
       passwordHash: string;
+      firstName: string;
+      lastName: string;
+      role: 'TEACHER' | 'STUDENT' | 'ADMIN' | null;
+      birthDate: Date | null;
       emailVerified: boolean;
+      onboardingCompleted: boolean;
       failedLoginAttempts: number;
       lockedUntil: Date | null;
       status: 'ACTIVE' | 'SUSPENDED';
@@ -81,13 +90,13 @@ class MockAuthRepository implements AuthRepositoryPort {
       id: current.id,
       email: current.email,
       passwordHash: params.passwordHash ?? current.passwordHash,
-      firstName: current.firstName,
-      lastName: current.lastName,
-      role: current.role,
-      birthDate: current.birthDate,
+      firstName: params.firstName ?? current.firstName,
+      lastName: params.lastName ?? current.lastName,
+      role: params.role !== undefined ? params.role : current.role,
+      birthDate: params.birthDate !== undefined ? params.birthDate : current.birthDate,
       status: params.status ?? current.status,
       emailVerified: params.emailVerified ?? current.emailVerified,
-      onboardingCompleted: current.onboardingCompleted,
+      onboardingCompleted: params.onboardingCompleted ?? current.onboardingCompleted,
       failedLoginAttempts: params.failedLoginAttempts ?? current.failedLoginAttempts,
       lockedUntil: params.lockedUntil !== undefined ? params.lockedUntil : current.lockedUntil,
       createdAt: current.createdAt,
@@ -532,4 +541,71 @@ describe('Auth Module — Unit Tests', () => {
       expect(updatedUser?.lockedUntil).toBeNull();
     });
   });
+
+  describe('Role Normalization (3 Account Types: STUDENT, TEACHER, ADMIN)', () => {
+    it('normalizes english and french variants of all 3 roles', () => {
+      // Student variants
+      expect(roleSchema.parse('STUDENT')).toBe('STUDENT');
+      expect(roleSchema.parse('student')).toBe('STUDENT');
+      expect(roleSchema.parse('etudiant')).toBe('STUDENT');
+
+      // Teacher / Professor variants
+      expect(roleSchema.parse('TEACHER')).toBe('TEACHER');
+      expect(roleSchema.parse('profesor')).toBe('TEACHER');
+      expect(roleSchema.parse('professeur')).toBe('TEACHER');
+      expect(roleSchema.parse('enseignant')).toBe('TEACHER');
+
+      // Admin / Administrateur variants
+      expect(roleSchema.parse('ADMIN')).toBe('ADMIN');
+      expect(roleSchema.parse('administrateur')).toBe('ADMIN');
+      expect(roleSchema.parse('admin')).toBe('ADMIN');
+    });
+
+    it('enforces role authorization via middleware', () => {
+      const adminOnlyMiddleware = createRequireRoleMiddleware(['ADMIN']);
+      const nextFn = vi.fn();
+
+      // Case 1: STUDENT user attempts admin action -> 403 Forbidden
+      const studentReq = {
+        user: { id: 'u1', email: 's@test.com', role: 'STUDENT' as const, status: 'ACTIVE' as const },
+      } as unknown as Request;
+      expect(() => adminOnlyMiddleware(studentReq, {} as unknown as Response, nextFn)).toThrow(ForbiddenError);
+
+      // Case 2: ADMIN user attempts admin action -> succeeds
+      const adminReq = {
+        user: { id: 'u2', email: 'a@test.com', role: 'ADMIN' as const, status: 'ACTIVE' as const },
+      } as unknown as Request;
+      adminOnlyMiddleware(adminReq, {} as unknown as Response, nextFn);
+      expect(nextFn).toHaveBeenCalled();
+    });
+  });
+
+  describe('UpdateProfileUseCase (Account Data)', () => {
+    it('updates user profile data and returns updated safe user', async () => {
+      const user = await authRepo.createUser({
+        email: 'profile@test.com',
+        passwordHash: 'hash',
+        firstName: 'Amine',
+        lastName: 'OldLast',
+        role: 'TEACHER',
+        emailVerified: true,
+      });
+
+      const updateProfileUseCase = new UpdateProfileUseCase(authRepo);
+      const result = await updateProfileUseCase.execute(user.id, {
+        firstName: 'Prof Amine',
+        lastName: 'NewLast',
+        birthDate: '1989-08-20',
+        onboardingCompleted: true,
+      });
+
+      expect(result.message).toBe('Profile updated successfully');
+      expect(result.user.firstName).toBe('Prof Amine');
+      expect(result.user.lastName).toBe('NewLast');
+      expect(result.user.birthDate).toBe('1989-08-20');
+      expect(result.user.onboardingCompleted).toBe(true);
+      expect(result.user.role).toBe('TEACHER');
+    });
+  });
 });
+

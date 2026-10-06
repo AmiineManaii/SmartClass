@@ -28,6 +28,15 @@ const envSchema = z.object({
   LOCKOUT_DURATION_MINUTES: z.coerce.number().int().positive().default(5),
   VERIFICATION_CODE_EXPIRATION_MINUTES: z.coerce.number().int().positive().default(15),
   PASSWORD_RESET_EXPIRATION_MINUTES: z.coerce.number().int().positive().default(15),
+  // SMTP Email configuration
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_SECURE: z
+    .preprocess((val) => val === 'true' || val === true, z.boolean())
+    .default(false),
+  SMTP_USER: z.string().default('faroukmessay006@gmail.com'),
+  SMTP_PASS: z.string().optional().default(''),
+  SMTP_FROM: z.string().default('SmartClass <faroukmessay006@gmail.com>'),
 });
 
 export type Env = z.infer<typeof envSchema>;
