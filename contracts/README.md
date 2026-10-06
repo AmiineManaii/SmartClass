@@ -45,7 +45,7 @@ npx --yes @redocly/cli@latest lint contracts/*.yaml
 | Module | File | Base Path | Status |
 |--------|------|-----------|--------|
 | health | `health.openapi.yaml` | `/` | ✅ implemented |
-| auth | not created yet | `/api/v1/auth` | 📋 planned |
+| auth | `auth.openapi.yaml` | `/api/v1/auth` | ✅ implemented |
 | users | not created yet | `/api/v1/users` | 📋 planned |
 | groups | not created yet | `/api/v1/groups` | 📋 planned |
 | courses | not created yet | `/api/v1/courses` | 📋 planned |

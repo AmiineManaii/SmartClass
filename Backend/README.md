@@ -17,7 +17,8 @@ Backend/
 ├── src/
 │   ├── config/                # Fail-fast environment variable validation (Zod)
 │   ├── modules/               # Bounded contexts (Clean Architecture)
-│   │   └── health/            # Reference module (Domain, Application, Infra, Presentation)
+│   │   ├── health/            # Reference module (Domain, Application, Infra, Presentation)
+│   │   └── auth/              # Auth module (Argon2id, OTP, Lockout, Token Rotation)
 │   ├── shared/                # Shared kernel
 │   │   ├── errors/            # Standardized AppError hierarchy
 │   │   ├── http/              # Middlewares: requestId, errorHandler, notFound, validate, rateLimiter
@@ -120,6 +121,31 @@ If running PostgreSQL locally or via Docker:
 | `TRUST_PROXY` | `string` | `0` | Express reverse proxy trust setting |
 | `RATE_LIMIT_WINDOW_MS` | `number` | `60000` | Rate limit window in ms (1 minute) |
 | `RATE_LIMIT_MAX` | `number` | `100` | Max requests per IP per window on `/api/v1` |
+| `JWT_SECRET` | `string` (min 32 chars) | Dev fallback | Secret used to sign HS256 JWT access tokens |
+| `JWT_ACCESS_EXPIRATION` | `string` | `15m` | Lifetime of short-lived JWT access tokens |
+| `JWT_REFRESH_EXPIRATION_DAYS` | `number` | `30` | Refresh token duration in days |
+| `LOCKOUT_MAX_ATTEMPTS` | `number` | `3` | Max consecutive wrong password attempts before lockout |
+| `LOCKOUT_DURATION_MINUTES` | `number` | `5` | Lockout duration in minutes (HTTP 423) |
+| `VERIFICATION_CODE_EXPIRATION_MINUTES` | `number` | `15` | Expiration of email OTP verification code |
+| `PASSWORD_RESET_EXPIRATION_MINUTES` | `number` | `15` | Expiration of password reset OTP code |
+
+---
+
+## Authentication Endpoints (Sprint 1, UC8)
+
+All authentication endpoints are mounted under `/api/v1/auth`:
+
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `POST` | `/api/v1/auth/register` | Register user (STUDENT / TEACHER), sends 6-digit email OTP | No |
+| `POST` | `/api/v1/auth/verify-email` | Verify email with OTP, marks account verified | No |
+| `POST` | `/api/v1/auth/resend-verification` | Request a new verification OTP | No |
+| `POST` | `/api/v1/auth/login` | Login with email + password (3 failed attempts -> 5 min lockout) | No |
+| `POST` | `/api/v1/auth/refresh` | Rotate refresh token with session reuse detection | No |
+| `POST` | `/api/v1/auth/forgot-password` | Request 6-digit password reset OTP (constant-time response) | No |
+| `POST` | `/api/v1/auth/reset-password` | Reset password using email OTP, revokes all sessions | No |
+| `POST` | `/api/v1/auth/logout` | Revoke current refresh token session | No |
+| `GET` | `/api/v1/auth/me` | Fetch authenticated user profile | Yes (`Bearer <token>`) |
 
 ---
 
@@ -129,3 +155,4 @@ Hand-written OpenAPI 3.1 specifications are located in [`contracts/`](../contrac
 - [`contracts/README.md`](../contracts/README.md): Index and contract-first guidelines
 - [`contracts/common.yaml`](../contracts/common.yaml): Standard error envelopes, pagination, security schemas
 - [`contracts/health.openapi.yaml`](../contracts/health.openapi.yaml): Health module specification
+- [`contracts/auth.openapi.yaml`](../contracts/auth.openapi.yaml): Authentication & security specification

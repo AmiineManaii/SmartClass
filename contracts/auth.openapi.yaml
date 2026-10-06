@@ -1,0 +1,522 @@
+openapi: 3.1.0
+info:
+  title: SmartClass API — Authentication & User Identity (Sprint 1)
+  version: 0.1.0
+  description: >
+    Authentication, email verification OTP, password recovery, session token rotation,
+    and account lockout protection for the SmartClass platform.
+    Designed for Flutter mobile/web clients with contract-first precision.
+
+servers:
+  - url: /api/v1
+    description: SmartClass API v1 prefix
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user account
+      description: >
+        Creates a new user profile with unverified email status.
+        Dispatches a 6-digit OTP code to the provided email address (valid for 15 minutes).
+      operationId: registerUser
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - firstName
+                - lastName
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: salma.student@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  description: Min 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special character (@$!%*?&_-#).
+                  example: SecurePass123!
+                firstName:
+                  type: string
+                  example: Salma
+                lastName:
+                  type: string
+                  example: Benali
+                role:
+                  type: string
+                  enum: [TEACHER, STUDENT, ADMIN]
+                  nullable: true
+                  example: STUDENT
+      responses:
+        '201':
+          description: User registered successfully. Verification email dispatched.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Registration successful. A verification code has been sent to your email.
+                      user:
+                        $ref: '#/components/schemas/SafeUser'
+        '400':
+          $ref: 'common.yaml#/components/responses/BadRequestError'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: 'common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: EMAIL_ALREADY_USED
+                  message: An account with this email address already exists
+                  details: []
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+        '422':
+          $ref: 'common.yaml#/components/responses/ValidationError'
+
+  /auth/verify-email:
+    post:
+      summary: Verify account using email OTP code
+      description: >
+        Validates the 6-digit verification code received by email.
+        Upon success, activates the account and issues access + rotating refresh tokens.
+      operationId: verifyEmail
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - code
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: salma.student@example.com
+                code:
+                  type: string
+                  pattern: '^\d{6}$'
+                  example: '123456'
+      responses:
+        '200':
+          description: Email verified successfully. Session tokens returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Email verified successfully. Welcome to SmartClass!
+                      accessToken:
+                        type: string
+                      refreshToken:
+                        type: string
+                      expiresIn:
+                        type: integer
+                        example: 900
+                      user:
+                        $ref: '#/components/schemas/SafeUser'
+        '400':
+          description: Invalid, expired, or maximum verification attempts exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: 'common.yaml#/components/schemas/ErrorResponse'
+        '422':
+          $ref: 'common.yaml#/components/responses/ValidationError'
+
+  /auth/resend-verification:
+    post:
+      summary: Resend verification code
+      description: Dispatches a new 6-digit OTP code if the account is not yet verified.
+      operationId: resendVerificationCode
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: salma.student@example.com
+      responses:
+        '200':
+          description: Verification code sent if account exists and unverified.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: A new verification code has been sent to your email address.
+
+  /auth/login:
+    post:
+      summary: User login with brute-force lockout protection
+      description: >
+        Authenticates credentials with Argon2id.
+        Features 3-attempt account lockout: after 3 consecutive wrong passwords,
+        the account is locked for 5 minutes and returns HTTP 423.
+      operationId: loginUser
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: salma.student@example.com
+                password:
+                  type: string
+                  format: password
+                  example: SecurePass123!
+      responses:
+        '200':
+          description: Login successful. Returns access token (15m) and refresh token (7d).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      accessToken:
+                        type: string
+                      refreshToken:
+                        type: string
+                      expiresIn:
+                        type: integer
+                        example: 900
+                      user:
+                        $ref: '#/components/schemas/SafeUser'
+        '401':
+          description: Invalid credentials (reports remaining attempts before lockout).
+          content:
+            application/json:
+              schema:
+                $ref: 'common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: AUTH_INVALID_CREDENTIALS
+                  message: Invalid email or password. You have 2 attempt(s) remaining before account lockout.
+                  details:
+                    - remainingAttempts: 2
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+        '403':
+          description: Email not verified or user account suspended.
+          content:
+            application/json:
+              schema:
+                $ref: 'common.yaml#/components/schemas/ErrorResponse'
+              examples:
+                unverified:
+                  value:
+                    error:
+                      code: AUTH_EMAIL_NOT_VERIFIED
+                      message: Please verify your email address before logging in.
+                      details:
+                        - email: salma.student@example.com
+                      requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+        '423':
+          description: Account locked due to 3 consecutive failed login attempts.
+          content:
+            application/json:
+              schema:
+                $ref: 'common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: AUTH_ACCOUNT_LOCKED
+                  message: Account temporarily locked for 5 minutes due to 3 consecutive failed login attempts.
+                  details:
+                    - remainingSeconds: 300
+                      lockedUntil: '2026-10-06T12:35:00.000Z'
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+
+  /auth/refresh:
+    post:
+      summary: Rotate refresh token & obtain fresh access token
+      description: >
+        Rotates refresh token. Implements automatic reuse detection:
+        if a revoked token is presented, all sessions in the token family are terminated.
+      operationId: refreshSession
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+                  example: d8f4e2...
+      responses:
+        '200':
+          description: New access token and rotated refresh token issued.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      accessToken:
+                        type: string
+                      refreshToken:
+                        type: string
+                      expiresIn:
+                        type: integer
+                        example: 900
+        '401':
+          description: Expired token or reuse detected.
+          content:
+            application/json:
+              schema:
+                $ref: 'common.yaml#/components/schemas/ErrorResponse'
+
+  /auth/forgot-password:
+    post:
+      summary: Request password reset OTP
+      description: Generates a 6-digit password reset code sent to the email address.
+      operationId: forgotPassword
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: salma.student@example.com
+      responses:
+        '200':
+          description: Code dispatched if account exists.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: If an account with that email exists, a password reset code has been sent.
+
+  /auth/reset-password:
+    post:
+      summary: Reset password with OTP code
+      description: >
+        Verifies the 6-digit reset code, updates password with Argon2id,
+        and invalidates all existing active sessions.
+      operationId: resetPassword
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - code
+                - newPassword
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: salma.student@example.com
+                code:
+                  type: string
+                  pattern: '^\d{6}$'
+                  example: '654321'
+                newPassword:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: NewSecurePass456!
+      responses:
+        '200':
+          description: Password reset successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Password has been reset successfully. You can now log in with your new password.
+        '400':
+          description: Invalid or expired code.
+          content:
+            application/json:
+              schema:
+                $ref: 'common.yaml#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      summary: Invalidate user session
+      description: Revokes the specified refresh token.
+      operationId: logoutUser
+      tags:
+        - Authentication
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Session terminated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Logged out successfully.
+
+  /auth/me:
+    get:
+      summary: Get current authenticated user profile
+      description: Returns profile details for the user associated with the Bearer JWT token.
+      operationId: getCurrentUser
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/SafeUser'
+        '401':
+          $ref: 'common.yaml#/components/responses/UnauthorizedError'
+
+components:
+  schemas:
+    SafeUser:
+      type: object
+      required:
+        - id
+        - email
+        - firstName
+        - lastName
+        - status
+        - emailVerified
+        - onboardingCompleted
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        email:
+          type: string
+          format: email
+          example: salma.student@example.com
+        firstName:
+          type: string
+          example: Salma
+        lastName:
+          type: string
+          example: Benali
+        role:
+          type: string
+          enum: [TEACHER, STUDENT, ADMIN]
+          nullable: true
+          example: STUDENT
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+          example: '2004-05-14'
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED]
+          example: ACTIVE
+        emailVerified:
+          type: boolean
+          example: true
+        onboardingCompleted:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-10-06T10:00:00.000Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-10-06T10:00:00.000Z'

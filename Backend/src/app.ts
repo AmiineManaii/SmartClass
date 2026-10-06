@@ -8,11 +8,13 @@ import { requestIdMiddleware } from './shared/http/request-id.middleware.js';
 import { notFoundHandler } from './shared/http/not-found.middleware.js';
 import { errorHandler } from './shared/http/error-handler.middleware.js';
 import { createGlobalRateLimiter, createRateLimiter, type RateLimiterCustomOptions } from './shared/http/rate-limiter.js';
+import type { AuthModuleOptions } from './modules/auth/index.js';
 import { createHealthModule, type HealthModuleOptions } from './modules/health/index.js';
 import { createApiRouter } from './routes.js';
 
 export interface CreateAppOptions {
   healthModuleOptions?: HealthModuleOptions;
+  authModuleOptions?: AuthModuleOptions;
   rateLimiterOptions?: RateLimiterCustomOptions;
   skipRateLimit?: boolean;
   skipLogging?: boolean;
@@ -83,7 +85,7 @@ export const createApp = (options: CreateAppOptions = {}): Express => {
       ? createRateLimiter(options.rateLimiterOptions)
       : createGlobalRateLimiter();
 
-  const apiRouter = createApiRouter();
+  const apiRouter = createApiRouter({ authModuleOptions: options.authModuleOptions });
   if (rateLimiter) {
     app.use('/api/v1', rateLimiter as unknown as RequestHandler, apiRouter);
   } else {

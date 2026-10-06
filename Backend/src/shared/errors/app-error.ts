@@ -40,6 +40,15 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+export class AccountLockedError extends AppError {
+  constructor(
+    message = 'Account temporarily locked due to multiple failed login attempts. Please try again later.',
+    details: unknown[] = [],
+  ) {
+    super(message, 423, ErrorCodes.AUTH_ACCOUNT_LOCKED, details);
+  }
+}
+
 export class ForbiddenError extends AppError {
   constructor(message = 'Forbidden', code: ErrorCode = ErrorCodes.FORBIDDEN, details: unknown[] = []) {
     super(message, 403, code, details);

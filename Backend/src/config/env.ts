@@ -17,6 +17,17 @@ const envSchema = z.object({
   TRUST_PROXY: z.string().default('0'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  // Auth configuration
+  JWT_SECRET: z
+    .string()
+    .min(32, 'JWT_SECRET must be at least 32 characters long')
+    .default('smartclass-super-secret-jwt-key-min-32-chars-2026!'),
+  JWT_ACCESS_EXPIRATION: z.string().default('15m'),
+  JWT_REFRESH_EXPIRATION_DAYS: z.coerce.number().int().positive().default(7),
+  LOCKOUT_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
+  LOCKOUT_DURATION_MINUTES: z.coerce.number().int().positive().default(5),
+  VERIFICATION_CODE_EXPIRATION_MINUTES: z.coerce.number().int().positive().default(15),
+  PASSWORD_RESET_EXPIRATION_MINUTES: z.coerce.number().int().positive().default(15),
 });
 
 export type Env = z.infer<typeof envSchema>;

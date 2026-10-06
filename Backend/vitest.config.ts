@@ -8,7 +8,9 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     env: {
       NODE_ENV: 'test',
-      DATABASE_URL: 'postgresql://smartclass:smartclass_dev_password@localhost:5432/smartclass?schema=public',
+      DATABASE_URL:
+        process.env.DATABASE_URL ||
+        'postgresql://smartclass:smartclass_dev_password@localhost:5432/smartclass?schema=public',
       PORT: '3000',
     },
   },

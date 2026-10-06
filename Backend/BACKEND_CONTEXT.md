@@ -77,8 +77,10 @@ On n'invente **jamais** une règle métier. Cadrage muet ou ambigu → on le not
 | `vitest`, `supertest`, `@types/supertest` | Tests |
 | `eslint`, `typescript-eslint`, `@eslint/js`, `eslint-config-prettier`, `prettier` | Qualité |
 | `pino-pretty` (dev) | Logs lisibles en local |
+| `argon2` | Hachage sécurisé des mots de passe (Argon2id, Sprint 1) |
+| `jose` | Gestion et vérification JWT ESM sans dépendance native (Sprint 1) |
 
-**Volontairement PAS installés maintenant** : `jose`, `argon2`, `ioredis` / `rate-limit-redis`, `bullmq`, `socket.io`, `@aws-sdk/*`, `multer`, libs OpenAPI, `husky`, plugins de frontières ESLint. Chacun arrive avec la feature qui en a besoin.
+**Volontairement PAS installés maintenant** : `ioredis` / `rate-limit-redis`, `bullmq`, `socket.io`, `@aws-sdk/*`, `multer`, libs OpenAPI, `husky`, plugins de frontières ESLint. Chacun arrive avec la feature qui en a besoin.
 
 ---
 
@@ -436,7 +438,7 @@ Enums : `ENSEIGNANT→TEACHER`, `ETUDIANT→STUDENT`, `ADMIN→ADMIN` · `ACTIF�
 | Sprint | Périmètre backend | Statut |
 |--------|-------------------|--------|
 | 0 | Init : squelette, Docker (api+db), health, kernel (erreurs, validation, pagination, rate limit, logs), Prisma + `User`, dossier `contracts/` (README, `common.yaml`, `health.openapi.yaml`) | ✅ Terminé |
-| 1 | UC8 Auth & profil, UC6 Groupes-classes (RG1-RG3) | ⬜ |
+| 1 | UC8 Auth & profil, UC6 Groupes-classes (RG1-RG3) | 🟡 En cours (Auth endpoints, OTP email, blocage 5 min, tokens rotatifs terminés) |
 | 2 | UC1 Cours + upload/extraction PDF + LLM local + validation prof (RG4-RG5) | ⬜ |
 | 3 | UC3/UC4 Visio, enregistrement, Whisper, résumé (RG8-RG11) | ⬜ |
 | 4 | UC2/UC10 IA individuelle, RAG pgvector (RG6-RG7, RG29) | ⬜ |
@@ -462,7 +464,7 @@ docker compose exec api npm run db:migrate -- --name <nom>
 > **Tout nouveau code doit respecter :** Clean Architecture stricte (module de référence = `health`) · Zod `.strict()` en entrée, DTO/mappers en sortie · pagination + rate limiting sur ce qui s'y applique · erreurs = `AppError` + `code` stable · aucun secret en clair · politique des packages §1.2 · **contrat OpenAPI écrit/à jour avant et avec chaque endpoint (§5.1)** · tests + lint + typecheck avant « terminé » · **mettre à jour ce fichier**.
 
 **Décisions ouvertes**
-- [ ] Packages d'auth (Sprint 1) — à confirmer au démarrage du sprint
+- [x] Packages d'auth (Sprint 1) — `argon2` (Argon2id) + `jose` (JWT ES/HS256) validés et installés
 - [ ] Validation/génération automatique des contrats (lint OpenAPI, client Dart pour Dio/Retrofit) — quand le front branche l'API
 - [ ] Redis (rate limit partagé / jobs) — quand 2+ instances
 - [ ] Moteur S3 (SeaweedFS / Garage / RustFS / managé) — Sprint 2
@@ -470,13 +472,14 @@ docker compose exec api npm run db:migrate -- --name <nom>
 - [ ] Modèle d'embedding → dimension du `vector(n)` — Sprint 2/4
 - [ ] Durées de rétention (vidéos, snapshots) — RG14/RG21
 - [ ] Énoncés de RG2, RG3, RG5, RG10, RG13, RG24 + correction de la numérotation RG25/RG27
-- [ ] Fournisseur e-mail/push
+- [ ] Fournisseur e-mail/push (adaptateur console dev actuellement en place)
 
 **Journal**
 - 2026-10-05 — v1.0.0 — Création du contexte backend (périmètre : initialisation).
 - 2026-10-05 — v1.1.0 — Monorepo (`front/ backend/ docs/ contracts/`) ; ajout des contrats OpenAPI contract-first (§5.1).
 - 2026-10-05 — v1.2.0 — Initialisation backend complète (Sprint 0) : scaffold Express 5 / Node 24 / TS strict, Dockerfile multi-stage, docker-compose avec healthchecks (`api` et `db` postgres17+pgvector), shared kernel (env fail-fast, Pino avec redaction, AppError, validation Zod, pagination offset/cursor, rate limiter), schéma Prisma 7 avec User & extension vector, module de référence Health (Clean Architecture 4 couches), contrats OpenAPI 3.1 (`common.yaml`, `health.openapi.yaml`), suite de 46 tests unitaires et d'intégration 100% verts, README technique.
+- 2026-10-06 — v1.3.0 — Implémentation complète du système d'authentification (Sprint 1, UC8) : 9 endpoints REST (`/auth/*`), schéma relationnel complet (`User`, `RefreshToken`, `EmailVerificationCode`, `PasswordResetCode`), hachage Argon2id, tokens rotatifs avec détection de réutilisation, OTP par email (6 chiffres, 15 min, max 3 tentatives), blocage temporaire automatique de 5 minutes après 3 tentatives de mot de passe erronées (HTTP 423 `AUTH_ACCOUNT_LOCKED`), Zod strict, contrat OpenAPI 3.1 `contracts/auth.openapi.yaml`, 14 nouveaux tests unitaires/intégration (60/60 tests au total verts).
 
 ---
 
-*Dernière mise à jour : 2026-10-05 · Version : 1.2.0*
+*Dernière mise à jour : 2026-10-06 · Version : 1.3.0*
