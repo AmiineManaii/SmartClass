@@ -7,11 +7,17 @@ import '../core/theme/app_theme.dart';
 import '../core/typography/typography_provider.dart';
 import '../core/typography/typography_config.dart';
 import '../core/constants/app_constants.dart';
+import '../core/network/network_providers.dart';
+import '../features/authentication/application/providers/auth_repository_provider.dart';
+import '../features/authentication/domain/entities/user_entity.dart';
+import '../features/authentication/domain/repositories/auth_repository.dart';
 import '../features/authentication/presentation/pages/forgot_password_page.dart';
 import '../features/authentication/presentation/pages/login_page.dart';
 import '../features/authentication/presentation/pages/profile_setup_page.dart';
 import '../features/authentication/presentation/pages/register_page.dart';
+import '../features/authentication/presentation/pages/reset_password_page.dart';
 import '../features/authentication/presentation/pages/role_selection_page.dart';
+import '../features/authentication/presentation/pages/verify_email_page.dart';
 import '../features/courses/presentation/pages/ai_course_creator_page.dart';
 import '../features/courses/presentation/pages/courses_page.dart';
 import '../features/groups/presentation/pages/groups_page.dart';
@@ -67,9 +73,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final isPublicRoute = location.startsWith('/login') ||
           location.startsWith('/register') ||
-          location.startsWith('/forgot-password');
+          location.startsWith('/forgot-password') ||
+          location.startsWith('/reset-password');
       final isOnboardingRoute = location.startsWith('/role-selection') ||
-          location.startsWith('/profile-setup');
+          location.startsWith('/profile-setup') ||
+          location.startsWith('/verify-email');
 
       if (!isLoggedIn) {
         if (isPublicRoute || isOnboardingRoute) return null;
@@ -123,6 +131,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/forgot-password',
         name: 'forgot-password',
         builder: (context, state) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        name: 'reset-password',
+        builder: (context, state) => const ResetPasswordPage(),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        name: 'verify-email',
+        builder: (context, state) => const VerifyEmailPage(),
       ),
       GoRoute(
         path: '/role-selection',
@@ -439,6 +457,7 @@ class AuthState {
   final String? role;
   final String? email;
   final String? displayName;
+  final bool emailVerified;
   final bool onboardingCompleted;
 
   const AuthState({
@@ -447,6 +466,7 @@ class AuthState {
     this.role,
     this.email,
     this.displayName,
+    this.emailVerified = false,
     this.onboardingCompleted = false,
   });
 
@@ -456,6 +476,7 @@ class AuthState {
     String? role,
     String? email,
     String? displayName,
+    bool? emailVerified,
     bool? onboardingCompleted,
   }) {
     return AuthState(
@@ -464,6 +485,7 @@ class AuthState {
       role: role ?? this.role,
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
+      emailVerified: emailVerified ?? this.emailVerified,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
     );
   }
@@ -471,65 +493,157 @@ class AuthState {
 
 final authStateProvider = StateNotifierProvider<AuthNotifier, AsyncValue<AuthState>>((ref) {
   final refresher = ref.watch(authRefreshProvider);
-  return AuthNotifier(onChanged: refresher.refresh);
+  final notifier = AuthNotifier(ref, onChanged: refresher.refresh);
+  // Session expiry surfaced by ApiClient (e.g. refresh-token reuse) logs out.
+  ref.read(apiClientProvider).onUnauthorized = notifier.expireSession;
+  return notifier;
 });
 
+/// Orchestrates the real auth API ([AuthRepository]).
+/// Throws [Failure] on error — pages catch it to show localized messages
+/// and skip navigation (see `failureL10n`).
 class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
+  AuthNotifier(this._ref, {required this.onChanged})
+      : super(const AsyncValue.data(AuthState())) {
+    _restoreSession();
+  }
+
+  final Ref _ref;
   final VoidCallback onChanged;
 
-  AuthNotifier({required this.onChanged}) : super(const AsyncValue.data(AuthState()));
+  AuthRepository get _repo => _ref.read(authRepositoryProvider);
 
   void _emit(AsyncValue<AuthState> next) {
     state = next;
     onChanged();
   }
 
-  Future<void> login(String email, String password, {String? role}) async {
-    _emit(const AsyncValue.loading());
-    await Future.delayed(const Duration(milliseconds: 500));
-    final normalized = email.toLowerCase();
-    final effectiveRole = role ??
-        (normalized.contains('prof') || normalized.contains('teacher') || normalized.contains('amine')
-            ? 'teacher'
-            : 'student');
-    final isTeacher = effectiveRole == 'teacher';
-    _emit(AsyncValue.data(AuthState(
-      isAuthenticated: true,
-      userId: '1',
-      email: email.isNotEmpty ? email : (isTeacher ? 'prof.amine@smartclass.edu' : 'salma@smartclass.edu'),
-      role: effectiveRole,
-      displayName: isTeacher ? 'Prof. Amine' : 'Salma',
-      onboardingCompleted: true,
-    )));
+  AuthState _fromUser(UserEntity user, {required bool authenticated}) {
+    return AuthState(
+      isAuthenticated: authenticated,
+      userId: user.id.isEmpty ? null : user.id,
+      email: user.email.isEmpty ? null : user.email,
+      role: user.role,
+      displayName: user.displayName.isEmpty ? null : user.displayName,
+      emailVerified: user.emailVerified,
+      onboardingCompleted: user.onboardingCompleted,
+    );
   }
 
-  Future<void> register(String email, String password, String role) async {
-    _emit(const AsyncValue.loading());
-    await Future.delayed(const Duration(milliseconds: 500));
-    _emit(AsyncValue.data(AuthState(
-      isAuthenticated: true,
-      userId: '1',
-      email: email,
-      role: role,
-      displayName: 'Utilisateur',
-      onboardingCompleted: false,
-    )));
-  }
-
-  Future<void> logout() async {
-    _emit(const AsyncValue.data(AuthState()));
-  }
-
-  void updateProfile({String? displayName, String? email}) {
-    final current = state.value;
-    if (current != null) {
-      _emit(AsyncValue.data(current.copyWith(
-        displayName: displayName,
-        email: email,
-      )));
+  Future<void> _restoreSession() async {
+    final tokens = _ref.read(tokenStorageProvider);
+    final refreshToken = await tokens.readRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) return;
+    try {
+      await _repo.refreshSession(refreshToken: refreshToken);
+      final user = await _repo.getMe();
+      _emit(AsyncValue.data(_fromUser(user, authenticated: true)));
+    } catch (_) {
+      await tokens.clear();
+      _emit(const AsyncValue.data(AuthState()));
     }
   }
 
+  /// Called by [ApiClient] when the session can no longer be refreshed.
+  void expireSession() {
+    _emit(const AsyncValue.data(AuthState()));
+  }
+
+  Future<void> login(String email, String password) async {
+    _emit(const AsyncValue.loading());
+    try {
+      final session = await _repo.login(email: email, password: password);
+      _emit(AsyncValue.data(_fromUser(session.user, authenticated: true)));
+    } catch (e) {
+      _emit(AsyncValue.error(e, StackTrace.current));
+      rethrow;
+    }
+  }
+
+  Future<void> register({
+    required String email,
+    required String password,
+    String? firstName,
+    String? lastName,
+    String? role,
+  }) async {
+    _emit(const AsyncValue.loading());
+    try {
+      final fallback = email.split('@').first;
+      final result = await _repo.register(
+        email: email,
+        password: password,
+        firstName: (firstName == null || firstName.isEmpty) ? fallback : firstName,
+        lastName: (lastName == null || lastName.isEmpty)
+            ? ((firstName == null || firstName.isEmpty) ? fallback : firstName)
+            : lastName,
+        role: role,
+      );
+      // No tokens are issued until email verification: local session only.
+      _emit(AsyncValue.data(_fromUser(
+        result.user.copyWith(role: () => role),
+        authenticated: true,
+      )));
+    } catch (e) {
+      _emit(AsyncValue.error(e, StackTrace.current));
+      rethrow;
+    }
+  }
+
+  Future<void> verifyEmail({required String email, required String code}) async {
+    _emit(const AsyncValue.loading());
+    try {
+      final session = await _repo.verifyEmail(email: email, code: code);
+      _emit(AsyncValue.data(_fromUser(session.user, authenticated: true)));
+    } catch (e) {
+      _emit(AsyncValue.error(e, StackTrace.current));
+      rethrow;
+    }
+  }
+
+  Future<void> resendVerification({required String email}) {
+    return _repo.resendVerification(email: email);
+  }
+
+  Future<void> forgotPassword({required String email}) {
+    return _repo.forgotPassword(email: email);
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) {
+    return _repo.resetPassword(email: email, code: code, newPassword: newPassword);
+  }
+
+  Future<void> logout() async {
+    try {
+      await _repo.logout();
+    } finally {
+      _emit(const AsyncValue.data(AuthState()));
+    }
+  }
+
+  /// PATCH firstName/lastName on the backend (email is immutable server-side).
+  Future<void> updateProfile({String? firstName, String? lastName}) async {
+    final current = state.value;
+    if (current == null || !current.isAuthenticated) return;
+    _emit(const AsyncValue.loading());
+    try {
+      final user = await _repo.updateProfile(
+        firstName: firstName,
+        lastName: lastName,
+      );
+      _emit(AsyncValue.data(_fromUser(user, authenticated: true)));
+    } catch (e) {
+      _emit(AsyncValue.data(current));
+      rethrow;
+    }
+  }
+
+  /// Role has no backend endpoint yet: kept local-only until the
+  /// users module exposes it (see `contracts/README.md` → planned).
   void updateRole(String role) {
     final current = state.value;
     if (current != null) {
@@ -537,9 +651,14 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     }
   }
 
-  void completeProfile() {
+  Future<void> completeProfile() async {
     final current = state.value;
-    if (current != null) {
+    if (current == null || !current.isAuthenticated) return;
+    try {
+      final user = await _repo.updateProfile(onboardingCompleted: true);
+      _emit(AsyncValue.data(_fromUser(user, authenticated: true)));
+    } catch (_) {
+      // Offline-tolerant onboarding: validated locally, synced later.
       _emit(AsyncValue.data(current.copyWith(onboardingCompleted: true)));
     }
   }

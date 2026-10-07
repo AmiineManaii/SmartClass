@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_providers.dart';
+import '../../../../core/error/failure_localization.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -32,25 +34,47 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
+  void _showFailure(Failure failure) {
+    final l10n = failureL10n(failure);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
+    );
+  }
+
+  /// No OAuth endpoint exists yet (`contracts/README.md` → planned).
+  void _showOAuthUnavailable() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.tr('feature_coming_soon'))),
+    );
+  }
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    await ref.read(authStateProvider.notifier).login(
-          _emailController.text.trim(),
-          _passwordController.text,
-        );
-
-    if (mounted) {
-      context.go('/home');
+    try {
+      await ref.read(authStateProvider.notifier).login(
+            _emailController.text.trim(),
+            _passwordController.text,
+          );
+    } on Failure catch (failure) {
+      if (!mounted) return;
+      if (failure.code == 'AUTH_EMAIL_NOT_VERIFIED') {
+        _showFailure(failure);
+        context.go('/verify-email');
+        return;
+      }
+      _showFailure(failure);
+      return;
     }
-  }
 
-  Future<void> _quickLogin(String role) async {
-    final email = role == 'teacher' ? 'prof.amine@smartclass.edu' : 'salma@smartclass.edu';
-    _emailController.text = email;
-    _passwordController.text = 'Password123!';
-    await ref.read(authStateProvider.notifier).login(email, 'Password123!', role: role);
-    if (mounted) {
+    if (!mounted) return;
+    final result = ref.read(authStateProvider).value;
+    if (result == null || !result.isAuthenticated) return;
+    if (!result.emailVerified) {
+      context.go('/verify-email');
+    } else if (!result.onboardingCompleted) {
+      context.go('/role-selection');
+    } else {
       context.go('/home');
     }
   }
@@ -149,59 +173,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   isLoading: isLoading,
                   onPressed: isLoading ? null : _handleLogin,
                 ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0x142D3E8C),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Accès Démo Rapide (1-clic) :',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: isLoading ? null : () => _quickLogin('student'),
-                              icon: const Text('🎓', style: TextStyle(fontSize: 14)),
-                              label: const Text('Étudiant (Salma)'),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                                textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.3)),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: isLoading ? null : () => _quickLogin('teacher'),
-                              icon: const Text('👨‍🏫', style: TextStyle(fontSize: 14)),
-                              label: const Text('Enseignant'),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                                textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                side: BorderSide(color: colorScheme.secondary.withValues(alpha: 0.3)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
@@ -209,8 +180,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           AuthDivider(labelKey: 'or_continue_with'),
           const SizedBox(height: 16),
           SocialAuthRow(
-            onGoogle: () {},
-            onMicrosoft: () {},
+            onGoogle: _showOAuthUnavailable,
+            onMicrosoft: _showOAuthUnavailable,
           ),
           const SizedBox(height: 32),
           Wrap(

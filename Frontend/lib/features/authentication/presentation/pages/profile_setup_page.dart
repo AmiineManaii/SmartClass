@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_providers.dart';
+import '../../../../core/error/failure_localization.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../application/providers/auth_options_provider.dart';
@@ -58,7 +60,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
     }
   }
 
-  void _validate() {
+  Future<void> _validate() async {
     if ((_institution ?? '').isEmpty || (_level ?? '').isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.tr('required_field'))),
@@ -71,8 +73,19 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
       );
       return;
     }
-    ref.read(authStateProvider.notifier).completeProfile();
-    context.go('/home');
+    // PATCH /auth/profile { onboardingCompleted: true } — the notifier
+    // falls back to a local validation when offline.
+    try {
+      await ref.read(authStateProvider.notifier).completeProfile();
+    } on Failure catch (failure) {
+      if (!mounted) return;
+      final l10n = failureL10n(failure);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
+      );
+      return;
+    }
+    if (mounted) context.go('/home');
   }
 
   @override

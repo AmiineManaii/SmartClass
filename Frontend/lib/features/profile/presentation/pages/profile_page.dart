@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/error/failure_localization.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/widgets/app_card.dart';
@@ -382,18 +384,28 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
   
-  void _saveProfile() {
-    if (_formKey.currentState!.validate()) {
-      final displayName = '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}';
-      ref.read(authStateProvider.notifier).updateProfile(
-        displayName: displayName,
-        email: _emailController.text.trim(),
-      );
-      setState(() => _isEditing = false);
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+    // PATCH /auth/profile supports firstName/lastName only — email is
+    // immutable server-side and stays local until the users module lands.
+    try {
+      await ref.read(authStateProvider.notifier).updateProfile(
+            firstName: _firstNameController.text.trim(),
+            lastName: _lastNameController.text.trim(),
+          );
+    } on Failure catch (failure) {
+      if (!mounted) return;
+      final l10n = failureL10n(failure);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('profile_updated'))),
+        SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
       );
+      return;
     }
+    if (!mounted) return;
+    setState(() => _isEditing = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.tr('profile_updated'))),
+    );
   }
   
   void _showChangePasswordDialog() {
@@ -502,7 +514,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               Navigator.pop(context);
               ref.read(authStateProvider.notifier).logout();
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Compte supprimé')),
+                SnackBar(content: Text(context.tr('logged_out'))),
               );
             },
             child: Text(context.tr('delete_account')),

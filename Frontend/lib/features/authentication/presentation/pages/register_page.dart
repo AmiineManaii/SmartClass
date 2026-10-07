@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_providers.dart';
+import '../../../../core/error/failure_localization.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -50,14 +52,35 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       return;
     }
 
-    await ref.read(authStateProvider.notifier).register(
-          _emailController.text.trim(),
-          _passwordController.text,
-          'student',
-        );
+    // The contract requires firstName/lastName; the form has a single
+    // full-name field, so the first token becomes firstName.
+    final parts = _nameController.text
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
+    final firstName = parts.isNotEmpty ? parts.first : '';
+    final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : firstName;
+
+    try {
+      await ref.read(authStateProvider.notifier).register(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            firstName: firstName,
+            lastName: lastName,
+            role: 'STUDENT',
+          );
+    } on Failure catch (failure) {
+      if (!mounted) return;
+      final l10n = failureL10n(failure);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
+      );
+      return;
+    }
 
     if (mounted) {
-      context.go('/role-selection');
+      context.go('/verify-email');
     }
   }
 

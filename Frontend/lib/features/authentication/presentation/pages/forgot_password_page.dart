@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/app_providers.dart';
+import '../../../../core/error/failure_localization.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -153,10 +156,26 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                 AppButton(
                   text: context.tr('resend_email'),
                   trailingIcon: Icons.send_outlined,
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      _startCountdown();
+                  onPressed: () async {
+                    if (!_formKey.currentState!.validate()) return;
+                    try {
+                      await ref.read(authStateProvider.notifier).forgotPassword(
+                            email: _emailController.text.trim(),
+                          );
+                    } on Failure catch (failure) {
+                      if (!context.mounted) return;
+                      final l10n = failureL10n(failure);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(context.tr(l10n.key, args: l10n.args))),
+                      );
+                      return;
                     }
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(context.tr('reset_email_sent'))),
+                    );
+                    _startCountdown();
                   },
                 ),
               ],
@@ -223,7 +242,34 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                       ],
                     ),
                     TextButton(
-                      onPressed: _secondsLeft <= 0 ? _startCountdown : null,
+                      onPressed: _secondsLeft <= 0
+                          ? () async {
+                              if (!_formKey.currentState!.validate()) return;
+                              try {
+                                await ref
+                                    .read(authStateProvider.notifier)
+                                    .forgotPassword(
+                                      email: _emailController.text.trim(),
+                                    );
+                              } on Failure catch (failure) {
+                                if (!context.mounted) return;
+                                final l10n = failureL10n(failure);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(
+                                          context.tr(l10n.key, args: l10n.args))),
+                                );
+                                return;
+                              }
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content:
+                                        Text(context.tr('reset_email_sent'))),
+                              );
+                              _startCountdown();
+                            }
+                          : null,
                       child: Text(context.tr('resend_code')),
                     ),
                   ],
@@ -239,7 +285,14 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                       );
                       return;
                     }
-                    context.go('/login');
+                    // The code itself is verified by POST /auth/reset-password.
+                    context.go(
+                      '/reset-password',
+                      extra: {
+                        'email': _emailController.text.trim(),
+                        'code': _otp.trim(),
+                      },
+                    );
                   },
                 ),
               ],

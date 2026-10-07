@@ -5,6 +5,8 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/typography/typography_config.dart';
 import '../../../../core/typography/typography_provider.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/network/health_remote_datasource.dart';
+import '../../../../core/network/network_providers.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../app/app_providers.dart';
@@ -153,6 +155,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   iconColor: Colors.amber,
                   onTap: () {},
                 ),
+                const Divider(height: 1, indent: 56),
+                _buildServerStatusTile(context),
               ],
             ),
             const SizedBox(height: 24),
@@ -453,7 +457,77 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       onTap: onTap,
     );
   }
-  
+
+  /// Backend diagnostic probes (`GET /health/live`, `GET /health/ready`).
+  /// One-shot fetch with user-triggered refresh — never polled.
+  Widget _buildServerStatusTile(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final health = ref.watch(serverHealthProvider);
+
+    final (String subtitle, Color dotColor, Widget? trailing) = health.when(
+      data: (status) {
+        final online = status.ready && status.alive;
+        final detail = status.dbLatencyMs != null
+            ? context.tr('server_db_latency', args: {'ms': '${status.dbLatencyMs}'})
+            : (online ? context.tr('server_online') : context.tr('server_offline'));
+        return (
+          detail,
+          online ? colorScheme.tertiary : colorScheme.error,
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: context.tr('try_again'),
+            onPressed: () => ref.invalidate(serverHealthProvider),
+          ),
+        );
+      },
+      loading: () => (
+        context.tr('server_checking'),
+        colorScheme.outline,
+        const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+      error: (_, _) => (
+        context.tr('server_offline'),
+        colorScheme.error,
+        IconButton(
+          icon: const Icon(Icons.refresh_rounded),
+          tooltip: context.tr('try_again'),
+          onPressed: () => ref.invalidate(serverHealthProvider),
+        ),
+      ),
+    );
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: dotColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(Icons.dns_rounded, color: dotColor, size: 22),
+      ),
+      title: Text(context.tr('server_status')),
+      subtitle: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Flexible(child: Text(subtitle)),
+        ],
+      ),
+      trailing: trailing,
+    );
+  }
+
   Widget _buildVersionInfo(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;

@@ -510,7 +510,78 @@ L'architecture est prête pour l'intégration backend :
 - Créateur de cours IA (UC1) : `courses/presentation/pages/ai_course_creator_page.dart`, route top-level `/courses/ai-create` (bouton "Générer maintenant" de la bannière). Options mockées : `mock_ai_course_options_datasource.dart` + `ai_course_options_provider.dart`.
 - Shell de navigation inchangé (5 onglets) : seule la vue `/home` varie selon le rôle.
 
+### Vérification email + nouveau mot de passe (dossiers déplacés vers `assets/design/ancien/`)
+
+- `VerifyEmailPage` (`/verify-email`, onboarding) : OTP 6 cases + clavier numérique custom. Flux : register → `/verify-email` → `/role-selection`.
+  - Widgets : `otp_display_boxes.dart` (états filled/active/empty pilotés par valeur externe), `numeric_keypad.dart` (layout téléphonique standard).
+  - Compte à rebours 45s local (pattern `Timer.periodic` UI déjà établi dans `forgot_password_page`) + renvoi + option SMS.
+- `ResetPasswordPage` (`/reset-password`, publique) : hero `lock_reset` + badge, jauge 4 segments, checklist 4 règles, badge "Identiques", conseil académique, CTA 3 états (idle → updating → success → `/login`). Flux : forgot `Vérifier le code` → `/reset-password` → `/login`.
+  - Widgets : `password_security_meter.dart` (score 0..4), `password_rule_checklist.dart` (labels via `context.tr`, ordre aligné sur `ruleKeys`).
+  - Règle : maquettes développées et complètes → dossiers déplacés vers `ancien/`. `smartclass_academic_precision/` restant = DESIGN.md seul (tokens, pas d'écran).
+
 ---
 
-*Dernière mise à jour : 2026-10-02*
-*Version : 1.1.0*
+## 15. Intégration Backend — Auth & Health (connectés)
+
+> Backend **lecture seule** : aucune modification côté `Backend/`. Seuls les endpoints
+> **implémentés** (`contracts/README.md` → ✅) sont connectés. Les autres modules
+> (users, groups, courses, exams, …) restent sur mocks (📋 planned).
+
+### Endpoints connectés
+
+| # | Méthode | Path | Auth | Usage frontend |
+|---|---------|------|------|----------------|
+| 1 | POST | `/api/v1/auth/register` | — | `register_page` (firstName/lastName splittés, rôle `STUDENT`) |
+| 2 | POST | `/api/v1/auth/verify-email` | — | `verify_email_page` (retourne tokens → session) |
+| 3 | POST | `/api/v1/auth/resend-verification` | — | `verify_email_page` (renvoi) |
+| 4 | POST | `/api/v1/auth/login` | — | `login_page` (403 non-vérifié → `/verify-email`) |
+| 5 | POST | `/api/v1/auth/refresh` | body | `ApiClient` auto-refresh 401 + retry unique |
+| 6 | POST | `/api/v1/auth/forgot-password` | — | `forgot_password_page` (boutons renvoi) |
+| 7 | POST | `/api/v1/auth/reset-password` | — | `reset_password_page` (400 → `INVALID_CODE`) |
+| 8 | POST | `/api/v1/auth/logout` | — | `AuthNotifier.logout` (best-effort + clear local) |
+| 9 | GET | `/api/v1/auth/me` | Bearer | restauration session au démarrage |
+| 10 | GET | `/api/v1/auth/profile` | Bearer | `profile_page` (lecture) |
+| 11 | PATCH | `/api/v1/auth/profile` | Bearer | `profile_page` (first/last), `completeProfile` |
+| 12 | GET | `/health/live` | — | `serverHealthProvider` (tuile Settings) |
+| 13 | GET | `/health/ready` | — | idem (latence BDD affichée) |
+
+Conventions : enveloppe `{ data: ... }`, erreurs `{ error: { code, message, details, requestId } }`,
+Bearer JWT, rôles backend `TEACHER/STUDENT/ADMIN` ↔ app `teacher/student/admin`
+(`UserModel.appRoleToApi`, lowercase à la réception).
+
+### Nouveaux fichiers (frontend uniquement)
+
+```
+lib/core/network/
+  api_config.dart            # baseUrl (--dart-define=API_BASE_URL, défaut :3000), timeouts, clés storage
+  api_client.dart            # Dio + X-Request-Id + Bearer + refresh single-flight + retry 401
+  api_exception.dart         # ApiException → Failure (codes stables du contrat)
+  token_storage.dart         # SharedPreferences (access + refresh)
+  network_providers.dart     # tokenStorage/apiClient/health providers + serverHealthProvider
+  health_remote_datasource.dart
+lib/core/error/failure_localization.dart  # Failure/code → clé i18n (failureL10n)
+lib/features/authentication/
+  domain/entities/user_entity.dart
+  domain/repositories/auth_repository.dart   # 11 méthodes, throw Failure
+  infrastructure/models/{user_model.dart, auth_session.dart}
+  infrastructure/datasources/auth_remote_datasource.dart
+  infrastructure/repositories/auth_repository_impl.dart  # persiste les tokens
+  application/providers/auth_repository_provider.dart   # seam mock ↔ réel
+```
+
+### Points d'attention
+
+- `AuthNotifier` (dans `lib/app/app_providers.dart`) orchestre le repository ; restauration
+  silencieuse via refresh au démarrage ; `expireSession()` branché sur `ApiClient.onUnauthorized`.
+- `AuthState.emailVerified` ajouté : pilote la nav post-login (non-vérifié → `/verify-email`).
+- `updateRole` reste **local** (aucun endpoint rôle côté backend) ; email **immutable**
+  (PATCH profile : firstName/lastName/birthDate/onboardingCompleted uniquement).
+- Boîte "Accès Démo Rapide" supprimée du login (incompatible backend réel) ; boutons
+  sociaux → snackbar `feature_coming_soon` (pas d'OAuth au contrat).
+- Messages backend bruts jamais affichés : confirmations localisées (`verification_sent`, …),
+  erreurs mappées par code (`failureL10n`).
+
+---
+
+*Dernière mise à jour : 2026-10-07*
+*Version : 1.3.0*
