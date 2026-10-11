@@ -26,17 +26,29 @@ export class NodemailerSmtpEmailAdapter implements EmailPort {
       from: env.SMTP_FROM,
     };
 
-    if (this.config.pass && this.config.pass.trim().length > 0) {
-      this.transporter = nodemailer.createTransport({
-        host: this.config.host,
-        port: this.config.port,
-        secure: this.config.secure,
-        auth: {
-          user: this.config.user,
-          pass: this.config.pass,
-        },
-      });
-    }
+    // Local relays without credentials (MailHog/Mailpit on port 1025)
+    // must also get a transporter — auth is only added when user+pass exist.
+    const hasAuth =
+      this.config.user.trim().length > 0 &&
+      !!this.config.pass &&
+      this.config.pass.trim().length > 0;
+
+    this.transporter = nodemailer.createTransport({
+      host: this.config.host,
+      port: this.config.port,
+      secure: this.config.secure,
+      // Plain local relays don't speak TLS: skip STARTTLS only for them.
+      // Authenticated relays (e.g. Gmail on 587) keep the TLS upgrade.
+      ignoreTLS: !this.config.secure && !hasAuth,
+      ...(hasAuth
+        ? {
+            auth: {
+              user: this.config.user,
+              pass: this.config.pass as string,
+            },
+          }
+        : {}),
+    });
   }
 
   public async sendVerificationEmail(email: string, firstName: string, code: string): Promise<void> {
@@ -75,7 +87,7 @@ export class NodemailerSmtpEmailAdapter implements EmailPort {
     code: string,
     type: 'verification' | 'password-reset',
   ): Promise<void> {
-    if (this.transporter && this.config.pass) {
+    if (this.transporter) {
       try {
         await this.transporter.sendMail({
           from: this.config.from,
@@ -86,8 +98,8 @@ export class NodemailerSmtpEmailAdapter implements EmailPort {
         });
 
         logger.info(
-          { to, type, sender: this.config.user },
-          `📧 [SMTP LIVE] Email sent successfully to ${to} via ${this.config.user}`,
+          { to, type, host: this.config.host },
+          `📧 [SMTP LIVE] Email sent successfully to ${to} via ${this.config.host}:${this.config.port}`,
         );
         return;
       } catch (err) {
@@ -98,10 +110,10 @@ export class NodemailerSmtpEmailAdapter implements EmailPort {
       }
     }
 
-    // Fallback: Log code clearly when SMTP password is not provided or in dev/test
+    // Fallback: Log code clearly when the relay is unreachable (dev/test)
     logger.info(
       { to, recipient: to, otp: code, type, sender: this.config.user },
-      `📧 [SMTP MOCK/DEV] (${type.toUpperCase()}) Code for ${to}: >>> ${code} <<< [Configured sender: ${this.config.user} | Configure SMTP_PASS in .env to deliver real emails]`,
+      `📧 [SMTP MOCK/DEV] (${type.toUpperCase()}) Code for ${to}: >>> ${code} <<< [Relay: ${this.config.host}:${this.config.port}]`,
     );
   }
 

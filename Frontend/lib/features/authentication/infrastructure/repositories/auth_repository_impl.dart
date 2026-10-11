@@ -71,6 +71,11 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<bool> checkEmailAvailability({required String email}) {
+    return _guard(() => _remote.checkEmail(email: email));
+  }
+
+  @override
   Future<String> resendVerification({required String email}) {
     return _guard(() async {
       final data = await _remote.resendVerification(email: email);

@@ -10,6 +10,7 @@ import { JoseTokenServiceAdapter } from './infrastructure/jose-token-service.ada
 import { NodemailerSmtpEmailAdapter } from './infrastructure/nodemailer-smtp-email.adapter.js';
 import { RegisterUseCase } from './application/register.use-case.js';
 import { VerifyEmailUseCase } from './application/verify-email.use-case.js';
+import { CheckEmailUseCase } from './application/check-email.use-case.js';
 import { ResendVerificationUseCase } from './application/resend-verification.use-case.js';
 import { LoginUseCase } from './application/login.use-case.js';
 import { RefreshTokenUseCase } from './application/refresh-token.use-case.js';
@@ -104,9 +105,12 @@ export const createAuthModule = (options: AuthModuleOptions = {}): AuthModule =>
   const getMeUseCase = new GetMeUseCase(authRepository);
   const updateProfileUseCase = new UpdateProfileUseCase(authRepository);
 
+  const checkEmailUseCase = new CheckEmailUseCase(authRepository);
+
   const controller = new AuthController(
     registerUseCase,
     verifyEmailUseCase,
+    checkEmailUseCase,
     resendVerificationUseCase,
     loginUseCase,
     refreshTokenUseCase,

@@ -22,11 +22,15 @@ class MockAuthOptionsDataSource {
       ];
 
   List<String> studyLevels() => const [
-        'Licence 1 - Informatique',
-        'Licence 3 - Informatique',
-        'Master 1 - Informatique & Data Science',
-        'Master 2 - Intelligence Artificielle',
-        'Doctorat - Informatique',
+        'Lycée',
+        'Prépa',
+        'Licence 1',
+        'Licence 2',
+        'Licence 3',
+        'Master 1',
+        'Master 2',
+        'Doctorat',
+        'Autre',
       ];
 
   List<AuthInterestOption> interests() => const [

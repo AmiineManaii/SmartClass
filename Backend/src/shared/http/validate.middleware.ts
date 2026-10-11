@@ -15,6 +15,23 @@ const formatZodErrors = (error: ZodError): ErrorDetail[] => {
   }));
 };
 
+const setValidatedQuery = (req: Request, data: unknown): void => {
+  try {
+    req.query = data as typeof req.query;
+  } catch {
+    // Express 5 exposes req.query as getter-only: stash the coerced values
+    // where controllers can read them (see validatedQuery).
+    (req as unknown as { validatedQuery: unknown }).validatedQuery = data;
+  }
+};
+
+/**
+ * Returns the validated (and coerced) query object previously stored by
+ * {@link validate}, falling back to the raw query when no query schema ran.
+ */
+export const validatedQuery = <T>(req: Request): T =>
+  ((req as unknown as { validatedQuery?: unknown }).validatedQuery ?? req.query) as T;
+
 export const validate = (schemas: ValidationSchemas) => {
   return (req: Request, _res: Response, next: NextFunction): void => {
     const details: ErrorDetail[] = [];
@@ -33,7 +50,7 @@ export const validate = (schemas: ValidationSchemas) => {
       if (!result.success) {
         details.push(...formatZodErrors(result.error));
       } else {
-        req.query = result.data as typeof req.query;
+        setValidatedQuery(req, result.data);
       }
     }
 

@@ -507,6 +507,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get no_courses => 'No courses available';
 
   @override
+  String get no_class_title => 'No class joined';
+
+  @override
+  String get no_class_message =>
+      'You are not enrolled in any class. Please contact your institution\'s administration to join your class.';
+
+  @override
+  String get no_assignments => 'No homework for now';
+
+  @override
+  String get notifications_empty => 'No notifications yet';
+
+  @override
   String get join_course => 'Join a course';
 
   @override
@@ -1617,4 +1630,604 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get splash_loading_3 => 'Ready for academic excellence';
+
+  @override
+  String admin_greeting(Object name) {
+    return 'Hello $name';
+  }
+
+  @override
+  String get admin_supervision => 'General Supervision';
+
+  @override
+  String get admin_stat_students => 'Students';
+
+  @override
+  String admin_stat_students_badge(Object count) {
+    return '+$count this month';
+  }
+
+  @override
+  String get admin_stat_teachers => 'Teachers';
+
+  @override
+  String admin_stat_teachers_badge(Object pct) {
+    return '$pct% active';
+  }
+
+  @override
+  String get admin_stat_classes => 'Classes';
+
+  @override
+  String admin_stat_classes_badge(Object count) {
+    return '$count programs';
+  }
+
+  @override
+  String get admin_stat_frauds => 'Fraud Alerts';
+
+  @override
+  String get admin_stat_frauds_badge => 'Action Required';
+
+  @override
+  String get admin_shortcuts_title => 'Management Shortcuts';
+
+  @override
+  String get admin_shortcuts_sub => 'Direct access to key admin modules';
+
+  @override
+  String get admin_nav_classes => 'Class Management';
+
+  @override
+  String get admin_nav_classes_desc => 'Create, edit & assign';
+
+  @override
+  String get admin_nav_teachers => 'Teacher Management';
+
+  @override
+  String get admin_nav_teachers_desc => 'Roles & academic schedules';
+
+  @override
+  String get admin_nav_students => 'Student Management';
+
+  @override
+  String get admin_nav_students_desc => 'Enrollments, records & cohorts';
+
+  @override
+  String get admin_nav_planning => 'Scheduling & Timetables';
+
+  @override
+  String get admin_nav_planning_desc => 'Rooms & videoconferences';
+
+  @override
+  String get admin_alerts_title => 'Alerts & Incidents';
+
+  @override
+  String admin_view_all(Object count) {
+    return 'See all ($count)';
+  }
+
+  @override
+  String get admin_review_incident => 'Review incident';
+
+  @override
+  String get admin_ignore => 'Ignore';
+
+  @override
+  String get admin_to_verify => 'To verify';
+
+  @override
+  String get admin_validated => 'Schedule validated';
+
+  @override
+  String get admin_tab_dashboard => 'Dashboard';
+
+  @override
+  String get admin_tab_classes => 'Classes';
+
+  @override
+  String get admin_tab_planning => 'Schedule';
+
+  @override
+  String get admin_tab_frauds => 'Fraud';
+
+  @override
+  String get admin_classes_title => 'Class Management';
+
+  @override
+  String get admin_classes_sub =>
+      'Supervise cohorts, student groups and teaching teams in real time.';
+
+  @override
+  String get admin_search_class_hint => 'Search a class, program, code';
+
+  @override
+  String get admin_filter_licence => 'Bachelor';
+
+  @override
+  String get admin_filter_master => 'Master';
+
+  @override
+  String get admin_filter_doctorat => 'Doctorate';
+
+  @override
+  String get admin_stat_cohorts => 'Cohorts';
+
+  @override
+  String get admin_active_promos => 'Active cohorts';
+
+  @override
+  String get admin_sort_by => 'Sort by program';
+
+  @override
+  String get admin_active_badge => 'Active';
+
+  @override
+  String admin_students_count(Object count) {
+    return '$count Students';
+  }
+
+  @override
+  String admin_teachers_count(Object count) {
+    return '$count Teachers';
+  }
+
+  @override
+  String admin_courses_active(Object count) {
+    return '$count Active courses';
+  }
+
+  @override
+  String admin_presence(Object pct) {
+    return 'Attendance $pct%';
+  }
+
+  @override
+  String get admin_exam_ongoing => 'Exam in progress';
+
+  @override
+  String get admin_new_class => 'New Class';
+
+  @override
+  String admin_sync_ent(Object ago) {
+    return 'Automatic sync with the academic ENT server • Last updated $ago';
+  }
+
+  @override
+  String get admin_sync_ago => '5 min ago';
+
+  @override
+  String get admin_edit_class_file => 'Edit class record';
+
+  @override
+  String get admin_view_timetable => 'View timetable';
+
+  @override
+  String get admin_send_notice => 'Broadcast academic notice';
+
+  @override
+  String get admin_archive_cohort => 'Archive cohort';
+
+  @override
+  String get admin_space_admin => 'Administration Space';
+
+  @override
+  String get admin_create_desc =>
+      'Set up a new student cohort, define its academic attachment and prepare teaching assignments.';
+
+  @override
+  String get admin_registry_synced => 'Academic registry synced';
+
+  @override
+  String get admin_step_1_2 => 'Step 1/2';
+
+  @override
+  String get admin_class_name => 'Class name';
+
+  @override
+  String get admin_required => 'Required';
+
+  @override
+  String get admin_class_name_hint =>
+      'e.g. Software Engineering 1A, Mathematics…';
+
+  @override
+  String get admin_class_name_note =>
+      'The name will be visible to students on their schedule and report card.';
+
+  @override
+  String get admin_study_level => 'Study level';
+
+  @override
+  String get admin_quick_pick => 'Quick picks';
+
+  @override
+  String get admin_department => 'Department / Major';
+
+  @override
+  String get admin_capacity => 'Capacity';
+
+  @override
+  String get admin_capacity_hint => 'Recommended maximum gauge';
+
+  @override
+  String admin_places(Object count) {
+    return '$count seats';
+  }
+
+  @override
+  String get admin_students_max => 'Max students';
+
+  @override
+  String get admin_description_label => 'Description & Details';
+
+  @override
+  String get admin_optional => 'Optional';
+
+  @override
+  String get admin_description_hint =>
+      'Describe teaching goals, prerequisites or cohort specifics (e.g. work-study program, international track)…';
+
+  @override
+  String admin_char_count(Object max, Object used) {
+    return '$used / $max characters';
+  }
+
+  @override
+  String get admin_auto_params => 'Automated settings';
+
+  @override
+  String get admin_forum_title => 'Forum & Debate Space';
+
+  @override
+  String get admin_forum_desc => 'Collaborative channel moderated by teachers';
+
+  @override
+  String get admin_ent_sync_title => 'ENT Sync';
+
+  @override
+  String get admin_ent_sync_desc =>
+      'Automatic link with the Apogée / LDAP directory';
+
+  @override
+  String get admin_access_note =>
+      'Student access and invitations will be generated upon validation.';
+
+  @override
+  String get admin_create_group => 'Create group';
+
+  @override
+  String get admin_save_draft => 'Save as draft';
+
+  @override
+  String get admin_add_students => 'Add Students';
+
+  @override
+  String admin_class_label(Object name) {
+    return 'Class: $name';
+  }
+
+  @override
+  String get admin_import_csv => 'Import via CSV';
+
+  @override
+  String get admin_direct_assign => 'Direct assignment';
+
+  @override
+  String admin_places_left(Object count) {
+    return '$count seats left';
+  }
+
+  @override
+  String admin_enrolled(Object capacity, Object enrolled) {
+    return '$enrolled/$capacity enrolled';
+  }
+
+  @override
+  String get admin_search_person_hint => 'Search by name or email…';
+
+  @override
+  String admin_all_count(Object count) {
+    return 'All ($count)';
+  }
+
+  @override
+  String admin_unassigned(Object count) {
+    return 'Unassigned ($count)';
+  }
+
+  @override
+  String get admin_avg_filter => 'Average > 14';
+
+  @override
+  String get admin_select_all => 'Select all';
+
+  @override
+  String admin_selected_count(Object count) {
+    return '$count students selected';
+  }
+
+  @override
+  String admin_selected_footer(Object count) {
+    return '$count selected';
+  }
+
+  @override
+  String get admin_assign_now => 'Immediate ENT assignment';
+
+  @override
+  String get admin_instant_sync => 'Instant sync';
+
+  @override
+  String get admin_assign_to_class => 'Assign to class';
+
+  @override
+  String get admin_cancel_op => 'Cancel operation';
+
+  @override
+  String get admin_assign_teachers => 'Assign Teachers';
+
+  @override
+  String get admin_academic_year => 'Academic year 2024-2025';
+
+  @override
+  String admin_semester_dept(Object dept, Object sem) {
+    return 'Semester $sem • $dept Department';
+  }
+
+  @override
+  String get admin_course_coverage => 'Course coverage';
+
+  @override
+  String admin_assigned_ratio(Object done, Object pct, Object total) {
+    return '$done of $total assigned ($pct%)';
+  }
+
+  @override
+  String admin_subjects_required(Object count) {
+    return '$count subjects required';
+  }
+
+  @override
+  String admin_open_posts(Object count) {
+    return '$count open positions';
+  }
+
+  @override
+  String get admin_search_teacher_hint => 'Search a teacher, department…';
+
+  @override
+  String get admin_available_teachers => 'Available faculty';
+
+  @override
+  String get admin_sort_affinity => 'Sorted by teaching fit';
+
+  @override
+  String get admin_add => 'Add';
+
+  @override
+  String admin_assigned_hours(Object hours) {
+    return 'Assigned • $hours';
+  }
+
+  @override
+  String admin_avail_hours(Object hours) {
+    return '$hours available / week';
+  }
+
+  @override
+  String get admin_subject_assigned => 'Assigned subject';
+
+  @override
+  String get admin_not_assigned => 'Unassigned';
+
+  @override
+  String get admin_pending => 'Pending';
+
+  @override
+  String get admin_full_load => 'Full load (exemption)';
+
+  @override
+  String get admin_dean_reserve => 'Subject to dean approval';
+
+  @override
+  String admin_teachers_selected(Object count) {
+    return '$count teacher selected';
+  }
+
+  @override
+  String admin_dep_info(Object count) {
+    return 'IT Dept. ($count)';
+  }
+
+  @override
+  String admin_available_f(Object count) {
+    return 'Available ($count)';
+  }
+
+  @override
+  String admin_assigned_f(Object count) {
+    return 'Assigned ($count)';
+  }
+
+  @override
+  String get admin_confirm_assign => 'Confirm assignment';
+
+  @override
+  String get admin_cancel => 'Cancel';
+
+  @override
+  String get admin_ent_sync_now => 'Immediate ENT sync';
+
+  @override
+  String get admin_timetable => 'Timetables';
+
+  @override
+  String get admin_active_promo => 'Active cohort';
+
+  @override
+  String admin_semester(Object n) {
+    return 'Semester $n';
+  }
+
+  @override
+  String get admin_today => 'Today';
+
+  @override
+  String admin_hours_scheduled(Object hours) {
+    return '$hours scheduled';
+  }
+
+  @override
+  String admin_no_conflict(Object count) {
+    return '$count conflict';
+  }
+
+  @override
+  String admin_rate(Object pct) {
+    return '$pct rate';
+  }
+
+  @override
+  String get admin_day_planning => 'Day schedule';
+
+  @override
+  String admin_day_courses(Object count) {
+    return '$count classes';
+  }
+
+  @override
+  String get admin_makeup => 'Makeup';
+
+  @override
+  String get admin_free_slot => 'Free slot';
+
+  @override
+  String get admin_free_desc =>
+      'No class scheduled. Available for a makeup session, tutoring or project defense.';
+
+  @override
+  String get admin_new_slot => 'New slot';
+
+  @override
+  String get admin_take_attendance => 'Take attendance';
+
+  @override
+  String get admin_book => 'Reserve';
+
+  @override
+  String admin_room_available(Object room) {
+    return '$room room available';
+  }
+
+  @override
+  String get admin_event_cm => 'Lecture';
+
+  @override
+  String get admin_event_tp => 'Lab Session';
+
+  @override
+  String get admin_event_td => 'Tutorial';
+
+  @override
+  String get admin_break_short => 'Recess';
+
+  @override
+  String get admin_break_lunch => 'Lunch Break & Office Hours';
+
+  @override
+  String get admin_confirmed_open => 'Confirmed • Roll call open';
+
+  @override
+  String get admin_session_validated => 'Session validated & equipment booked';
+
+  @override
+  String get admin_group_full => 'Group full';
+
+  @override
+  String get admin_hybrid_on => 'Hybrid mode on • Synchronous Zoom link sent';
+
+  @override
+  String admin_room_label(Object room) {
+    return 'Room $room';
+  }
+
+  @override
+  String get admin_fraud_title => 'Fraud Reports';
+
+  @override
+  String get admin_fraud_sub => 'Discipline & Exam Monitoring';
+
+  @override
+  String get admin_antifraud_on => 'Anti-Cheat System Active';
+
+  @override
+  String get admin_ai_watch => 'AI Monitoring';
+
+  @override
+  String get admin_unresolved => 'Unresolved';
+
+  @override
+  String get admin_resolved_month => 'Resolved this month';
+
+  @override
+  String get admin_integrity => 'Integrity';
+
+  @override
+  String admin_unresolved_f(Object count) {
+    return 'Unresolved ($count)';
+  }
+
+  @override
+  String admin_ongoing(Object count) {
+    return 'In progress ($count)';
+  }
+
+  @override
+  String admin_resolved_f(Object count) {
+    return 'Resolved ($count)';
+  }
+
+  @override
+  String get admin_critical => 'Critical';
+
+  @override
+  String get admin_medium => 'Medium';
+
+  @override
+  String get admin_closed => 'Dismissed';
+
+  @override
+  String get admin_status_untreated => 'Untreated';
+
+  @override
+  String get admin_status_ongoing => 'In progress';
+
+  @override
+  String get admin_view_video => 'View video/log';
+
+  @override
+  String get admin_sanction => 'Sanction';
+
+  @override
+  String get admin_network_logs => 'Network logs';
+
+  @override
+  String get admin_summon => 'Summon';
+
+  @override
+  String get admin_audit_history => 'Audit history';
+
+  @override
+  String get admin_export_audit => 'Export audit log (PDF/CSV)';
+
+  @override
+  String get admin_compliance =>
+      'Compliant with the academic integrity charter & CNIL / GDPR regulations';
+
+  @override
+  String get admin_reason => 'Reason:';
+
+  @override
+  String get admin_resolution => 'Resolution:';
 }

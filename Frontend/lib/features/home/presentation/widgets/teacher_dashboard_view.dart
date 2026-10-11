@@ -19,7 +19,7 @@ class TeacherDashboardView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final user = ref.watch(authStateProvider).value;
+    final user = ref.watch(authStateProvider).valueOrNull;
     final liveSession = ref.watch(teacherLiveSessionProvider);
     final stats = ref.watch(teacherStatsProvider);
     final classes = ref.watch(teacherClassesProvider);

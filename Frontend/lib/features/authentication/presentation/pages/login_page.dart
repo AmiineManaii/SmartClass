@@ -59,8 +59,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     } on Failure catch (failure) {
       if (!mounted) return;
       if (failure.code == 'AUTH_EMAIL_NOT_VERIFIED') {
-        _showFailure(failure);
-        context.go('/verify-email');
+        final email = _emailController.text.trim();
+        try {
+          await ref.read(authStateProvider.notifier).resendVerification(email: email);
+        } catch (_) {}
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('verification_sent'))),
+        );
+        context.go('/verify-email?email=${Uri.encodeComponent(email)}');
         return;
       }
       _showFailure(failure);
@@ -68,10 +75,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
 
     if (!mounted) return;
-    final result = ref.read(authStateProvider).value;
+    final result = ref.read(authStateProvider).valueOrNull;
     if (result == null || !result.isAuthenticated) return;
     if (!result.emailVerified) {
-      context.go('/verify-email');
+      final email = result.email ?? _emailController.text.trim();
+      context.go('/verify-email?email=${Uri.encodeComponent(email)}');
     } else if (!result.onboardingCompleted) {
       context.go('/role-selection');
     } else {

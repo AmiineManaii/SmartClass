@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -31,14 +33,47 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _acceptTerms = false;
+  Timer? _emailDebounce;
+  bool _checkingEmail = false;
+  bool _emailTaken = false;
+  String _lastCheckedEmail = '';
 
   @override
   void dispose() {
+    _emailDebounce?.cancel();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
+  }
+
+  /// Live availability check, debounced so typing never spams the API.
+  /// Silent on transport errors — submit surfaces them via the 409 path.
+  void _onEmailChanged(String value) {
+    _emailDebounce?.cancel();
+    final email = value.trim();
+    if (_emailTaken) setState(() => _emailTaken = false);
+    if (email.isEmpty || !email.isValidEmail || email == _lastCheckedEmail) return;
+    _emailDebounce = Timer(const Duration(milliseconds: 600), () async {
+      if (!mounted) return;
+      setState(() => _checkingEmail = true);
+      try {
+        final available = await ref
+            .read(authStateProvider.notifier)
+            .checkEmailAvailability(email);
+        if (!mounted || _emailController.text.trim() != email) return;
+        _lastCheckedEmail = email;
+        setState(() {
+          _checkingEmail = false;
+          _emailTaken = !available;
+        });
+        if (!available) _formKey.currentState?.validate();
+      } catch (_) {
+        if (!mounted || _emailController.text.trim() != email) return;
+        setState(() => _checkingEmail = false);
+      }
+    });
   }
 
   Future<void> _handleRegister() async {
@@ -68,19 +103,43 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             password: _passwordController.text,
             firstName: firstName,
             lastName: lastName,
-            role: 'STUDENT',
           );
     } on Failure catch (failure) {
       if (!mounted) return;
-      final l10n = failureL10n(failure);
+      if (failure.code == 'EMAIL_ALREADY_USED') {
+        final email = _emailController.text.trim();
+        try {
+          await ref.read(authStateProvider.notifier).resendVerification(email: email);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(context.tr('verification_sent'))),
+            );
+            context.go('/verify-email?email=${Uri.encodeComponent(email)}');
+            return;
+          }
+        } catch (_) {
+          // If resend failed, continue displaying standard failure message
+        }
+      }
+      String message;
+      if (failure is ValidationFailure && failure.fieldErrors.isNotEmpty) {
+        message = failure.fieldErrors.values.join('\n');
+      } else {
+        final l10n = failureL10n(failure);
+        final translated = context.tr(l10n.key, args: l10n.args);
+        message = (translated == l10n.key || translated.isEmpty)
+            ? failure.message
+            : translated;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
+        SnackBar(content: Text(message)),
       );
       return;
     }
 
     if (mounted) {
-      context.go('/verify-email');
+      final email = _emailController.text.trim();
+      context.go('/verify-email?email=${Uri.encodeComponent(email)}');
     }
   }
 
@@ -139,12 +198,26 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   prefixIcon: const Icon(Icons.mail_outline),
+                  suffixIcon: _checkingEmail
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: Padding(
+                            padding: EdgeInsets.all(12),
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : null,
+                  onChanged: _onEmailChanged,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return context.tr('required_field');
                     }
                     if (!value.isValidEmail) {
                       return context.tr('invalid_email');
+                    }
+                    if (_emailTaken) {
+                      return context.tr('email_already_exists');
                     }
                     return null;
                   },

@@ -44,6 +44,16 @@ class AuthRemoteDataSource {
     return apiEnvelope(res);
   }
 
+  Future<bool> checkEmail({required String email}) async {
+    final res = await _client.post<dynamic>(
+      '$_base/auth/check-email',
+      authenticated: false,
+      data: {'email': email},
+    );
+    final data = apiEnvelope(res);
+    return data['available'] as bool? ?? true;
+  }
+
   Future<Map<String, dynamic>> resendVerification({
     required String email,
   }) async {

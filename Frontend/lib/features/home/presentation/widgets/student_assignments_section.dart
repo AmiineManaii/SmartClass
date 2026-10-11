@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/localization/app_localizations.dart';
-import '../../infrastructure/datasources/mock_student_dashboard_datasource.dart';
+import '../../domain/entities/student_assignment.dart';
+import 'student_empty_list_hint.dart';
 
 class StudentAssignmentsSection extends StatelessWidget {
   final List<StudentAssignment> assignments;
@@ -95,14 +96,20 @@ class StudentAssignmentsSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        // Assignments cards list
-        for (int i = 0; i < assignments.length; i++) ...[
-          _AssignmentCard(
-            assignment: assignments[i],
-            onAction: () => onAssignmentAction?.call(assignments[i].id),
-          ),
-          if (i < assignments.length - 1) const SizedBox(height: 10),
-        ],
+        // Assignments cards list (teacher-assigned; empty state until added)
+        if (assignments.isEmpty)
+          StudentEmptyListHint(
+            icon: Icons.assignment_outlined,
+            message: context.tr('no_assignments'),
+          )
+        else
+          for (int i = 0; i < assignments.length; i++) ...[
+            _AssignmentCard(
+              assignment: assignments[i],
+              onAction: () => onAssignmentAction?.call(assignments[i].id),
+            ),
+            if (i < assignments.length - 1) const SizedBox(height: 10),
+          ],
       ],
     );
   }

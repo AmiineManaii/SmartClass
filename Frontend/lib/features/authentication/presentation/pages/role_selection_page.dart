@@ -18,7 +18,14 @@ class RoleSelectionPage extends ConsumerStatefulWidget {
 }
 
 class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
-  String _selectedRole = 'student';
+  late String _selectedRole;
+
+  @override
+  void initState() {
+    super.initState();
+    final role = ref.read(authStateProvider).valueOrNull?.role;
+    _selectedRole = (role != null && role.isNotEmpty) ? role : 'student';
+  }
 
   void _confirm() {
     ref.read(authStateProvider.notifier).updateRole(_selectedRole);

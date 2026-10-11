@@ -62,6 +62,12 @@ export const resendVerificationSchema = z
   })
   .strict();
 
+export const checkEmailSchema = z
+  .object({
+    email: z.string().trim().email('Invalid email address'),
+  })
+  .strict();
+
 export const refreshTokenSchema = z
   .object({
     refreshToken: z.string().trim().min(10, 'Invalid refresh token format'),
@@ -109,6 +115,7 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>;
+export type CheckEmailInput = z.infer<typeof checkEmailSchema>;
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

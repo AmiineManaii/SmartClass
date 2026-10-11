@@ -1,0 +1,494 @@
+openapi: 3.1.0
+info:
+  title: SmartClass API — Groups & Classes
+  version: 0.1.0
+  description: >
+    Class-group administration backing the admin screens (class management,
+    creation, student/teacher assignment). ADMIN-only for now; TEACHER-scoped
+    reads for own classes arrive in a later iteration. RG1 applies
+    (students assigned must carry the STUDENT role, teachers the TEACHER role).
+servers:
+  - url: /api/v1
+    description: SmartClass API v1 prefix
+tags:
+  - name: groups
+    description: Class-group (cohort) administration
+paths:
+  /groups:
+    get:
+      operationId: listClassGroups
+      tags:
+        - groups
+      summary: List class groups with member and teacher counts
+      description: >
+        Paginated cohort list for the admin class-management screen.
+        `referent` is the designated referent teacher, if any.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - $ref: './common.yaml#/components/parameters/PageParam'
+        - $ref: './common.yaml#/components/parameters/LimitParam'
+        - $ref: './common.yaml#/components/parameters/SortParam'
+        - name: level
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [LICENCE, MASTER, DOCTORAT]
+          description: Filter by study level
+          example: LICENCE
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          description: Case-insensitive match on class name or department
+          example: Informatique
+      responses:
+        '200':
+          description: Paginated class-group list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClassGroupSummary'
+                  meta:
+                    $ref: './common.yaml#/components/schemas/PaginationOffsetMeta'
+              example:
+                data:
+                  - id: 550e8400-e29b-41d4-a716-446655440000
+                    name: Informatique 3A
+                    level: LICENCE
+                    department: Informatique
+                    capacity: 35
+                    status: PUBLISHED
+                    memberCount: 17
+                    teacherCount: 1
+                    referent:
+                      id: 550e8400-e29b-41d4-a716-446655440001
+                      firstName: Amine
+                      lastName: Mansouri
+                    createdAt: '2026-10-06T10:00:00.000Z'
+                meta:
+                  page: 1
+                  limit: 20
+                  total: 14
+                  totalPages: 1
+                  hasNextPage: false
+                  hasPreviousPage: false
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+    post:
+      operationId: createClassGroup
+      tags:
+        - groups
+      summary: Create a new class group
+      description: >
+        Creates a cohort with capacity, department and automation flags.
+        `status` supports the admin "save as draft" action (DRAFT vs
+        PUBLISHED, glossary enum).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - level
+                - capacity
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                  example: Informatique 3A
+                level:
+                  type: string
+                  enum: [LICENCE, MASTER, DOCTORAT]
+                  example: LICENCE
+                department:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                  example: Informatique
+                capacity:
+                  type: integer
+                  minimum: 1
+                  maximum: 500
+                  example: 35
+                description:
+                  type: string
+                  maxLength: 300
+                  nullable: true
+                  example: Promotion Licence 3 Informatique 2024-2025
+                forumEnabled:
+                  type: boolean
+                  default: true
+                entSyncEnabled:
+                  type: boolean
+                  default: true
+                status:
+                  type: string
+                  enum: [DRAFT, PUBLISHED]
+                  default: PUBLISHED
+              additionalProperties: false
+      responses:
+        '201':
+          description: Class group created
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ClassGroupDetail'
+              example:
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  name: Informatique 3A
+                  level: LICENCE
+                  department: Informatique
+                  capacity: 35
+                  description: null
+                  forumEnabled: true
+                  entSyncEnabled: true
+                  status: PUBLISHED
+                  memberCount: 0
+                  teacherCount: 0
+                  referent: null
+                  createdAt: '2026-10-06T10:00:00.000Z'
+                  updatedAt: '2026-10-06T10:00:00.000Z'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /groups/{id}:
+    get:
+      operationId: getClassGroup
+      tags:
+        - groups
+      summary: Get one class group with counts
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Class-group detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ClassGroupDetail'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+  /groups/{id}/members:
+    post:
+      operationId: assignStudentsToGroup
+      tags:
+        - groups
+      summary: Assign students to a class group
+      description: >
+        Adds STUDENT-role users as group members. The operation is atomic:
+        any unknown user, non-STUDENT role, or duplicate membership fails
+        the whole request (RG1 — one role per account is enforced here).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - studentIds
+              properties:
+                studentIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: string
+                    format: uuid
+                  example:
+                    - 550e8400-e29b-41d4-a716-446655440001
+              additionalProperties: false
+      responses:
+        '200':
+          description: Students assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - classGroupId
+                      - added
+                      - memberCount
+                    properties:
+                      classGroupId:
+                        type: string
+                        format: uuid
+                      added:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                      memberCount:
+                        type: integer
+                        example: 18
+              example:
+                data:
+                  classGroupId: 550e8400-e29b-41d4-a716-446655440000
+                  added:
+                    - 550e8400-e29b-41d4-a716-446655440001
+                  memberCount: 18
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          description: One or more users are already members of the group
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: ROLE_ALREADY_ASSIGNED
+                  message: One or more users are already members of this group
+                  details:
+                    - userId: 550e8400-e29b-41d4-a716-446655440001
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /groups/{id}/teachers:
+    post:
+      operationId: assignTeachersToGroup
+      tags:
+        - groups
+      summary: Assign teachers to a class group with subjects
+      description: >
+        Upserts teacher assignments (same teacher + group updates the
+        subject). Every teacherId must belong to a TEACHER-role account
+        (RG1). Atomic: any unknown user or non-TEACHER role fails the
+        whole request.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - assignments
+              properties:
+                assignments:
+                  type: array
+                  minItems: 1
+                  maxItems: 50
+                  items:
+                    type: object
+                    required:
+                      - teacherId
+                      - subject
+                    properties:
+                      teacherId:
+                        type: string
+                        format: uuid
+                      subject:
+                        type: string
+                        minLength: 2
+                        maxLength: 100
+                        example: Développement Mobile & Cross-Platform
+                      weeklyHours:
+                        type: string
+                        maxLength: 50
+                        nullable: true
+                        example: 4h/semaine
+                    additionalProperties: false
+                  example:
+                    - teacherId: 550e8400-e29b-41d4-a716-446655440002
+                      subject: Développement Mobile & Cross-Platform
+                      weeklyHours: 4h/semaine
+              additionalProperties: false
+      responses:
+        '200':
+          description: Teachers assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - classGroupId
+                      - assigned
+                      - teacherCount
+                    properties:
+                      classGroupId:
+                        type: string
+                        format: uuid
+                      assigned:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - teacherId
+                            - subject
+                          properties:
+                            teacherId:
+                              type: string
+                              format: uuid
+                            subject:
+                              type: string
+                      teacherCount:
+                        type: integer
+                        example: 2
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+components:
+  schemas:
+    ClassGroupReferent:
+      type: object
+      required:
+        - id
+        - firstName
+        - lastName
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+      additionalProperties: false
+    ClassGroupSummary:
+      type: object
+      required:
+        - id
+        - name
+        - level
+        - capacity
+        - status
+        - memberCount
+        - teacherCount
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Informatique 3A
+        level:
+          type: string
+          enum: [LICENCE, MASTER, DOCTORAT]
+        department:
+          type: string
+          nullable: true
+        capacity:
+          type: integer
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED]
+        memberCount:
+          type: integer
+        teacherCount:
+          type: integer
+        referent:
+          $ref: '#/components/schemas/ClassGroupReferent'
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ClassGroupDetail:
+      allOf:
+        - $ref: '#/components/schemas/ClassGroupSummary'
+        - type: object
+          required:
+            - description
+            - forumEnabled
+            - entSyncEnabled
+            - updatedAt
+          properties:
+            description:
+              type: string
+              nullable: true
+            forumEnabled:
+              type: boolean
+            entSyncEnabled:
+              type: boolean
+            updatedAt:
+              type: string
+              format: date-time

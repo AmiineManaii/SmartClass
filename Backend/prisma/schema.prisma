@@ -17,6 +17,38 @@ enum UserStatus {
   SUSPENDED
 }
 
+enum ClassLevel {
+  LICENCE
+  MASTER
+  DOCTORAT
+}
+
+enum ClassStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum TimetableKind {
+  CM
+  TP
+  TD
+  BREAK
+  LUNCH
+  FREE
+}
+
+enum FraudSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum FraudStatus {
+  UNTREATED
+  IN_PROGRESS
+  CLOSED
+}
+
 model User {
   id                  String     @id @default(uuid()) @db.Uuid
   email               String     @unique
@@ -36,11 +68,125 @@ model User {
   refreshTokens        RefreshToken[]
   verificationCodes    EmailVerificationCode[]
   passwordResetCodes   PasswordResetCode[]
+  groupMemberships     GroupMember[]
+  teacherAssignments   TeacherAssignment[]
+  taughtSlots          TimetableSlot[]        @relation("SlotTeacher")
+  fraudReports         FraudReport[]
+  referredClasses      ClassGroup[]           @relation("ClassReferent")
 
   @@index([email])
   @@index([role])
   @@index([status])
   @@map("users")
+}
+
+model ClassGroup {
+  id             String      @id @default(uuid()) @db.Uuid
+  name           String
+  level          ClassLevel
+  department     String?
+  capacity       Int
+  description    String?
+  forumEnabled   Boolean     @default(true) @map("forum_enabled")
+  entSyncEnabled Boolean     @default(true) @map("ent_sync_enabled")
+  status         ClassStatus @default(PUBLISHED)
+  referentId     String?     @map("referent_id") @db.Uuid
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  referent    User?               @relation("ClassReferent", fields: [referentId], references: [id], onDelete: SetNull)
+  members     GroupMember[]
+  teachers    TeacherAssignment[]
+  slots       TimetableSlot[]
+  fraudCases  FraudReport[]
+
+  @@index([level])
+  @@index([status])
+  @@index([referentId])
+  @@map("class_groups")
+}
+
+model GroupMember {
+  id           String     @id @default(uuid()) @db.Uuid
+  classGroupId String     @map("class_group_id") @db.Uuid
+  userId       String     @map("user_id") @db.Uuid
+  joinedAt     DateTime   @default(now()) @map("joined_at") @db.Timestamptz
+
+  classGroup ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([classGroupId, userId])
+  @@index([classGroupId])
+  @@index([userId])
+  @@map("group_members")
+}
+
+model TeacherAssignment {
+  id           String     @id @default(uuid()) @db.Uuid
+  classGroupId String     @map("class_group_id") @db.Uuid
+  teacherId    String     @map("teacher_id") @db.Uuid
+  subject      String
+  weeklyHours  String?    @map("weekly_hours")
+  assignedAt   DateTime   @default(now()) @map("assigned_at") @db.Timestamptz
+
+  classGroup ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  teacher    User       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([classGroupId, teacherId])
+  @@index([classGroupId])
+  @@index([teacherId])
+  @@map("teacher_assignments")
+}
+
+model TimetableSlot {
+  id           String        @id @default(uuid()) @db.Uuid
+  classGroupId String        @map("class_group_id") @db.Uuid
+  title        String
+  subtitle     String?
+  kind         TimetableKind
+  startsAt     DateTime      @map("starts_at") @db.Timestamptz
+  endsAt       DateTime      @map("ends_at") @db.Timestamptz
+  teacherId    String?       @map("teacher_id") @db.Uuid
+  room         String?
+  statusNotes  Json          @default("[]") @map("status_notes")
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  classGroup ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  teacher    User?      @relation("SlotTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+
+  @@index([classGroupId])
+  @@index([startsAt])
+  @@map("timetable_slots")
+}
+
+model FraudReport {
+  id           String        @id @default(uuid()) @db.Uuid
+  title        String
+  context      String?
+  severity     FraudSeverity
+  status       FraudStatus   @default(UNTREATED)
+  studentId    String?       @map("student_id") @db.Uuid
+  studentName  String        @map("student_name")
+  studentCode  String?       @map("student_code")
+  classGroupId String?       @map("class_group_id") @db.Uuid
+  className    String?       @map("class_name")
+  findings     Json          @default("[]")
+  reason       String?
+  resolution   String?
+  occurredAt   DateTime      @map("occurred_at") @db.Timestamptz
+  closedAt     DateTime?     @map("closed_at") @db.Timestamptz
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  student    User?       @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  classGroup ClassGroup? @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([severity])
+  @@index([studentId])
+  @@index([occurredAt])
+  @@map("fraud_reports")
 }
 
 model RefreshToken {

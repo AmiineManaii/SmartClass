@@ -7,11 +7,11 @@ import '../../../../core/error/failure_localization.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_text_field.dart';
 import '../../application/providers/auth_options_provider.dart';
 import '../widgets/auth_screen_scaffold.dart';
 import '../widgets/auth_top_bar.dart';
 import '../widgets/field_label.dart';
-import '../widgets/interest_chip.dart';
 
 class ProfileSetupPage extends ConsumerStatefulWidget {
   const ProfileSetupPage({super.key});
@@ -21,9 +21,16 @@ class ProfileSetupPage extends ConsumerStatefulWidget {
 }
 
 class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
-  String? _institution = 'Université Paris-Saclay';
-  String? _level = 'Master 1 - Informatique & Data Science';
-  final Set<String> _selectedInterests = {'maths', 'info', 'physics', 'ai'};
+  final _institutionController = TextEditingController();
+  final _specialtyController = TextEditingController();
+  String? _level = 'Licence 1';
+
+  @override
+  void dispose() {
+    _institutionController.dispose();
+    _specialtyController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickOption({
     required String title,
@@ -61,20 +68,23 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
   }
 
   Future<void> _validate() async {
-    if ((_institution ?? '').isEmpty || (_level ?? '').isEmpty) {
+    final user = ref.read(authStateProvider).value;
+    final isAdmin = user?.role == 'admin';
+
+    if (_institutionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.tr('required_field'))),
       );
       return;
     }
-    if (_selectedInterests.length < 3) {
+
+    if (!isAdmin &&
+        ((_level ?? '').isEmpty || _specialtyController.text.trim().isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('interests_hint'))),
+        SnackBar(content: Text(context.tr('required_field'))),
       );
       return;
     }
-    // PATCH /auth/profile { onboardingCompleted: true } — the notifier
-    // falls back to a local validation when offline.
     try {
       await ref.read(authStateProvider.notifier).completeProfile();
     } on Failure catch (failure) {
@@ -92,11 +102,9 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final institutions = ref.watch(authInstitutionsProvider);
     final levels = ref.watch(authStudyLevelsProvider);
-    final interests = ref.watch(authInterestsProvider);
-    final labels = ref.watch(authInterestLabelsProvider);
-    final locale = Localizations.localeOf(context).languageCode;
+    final user = ref.watch(authStateProvider).value;
+    final isAdmin = user?.role == 'admin';
 
     return AuthScreenScaffold(
       child: Column(
@@ -198,91 +206,54 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
           const SizedBox(height: 24),
           const FieldLabel(labelKey: 'institution_label', trailingKey: 'required_badge', showTrailing: true),
           const SizedBox(height: 6),
-          _PickerRow(
-            icon: Icons.account_balance_outlined,
-            value: _institution ?? '',
-            onTap: () => _pickOption(
-              title: context.tr('institution_label'),
-              options: institutions,
-              current: _institution,
-              onSelected: (v) => setState(() => _institution = v),
-            ),
+          AppTextField(
+            controller: _institutionController,
+            hint: 'Ex: Université Paris-Saclay, Esprit...',
+            textInputAction: isAdmin ? TextInputAction.done : TextInputAction.next,
+            prefixIcon: const Icon(Icons.account_balance_outlined),
           ),
-          const SizedBox(height: 16),
-          const FieldLabel(labelKey: 'level_label', trailingKey: 'required_badge', showTrailing: true),
-          const SizedBox(height: 6),
-          _PickerRow(
-            icon: Icons.psychology_outlined,
-            value: _level ?? '',
-            onTap: () => _pickOption(
-              title: context.tr('level_label'),
-              options: levels,
-              current: _level,
-              onSelected: (v) => setState(() => _level = v),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.auto_awesome_outlined, size: 18, color: colorScheme.primaryContainer),
-                  const SizedBox(width: 6),
-                  Text(context.tr('interests_label'), style: theme.textTheme.labelLarge),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: colorScheme.tertiaryFixed,
-                  borderRadius: BorderRadius.circular(9999),
+          if (!isAdmin) ...[
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Niveau d'études", style: theme.textTheme.labelMedium),
+                Text(
+                  context.tr('required_badge'),
+                  style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.outline),
                 ),
-                child: Text(
-                  context.tr('selected_count', args: {'count': '${_selectedInterests.length}'}),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onTertiaryFixed,
-                    fontWeight: FontWeight.w600,
-                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            _PickerRow(
+              icon: Icons.school_outlined,
+              value: _level ?? 'Licence 1',
+              onTap: () => _pickOption(
+                title: "Niveau d'études",
+                options: levels,
+                current: _level,
+                onSelected: (v) => setState(() => _level = v),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Spécialité / Filière", style: theme.textTheme.labelMedium),
+                Text(
+                  context.tr('required_badge'),
+                  style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.outline),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            context.tr('interests_hint'),
-            style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ...interests.map((interest) {
-                final label = labels[interest.labelKey]?[locale] ??
-                    labels[interest.labelKey]?['fr'] ??
-                    interest.id;
-                return InterestChip(
-                  emoji: interest.emoji,
-                  label: label,
-                  selected: _selectedInterests.contains(interest.id),
-                  onTap: () => setState(() {
-                    if (_selectedInterests.contains(interest.id)) {
-                      _selectedInterests.remove(interest.id);
-                    } else {
-                      _selectedInterests.add(interest.id);
-                    }
-                  }),
-                );
-              }),
-              InterestChip(
-                emoji: '+',
-                label: context.tr('other_interest'),
-                selected: false,
-                onTap: () {},
-              ),
-            ],
-          ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            AppTextField(
+              controller: _specialtyController,
+              hint: 'Ex: Informatique & Data Science, Droit...',
+              textInputAction: TextInputAction.done,
+              prefixIcon: const Icon(Icons.psychology_outlined),
+            ),
+          ],
           const SizedBox(height: 24),
           AppButton(
             text: context.tr('validate_profile'),

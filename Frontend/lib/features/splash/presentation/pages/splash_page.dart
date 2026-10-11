@@ -144,7 +144,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
     _exitController.forward().then((_) {
       if (!mounted) return;
       ref.read(hasSeenSplashProvider.notifier).state = true;
-      final auth = ref.read(authStateProvider).value;
+      final auth = ref.read(authStateProvider).valueOrNull;
       final isLoggedIn = auth?.isAuthenticated ?? false;
       final completed = auth?.onboardingCompleted ?? false;
 

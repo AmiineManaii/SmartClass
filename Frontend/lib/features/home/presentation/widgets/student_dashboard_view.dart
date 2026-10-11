@@ -6,35 +6,50 @@ import '../../../../app/app_providers.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../application/providers/student_dashboard_provider.dart';
+import '../../domain/entities/student_assignment.dart';
+import '../../domain/entities/student_course_progress.dart';
+import '../../domain/entities/today_live_session.dart';
+import 'no_class_notice.dart';
 import 'student_ai_studio_card.dart';
 import 'student_assignments_section.dart';
 import 'student_courses_section.dart';
 import 'student_greeting_header.dart';
 import 'student_imminent_live_card.dart';
-import 'student_motivation_cards.dart';
 
 class StudentDashboardView extends ConsumerWidget {
   const StudentDashboardView({super.key});
+
+  void _showNoNotifications(BuildContext context) {
+    // Honest empty state: no notifications source exists yet
+    // (notifications module planned). Never a fake counter.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.tr('notifications_empty')),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final user = ref.watch(authStateProvider).value;
-    final stats = ref.watch(studentMotivationStatsProvider);
-    final liveSession = ref.watch(studentImminentLiveProvider);
-    final courses = ref.watch(studentCoursesProgressProvider);
-    final assignments = ref.watch(studentUpcomingAssignmentsProvider);
+    final user = ref.watch(authStateProvider).valueOrNull;
+    // Class-dependent content is gated behind real membership data.
+    // No membership (or fetch failure) => administration notice,
+    // never invented classes, courses, homework or live sessions.
+    final membership = ref.watch(studentClassMembershipProvider);
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(studentMotivationStatsProvider);
-            ref.invalidate(studentImminentLiveProvider);
-            ref.invalidate(studentCoursesProgressProvider);
-            ref.invalidate(studentUpcomingAssignmentsProvider);
+            ref.invalidate(studentClassMembershipProvider);
+            ref.invalidate(studentTodayLiveProvider);
+            ref.invalidate(studentEnrolledCoursesProvider);
+            ref.invalidate(studentAssignmentsProvider);
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -50,74 +65,49 @@ class StudentDashboardView extends ConsumerWidget {
                   children: [
                     _TopTitleRow(
                       onProfileTap: () => context.push('/profile'),
-                      onNotificationsTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              context.tr(
-                                'pending_count',
-                                args: {'count': '2'},
-                              ),
-                            ),
-                            behavior: SnackBarBehavior.floating,
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      },
+                      onNotificationsTap: () => _showNoNotifications(context),
                     ),
                     const SizedBox(height: 16),
                     StudentGreetingHeader(
                       user: user,
-                      onNotificationsTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              context.tr(
-                                'pending_count',
-                                args: {'count': '2'},
-                              ),
-                            ),
-                            behavior: SnackBarBehavior.floating,
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      },
+                      onNotificationsTap: () => _showNoNotifications(context),
                     ),
                     const SizedBox(height: 16),
-                    StudentMotivationCards(stats: stats),
-                    const SizedBox(height: 16),
-                    StudentImminentLiveCard(
-                      session: liveSession,
-                      onJoin: () => context.push('/videoconference'),
-                    ),
-                    const SizedBox(height: 20),
-                    StudentAiStudioCard(
-                      onCourseSummaryTap: () => context.push('/ai-revision'),
-                      onPracticeQuizTap: () => context.push('/ai-quiz'),
-                    ),
-                    const SizedBox(height: 24),
-                    StudentCoursesSection(
-                      courses: courses,
-                      onViewAll: () => context.push('/courses'),
-                      onCourseTap: (courseId) => context.push('/courses'),
-                    ),
-                    const SizedBox(height: 24),
-                    StudentAssignmentsSection(
-                      assignments: assignments,
-                      onHistoryTap: () => context.push('/exams'),
-                      onAssignmentAction: (assignmentId) {
-                        if (assignmentId.contains('qcm')) {
-                          context.push('/exams');
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(context.tr('deposit_action')),
-                              behavior: SnackBarBehavior.floating,
-                              duration: const Duration(seconds: 2),
+                    membership.when(
+                      loading: () => const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 32),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                      error: (_, _) => const NoClassNotice(),
+                      data: (membership) => membership == null
+                          ? const NoClassNotice()
+                          : _EnrolledContent(
+                              onJoinLive: () =>
+                                  context.push('/videoconference'),
+                              onCourseSummaryTap: () =>
+                                  context.push('/ai-revision'),
+                              onPracticeQuizTap: () =>
+                                  context.push('/ai-quiz'),
+                              onViewAllCourses: () =>
+                                  context.push('/courses'),
+                              onCourseTap: (_) => context.push('/courses'),
+                              onHistoryTap: () => context.push('/exams'),
+                              onAssignmentAction: (assignmentId) {
+                                if (assignmentId.contains('qcm')) {
+                                  context.push('/exams');
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        context.tr('deposit_action'),
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              },
                             ),
-                          );
-                        }
-                      },
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -127,6 +117,142 @@ class StudentDashboardView extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Full dashboard, rendered only with a real class membership.
+class _EnrolledContent extends ConsumerWidget {
+  final VoidCallback onJoinLive;
+  final VoidCallback onCourseSummaryTap;
+  final VoidCallback onPracticeQuizTap;
+  final VoidCallback onViewAllCourses;
+  final ValueChanged<String> onCourseTap;
+  final VoidCallback onHistoryTap;
+  final ValueChanged<String> onAssignmentAction;
+
+  const _EnrolledContent({
+    required this.onJoinLive,
+    required this.onCourseSummaryTap,
+    required this.onPracticeQuizTap,
+    required this.onViewAllCourses,
+    required this.onCourseTap,
+    required this.onHistoryTap,
+    required this.onAssignmentAction,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final live = ref.watch(studentTodayLiveProvider);
+    final courses = ref.watch(studentEnrolledCoursesProvider);
+    final assignments = ref.watch(studentAssignmentsProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Live widget appears ONLY with a real session today.
+        live.when(
+          data: (session) => _LiveSection(session: session, onJoin: onJoinLive),
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
+        ),
+        StudentAiStudioCard(
+          onCourseSummaryTap: onCourseSummaryTap,
+          onPracticeQuizTap: onPracticeQuizTap,
+        ),
+        const SizedBox(height: 24),
+        courses.when(
+          data: (list) => _CoursesSection(
+            courses: list,
+            onViewAll: onViewAllCourses,
+            onCourseTap: onCourseTap,
+          ),
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
+        ),
+        assignments.when(
+          data: (list) => _AssignmentsSection(
+            assignments: list,
+            onHistoryTap: onHistoryTap,
+            onAssignmentAction: onAssignmentAction,
+          ),
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+}
+
+class _LiveSection extends StatelessWidget {
+  final TodayLiveSession? session;
+  final VoidCallback onJoin;
+
+  const _LiveSection({required this.session, required this.onJoin});
+
+  @override
+  Widget build(BuildContext context) {
+    final live = session;
+    if (live == null) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        StudentImminentLiveCard(session: live, onJoin: onJoin),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+}
+
+class _CoursesSection extends StatelessWidget {
+  final List<StudentCourseProgress> courses;
+  final VoidCallback onViewAll;
+  final ValueChanged<String> onCourseTap;
+
+  const _CoursesSection({
+    required this.courses,
+    required this.onViewAll,
+    required this.onCourseTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        StudentCoursesSection(
+          courses: courses,
+          onViewAll: onViewAll,
+          onCourseTap: onCourseTap,
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+class _AssignmentsSection extends StatelessWidget {
+  final List<StudentAssignment> assignments;
+  final VoidCallback onHistoryTap;
+  final ValueChanged<String> onAssignmentAction;
+
+  const _AssignmentsSection({
+    required this.assignments,
+    required this.onHistoryTap,
+    required this.onAssignmentAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        StudentAssignmentsSection(
+          assignments: assignments,
+          onHistoryTap: onHistoryTap,
+          onAssignmentAction: onAssignmentAction,
+        ),
+      ],
     );
   }
 }
@@ -179,7 +305,6 @@ class _TopTitleRow extends StatelessWidget {
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: colorScheme.secondary,
                         letterSpacing: 0.5,
-                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
                       maxLines: 1,
@@ -190,7 +315,6 @@ class _TopTitleRow extends StatelessWidget {
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

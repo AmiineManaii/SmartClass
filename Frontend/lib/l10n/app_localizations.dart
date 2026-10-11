@@ -1064,6 +1064,30 @@ abstract class AppLocalizations {
   /// **'Aucun cours disponible'**
   String get no_courses;
 
+  /// No description provided for @no_class_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune classe rejointe'**
+  String get no_class_title;
+
+  /// No description provided for @no_class_message.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous n\'êtes inscrit à aucune classe. Contactez l\'administration de votre établissement pour rejoindre votre classe.'**
+  String get no_class_message;
+
+  /// No description provided for @no_assignments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun devoir pour le moment'**
+  String get no_assignments;
+
+  /// No description provided for @notifications_empty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune notification pour le moment'**
+  String get notifications_empty;
+
   /// No description provided for @join_course.
   ///
   /// In fr, this message translates to:
@@ -3151,6 +3175,1032 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Prêt pour l\'excellence académique'**
   String get splash_loading_3;
+
+  /// No description provided for @admin_greeting.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bonjour {name}'**
+  String admin_greeting(Object name);
+
+  /// No description provided for @admin_supervision.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supervision Générale'**
+  String get admin_supervision;
+
+  /// No description provided for @admin_stat_students.
+  ///
+  /// In fr, this message translates to:
+  /// **'Étudiants'**
+  String get admin_stat_students;
+
+  /// No description provided for @admin_stat_students_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'+{count} ce mois'**
+  String admin_stat_students_badge(Object count);
+
+  /// No description provided for @admin_stat_teachers.
+  ///
+  /// In fr, this message translates to:
+  /// **'Enseignants'**
+  String get admin_stat_teachers;
+
+  /// No description provided for @admin_stat_teachers_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'{pct}% actifs'**
+  String admin_stat_teachers_badge(Object pct);
+
+  /// No description provided for @admin_stat_classes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Classes'**
+  String get admin_stat_classes;
+
+  /// No description provided for @admin_stat_classes_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} cursus'**
+  String admin_stat_classes_badge(Object count);
+
+  /// No description provided for @admin_stat_frauds.
+  ///
+  /// In fr, this message translates to:
+  /// **'Alertes de Fraude'**
+  String get admin_stat_frauds;
+
+  /// No description provided for @admin_stat_frauds_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Action Requise'**
+  String get admin_stat_frauds_badge;
+
+  /// No description provided for @admin_shortcuts_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Raccourcis de Gestion'**
+  String get admin_shortcuts_title;
+
+  /// No description provided for @admin_shortcuts_sub.
+  ///
+  /// In fr, this message translates to:
+  /// **'Accès direct aux modules clés d\'administration'**
+  String get admin_shortcuts_sub;
+
+  /// No description provided for @admin_nav_classes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gestion des Classes'**
+  String get admin_nav_classes;
+
+  /// No description provided for @admin_nav_classes_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créer, modifier & affecter'**
+  String get admin_nav_classes_desc;
+
+  /// No description provided for @admin_nav_teachers.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gestion des Enseignants & Profs'**
+  String get admin_nav_teachers;
+
+  /// No description provided for @admin_nav_teachers_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôles & plannings académiques'**
+  String get admin_nav_teachers_desc;
+
+  /// No description provided for @admin_nav_students.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gestion des Étudiants'**
+  String get admin_nav_students;
+
+  /// No description provided for @admin_nav_students_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inscriptions, dossiers & cohortes'**
+  String get admin_nav_students_desc;
+
+  /// No description provided for @admin_nav_planning.
+  ///
+  /// In fr, this message translates to:
+  /// **'Planning & Emplois du Temps'**
+  String get admin_nav_planning;
+
+  /// No description provided for @admin_nav_planning_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Salles & visioconférences'**
+  String get admin_nav_planning_desc;
+
+  /// No description provided for @admin_alerts_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Alertes & Incidents'**
+  String get admin_alerts_title;
+
+  /// No description provided for @admin_view_all.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir tout ({count})'**
+  String admin_view_all(Object count);
+
+  /// No description provided for @admin_review_incident.
+  ///
+  /// In fr, this message translates to:
+  /// **'Consulter l\'incident'**
+  String get admin_review_incident;
+
+  /// No description provided for @admin_ignore.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ignorer'**
+  String get admin_ignore;
+
+  /// No description provided for @admin_to_verify.
+  ///
+  /// In fr, this message translates to:
+  /// **'À vérifier'**
+  String get admin_to_verify;
+
+  /// No description provided for @admin_validated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Planning validé'**
+  String get admin_validated;
+
+  /// No description provided for @admin_tab_dashboard.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tableau'**
+  String get admin_tab_dashboard;
+
+  /// No description provided for @admin_tab_classes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Classes'**
+  String get admin_tab_classes;
+
+  /// No description provided for @admin_tab_planning.
+  ///
+  /// In fr, this message translates to:
+  /// **'Planning'**
+  String get admin_tab_planning;
+
+  /// No description provided for @admin_tab_frauds.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fraudes'**
+  String get admin_tab_frauds;
+
+  /// No description provided for @admin_classes_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gestion Des Classes'**
+  String get admin_classes_title;
+
+  /// No description provided for @admin_classes_sub.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supervisez les promotions, cohortes d\'étudiants et équipes pédagogiques en temps réel.'**
+  String get admin_classes_sub;
+
+  /// No description provided for @admin_search_class_hint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rechercher une classe, cursus, code'**
+  String get admin_search_class_hint;
+
+  /// No description provided for @admin_filter_licence.
+  ///
+  /// In fr, this message translates to:
+  /// **'Licence'**
+  String get admin_filter_licence;
+
+  /// No description provided for @admin_filter_master.
+  ///
+  /// In fr, this message translates to:
+  /// **'Master'**
+  String get admin_filter_master;
+
+  /// No description provided for @admin_filter_doctorat.
+  ///
+  /// In fr, this message translates to:
+  /// **'Doctorat'**
+  String get admin_filter_doctorat;
+
+  /// No description provided for @admin_stat_cohorts.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cohortes'**
+  String get admin_stat_cohorts;
+
+  /// No description provided for @admin_active_promos.
+  ///
+  /// In fr, this message translates to:
+  /// **'Promotions actives'**
+  String get admin_active_promos;
+
+  /// No description provided for @admin_sort_by.
+  ///
+  /// In fr, this message translates to:
+  /// **'Trier par cursus'**
+  String get admin_sort_by;
+
+  /// No description provided for @admin_active_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actif'**
+  String get admin_active_badge;
+
+  /// No description provided for @admin_students_count.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} Étudiants'**
+  String admin_students_count(Object count);
+
+  /// No description provided for @admin_teachers_count.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} Enseignants'**
+  String admin_teachers_count(Object count);
+
+  /// No description provided for @admin_courses_active.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} Cours actifs'**
+  String admin_courses_active(Object count);
+
+  /// No description provided for @admin_presence.
+  ///
+  /// In fr, this message translates to:
+  /// **'Présence {pct}%'**
+  String admin_presence(Object pct);
+
+  /// No description provided for @admin_exam_ongoing.
+  ///
+  /// In fr, this message translates to:
+  /// **'Examen en cours'**
+  String get admin_exam_ongoing;
+
+  /// No description provided for @admin_new_class.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouvelle Classe'**
+  String get admin_new_class;
+
+  /// No description provided for @admin_sync_ent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Synchronisation automatique avec le serveur ENT académique • Dernière mise à jour {ago}'**
+  String admin_sync_ent(Object ago);
+
+  /// No description provided for @admin_sync_ago.
+  ///
+  /// In fr, this message translates to:
+  /// **'il y a 5 min'**
+  String get admin_sync_ago;
+
+  /// No description provided for @admin_edit_class_file.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifier la fiche classe'**
+  String get admin_edit_class_file;
+
+  /// No description provided for @admin_view_timetable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Consulter l\'emploi du temps'**
+  String get admin_view_timetable;
+
+  /// No description provided for @admin_send_notice.
+  ///
+  /// In fr, this message translates to:
+  /// **'Diffuser un avis académique'**
+  String get admin_send_notice;
+
+  /// No description provided for @admin_archive_cohort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Archiver la cohorte'**
+  String get admin_archive_cohort;
+
+  /// No description provided for @admin_space_admin.
+  ///
+  /// In fr, this message translates to:
+  /// **'Espace Administration'**
+  String get admin_space_admin;
+
+  /// No description provided for @admin_create_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Configurez une nouvelle cohorte d\'étudiants, définissez son rattachement académique et préparez l\'affectation pédagogique.'**
+  String get admin_create_desc;
+
+  /// No description provided for @admin_registry_synced.
+  ///
+  /// In fr, this message translates to:
+  /// **'Registre académique synchronisé'**
+  String get admin_registry_synced;
+
+  /// No description provided for @admin_step_1_2.
+  ///
+  /// In fr, this message translates to:
+  /// **'Étape 1/2'**
+  String get admin_step_1_2;
+
+  /// No description provided for @admin_class_name.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom de la classe'**
+  String get admin_class_name;
+
+  /// No description provided for @admin_required.
+  ///
+  /// In fr, this message translates to:
+  /// **'Requis'**
+  String get admin_required;
+
+  /// No description provided for @admin_class_name_hint.
+  ///
+  /// In fr, this message translates to:
+  /// **'ex : Ingénierie Logicielle 1A, Mathématiques…'**
+  String get admin_class_name_hint;
+
+  /// No description provided for @admin_class_name_note.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le nom sera visible par les étudiants sur leur planning et relevé.'**
+  String get admin_class_name_note;
+
+  /// No description provided for @admin_study_level.
+  ///
+  /// In fr, this message translates to:
+  /// **'Niveau d\'études'**
+  String get admin_study_level;
+
+  /// No description provided for @admin_quick_pick.
+  ///
+  /// In fr, this message translates to:
+  /// **'Présélections rapides'**
+  String get admin_quick_pick;
+
+  /// No description provided for @admin_department.
+  ///
+  /// In fr, this message translates to:
+  /// **'Département / Filière'**
+  String get admin_department;
+
+  /// No description provided for @admin_capacity.
+  ///
+  /// In fr, this message translates to:
+  /// **'Capacité d\'accueil'**
+  String get admin_capacity;
+
+  /// No description provided for @admin_capacity_hint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Jauge maximale recommandée'**
+  String get admin_capacity_hint;
+
+  /// No description provided for @admin_places.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} places'**
+  String admin_places(Object count);
+
+  /// No description provided for @admin_students_max.
+  ///
+  /// In fr, this message translates to:
+  /// **'Étudiants max'**
+  String get admin_students_max;
+
+  /// No description provided for @admin_description_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Description & Spécificités'**
+  String get admin_description_label;
+
+  /// No description provided for @admin_optional.
+  ///
+  /// In fr, this message translates to:
+  /// **'Optionnel'**
+  String get admin_optional;
+
+  /// No description provided for @admin_description_hint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Précisez les objectifs pédagogiques, prérequis ou spécificités de cette promotion (ex: cursus en alternance, parcours international)…'**
+  String get admin_description_hint;
+
+  /// No description provided for @admin_char_count.
+  ///
+  /// In fr, this message translates to:
+  /// **'{used} / {max} caractères'**
+  String admin_char_count(Object max, Object used);
+
+  /// No description provided for @admin_auto_params.
+  ///
+  /// In fr, this message translates to:
+  /// **'Paramètres automatisés'**
+  String get admin_auto_params;
+
+  /// No description provided for @admin_forum_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Espace Forum & Débat'**
+  String get admin_forum_title;
+
+  /// No description provided for @admin_forum_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Canal collaboratif modéré par les enseignants'**
+  String get admin_forum_desc;
+
+  /// No description provided for @admin_ent_sync_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Synchronisation ENT'**
+  String get admin_ent_sync_title;
+
+  /// No description provided for @admin_ent_sync_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Liaison automatique avec l\'annuaire Apogée / LDAP'**
+  String get admin_ent_sync_desc;
+
+  /// No description provided for @admin_access_note.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les accès étudiants et invitations seront générés à la validation.'**
+  String get admin_access_note;
+
+  /// No description provided for @admin_create_group.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créer le groupe'**
+  String get admin_create_group;
+
+  /// No description provided for @admin_save_draft.
+  ///
+  /// In fr, this message translates to:
+  /// **'Enregistrer comme brouillon'**
+  String get admin_save_draft;
+
+  /// No description provided for @admin_add_students.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter Des Étudiants'**
+  String get admin_add_students;
+
+  /// No description provided for @admin_class_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Classe : {name}'**
+  String admin_class_label(Object name);
+
+  /// No description provided for @admin_import_csv.
+  ///
+  /// In fr, this message translates to:
+  /// **'Importer via CSV'**
+  String get admin_import_csv;
+
+  /// No description provided for @admin_direct_assign.
+  ///
+  /// In fr, this message translates to:
+  /// **'Affectation directe'**
+  String get admin_direct_assign;
+
+  /// No description provided for @admin_places_left.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} places restantes'**
+  String admin_places_left(Object count);
+
+  /// No description provided for @admin_enrolled.
+  ///
+  /// In fr, this message translates to:
+  /// **'{enrolled}/{capacity} inscrits'**
+  String admin_enrolled(Object capacity, Object enrolled);
+
+  /// No description provided for @admin_search_person_hint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rechercher par nom ou email…'**
+  String get admin_search_person_hint;
+
+  /// No description provided for @admin_all_count.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tous ({count})'**
+  String admin_all_count(Object count);
+
+  /// No description provided for @admin_unassigned.
+  ///
+  /// In fr, this message translates to:
+  /// **'Non affectés ({count})'**
+  String admin_unassigned(Object count);
+
+  /// No description provided for @admin_avg_filter.
+  ///
+  /// In fr, this message translates to:
+  /// **'Moyenne > 14'**
+  String get admin_avg_filter;
+
+  /// No description provided for @admin_select_all.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tout sélectionner'**
+  String get admin_select_all;
+
+  /// No description provided for @admin_selected_count.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} étudiants sélectionnés'**
+  String admin_selected_count(Object count);
+
+  /// No description provided for @admin_selected_footer.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} sélectionnés'**
+  String admin_selected_footer(Object count);
+
+  /// No description provided for @admin_assign_now.
+  ///
+  /// In fr, this message translates to:
+  /// **'Affectation immédiate sur l\'ENT'**
+  String get admin_assign_now;
+
+  /// No description provided for @admin_instant_sync.
+  ///
+  /// In fr, this message translates to:
+  /// **'Synchro instantanée'**
+  String get admin_instant_sync;
+
+  /// No description provided for @admin_assign_to_class.
+  ///
+  /// In fr, this message translates to:
+  /// **'Affecter à la classe'**
+  String get admin_assign_to_class;
+
+  /// No description provided for @admin_cancel_op.
+  ///
+  /// In fr, this message translates to:
+  /// **'Annuler l\'opération'**
+  String get admin_cancel_op;
+
+  /// No description provided for @admin_assign_teachers.
+  ///
+  /// In fr, this message translates to:
+  /// **'Affecter Des Enseignants'**
+  String get admin_assign_teachers;
+
+  /// No description provided for @admin_academic_year.
+  ///
+  /// In fr, this message translates to:
+  /// **'Année académique 2024-2025'**
+  String get admin_academic_year;
+
+  /// No description provided for @admin_semester_dept.
+  ///
+  /// In fr, this message translates to:
+  /// **'Semestre {sem} • Département {dept}'**
+  String admin_semester_dept(Object dept, Object sem);
+
+  /// No description provided for @admin_course_coverage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Couverture des cours'**
+  String get admin_course_coverage;
+
+  /// No description provided for @admin_assigned_ratio.
+  ///
+  /// In fr, this message translates to:
+  /// **'{done} sur {total} affectées ({pct}%)'**
+  String admin_assigned_ratio(Object done, Object pct, Object total);
+
+  /// No description provided for @admin_subjects_required.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} matières requises'**
+  String admin_subjects_required(Object count);
+
+  /// No description provided for @admin_open_posts.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} postes vacants'**
+  String admin_open_posts(Object count);
+
+  /// No description provided for @admin_search_teacher_hint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rechercher un professeur, département…'**
+  String get admin_search_teacher_hint;
+
+  /// No description provided for @admin_available_teachers.
+  ///
+  /// In fr, this message translates to:
+  /// **'Corps professoral disponible'**
+  String get admin_available_teachers;
+
+  /// No description provided for @admin_sort_affinity.
+  ///
+  /// In fr, this message translates to:
+  /// **'Trié par affinité pédagogique'**
+  String get admin_sort_affinity;
+
+  /// No description provided for @admin_add.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter'**
+  String get admin_add;
+
+  /// No description provided for @admin_assigned_hours.
+  ///
+  /// In fr, this message translates to:
+  /// **'Affecté • {hours}'**
+  String admin_assigned_hours(Object hours);
+
+  /// No description provided for @admin_avail_hours.
+  ///
+  /// In fr, this message translates to:
+  /// **'{hours} dispo / semaine'**
+  String admin_avail_hours(Object hours);
+
+  /// No description provided for @admin_subject_assigned.
+  ///
+  /// In fr, this message translates to:
+  /// **'Matière assignée'**
+  String get admin_subject_assigned;
+
+  /// No description provided for @admin_not_assigned.
+  ///
+  /// In fr, this message translates to:
+  /// **'Non assigné'**
+  String get admin_not_assigned;
+
+  /// No description provided for @admin_pending.
+  ///
+  /// In fr, this message translates to:
+  /// **'En attente'**
+  String get admin_pending;
+
+  /// No description provided for @admin_full_load.
+  ///
+  /// In fr, this message translates to:
+  /// **'Charge complète (dérogation)'**
+  String get admin_full_load;
+
+  /// No description provided for @admin_dean_reserve.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sous réserve décanat'**
+  String get admin_dean_reserve;
+
+  /// No description provided for @admin_teachers_selected.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} enseignant sélectionné'**
+  String admin_teachers_selected(Object count);
+
+  /// No description provided for @admin_dep_info.
+  ///
+  /// In fr, this message translates to:
+  /// **'Dép. Info ({count})'**
+  String admin_dep_info(Object count);
+
+  /// No description provided for @admin_available_f.
+  ///
+  /// In fr, this message translates to:
+  /// **'Disponibles ({count})'**
+  String admin_available_f(Object count);
+
+  /// No description provided for @admin_assigned_f.
+  ///
+  /// In fr, this message translates to:
+  /// **'Déjà affectés ({count})'**
+  String admin_assigned_f(Object count);
+
+  /// No description provided for @admin_confirm_assign.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer l\'affectation'**
+  String get admin_confirm_assign;
+
+  /// No description provided for @admin_cancel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Annuler'**
+  String get admin_cancel;
+
+  /// No description provided for @admin_ent_sync_now.
+  ///
+  /// In fr, this message translates to:
+  /// **'Synchro ENT immédiate'**
+  String get admin_ent_sync_now;
+
+  /// No description provided for @admin_timetable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Emplois Du Temps'**
+  String get admin_timetable;
+
+  /// No description provided for @admin_active_promo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Promotion Active'**
+  String get admin_active_promo;
+
+  /// No description provided for @admin_semester.
+  ///
+  /// In fr, this message translates to:
+  /// **'Semestre {n}'**
+  String admin_semester(Object n);
+
+  /// No description provided for @admin_today.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aujourd\'hui'**
+  String get admin_today;
+
+  /// No description provided for @admin_hours_scheduled.
+  ///
+  /// In fr, this message translates to:
+  /// **'{hours} programmées'**
+  String admin_hours_scheduled(Object hours);
+
+  /// No description provided for @admin_no_conflict.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} conflit'**
+  String admin_no_conflict(Object count);
+
+  /// No description provided for @admin_rate.
+  ///
+  /// In fr, this message translates to:
+  /// **'{pct} taux'**
+  String admin_rate(Object pct);
+
+  /// No description provided for @admin_day_planning.
+  ///
+  /// In fr, this message translates to:
+  /// **'Planning de la journée'**
+  String get admin_day_planning;
+
+  /// No description provided for @admin_day_courses.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} cours'**
+  String admin_day_courses(Object count);
+
+  /// No description provided for @admin_makeup.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rattr.'**
+  String get admin_makeup;
+
+  /// No description provided for @admin_free_slot.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créneau libre'**
+  String get admin_free_slot;
+
+  /// No description provided for @admin_free_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun cours programmé. Disponible pour une session de rattrapage, tutorat ou soutenance de projet.'**
+  String get admin_free_desc;
+
+  /// No description provided for @admin_new_slot.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouveau créneau'**
+  String get admin_new_slot;
+
+  /// No description provided for @admin_take_attendance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Faire l\'appel'**
+  String get admin_take_attendance;
+
+  /// No description provided for @admin_book.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réserver'**
+  String get admin_book;
+
+  /// No description provided for @admin_room_available.
+  ///
+  /// In fr, this message translates to:
+  /// **'Salle {room} disponible'**
+  String admin_room_available(Object room);
+
+  /// No description provided for @admin_event_cm.
+  ///
+  /// In fr, this message translates to:
+  /// **'CM • Cours Magistral'**
+  String get admin_event_cm;
+
+  /// No description provided for @admin_event_tp.
+  ///
+  /// In fr, this message translates to:
+  /// **'TP • Travaux Pratiques'**
+  String get admin_event_tp;
+
+  /// No description provided for @admin_event_td.
+  ///
+  /// In fr, this message translates to:
+  /// **'TD • Travaux Dirigés'**
+  String get admin_event_td;
+
+  /// No description provided for @admin_break_short.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pause récréative'**
+  String get admin_break_short;
+
+  /// No description provided for @admin_break_lunch.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pause Déjeuner & Permanence'**
+  String get admin_break_lunch;
+
+  /// No description provided for @admin_confirmed_open.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmé • Appel non clôturé'**
+  String get admin_confirmed_open;
+
+  /// No description provided for @admin_session_validated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Séance validée & matériel réservé'**
+  String get admin_session_validated;
+
+  /// No description provided for @admin_group_full.
+  ///
+  /// In fr, this message translates to:
+  /// **'Groupe complet'**
+  String get admin_group_full;
+
+  /// No description provided for @admin_hybrid_on.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mode hybride actif • Lien Zoom synchrone transmis'**
+  String get admin_hybrid_on;
+
+  /// No description provided for @admin_room_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Salle {room}'**
+  String admin_room_label(Object room);
+
+  /// No description provided for @admin_fraud_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapports De Fraude'**
+  String get admin_fraud_title;
+
+  /// No description provided for @admin_fraud_sub.
+  ///
+  /// In fr, this message translates to:
+  /// **'Discipline & Surveillance Examens'**
+  String get admin_fraud_sub;
+
+  /// No description provided for @admin_antifraud_on.
+  ///
+  /// In fr, this message translates to:
+  /// **'Système Anti-Fraude Actif'**
+  String get admin_antifraud_on;
+
+  /// No description provided for @admin_ai_watch.
+  ///
+  /// In fr, this message translates to:
+  /// **'Surveillance IA'**
+  String get admin_ai_watch;
+
+  /// No description provided for @admin_unresolved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Non traités'**
+  String get admin_unresolved;
+
+  /// No description provided for @admin_resolved_month.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résolus ce mois'**
+  String get admin_resolved_month;
+
+  /// No description provided for @admin_integrity.
+  ///
+  /// In fr, this message translates to:
+  /// **'Intégrité'**
+  String get admin_integrity;
+
+  /// No description provided for @admin_unresolved_f.
+  ///
+  /// In fr, this message translates to:
+  /// **'Non traités ({count})'**
+  String admin_unresolved_f(Object count);
+
+  /// No description provided for @admin_ongoing.
+  ///
+  /// In fr, this message translates to:
+  /// **'En cours ({count})'**
+  String admin_ongoing(Object count);
+
+  /// No description provided for @admin_resolved_f.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résolus ({count})'**
+  String admin_resolved_f(Object count);
+
+  /// No description provided for @admin_critical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Critique'**
+  String get admin_critical;
+
+  /// No description provided for @admin_medium.
+  ///
+  /// In fr, this message translates to:
+  /// **'Moyen'**
+  String get admin_medium;
+
+  /// No description provided for @admin_closed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Classé sans suite'**
+  String get admin_closed;
+
+  /// No description provided for @admin_status_untreated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Non traité'**
+  String get admin_status_untreated;
+
+  /// No description provided for @admin_status_ongoing.
+  ///
+  /// In fr, this message translates to:
+  /// **'En cours'**
+  String get admin_status_ongoing;
+
+  /// No description provided for @admin_view_video.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir vidéo/log'**
+  String get admin_view_video;
+
+  /// No description provided for @admin_sanction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sanctionner'**
+  String get admin_sanction;
+
+  /// No description provided for @admin_network_logs.
+  ///
+  /// In fr, this message translates to:
+  /// **'Logs réseau'**
+  String get admin_network_logs;
+
+  /// No description provided for @admin_summon.
+  ///
+  /// In fr, this message translates to:
+  /// **'Convoquer'**
+  String get admin_summon;
+
+  /// No description provided for @admin_audit_history.
+  ///
+  /// In fr, this message translates to:
+  /// **'Historique d\'audit'**
+  String get admin_audit_history;
+
+  /// No description provided for @admin_export_audit.
+  ///
+  /// In fr, this message translates to:
+  /// **'Exporter le journal d\'audit (PDF/CSV)'**
+  String get admin_export_audit;
+
+  /// No description provided for @admin_compliance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Conforme à la charte d\'intégrité académique & règlements CNIL / RGPD'**
+  String get admin_compliance;
+
+  /// No description provided for @admin_reason.
+  ///
+  /// In fr, this message translates to:
+  /// **'Motif :'**
+  String get admin_reason;
+
+  /// No description provided for @admin_resolution.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résolution :'**
+  String get admin_resolution;
 }
 
 class _AppLocalizationsDelegate

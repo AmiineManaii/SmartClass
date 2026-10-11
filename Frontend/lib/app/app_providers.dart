@@ -32,6 +32,12 @@ import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/home/presentation/pages/home_page.dart';
 import '../features/splash/presentation/pages/splash_page.dart';
+import '../features/admin/presentation/pages/admin_classes_page.dart';
+import '../features/admin/presentation/pages/admin_frauds_page.dart';
+import '../features/admin/presentation/pages/admin_planning_page.dart';
+import '../features/admin/presentation/pages/class_create_page.dart';
+import '../features/admin/presentation/pages/class_students_page.dart';
+import '../features/admin/presentation/pages/class_teachers_page.dart';
 
 /// Notifier stable qui force GoRouter à réévaluer `redirect`
 /// sans recréer l'instance (sinon la navigation est réinitialisée).
@@ -44,6 +50,7 @@ final authRefreshProvider = Provider<AuthRefreshNotifier>((ref) {
 });
 
 final hasSeenSplashProvider = StateProvider<bool>((ref) => false);
+final pendingEmailProvider = StateProvider<String?>((ref) => null);
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ref.watch(authRefreshProvider);
@@ -62,7 +69,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/splash';
       }
 
-      final auth = ProviderScope.containerOf(context).read(authStateProvider).value;
+      final auth = ProviderScope.containerOf(context).read(authStateProvider).valueOrNull;
       final isLoggedIn = auth?.isAuthenticated ?? false;
       final completed = auth?.onboardingCompleted ?? false;
 
@@ -104,6 +111,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (isOnboardingRoute) return '/home';
 
+      if (location.startsWith('/admin') && auth?.role != 'admin') {
+        return '/home';
+      }
+
       return null;
     },
     routes: [
@@ -140,7 +151,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/verify-email',
         name: 'verify-email',
-        builder: (context, state) => const VerifyEmailPage(),
+        builder: (context, state) {
+          final email = state.uri.queryParameters['email'];
+          return VerifyEmailPage(email: email);
+        },
       ),
       GoRoute(
         path: '/role-selection',
@@ -211,6 +225,40 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const ProfilePage(),
           ),
           GoRoute(
+            path: '/admin/classes',
+            name: 'admin-classes',
+            builder: (context, state) => const AdminClassesPage(),
+          ),
+          GoRoute(
+            path: '/admin/classes/new',
+            name: 'admin-class-new',
+            builder: (context, state) => const ClassCreatePage(),
+          ),
+          GoRoute(
+            path: '/admin/classes/:classId/students',
+            name: 'admin-class-students',
+            builder: (context, state) => ClassStudentsPage(
+              classId: state.pathParameters['classId'] ?? '',
+            ),
+          ),
+          GoRoute(
+            path: '/admin/classes/:classId/teachers',
+            name: 'admin-class-teachers',
+            builder: (context, state) => ClassTeachersPage(
+              classId: state.pathParameters['classId'] ?? '',
+            ),
+          ),
+          GoRoute(
+            path: '/admin/planning',
+            name: 'admin-planning',
+            builder: (context, state) => const AdminPlanningPage(),
+          ),
+          GoRoute(
+            path: '/admin/frauds',
+            name: 'admin-frauds',
+            builder: (context, state) => const AdminFraudsPage(),
+          ),
+          GoRoute(
             path: '/settings',
             name: 'settings',
             builder: (context, state) => const SettingsPage(),
@@ -260,8 +308,49 @@ class _BottomNavBar extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final location = GoRouterState.of(context).matchedLocation;
+    final role = ref.watch(authStateProvider).valueOrNull?.role;
 
-    final items = [
+    // Admin shell (mockup: Tableau / Classes / Planning / Fraudes / Paramètres).
+    final items = role == 'admin'
+        ? [
+            _NavItem(
+              icon: Icons.dashboard_outlined,
+              selectedIcon: Icons.dashboard_rounded,
+              labelKey: 'admin_tab_dashboard',
+              route: '/home',
+            ),
+            _NavItem(
+              icon: Icons.school_outlined,
+              selectedIcon: Icons.school_rounded,
+              labelKey: 'admin_tab_classes',
+              route: '/admin/classes',
+            ),
+            _NavItem(
+              icon: Icons.calendar_month_outlined,
+              selectedIcon: Icons.calendar_month_rounded,
+              labelKey: 'admin_tab_planning',
+              route: '/admin/planning',
+            ),
+            _NavItem(
+              icon: Icons.shield_outlined,
+              selectedIcon: Icons.shield_rounded,
+              labelKey: 'admin_tab_frauds',
+              route: '/admin/frauds',
+            ),
+            _NavItem(
+              icon: Icons.settings_outlined,
+              selectedIcon: Icons.settings_rounded,
+              labelKey: 'settings',
+              route: '/settings',
+            ),
+          ]
+        : [
+            _NavItem(
+              icon: Icons.dashboard_outlined,
+              selectedIcon: Icons.dashboard_rounded,
+              labelKey: 'home',
+              route: '/home',
+            ),
       _NavItem(
         icon: Icons.dashboard_outlined,
         selectedIcon: Icons.dashboard_rounded,
@@ -519,11 +608,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   }
 
   AuthState _fromUser(UserEntity user, {required bool authenticated}) {
+    final currentRole = state.valueOrNull?.role;
     return AuthState(
       isAuthenticated: authenticated,
       userId: user.id.isEmpty ? null : user.id,
       email: user.email.isEmpty ? null : user.email,
-      role: user.role,
+      role: (user.role != null && user.role!.isNotEmpty) ? user.role : currentRole,
       displayName: user.displayName.isEmpty ? null : user.displayName,
       emailVerified: user.emailVerified,
       onboardingCompleted: user.onboardingCompleted,
@@ -550,6 +640,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   }
 
   Future<void> login(String email, String password) async {
+    _ref.read(pendingEmailProvider.notifier).state = email;
     _emit(const AsyncValue.loading());
     try {
       final session = await _repo.login(email: email, password: password);
@@ -567,6 +658,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     String? lastName,
     String? role,
   }) async {
+    _ref.read(pendingEmailProvider.notifier).state = email;
     _emit(const AsyncValue.loading());
     try {
       final fallback = email.split('@').first;
@@ -599,6 +691,13 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       _emit(AsyncValue.error(e, StackTrace.current));
       rethrow;
     }
+  }
+
+  /// Live email-availability check for the registration form.
+  /// Intentionally does NOT touch global auth state (no `_emit`):
+  /// it is a background validation, failures propagate as [Failure].
+  Future<bool> checkEmailAvailability(String email) {
+    return _repo.checkEmailAvailability(email: email);
   }
 
   Future<void> resendVerification({required String email}) {

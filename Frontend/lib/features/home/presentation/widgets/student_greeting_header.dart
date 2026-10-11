@@ -86,10 +86,13 @@ class StudentGreetingHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    // Real identity from the backend session. Fallbacks avoid blank UI
+    // when the name/email are legitimately absent — never mock data.
     final displayName = user?.displayName?.trim();
     final name = (displayName != null && displayName.isNotEmpty)
         ? displayName
-        : 'Salma';
+        : context.tr('student_greeting_default');
+    final email = user?.email?.trim() ?? '';
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -124,15 +127,17 @@ class StudentGreetingHeader extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      context.tr('student_degree_info'),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                    if (email.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        email,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -150,40 +155,12 @@ class StudentGreetingHeader extends StatelessWidget {
               color: colorScheme.surfaceContainer,
               shape: BoxShape.circle,
             ),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Center(
-                  child: Icon(
-                    Icons.notifications_outlined,
-                    size: 24,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: colorScheme.error,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '2',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onError,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          height: 1,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            child: Center(
+              child: Icon(
+                Icons.notifications_outlined,
+                size: 24,
+                color: colorScheme.onSurface,
+              ),
             ),
           ),
         ),

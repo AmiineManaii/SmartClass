@@ -27,7 +27,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    final authState = ref.read(authStateProvider).value;
+    final authState = ref.read(authStateProvider).valueOrNull;
     _firstNameController.text = authState?.displayName?.split(' ').first ?? '';
     _lastNameController.text = authState?.displayName?.split(' ').skip(1).join(' ') ?? '';
     _emailController.text = authState?.email ?? '';
@@ -54,12 +54,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       appBar: AppBar(
         title: Text(context.tr('my_profile')),
         actions: [
-          if (!_isEditing)
+          if (!_isEditing) ...[
             IconButton(
               icon: const Icon(Icons.edit_rounded),
+              tooltip: context.tr('edit'),
               onPressed: () => setState(() => _isEditing = true),
-            )
-          else ...[
+            ),
+            IconButton(
+              icon: Icon(Icons.logout_rounded, color: colorScheme.error),
+              tooltip: context.tr('logout'),
+              onPressed: _showLogoutDialog,
+            ),
+          ] else ...[
             TextButton(
               onPressed: () => setState(() => _isEditing = false),
               child: Text(context.tr('cancel')),
@@ -82,6 +88,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             _buildAccountSection(context),
             const SizedBox(height: 24),
             _buildDangerZone(context),
+            const SizedBox(height: 24),
+            _buildLogoutButton(context),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -495,6 +504,74 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
   
+  Widget _buildLogoutButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: colorScheme.error,
+          side: BorderSide(color: colorScheme.error.withValues(alpha: 0.6)),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        icon: const Icon(Icons.logout_rounded),
+        label: Text(
+          context.tr('logout'),
+          style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        onPressed: _showLogoutDialog,
+      ),
+    );
+  }
+
+  void _showLogoutDialog() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.logout_rounded, color: colorScheme.onErrorContainer, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Text(context.tr('logout')),
+          ],
+        ),
+        content: Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(context.tr('cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(authStateProvider.notifier).logout();
+            },
+            child: Text(context.tr('logout')),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showDeleteAccountDialog() {
     showDialog(
       context: context,

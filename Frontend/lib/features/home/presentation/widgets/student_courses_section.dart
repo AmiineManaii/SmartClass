@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/localization/app_localizations.dart';
-import '../../infrastructure/datasources/mock_student_dashboard_datasource.dart';
+import '../../domain/entities/student_course_progress.dart';
+import 'student_empty_list_hint.dart';
 
 class StudentCoursesSection extends StatelessWidget {
   final List<StudentCourseProgress> courses;
@@ -44,7 +45,10 @@ class StudentCoursesSection extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  context.tr('enrolled_count', args: {'count': '4'}),
+                  context.tr(
+                    'enrolled_count',
+                    args: {'count': courses.length.toString()},
+                  ),
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.normal,
@@ -81,14 +85,20 @@ class StudentCoursesSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        // Course cards list
-        for (int i = 0; i < courses.length; i++) ...[
-          _CourseProgressCard(
-            course: courses[i],
-            onTap: () => onCourseTap?.call(courses[i].id),
-          ),
-          if (i < courses.length - 1) const SizedBox(height: 10),
-        ],
+        // Course cards list (teacher-authored; empty state until added)
+        if (courses.isEmpty)
+          StudentEmptyListHint(
+            icon: Icons.menu_book_outlined,
+            message: context.tr('no_courses'),
+          )
+        else
+          for (int i = 0; i < courses.length; i++) ...[
+            _CourseProgressCard(
+              course: courses[i],
+              onTap: () => onCourseTap?.call(courses[i].id),
+            ),
+            if (i < courses.length - 1) const SizedBox(height: 10),
+          ],
       ],
     );
   }

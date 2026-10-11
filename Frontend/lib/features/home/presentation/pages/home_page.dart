@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../app/app_providers.dart';
+import '../../../admin/presentation/widgets/admin_dashboard_view.dart';
 import '../widgets/student_dashboard_view.dart';
 import '../widgets/teacher_dashboard_view.dart';
 
@@ -19,6 +20,10 @@ class HomePage extends ConsumerWidget {
 
     if (role == 'teacher') {
       return const TeacherDashboardView();
+    }
+
+    if (role == 'admin') {
+      return const AdminDashboardView();
     }
 
     if (role == 'student' || role.isEmpty) {

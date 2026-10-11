@@ -46,11 +46,11 @@ npx --yes @redocly/cli@latest lint contracts/*.yaml
 |--------|------|-----------|--------|
 | health | `health.openapi.yaml` | `/` | ✅ implemented |
 | auth | `auth.openapi.yaml` | `/api/v1/auth` | ✅ implemented |
-| users | not created yet | `/api/v1/users` | 📋 planned |
-| groups | not created yet | `/api/v1/groups` | 📋 planned |
+| users | `users.openapi.yaml` | `/api/v1/users` | ✅ implemented (directory only) |
+| groups | `groups.openapi.yaml` | `/api/v1/groups` | ✅ implemented |
 | courses | not created yet | `/api/v1/courses` | 📋 planned |
-| exams | not created yet | `/api/v1/exams` | 📋 planned |
-| videoconference | not created yet | `/api/v1/videoconference` | 📋 planned |
+| exams | `exams.openapi.yaml` | `/api/v1/exams` | ✅ implemented (fraud reporting slice only) |
+| videoconference | `videoconference.openapi.yaml` | `/api/v1/videoconference` | ✅ implemented (timetable read-only) |
 | collaboration | not created yet | `/api/v1/collaboration` | 📋 planned |
 | ai-assistant | not created yet | `/api/v1/ai-assistant` | 📋 planned |
 | notifications | not created yet | `/api/v1/notifications` | 📋 planned |

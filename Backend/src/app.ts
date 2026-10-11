@@ -7,14 +7,26 @@ import { logger } from './shared/infrastructure/logger.js';
 import { requestIdMiddleware } from './shared/http/request-id.middleware.js';
 import { notFoundHandler } from './shared/http/not-found.middleware.js';
 import { errorHandler } from './shared/http/error-handler.middleware.js';
-import { createGlobalRateLimiter, createRateLimiter, type RateLimiterCustomOptions } from './shared/http/rate-limiter.js';
+import {
+  createGlobalRateLimiter,
+  createRateLimiter,
+  type RateLimiterCustomOptions,
+} from './shared/http/rate-limiter.js';
 import type { AuthModuleOptions } from './modules/auth/index.js';
 import { createHealthModule, type HealthModuleOptions } from './modules/health/index.js';
+import type { UsersModuleOptions } from './modules/users/index.js';
+import type { GroupsModuleOptions } from './modules/groups/index.js';
+import type { ExamsModuleOptions } from './modules/exams/index.js';
+import type { VideoconferenceModuleOptions } from './modules/videoconference/index.js';
 import { createApiRouter } from './routes.js';
 
 export interface CreateAppOptions {
   healthModuleOptions?: HealthModuleOptions;
   authModuleOptions?: AuthModuleOptions;
+  usersModuleOptions?: UsersModuleOptions;
+  groupsModuleOptions?: GroupsModuleOptions;
+  examsModuleOptions?: ExamsModuleOptions;
+  videoconferenceModuleOptions?: VideoconferenceModuleOptions;
   rateLimiterOptions?: RateLimiterCustomOptions;
   skipRateLimit?: boolean;
   skipLogging?: boolean;
@@ -27,7 +39,10 @@ export const createApp = (options: CreateAppOptions = {}): Express => {
   // 1. Basic security & proxy settings
   app.disable('x-powered-by');
   if (env.TRUST_PROXY && env.TRUST_PROXY !== '0') {
-    app.set('trust proxy', isNaN(Number(env.TRUST_PROXY)) ? env.TRUST_PROXY : Number(env.TRUST_PROXY));
+    app.set(
+      'trust proxy',
+      isNaN(Number(env.TRUST_PROXY)) ? env.TRUST_PROXY : Number(env.TRUST_PROXY),
+    );
   }
 
   // 2. Request ID tracking
@@ -85,7 +100,13 @@ export const createApp = (options: CreateAppOptions = {}): Express => {
       ? createRateLimiter(options.rateLimiterOptions)
       : createGlobalRateLimiter();
 
-  const apiRouter = createApiRouter({ authModuleOptions: options.authModuleOptions });
+  const apiRouter = createApiRouter({
+    authModuleOptions: options.authModuleOptions,
+    usersModuleOptions: options.usersModuleOptions,
+    groupsModuleOptions: options.groupsModuleOptions,
+    examsModuleOptions: options.examsModuleOptions,
+    videoconferenceModuleOptions: options.videoconferenceModuleOptions,
+  });
   if (rateLimiter) {
     app.use('/api/v1', rateLimiter as unknown as RequestHandler, apiRouter);
   } else {

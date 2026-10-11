@@ -1,0 +1,95 @@
+openapi: 3.1.0
+info:
+  title: SmartClass API — Users
+  version: 0.1.0
+  description: >
+    Administrative user directory backing the admin screens
+    (dashboard counters, student/teacher pickers). ADMIN-only.
+    Roles: TEACHER, STUDENT, ADMIN (RG1 — one role per account).
+servers:
+  - url: /api/v1
+    description: SmartClass API v1 prefix
+tags:
+  - name: users
+    description: User directory administration
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      tags:
+        - users
+      summary: List users with role filter and search
+      description: >
+        Paginated directory of user accounts for admin management screens.
+        RG1 applies (each account carries a single role). Email addresses
+        are PII: ADMIN role required (least privilege; widened to TEACHER
+        for own classes in a later iteration).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - $ref: './common.yaml#/components/parameters/PageParam'
+        - $ref: './common.yaml#/components/parameters/LimitParam'
+        - $ref: './common.yaml#/components/parameters/SortParam'
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [TEACHER, STUDENT, ADMIN]
+          description: Filter by account role
+          example: STUDENT
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          description: Case-insensitive match on first name, last name or email
+          example: salma
+      responses:
+        '200':
+          description: Paginated user list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: './auth.openapi.yaml#/components/schemas/SafeUser'
+                  meta:
+                    $ref: './common.yaml#/components/schemas/PaginationOffsetMeta'
+              example:
+                data:
+                  - id: 550e8400-e29b-41d4-a716-446655440000
+                    email: salma.student@example.com
+                    firstName: Salma
+                    lastName: Benali
+                    role: STUDENT
+                    birthDate: null
+                    status: ACTIVE
+                    emailVerified: true
+                    onboardingCompleted: true
+                    createdAt: '2026-10-06T10:00:00.000Z'
+                    updatedAt: '2026-10-06T10:00:00.000Z'
+                meta:
+                  page: 1
+                  limit: 20
+                  total: 84
+                  totalPages: 5
+                  hasNextPage: true
+                  hasPreviousPage: false
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+components:
+  schemas: {}

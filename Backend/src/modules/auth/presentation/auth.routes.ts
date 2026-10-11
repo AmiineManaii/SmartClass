@@ -5,6 +5,7 @@ import {
   registerSchema,
   loginSchema,
   verifyEmailSchema,
+  checkEmailSchema,
   resendVerificationSchema,
   refreshTokenSchema,
   forgotPasswordSchema,
@@ -43,6 +44,13 @@ export const createAuthRouter = (options: AuthRouterOptions): Router => {
     ...rateLimitMw,
     validate({ body: resendVerificationSchema }),
     controller.resendVerification,
+  );
+
+  router.post(
+    '/check-email',
+    ...rateLimitMw,
+    validate({ body: checkEmailSchema }),
+    controller.checkEmail,
   );
 
   router.post(

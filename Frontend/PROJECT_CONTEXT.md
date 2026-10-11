@@ -510,6 +510,15 @@ L'architecture est prête pour l'intégration backend :
 - Créateur de cours IA (UC1) : `courses/presentation/pages/ai_course_creator_page.dart`, route top-level `/courses/ai-create` (bouton "Générer maintenant" de la bannière). Options mockées : `mock_ai_course_options_datasource.dart` + `ai_course_options_provider.dart`.
 - Shell de navigation inchangé (5 onglets) : seule la vue `/home` varie selon le rôle.
 
+### Dashboard étudiant — données réelles uniquement (ADRs `Docs/adr/ADR-0001/0002/0003`)
+
+- Identité réelle : nom + email depuis `AuthState` (backend `/auth/me`) ; badge notif et ligne diplôme mockés supprimés ; cloche → état vide honnête (`notifications_empty`) en attendant le module notifications.
+- Gate membership : `studentClassMembershipProvider` → `null` = pas de classe = `NoClassNotice` ("contacter l'administration") ; erreur fetch → même notice (fail-safe). Contenu class-dependent (live, cours, devoirs) rendu uniquement si membership réel.
+- Live conditionnel : `studentTodayLiveProvider` → `null` = widget masqué (endpoint calendrier du jour non prêt, seam documenté).
+- Streak/goal supprimés (widget + modèle + provider + mocks effacés, pas de zéro factice).
+- Cours/devoirs : sections conservées (le prof les ajoutera), alimentées par providers vides + états vides (`no_courses`, `no_assignments`) ; compteur inscrits = longueur réelle.
+- Entités domaine pures : `student_class_membership.dart`, `today_live_session.dart`, `student_course_progress.dart`, `student_assignment.dart` ; mock `mock_student_dashboard_datasource.dart` supprimé.
+
 ### Vérification email + nouveau mot de passe (dossiers déplacés vers `assets/design/ancien/`)
 
 - `VerifyEmailPage` (`/verify-email`, onboarding) : OTP 6 cases + clavier numérique custom. Flux : register → `/verify-email` → `/role-selection`.
@@ -534,6 +543,7 @@ L'architecture est prête pour l'intégration backend :
 | 1 | POST | `/api/v1/auth/register` | — | `register_page` (firstName/lastName splittés, rôle `STUDENT`) |
 | 2 | POST | `/api/v1/auth/verify-email` | — | `verify_email_page` (retourne tokens → session) |
 | 3 | POST | `/api/v1/auth/resend-verification` | — | `verify_email_page` (renvoi) |
+| 3b | POST | `/api/v1/auth/check-email` | — | `register_page` : vérif live debounce 600 ms → erreur inline `email_already_exists` (voir ADR-0006 racine) |
 | 4 | POST | `/api/v1/auth/login` | — | `login_page` (403 non-vérifié → `/verify-email`) |
 | 5 | POST | `/api/v1/auth/refresh` | body | `ApiClient` auto-refresh 401 + retry unique |
 | 6 | POST | `/api/v1/auth/forgot-password` | — | `forgot_password_page` (boutons renvoi) |
@@ -562,7 +572,7 @@ lib/core/network/
 lib/core/error/failure_localization.dart  # Failure/code → clé i18n (failureL10n)
 lib/features/authentication/
   domain/entities/user_entity.dart
-  domain/repositories/auth_repository.dart   # 11 méthodes, throw Failure
+  domain/repositories/auth_repository.dart   # 12 méthodes (dont checkEmailAvailability), throw Failure
   infrastructure/models/{user_model.dart, auth_session.dart}
   infrastructure/datasources/auth_remote_datasource.dart
   infrastructure/repositories/auth_repository_impl.dart  # persiste les tokens
@@ -580,8 +590,36 @@ lib/features/authentication/
   sociaux → snackbar `feature_coming_soon` (pas d'OAuth au contrat).
 - Messages backend bruts jamais affichés : confirmations localisées (`verification_sent`, …),
   erreurs mappées par code (`failureL10n`).
+- `checkEmailAvailability` ne touche PAS l'état global (pas de `_emit`) : validation
+  d'arrière-plan ; garde anti-réponses obsolètes + timer annulé au dispose.
 
 ---
 
-*Dernière mise à jour : 2026-10-07*
-*Version : 1.3.0*
+## 16. Module Admin — 7 écrans (maquettes `assets/design/ancien/smartclass_*`, ADR-0004)
+
+> Backend : seuls `auth` + `health` implémentés → **données réelles = identité admin
+> uniquement** (`AuthState` via `/auth/me`) ; tout le reste en mocks isolés
+> (`MockAdminDataSource`, un seam par futur endpoint documenté en TODO).
+
+- Feature `lib/features/admin/` (Clean Architecture stricte) : entités
+  (`admin_overview`, `managed_class`, `admin_person`, `timetable`, `fraud_report`
+  + `FraudSummary` agrégé), `AdminRepository` (9 méthodes), impl + providers.
+- Écrans : dashboard (`/home` si rôle admin), classes (`/admin/classes`),
+  création (`/admin/classes/new`, draft + stepper + switches),
+  étudiants (`/admin/classes/:id/students`, multi-sélection + bottom bar),
+  enseignants (`/admin/classes/:id/teachers`, couverture 25% + statuts),
+  planning (`/admin/planning`, semaine réelle via `DateTime.now()` + `intl`,
+  timeline CM/TP/TD/pauses/créneau libre), fraudes (`/admin/frauds`,
+  filtres calculés + actions + export).
+- Shell : `_BottomNavBar` par rôle (Tableau/Classes/Planning/Fraudes/Paramètres) ;
+  guard `/admin/*` → `/home` si non-admin ; `HomePage` branche admin.
+- Règles appliquées : compteurs calculés (jamais de 84/26 codés), jours via
+  `DateFormat` localisé, actions sans backend → snackbar `feature_coming_soon`
+  localisé, `context.tr()` partout, `theme.textTheme` uniquement, `gen-l10n`
+  régénéré (~130 clés `admin_*` FR/EN).
+- Maquettes déplacées vers `ancien/` après implémentation complète.
+
+---
+
+*Dernière mise à jour : 2026-10-10*
+*Version : 1.4.0*

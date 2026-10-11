@@ -1,0 +1,177 @@
+openapi: 3.1.0
+info:
+  title: SmartClass API — Videoconference & Timetable
+  version: 0.1.0
+  description: >
+    Weekly timetable backing the admin schedule screen. Live rooms, recording
+    and transcription (UC3/UC4, RG8/RG11) arrive with the full videoconference
+    module in Sprint 3; only the read-only week view is implemented here.
+servers:
+  - url: /api/v1
+    description: SmartClass API v1 prefix
+tags:
+  - name: videoconference
+    description: Timetable and live sessions
+paths:
+  /videoconference/timetable:
+    get:
+      operationId: getTimetableWeek
+      tags:
+        - videoconference
+      summary: Weekly timetable for a class group
+      description: >
+        Returns one bounded week (Monday to Saturday) of scheduled slots plus
+        per-day course counts. The fixed 7-day scope is intentionally not
+        paginated (bounded view, not an open-ended list). ADMIN-only for now;
+        TEACHER-scoped reads for own classes arrive in a later iteration.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: classGroupId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Class group to display
+        - name: weekStart
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: >
+            Any date inside the desired week (Monday is derived server-side).
+            Defaults to the current week.
+          example: '2025-05-12'
+      responses:
+        '200':
+          description: Week view with days and events
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - weekStart
+                      - days
+                      - events
+                    properties:
+                      weekStart:
+                        type: string
+                        format: date
+                        example: '2025-05-12'
+                      days:
+                        type: array
+                        maxItems: 7
+                        items:
+                          type: object
+                          required:
+                            - date
+                            - courseCount
+                          properties:
+                            date:
+                              type: string
+                              format: date
+                            courseCount:
+                              type: integer
+                          additionalProperties: false
+                      events:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TimetableEvent'
+                    additionalProperties: false
+              example:
+                data:
+                  weekStart: '2025-05-12'
+                  days:
+                    - date: '2025-05-12'
+                      courseCount: 4
+                    - date: '2025-05-13'
+                      courseCount: 3
+                  events:
+                    - id: 550e8400-e29b-41d4-a716-446655440000
+                      date: '2025-05-12'
+                      start: '08:00'
+                      end: '10:00'
+                      kind: CM
+                      title: Développement Mobile & Cross-Platform
+                      subtitle: Architecture MVVM & cycle de vie des interfaces tactiles
+                      teacher:
+                        id: 550e8400-e29b-41d4-a716-446655440001
+                        name: Prof. Amine Mansouri
+                      room: Salle 102
+                      statusNotes:
+                        - Confirmé • Appel non clôturé
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+components:
+  schemas:
+    TimetableTeacher:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      additionalProperties: false
+    TimetableEvent:
+      type: object
+      required:
+        - id
+        - date
+        - start
+        - end
+        - kind
+        - title
+      properties:
+        id:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        start:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          example: '08:00'
+        end:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          example: '10:00'
+        kind:
+          type: string
+          enum: [CM, TP, TD, BREAK, LUNCH, FREE]
+        title:
+          type: string
+        subtitle:
+          type: string
+          nullable: true
+        teacher:
+          $ref: '#/components/schemas/TimetableTeacher'
+          nullable: true
+        room:
+          type: string
+          nullable: true
+        statusNotes:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 200
+      additionalProperties: false

@@ -1,0 +1,293 @@
+openapi: 3.1.0
+info:
+  title: SmartClass API — Exams & Integrity
+  version: 0.1.0
+  description: >
+    Anti-fraud reporting backing the admin discipline screens (fraud reports,
+    summary, status transitions). Full exam engine (UC9) arrives in Sprint 5;
+    only the integrity-reporting slice is implemented here. RG20/RG26 state
+    that the final disciplinary decision belongs to the teacher — this slice
+    additionally grants ADMIN the transition right because the admin discipline
+    screens require it; TEACHER-scoped transitions arrive with the exams module.
+servers:
+  - url: /api/v1
+    description: SmartClass API v1 prefix
+tags:
+  - name: exams
+    description: Exams and exam-integrity reporting
+paths:
+  /exams/fraud-reports:
+    get:
+      operationId: listFraudReports
+      tags:
+        - exams
+      summary: List fraud reports with keyset pagination
+      description: >
+        Anti-fraud event feed for the admin discipline screen. Cursor
+        pagination (newest first, deterministic on occurredAt + id).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - $ref: './common.yaml#/components/parameters/CursorParam'
+        - $ref: './common.yaml#/components/parameters/LimitParam'
+        - $ref: './common.yaml#/components/parameters/SortParam'
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [UNTREATED, IN_PROGRESS, CLOSED]
+          description: Filter by report status
+        - name: severity
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [LOW, MEDIUM, HIGH]
+          description: Filter by severity
+      responses:
+        '200':
+          description: Paginated fraud-report list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FraudReport'
+                  meta:
+                    $ref: './common.yaml#/components/schemas/PaginationCursorMeta'
+              example:
+                data:
+                  - id: 550e8400-e29b-41d4-a716-446655440000
+                    title: Suspicion de Fraude - QCM Mathématiques
+                    context: Examen Partiel Semestre 6 • Durée 60 min
+                    severity: HIGH
+                    status: UNTREATED
+                    student:
+                      id: 550e8400-e29b-41d4-a716-446655440001
+                      name: Salma M.
+                      code: '#ETU-8921'
+                    classGroup:
+                      id: 550e8400-e29b-41d4-a716-446655440002
+                      name: Informatique 3A
+                    findings:
+                      - Perte de focus écran x5 & tentative copier-coller
+                    reason: null
+                    resolution: null
+                    occurredAt: '2026-10-11T10:45:00.000Z'
+                    createdAt: '2026-10-11T10:46:00.000Z'
+                meta:
+                  limit: 20
+                  nextCursor: eyJvY2N1cnJlZEF0IjoiMjAyNi0xMC0xMVQxMDo0NjowMC4wMDBaIiwiaWQiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAifQ
+                  hasMore: false
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /exams/fraud-reports/summary:
+    get:
+      operationId: getFraudReportsSummary
+      tags:
+        - exams
+      summary: Aggregate fraud-report counters
+      description: >
+        Header counters for the discipline screen. No integrity percentage
+        is exposed yet: it requires the exams denominator (exam sessions),
+        which arrives with the full exams module — the client must not
+        display a fabricated rate until then.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Fraud counters
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - untreated
+                      - inProgress
+                      - closed
+                      - resolvedThisMonth
+                    properties:
+                      untreated:
+                        type: integer
+                        example: 3
+                      inProgress:
+                        type: integer
+                        example: 2
+                      closed:
+                        type: integer
+                        example: 10
+                      resolvedThisMonth:
+                        type: integer
+                        description: Reports closed since the first of the current month (UTC)
+                        example: 12
+                    additionalProperties: false
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+  /exams/fraud-reports/{id}:
+    patch:
+      operationId: updateFraudReport
+      tags:
+        - exams
+      summary: Transition a fraud report (sanction / dismiss workflow)
+      description: >
+        Moves a report to IN_PROGRESS or CLOSED with an optional resolution
+        note. A CLOSED report is terminal and cannot be reopened (audit
+        integrity, RG21 retention). See module description for the
+        RG20/RG26 ADMIN-transition note.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [IN_PROGRESS, CLOSED]
+                resolution:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
+                  example: Justificatif de panne Wi-Fi campus validé.
+              additionalProperties: false
+      responses:
+        '200':
+          description: Report updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FraudReport'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          description: Report already closed (terminal state)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: CONFLICT
+                  message: Fraud report is already closed and cannot be reopened
+                  details: []
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+components:
+  schemas:
+    FraudReportStudent:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        code:
+          type: string
+          nullable: true
+      additionalProperties: false
+    FraudReportClass:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      additionalProperties: false
+    FraudReport:
+      type: object
+      required:
+        - id
+        - title
+        - severity
+        - status
+        - findings
+        - occurredAt
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        context:
+          type: string
+          nullable: true
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+        status:
+          type: string
+          enum: [UNTREATED, IN_PROGRESS, CLOSED]
+        student:
+          $ref: '#/components/schemas/FraudReportStudent'
+          nullable: true
+        classGroup:
+          $ref: '#/components/schemas/FraudReportClass'
+          nullable: true
+        findings:
+          type: array
+          items:
+            type: string
+        reason:
+          type: string
+          nullable: true
+        resolution:
+          type: string
+          nullable: true
+        occurredAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false

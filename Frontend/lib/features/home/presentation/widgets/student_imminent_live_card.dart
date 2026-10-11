@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/localization/app_localizations.dart';
-import '../../infrastructure/datasources/mock_student_dashboard_datasource.dart';
+import '../../domain/entities/today_live_session.dart';
 
+/// Rendered ONLY when [session] comes from real data (see
+/// `studentTodayLiveProvider`). Never feed invented sessions.
 class StudentImminentLiveCard extends StatefulWidget {
-  final StudentLiveSession session;
+  final TodayLiveSession session;
   final VoidCallback onJoin;
 
   const StudentImminentLiveCard({

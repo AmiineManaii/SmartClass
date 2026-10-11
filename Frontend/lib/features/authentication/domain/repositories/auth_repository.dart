@@ -40,6 +40,10 @@ abstract class AuthRepository {
     required String code,
   });
 
+  /// Returns true when no account uses [email] (mirrors the register
+  /// duplicate condition). Used for live validation during registration.
+  Future<bool> checkEmailAvailability({required String email});
+
   Future<String> resendVerification({required String email});
 
   Future<AuthenticatedSession> login({

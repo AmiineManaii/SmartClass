@@ -17,7 +17,8 @@ import '../widgets/otp_display_boxes.dart';
 /// Email verification with 6-digit OTP + custom numeric keypad.
 /// Step of the registration flow: register → verify-email → role-selection.
 class VerifyEmailPage extends ConsumerStatefulWidget {
-  const VerifyEmailPage({super.key});
+  final String? email;
+  const VerifyEmailPage({super.key, this.email});
 
   @override
   ConsumerState<VerifyEmailPage> createState() => _VerifyEmailPageState();
@@ -30,6 +31,23 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
   final List<String> _digits = List.filled(_codeLength, '');
   int _secondsLeft = _initialSeconds;
   Timer? _timer;
+
+  String _getResolvedEmail(bool isWatch) {
+    if (widget.email != null && widget.email!.trim().isNotEmpty) {
+      return widget.email!.trim();
+    }
+    final pending = isWatch ? ref.watch(pendingEmailProvider) : ref.read(pendingEmailProvider);
+    if (pending != null && pending.trim().isNotEmpty) {
+      return pending.trim();
+    }
+    final authEmail = isWatch
+        ? ref.watch(authStateProvider).valueOrNull?.email
+        : ref.read(authStateProvider).valueOrNull?.email;
+    if (authEmail != null && authEmail.trim().isNotEmpty) {
+      return authEmail.trim();
+    }
+    return '';
+  }
 
   @override
   void initState() {
@@ -86,8 +104,10 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
 
   void _showFailure(Failure failure) {
     final l10n = failureL10n(failure);
+    final translated = context.tr(l10n.key, args: l10n.args);
+    final message = (translated == l10n.key || translated.isEmpty) ? failure.message : translated;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
+      SnackBar(content: Text(message)),
     );
   }
 
@@ -98,7 +118,13 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
       );
       return;
     }
-    final email = ref.read(authStateProvider).value?.email ?? '';
+    final email = _getResolvedEmail(false);
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('invalid_email'))),
+      );
+      return;
+    }
     try {
       await ref.read(authStateProvider.notifier).verifyEmail(
             email: email,
@@ -112,10 +138,10 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
   }
 
   Future<void> _resend() async {
-    final email = ref.read(authStateProvider).value?.email ?? '';
+    final email = _getResolvedEmail(false);
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('required_field'))),
+        SnackBar(content: Text(context.tr('invalid_email'))),
       );
       return;
     }
@@ -136,8 +162,8 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final email = ref.watch(authStateProvider).value?.email;
-    final displayEmail = (email == null || email.isEmpty) ? 'etudiant@smartclass.edu' : email;
+    final email = _getResolvedEmail(true);
+    final displayEmail = email.isNotEmpty ? email : '---';
 
     return AuthScreenScaffold(
       child: Column(

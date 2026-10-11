@@ -353,6 +353,53 @@ paths:
                         type: string
                         example: If an account with that email exists, a password reset code has been sent.
 
+  /auth/check-email:
+    post:
+      summary: Check whether an email address is available for registration
+      description: >
+        Returns whether the email address is already attached to an account,
+        so the registration form can warn immediately instead of waiting for
+        the 409 response of POST /auth/register. The check mirrors the
+        register duplicate condition exactly (any existing account counts as
+        taken). Security note: like the register 409, this response is an
+        existence oracle by design; it reveals nothing beyond the boolean
+        (no names, roles or states) and the route shares the auth rate
+        limiter to throttle enumeration.
+      operationId: checkEmailAvailability
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: salma.student@example.com
+      responses:
+        '200':
+          description: Availability result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      available:
+                        type: boolean
+                        example: false
+                      email:
+                        type: string
+                        format: email
+                        example: salma.student@example.com
+
   /auth/reset-password:
     post:
       summary: Reset password with OTP code

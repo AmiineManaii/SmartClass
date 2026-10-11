@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { RegisterUseCase } from '../application/register.use-case.js';
 import type { VerifyEmailUseCase } from '../application/verify-email.use-case.js';
+import type { CheckEmailUseCase } from '../application/check-email.use-case.js';
 import type { ResendVerificationUseCase } from '../application/resend-verification.use-case.js';
 import type { LoginUseCase } from '../application/login.use-case.js';
 import type { RefreshTokenUseCase } from '../application/refresh-token.use-case.js';
@@ -16,6 +17,7 @@ export class AuthController {
   constructor(
     private readonly registerUseCase: RegisterUseCase,
     private readonly verifyEmailUseCase: VerifyEmailUseCase,
+    private readonly checkEmailUseCase: CheckEmailUseCase,
     private readonly resendVerificationUseCase: ResendVerificationUseCase,
     private readonly loginUseCase: LoginUseCase,
     private readonly refreshTokenUseCase: RefreshTokenUseCase,
@@ -40,6 +42,17 @@ export class AuthController {
   public verifyEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const result = await this.verifyEmailUseCase.execute(req.body);
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public checkEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const result = await this.checkEmailUseCase.execute(req.body.email);
       res.status(200).json({
         data: result,
       });
