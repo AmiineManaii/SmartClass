@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+
+<html lang="fr"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "tertiary-container": "#004f3b", "on-primary-fixed": "#001258", "error": "#ba1a1a", "outline-variant": "#c6c5d3", "surface-container-highest": "#dce1fe", "on-background": "#151b2f", "surface-bright": "#faf8ff", "surface": "#faf8ff", "on-secondary-container": "#09288e", "tertiary": "#003627", "outline": "#757682", "on-secondary-fixed-variant": "#243da0", "tertiary-fixed": "#83f8cd", "error-container": "#ffdad6", "on-surface-variant": "#454651", "primary-fixed": "#dee1ff", "on-surface": "#151b2f", "primary-container": "#2d3e8c", "surface-container-low": "#f3f2ff", "surface-container-lowest": "#ffffff", "on-primary-container": "#9eaeff", "secondary-fixed-dim": "#b9c3ff", "surface-dim": "#d4d9f5", "inverse-on-surface": "#eff0ff", "primary-fixed-dim": "#b9c3ff", "secondary": "#4056b9", "surface-container-high": "#e3e7ff", "on-primary-fixed-variant": "#2f408e", "on-primary": "#ffffff", "on-secondary": "#ffffff", "on-tertiary": "#ffffff", "surface-tint": "#4858a8", "on-tertiary-fixed": "#002116", "secondary-fixed": "#dde1ff", "surface-container": "#ebedff", "tertiary-fixed-dim": "#65dbb2", "surface-variant": "#dce1fe", "inverse-surface": "#2a3045", "on-tertiary-container": "#4ec69f", "background": "#faf8ff", "secondary-container": "#8197ff", "on-secondary-fixed": "#001257", "on-tertiary-fixed-variant": "#00513c", "on-error": "#ffffff", "primary": "#122675", "on-error-container": "#93000a", "inverse-primary": "#b9c3ff" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gutter-sm": "0.75rem", "margin": "1.25rem", "space-xl": "2rem", "margin-sm": "1rem", "gutter-lg": "1.5rem", "space-sm": "0.5rem", "gutter": "1rem", "space-xs": "0.25rem", "space-lg": "1.5rem", "margin-lg": "2rem", "space-md": "1rem" }, "fontFamily": { "display-lg": ["Inter"], "caption": ["Inter"], "label-lg": ["Inter"], "headline-sm": ["Inter"], "headline-md": ["Inter"], "label-md": ["Inter"], "headline-lg": ["Inter"], "label-sm": ["Inter"], "body-lg": ["Inter"], "body-sm": ["Inter"], "body-md": ["Inter"] }, "fontSize": { "display-lg": ["34px", { "lineHeight": "41px", "letterSpacing": "-0.022em", "fontWeight": "700" }], "caption": ["11px", { "lineHeight": "13px", "letterSpacing": "0.006em", "fontWeight": "500" }], "label-lg": ["17px", { "lineHeight": "22px", "letterSpacing": "-0.011em", "fontWeight": "600" }], "headline-sm": ["20px", { "lineHeight": "25px", "letterSpacing": "-0.012em", "fontWeight": "600" }], "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "label-md": ["15px", { "lineHeight": "20px", "letterSpacing": "-0.008em", "fontWeight": "600" }], "headline-lg": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.019em", "fontWeight": "600" }], "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.002em", "fontWeight": "600" }], "body-lg": ["17px", { "lineHeight": "22px", "letterSpacing": "-0.011em", "fontWeight": "400" }], "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "-0.003em", "fontWeight": "400" }], "body-md": ["15px", { "lineHeight": "20px", "letterSpacing": "-0.008em", "fontWeight": "400" }] } } } }</script></head><body class="bg-background font-body-md text-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-[260px] bg-primary-container text-on-primary z-50 flex flex-col justify-between shadow-[0_10px_25px_-5px_rgba(29,35,56,0.08),0_4px_6px_-2px_rgba(29,35,56,0.03)]"><div class="flex flex-col"><div class="h-16 px-margin flex items-center gap-space-sm"><img alt="Brand logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1UdnnfyC5auA4Kg2GAfR7oYIkqkoFZYHcVFL6oCE1OiU6fq_MerykwdalZQ0ivDtjCGXGaXvkx9oyCEe0FyFyLn3YptAjnmy4sTW962D6cyLkG9vBUh1_nINYMdTMJLJGA1pgNwg5XS1hJO_HYm2kTN6eiUynd3nlToIrNUShNgIe5hYpgLpxmtt5FMT0qz5TTwq0uIQPQCZNab9K-kMwHfAg8aRGYhjikVc_LtQQcSHJ9ajLieZ1B951c"/><span class="font-headline-sm text-headline-sm text-white tracking-tight">SmartClass</span></div><div class="px-margin-sm py-space-sm"><p class="px-space-sm font-caption text-caption uppercase text-on-primary-container tracking-wider mb-space-xs">Administration</p><nav class="space-y-space-xs" data-active-classes="bg-surface-container-lowest text-primary shadow-[0_2px_8px_rgba(29,35,56,0.04)] font-semibold"><a class="flex items-center px-space-md py-space-sm rounded-xl text-on-primary-container hover:bg-primary hover:text-on-primary transition-all font-label-md text-label-md" data-path="tableau-de-bord" href="#"><span>Tableau de bord</span></a><a aria-current="page" class="flex items-center px-space-md py-space-sm rounded-xl transition-all bg-surface-container-lowest text-primary shadow-[0_2px_8px_rgba(29,35,56,0.04)] font-semibold" data-path="classes" href="#"><span>Classes</span></a><a class="flex items-center px-space-md py-space-sm rounded-xl text-on-primary-container hover:bg-primary hover:text-on-primary transition-all font-label-md text-label-md" data-path="utilisateurs" href="#"><span>Utilisateurs</span></a><a class="flex items-center px-space-md py-space-sm rounded-xl text-on-primary-container hover:bg-primary hover:text-on-primary transition-all font-label-md text-label-md" data-path="emplois-du-temps" href="#"><span>Emplois du temps</span></a><a class="flex items-center px-space-md py-space-sm rounded-xl text-on-primary-container hover:bg-primary hover:text-on-primary transition-all font-label-md text-label-md" data-path="rapports-de-fraude" href="#"><span>Rapports de fraude</span></a><a class="flex items-center px-space-md py-space-sm rounded-xl text-on-primary-container hover:bg-primary hover:text-on-primary transition-all font-label-md text-label-md" data-path="parametres" href="#"><span>Paramètres</span></a></nav></div></div><div class="p-margin-sm bg-primary/40 m-space-sm rounded-xl"><div class="flex items-center justify-between"><div class="flex flex-col"><span class="font-label-sm text-label-sm text-white">Session Active</span><span class="font-caption text-caption text-on-primary-container">Admin Global</span></div><span class="material-symbols-outlined text-tertiary-fixed text-[18px]">verified_user</span></div></div></aside><div class="pl-[260px]"><header class="fixed top-0 left-[260px] right-0 h-16 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-margin-lg"><div class="flex items-center flex-1 max-w-md"><div class="relative w-full"><span class="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span><input class="w-full h-10 pl-10 pr-space-md bg-surface-container-lowest rounded-xl font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary-container/20" placeholder="Rechercher un cours, un étudiant ou un rapport..." type="search"/></div></div><div class="flex items-center gap-space-lg"><button class="relative p-space-xs text-on-surface-variant hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="absolute top-1 right-1 w-2.5 h-2.5 bg-error rounded-full ring-2 ring-surface"></span></button><div class="flex items-center gap-space-sm pl-space-md"><div class="flex flex-col items-end"><span class="font-label-sm text-label-sm text-on-surface font-semibold">Admin Portal</span><span class="font-caption text-caption text-on-surface-variant">Superviseur</span></div><img alt="Profile" class="w-8 h-8 rounded-full object-cover shadow-[0_1px_2px_rgba(29,35,56,0.02)]" src="https://lh3.googleusercontent.com/aida/AEtjO1UFNS3SHoOP6Y2jmdYaiHiOA0kZ6MVYmQi2-owQgHONRpjQdEgxoj_ToB_4xR1BPuXNgnBJ0AYBPry8qpcLKSB4iVuH1IySPLwpMivruMmvUXlXs-bqaG6d2Oerk7haYTg6rWIKP1yPXX-_8SOy6cunp_mNWd78KpfhRtmQveUzsAwzRgfgOjoauApMVb4NF3fgDf_3NEoueIuIa2kz6oJSgEuGfXnnQ86_geWTR4TH-VmpzlDGYvFk6NDy"/></div></div></header><main class="w-full pt-16 px-margin-lg py-margin-lg bg-background"><div class="flex flex-col w-full">
+<!-- Dynamic Notification / Top Toast Placeholder (micro-interaction hook) -->
+<div class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-space-sm bg-primary text-on-primary px-space-md py-space-sm rounded-xl shadow-2xl" id="toastNotification">
+<span class="material-symbols-outlined text-[20px] text-tertiary-fixed" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-md text-label-md text-white" id="toastMsg">Opération réussie</span>
+</div>
+<!-- Breadcrumbs & Institutional Identifier -->
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-space-xs text-on-surface-variant font-caption text-caption tracking-wide">
+<span class="flex items-center gap-1 font-semibold text-primary uppercase">
+<span class="material-symbols-outlined text-[16px]">school</span>
+        Supervision Académique
+      </span>
+<span class="text-outline-variant">/</span>
+<span class="text-on-surface-variant">Année 2024-2025</span>
+<span class="text-outline-variant">/</span>
+<span class="text-secondary font-medium">Structure Pédagogique</span>
+</div>
+<div class="hidden lg:flex items-center gap-space-xs font-caption text-caption text-on-surface-variant bg-surface-container-high px-2.5 py-1 rounded-full">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-fixed-dim animate-pulse"></span>
+<span>Base académique synchronisée (14:32)</span>
+</div>
+</div>
+<!-- Page Header -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md mb-space-lg">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight font-bold">
+        Gestion des Classes &amp; Groupes
+      </h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1 max-w-2xl">
+        Consultez, organisez et configurez les promotions, effectifs d'étudiants et affectations d'enseignants pour les cycles de formation.
+      </p>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap">
+<!-- Secondary Action -->
+<button class="h-[48px] px-space-md bg-surface-container-lowest text-primary hover:bg-surface-container-low transition-all duration-150 rounded-xl font-label-md text-label-md shadow-sm flex items-center gap-space-xs active:scale-[0.98]" onclick="triggerToast('Import CSV initialisé : Prêt à recevoir le fichier structure')" type="button">
+<span class="material-symbols-outlined text-[20px] text-secondary">upload_file</span>
+<span>Importer une structure (CSV)</span>
+</button>
+<!-- Primary Action -->
+<button class="h-[48px] px-space-lg bg-primary-container text-on-primary hover:bg-primary transition-all duration-150 rounded-xl font-label-md text-label-md shadow-md hover:shadow-lg flex items-center gap-space-xs active:scale-[0.98]" onclick="triggerToast('Ouverture du formulaire de création de classe...')" type="button">
+<span class="material-symbols-outlined text-[20px]">add_circle</span>
+<span>Créer une classe</span>
+</button>
+</div>
+</div>
+<!-- Quick Stats Overview Ribbon (Metrics Badges) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md mb-space-lg">
+<!-- Stat 1 -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-shadow flex items-center justify-between">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-primary-fixed/60 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[26px]">groups_3</span>
+</div>
+<div>
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider block">Promotions</span>
+<span class="font-headline-md text-headline-md font-bold text-on-surface">18 Classes actives</span>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary-container bg-tertiary-fixed/30 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> 100%
+      </span>
+</div>
+<!-- Stat 2 -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-shadow flex items-center justify-between">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[26px]">person_check</span>
+</div>
+<div>
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider block">Inscriptions</span>
+<span class="font-headline-md text-headline-md font-bold text-on-surface">1,250 Étudiants</span>
+</div>
+</div>
+<span class="font-caption text-caption text-on-surface-variant bg-surface-container px-2 py-1 rounded-lg">
+        Taux: 94.2%
+      </span>
+</div>
+<!-- Stat 3 -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-shadow flex items-center justify-between">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-tertiary-fixed/40 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[26px]">badge</span>
+</div>
+<div>
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider block">Corps Professoral</span>
+<span class="font-headline-md text-headline-md font-bold text-on-surface">48 Enseignants</span>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-secondary bg-secondary-fixed/40 px-2 py-0.5 rounded-full">
+        Affectés
+      </span>
+</div>
+</div>
+<!-- Interactive Toolbar & Filters -->
+<div class="bg-surface-container-lowest p-space-md rounded-t-xl shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-space-md">
+<!-- Left Filters -->
+<div class="flex flex-wrap items-center gap-space-sm flex-1">
+<!-- Search Input -->
+<div class="relative min-w-[260px] flex-1 max-w-sm">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+<input class="w-full h-10 pl-9 pr-3 bg-surface-container-low rounded-xl font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary-container/30 transition-all" id="tableSearchInput" oninput="handleSearch(this.value)" placeholder="Filtrer par nom, code (#INFO, #MATH)..." type="search"/>
+</div>
+<!-- Level Filter Dropdown -->
+<div class="relative">
+<select class="h-10 pl-3 pr-8 bg-surface-container-low rounded-xl font-label-sm text-label-sm text-on-surface appearance-none focus:outline-none focus:ring-2 focus:ring-primary-container/20 cursor-pointer" id="levelSelect" onchange="filterByLevel(this.value)">
+<option value="all">Niveau : Tous (Licence &amp; Master)</option>
+<option value="Licence">Licences (L1, L2, L3)</option>
+<option value="Master">Masters (M1, M2)</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+<!-- Department Filter Dropdown -->
+<div class="relative">
+<select class="h-10 pl-3 pr-8 bg-surface-container-low rounded-xl font-label-sm text-label-sm text-on-surface appearance-none focus:outline-none focus:ring-2 focus:ring-primary-container/20 cursor-pointer" id="deptSelect" onchange="filterByDept(this.value)">
+<option value="all">Filière / Département : Toutes</option>
+<option value="Informatique">Informatique</option>
+<option value="Mathématiques">Mathématiques</option>
+<option value="Physique">Physique Fondamentale</option>
+<option value="Data">Data Science &amp; IA</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+<!-- Active Academic Year Chip -->
+<div class="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fixed/40 text-primary rounded-xl font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+<span>Année : 2024-2025</span>
+<button class="text-primary hover:opacity-75 ml-0.5" title="Verrouillé pour la session" type="button">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+</button>
+</div>
+</div>
+<!-- Right Controls -->
+<div class="flex items-center gap-space-sm justify-end">
+<!-- Export Button -->
+<button class="h-10 px-space-md bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm rounded-xl flex items-center gap-1.5 transition-all shadow-sm active:scale-[0.98]" onclick="triggerToast('Génération de l\'export XLS / CSV des 18 promotions...')" type="button">
+<span class="material-symbols-outlined text-[18px] text-secondary">file_download</span>
+<span>Exporter (Excel / CSV)</span>
+</button>
+<!-- View Toggle Buttons -->
+<div class="flex items-center p-1 bg-surface-container-low rounded-xl">
+<button aria-label="Vue Tableau" class="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-container-lowest text-primary shadow-sm" title="Vue tabulaire détaillée" type="button">
+<span class="material-symbols-outlined text-[18px]">table_rows</span>
+</button>
+<button aria-label="Vue Cartes" class="w-8 h-8 flex items-center justify-center rounded-lg text-outline hover:text-on-surface transition-colors" onclick="triggerToast('Bascule en vue Cartes Grille')" title="Vue vignettes" type="button">
+<span class="material-symbols-outlined text-[18px]">grid_view</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Dynamic Batch Operations Ribbon -->
+<div class="bg-surface-container-high px-space-md py-2.5 flex items-center justify-between text-on-surface font-label-sm text-label-sm transition-all duration-200" id="batchActionRibbon">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-[20px]">checklist</span>
+<span class="font-semibold text-primary" id="selectedCountText">0 élément sélectionné</span>
+<span class="text-outline-variant">|</span>
+<span class="text-on-surface-variant font-normal">Sélectionnez des classes pour exécuter des actions groupées</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="px-3 py-1 bg-surface-container-lowest text-on-surface hover:text-primary rounded-lg text-caption font-semibold transition-colors shadow-xs" onclick="triggerToast('Affectation collective de salle')" type="button">
+        Assigner une salle
+      </button>
+<button class="px-3 py-1 bg-surface-container-lowest text-on-surface hover:text-primary rounded-lg text-caption font-semibold transition-colors shadow-xs" onclick="triggerToast('Envoi d\'un message d\'information aux promotions sélectionnées')" type="button">
+        Notifier délégués
+      </button>
+<button class="px-3 py-1 bg-error-container text-error hover:bg-error hover:text-on-error rounded-lg text-caption font-semibold transition-colors" onclick="triggerToast('Attention: Archivage des promotions')" type="button">
+        Archiver
+      </button>
+</div>
+</div>
+<!-- Main Data Table Container -->
+<div class="overflow-x-auto bg-surface-container-lowest shadow-sm">
+<table class="w-full text-left font-body-sm text-body-sm text-on-surface">
+<!-- Table Header -->
+<thead class="bg-surface-container-low text-on-surface-variant font-caption text-caption uppercase tracking-wider select-none">
+<tr>
+<th class="w-12 px-4 py-3.5 text-center" scope="col">
+<input aria-label="Sélectionner toutes les lignes" class="w-4 h-4 rounded text-primary focus:ring-0 focus:outline-none cursor-pointer accent-primary" id="selectAllCheckbox" onclick="toggleSelectAll(this)" type="checkbox"/>
+</th>
+<th class="px-4 py-3.5 font-semibold" scope="col">Nom de la classe &amp; Code</th>
+<th class="px-4 py-3.5 font-semibold" scope="col">Niveau &amp; Spécialité</th>
+<th class="px-4 py-3.5 font-semibold" scope="col">Effectif Étudiants</th>
+<th class="px-4 py-3.5 font-semibold" scope="col">Professeurs assignés</th>
+<th class="px-4 py-3.5 font-semibold" scope="col">Salle / Référent</th>
+<th class="px-4 py-3.5 font-semibold" scope="col">Statut</th>
+<th class="px-4 py-3.5 font-semibold text-right" scope="col">Actions</th>
+</tr>
+</thead>
+<!-- Table Body with Zebra Hover & Rich Card Rows -->
+<tbody class="divide-y divide-surface-container" id="classTableBody">
+<!-- Row 1: Informatique 3A -->
+<tr class="hover:bg-surface-container-low/70 transition-colors group class-row" data-dept="Informatique" data-level="Licence" data-name="Informatique 3A #INFO-L3A">
+<td class="px-4 py-4 text-center">
+<input aria-label="Sélectionner Informatique 3A" class="row-checkbox w-4 h-4 rounded text-primary focus:ring-0 cursor-pointer accent-primary" onchange="updateBatchState()" type="checkbox"/>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded-xl bg-primary-fixed/50 text-primary flex items-center justify-center font-bold font-label-md text-label-md shrink-0">
+                3A
+              </div>
+<div>
+<span class="font-label-md text-label-md font-semibold text-on-surface block">Informatique 3A</span>
+<span class="font-caption text-caption text-outline font-mono">#INFO-L3A</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col items-start gap-1">
+<span class="px-2 py-0.5 rounded-full font-label-sm text-label-sm bg-primary-fixed/40 text-primary font-medium">
+                Licence 3
+              </span>
+<span class="font-caption text-caption text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-secondary">terminal</span>
+                Génie Logiciel
+              </span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="w-40">
+<div class="flex items-center justify-between font-label-sm text-label-sm mb-1">
+<span class="font-semibold text-on-surface">35 étudiants</span>
+<span class="font-caption text-caption text-outline">35 / 40</span>
+</div>
+<!-- Mini Progress Bar -->
+<div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 87.5%;"></div>
+</div>
+<div class="flex items-center -space-x-1.5 mt-2">
+<img alt="Étudiant 1" class="w-5 h-5 rounded-full object-cover ring-1 ring-surface-container-lowest" data-alt="Close-up portrait of student in a university library, warm lighting, deep blue sweater, smiling confident student expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6iN7TVQC_9qK3L_PYUcf5PXSfaSr0WwOt81fTqHYc3l5MrU2854cRjvTdob6Kt_01zE0Vhh0oeGIP1l7rIcq1-VTs-Do90rwFnlPRKBy7MkGCnFFusmiy1tV1mS2YTqfXHAynEqfV1d4f0b3KyIvzYWlmEWkc7AzC8j9pqTaV-645RoJoZth07ZOgYDItK-42yWfz9iIGpOuIAZjZupvQHMOAQesuI6VpQYJyM3jq246zQDbO9DvpxA"/>
+<img alt="Étudiant 2" class="w-5 h-5 rounded-full object-cover ring-1 ring-surface-container-lowest" data-alt="Portrait of young female university student with headphones around neck, soft daylight, university atrium background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCa6rXG4UkQ8dHKYet8Uz4_BRmt--OTmdDzvQsUt2mxljoPbXciC2JfaYClMAMMq1MhX5Kreie6gk9lQqO_qyZazGfoPSqvJHXkAs8d1sQLGRDlTVwRfo7G4vkz6t81enPBzqu_yUbcQUEMMeKgPbYfkomLGElKJQBlUCaq_9yof-XB_nYwQ1sSfo4ktMfkdMiHpbvnzVH2ATRAcNJ4B3ghCFG_tKZcGNUk4PwUcwaaN85uPjVDARBMkg"/>
+<img alt="Étudiant 3" class="w-5 h-5 rounded-full object-cover ring-1 ring-surface-container-lowest" data-alt="Portrait of computer science student in classroom environment, natural modern lighting, studious expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfd0brVeBWMxshP67-ZFY07Mh3X7c9TtYR6ICtzEiQFU9CrgHkdoACCctYTvbWRzeGJQidz2F3F1L21eEpHfIzZtBFGpm43aS6mODYyeT-n8-mD46uAK7Av6bUaYyw08RU7wjTYW8KfM5bTl_ZNqxd_n_W500HQtIqRR5s2Ie_J5kFp8QuBUdduYu7VSzsyeXqvJy2bOgeYPeEDyOGNVnROmdkpjk9fWGdyy-QXbntSB8kjlf5gIojtA"/>
+<span class="w-5 h-5 rounded-full bg-surface-container text-on-surface-variant font-caption text-[9px] flex items-center justify-center font-bold ring-1 ring-surface-container-lowest">+32</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-1.5">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">4 profs</span>
+<span class="px-1.5 py-0.2 rounded font-caption text-[10px] bg-tertiary-fixed/30 text-tertiary font-bold uppercase tracking-wider">Référent</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant truncate max-w-[200px]" title="Prof. Amine M., Dr. Sarah B., Prof. L. Valette">
+                Prof. Amine M., Dr. Sarah B.
+              </span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-on-surface font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-outline">meeting_room</span>
+                Amphi B &amp; Salle 102
+              </span>
+<span class="font-caption text-caption text-outline">Campus Centre</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-label-sm text-label-sm bg-tertiary-fixed/40 text-tertiary font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+              Active
+            </span>
+</td>
+<td class="px-4 py-4 text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-colors" onclick="triggerToast('Modification de la classe Informatique 3A')" title="Éditer la classe" type="button">
+<span class="material-symbols-outlined text-[19px]">edit</span>
+</button>
+<button class="p-1.5 text-primary bg-primary-fixed/30 hover:bg-primary-fixed/60 rounded-lg transition-colors" onclick="triggerToast('Gestion des membres : Informatique 3A')" title="Gérer les étudiants &amp; intervenants" type="button">
+<span class="material-symbols-outlined text-[19px]">group_add</span>
+</button>
+<div class="relative inline-block text-left">
+<button class="p-1.5 text-outline hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors" onclick="toggleRowDropdown('dropdown-row-1')" title="Plus d'options" type="button">
+<span class="material-symbols-outlined text-[19px]">more_vert</span>
+</button>
+<div class="hidden absolute right-0 mt-1 w-44 bg-surface-container-lowest rounded-xl shadow-xl z-20 py-1 text-left font-label-sm text-label-sm" id="dropdown-row-1">
+<a class="px-3 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2" href="#" onclick="triggerToast('Duplication en cours...'); return false;">
+<span class="material-symbols-outlined text-[16px]">content_copy</span> Dupliquer structure
+                  </a>
+<a class="px-3 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2" href="#" onclick="triggerToast('Emploi du temps ouvert'); return false;">
+<span class="material-symbols-outlined text-[16px]">schedule</span> Emploi du temps
+                  </a>
+<a class="px-3 py-2 text-error hover:bg-error-container/30 flex items-center gap-2" href="#" onclick="triggerToast('Attention: Suppression demandée'); return false;">
+<span class="material-symbols-outlined text-[16px]">delete</span> Supprimer
+                  </a>
+</div>
+</div>
+</div>
+</td>
+</tr>
+<!-- Row 2: Mathématiques 1B -->
+<tr class="hover:bg-surface-container-low/70 transition-colors group class-row" data-dept="Mathématiques" data-level="Licence" data-name="Mathématiques 1B #MATH-L1B">
+<td class="px-4 py-4 text-center">
+<input aria-label="Sélectionner Mathématiques 1B" class="row-checkbox w-4 h-4 rounded text-primary focus:ring-0 cursor-pointer accent-primary" onchange="updateBatchState()" type="checkbox"/>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded-xl bg-surface-container-high text-on-surface-variant flex items-center justify-center font-bold font-label-md text-label-md shrink-0">
+                1B
+              </div>
+<div>
+<span class="font-label-md text-label-md font-semibold text-on-surface block">Mathématiques 1B</span>
+<span class="font-caption text-caption text-outline font-mono">#MATH-L1B</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col items-start gap-1">
+<span class="px-2 py-0.5 rounded-full font-label-sm text-label-sm bg-surface-container-high text-on-surface font-medium">
+                Licence 1
+              </span>
+<span class="font-caption text-caption text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-outline">calculate</span>
+                Tronc Commun
+              </span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="w-40">
+<div class="flex items-center justify-between font-label-sm text-label-sm mb-1">
+<span class="font-semibold text-on-surface">42 étudiants</span>
+<span class="font-caption text-caption text-outline">42 / 45</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 93.3%;"></div>
+</div>
+<div class="flex items-center -space-x-1.5 mt-2">
+<div class="w-5 h-5 rounded-full bg-primary-fixed text-primary font-caption text-[10px] flex items-center justify-center font-bold ring-1 ring-surface-container-lowest">KI</div>
+<div class="w-5 h-5 rounded-full bg-surface-container text-on-surface font-caption text-[10px] flex items-center justify-center font-bold ring-1 ring-surface-container-lowest">NC</div>
+<span class="w-5 h-5 rounded-full bg-surface-container text-on-surface-variant font-caption text-[9px] flex items-center justify-center font-bold ring-1 ring-surface-container-lowest">+40</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">2 profs</span>
+<span class="font-caption text-caption text-on-surface-variant truncate max-w-[200px]" title="Dr. K. Idrissi, Mme N. Cherkaoui">
+                Dr. K. Idrissi, Mme N. Cherkaoui
+              </span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-on-surface font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-outline">meeting_room</span>
+                Amphi A
+              </span>
+<span class="font-caption text-caption text-outline">Bâtiment Descartes</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-label-sm text-label-sm bg-tertiary-fixed/40 text-tertiary font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+              Active
+            </span>
+</td>
+<td class="px-4 py-4 text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-colors" onclick="triggerToast('Modification : Mathématiques 1B')" title="Éditer la classe" type="button">
+<span class="material-symbols-outlined text-[19px]">edit</span>
+</button>
+<button class="p-1.5 text-primary bg-primary-fixed/30 hover:bg-primary-fixed/60 rounded-lg transition-colors" onclick="triggerToast('Gestion des membres : Mathématiques 1B')" title="Gérer les étudiants &amp; intervenants" type="button">
+<span class="material-symbols-outlined text-[19px]">group_add</span>
+</button>
+<div class="relative inline-block text-left">
+<button class="p-1.5 text-outline hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors" onclick="toggleRowDropdown('dropdown-row-2')" title="Plus d'options" type="button">
+<span class="material-symbols-outlined text-[19px]">more_vert</span>
+</button>
+<div class="hidden absolute right-0 mt-1 w-44 bg-surface-container-lowest rounded-xl shadow-xl z-20 py-1 text-left font-label-sm text-label-sm" id="dropdown-row-2">
+<a class="px-3 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2" href="#" onclick="triggerToast('Duplication en cours...'); return false;">
+<span class="material-symbols-outlined text-[16px]">content_copy</span> Dupliquer structure
+                  </a>
+<a class="px-3 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2" href="#" onclick="triggerToast('Emploi du temps ouvert'); return false;">
+<span class="material-symbols-outlined text-[16px]">schedule</span> Emploi du temps
+                  </a>
+<a class="px-3 py-2 text-error hover:bg-error-container/30 flex items-center gap-2" href="#" onclick="triggerToast('Attention: Suppression demandée'); return false;">
+<span class="material-symbols-outlined text-[16px]">delete</span> Supprimer
+                  </a>
+</div>
+</div>
+</div>
+</td>
+</tr>
+<!-- Row 3: Systèmes & Réseaux M1 -->
+<tr class="hover:bg-surface-container-low/70 transition-colors group class-row" data-dept="Informatique" data-level="Master" data-name="Systèmes &amp; Réseaux M1 #SR-M1">
+<td class="px-4 py-4 text-center">
+<input aria-label="Sélectionner Systèmes et Réseaux M1" class="row-checkbox w-4 h-4 rounded text-primary focus:ring-0 cursor-pointer accent-primary" onchange="updateBatchState()" type="checkbox"/>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded-xl bg-secondary-fixed text-on-secondary-container flex items-center justify-center font-bold font-label-md text-label-md shrink-0">
+                M1
+              </div>
+<div>
+<span class="font-label-md text-label-md font-semibold text-on-surface block">Systèmes &amp; Réseaux M1</span>
+<span class="font-caption text-caption text-outline font-mono">#SR-M1</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col items-start gap-1">
+<span class="px-2 py-0.5 rounded-full font-label-sm text-label-sm bg-secondary-fixed/50 text-on-secondary-container font-medium">
+                Master 1
+              </span>
+<span class="font-caption text-caption text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-tertiary">security</span>
+                Cybersécurité
+              </span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="w-40">
+<div class="flex items-center justify-between font-label-sm text-label-sm mb-1">
+<span class="font-semibold text-on-surface">28 étudiants</span>
+<span class="font-caption text-caption text-outline">28 / 30</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 93.3%;"></div>
+</div>
+<div class="flex items-center -space-x-1.5 mt-2">
+<img alt="Étudiant 4" class="w-5 h-5 rounded-full object-cover ring-1 ring-surface-container-lowest" data-alt="University computer lab portrait of postgraduate student working on cyber network interface, focused demeanor" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUicsbl7tvFd1zpSaQLXRvo7-vxx_bIz60qjzF0wHUHFSOusZQpEyvrBa4vneYn4shzEve4OgasH7aRwDxw-crZmnP8yMh9FErW0Y4vhsgPkAoCiHTGJ3pST-sLstusMjYAFv-MEUzQr_5-Ye87iRPco-acUP5-2Ea_W24l-plZhAjJtupPje7YdhOl6Jex6XwXo1zYybNdlroshgSHha5Z22yYqemHsOHl8DIc-9mZBtow0XGtBI9vw"/>
+<img alt="Étudiant 5" class="w-5 h-5 rounded-full object-cover ring-1 ring-surface-container-lowest" data-alt="Portrait of smiling master student holding notebook in campus corridor, clean academic aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDajXTGEgiZ3ePGc0t-xKs0he62WJx8KqV2cNSL3unPtxX6cKM8PcHDEmpwxuvXO22UsgslJqN-YvG9Pk5Es_uRZpj3NGHM8JN2obkohqJproBgnky0VTgoD6S9SSWYdyfnQa7_kfG_Hgvqzv_ATijrvPqvSCcLkxMHMAVGhYYpujmtz51-LDrVNoPwOEBF67EWjFq6jATKZFv7ebQWltKPIWQ0duaydHbVJmfLkH2x0mhkSD7uOXrI7A"/>
+<span class="w-5 h-5 rounded-full bg-surface-container text-on-surface-variant font-caption text-[9px] flex items-center justify-center font-bold ring-1 ring-surface-container-lowest">+26</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">3 profs</span>
+<span class="font-caption text-caption text-on-surface-variant truncate max-w-[200px]" title="Prof. Amine M., Dr. Sarah B., M. Tariq F.">
+                Prof. Amine M., M. Tariq F.
+              </span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-on-surface font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-outline">router</span>
+                Labo Réseau 204
+              </span>
+<span class="font-caption text-caption text-outline">Aile Numérique</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-label-sm text-label-sm bg-tertiary-fixed/40 text-tertiary font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+              Active
+            </span>
+</td>
+<td class="px-4 py-4 text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-colors" onclick="triggerToast('Modification : Systèmes &amp; Réseaux M1')" title="Éditer la classe" type="button">
+<span class="material-symbols-outlined text-[19px]">edit</span>
+</button>
+<button class="p-1.5 text-primary bg-primary-fixed/30 hover:bg-primary-fixed/60 rounded-lg transition-colors" onclick="triggerToast('Gestion des membres : Systèmes &amp; Réseaux M1')" title="Gérer les étudiants &amp; intervenants" type="button">
+<span class="material-symbols-outlined text-[19px]">group_add</span>
+</button>
+<div class="relative inline-block text-left">
+<button class="p-1.5 text-outline hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors" onclick="toggleRowDropdown('dropdown-row-3')" title="Plus d'options" type="button">
+<span class="material-symbols-outlined text-[19px]">more_vert</span>
+</button>
+<div class="hidden absolute right-0 mt-1 w-44 bg-surface-container-lowest rounded-xl shadow-xl z-20 py-1 text-left font-label-sm text-label-sm" id="dropdown-row-3">
+<a class="px-3 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2" href="#" onclick="triggerToast('Duplication en cours...'); return false;">
+<span class="material-symbols-outlined text-[16px]">content_copy</span> Dupliquer structure
+                  </a>
+<a class="px-3 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2" href="#" onclick="triggerToast('Emploi du temps ouvert'); return false;">
+<span class="material-symbols-outlined text-[16px]">schedule</span> Emploi du temps
+                  </a>
+<a class="px-3 py-2 text-error hover:bg-error-container/30 flex items-center gap-2" href="#" onclick="triggerToast('Attention: Suppression demandée'); return false;">
+<span class="material-symbols-outlined text-[16px]">delete</span> Supprimer
+                  </a>
+</div>
+</div>
+</div>
+</td>
+</tr>
+<!-- Row 4: Data Science & IA M2 -->
+<tr class="hover:bg-surface-container-low/70 transition-colors group class-row" data-dept="Data" data-level="Master" data-name="Data Science &amp; IA M2 #DSIA-M2">
+<td class="px-4 py-4 text-center">
+<input aria-label="Sélectionner Data Science et IA M2" class="row-checkbox w-4 h-4 rounded text-primary focus:ring-0 cursor-pointer accent-primary" onchange="updateBatchState()" type="checkbox"/>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded-xl bg-primary-container text-on-primary flex items-center justify-center font-bold font-label-md text-label-md shrink-0">
+                M2
+              </div>
+<div>
+<span class="font-label-md text-label-md font-semibold text-on-surface block">Data Science &amp; IA M2</span>
+<span class="font-caption text-caption text-outline font-mono">#DSIA-M2</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col items-start gap-1">
+<span class="px-2 py-0.5 rounded-full font-label-sm text-label-sm bg-primary-fixed/50 text-primary font-medium">
+                Master 2
+              </span>
+<span class="font-caption text-caption text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-primary">psychology</span>
+                Intelligence Artificielle
+              </span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="w-40">
+<div class="flex items-center justify-between font-label-sm text-label-sm mb-1">
+<span class="font-semibold text-on-surface">24 étudiants</span>
+<span class="font-caption text-caption text-outline">24 / 25</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 96%;"></div>
+</div>
+<div class="flex items-center -space-x-1.5 mt-2">
+<img alt="Étudiant 6" class="w-5 h-5 rounded-full object-cover ring-1 ring-surface-container-lowest" data-alt="Portrait of an advanced AI researcher student looking at modern displays, university lab background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEg5vqGu_qUw2FeO9DlgSwlAoVVC_L_DhnOZINQRuasUWkVuacdnjh2-JIKpoJCTB2Ug1SSj_wztrYmk7LfCLDWEa4XzDU_VltujQk3UsXnmEO8z5Yw-S_OZGaGkR50X5D-hNl5U0XTleMOEueUb4QDYF-imF0xXZ-vvwdWsAzLam44L57E2KBGkchvPV-1ujb71s9sUTyJQsZAoglifm0woLaA9YlUwVTKxISt5WqJtS_svGs6l3_Aw"/>
+<div class="w-5 h-5 rounded-full bg-primary-fixed/70 text-primary font-caption text-[10px] flex items-center justify-center font-bold ring-1 ring-surface-container-lowest">TA</div>
+<span class="w-5 h-5 rounded-full bg-surface-container text-on-surface-variant font-caption text-[9px] flex items-center justify-center font-bold ring-1 ring-surface-container-lowest">+22</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">5 profs</span>
+<span class="font-caption text-caption text-on-surface-variant truncate max-w-[200px]" title="Dr. Sarah B., Prof. T. Alami, Dr. H. Moreau">
+                Dr. Sarah B., Prof. T. Alami
+              </span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-on-surface font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-outline">memory</span>
+                Salle 305 IA
+              </span>
+<span class="font-caption text-caption text-outline">Centre de Recherche</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-label-sm text-label-sm bg-tertiary-fixed/40 text-tertiary font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+              Active
+            </span>
+</td>
+<td class="px-4 py-4 text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-colors" onclick="triggerToast('Modification : Data Science &amp; IA M2')" title="Éditer la classe" type="button">
+<span class="material-symbols-outlined text-[19px]">edit</span>
+</button>
+<button class="p-1.5 text-primary bg-primary-fixed/30 hover:bg-primary-fixed/60 rounded-lg transition-colors" onclick="triggerToast('Gestion des membres : Data Science &amp; IA M2')" title="Gérer les étudiants &amp; intervenants" type="button">
+<span class="material-symbols-outlined text-[19px]">group_add</span>
+</button>
+<div class="relative inline-block text-left">
+<button class="p-1.5 text-outline hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors" onclick="toggleRowDropdown('dropdown-row-4')" title="Plus d'options" type="button">
+<span class="material-symbols-outlined text-[19px]">more_vert</span>
+</button>
+<div class="hidden absolute right-0 mt-1 w-44 bg-surface-container-lowest rounded-xl shadow-xl z-20 py-1 text-left font-label-sm text-label-sm" id="dropdown-row-4">
+<a class="px-3 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2" href="#" onclick="triggerToast('Duplication en cours...'); return false;">
+<span class="material-symbols-outlined text-[16px]">content_copy</span> Dupliquer structure
+                  </a>
+<a class="px-3 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2" href="#" onclick="triggerToast('Emploi du temps ouvert'); return false;">
+<span class="material-symbols-outlined text-[16px]">schedule</span> Emploi du temps
+                  </a>
+<a class="px-3 py-2 text-error hover:bg-error-container/30 flex items-center gap-2" href="#" onclick="triggerToast('Attention: Suppression demandée'); return false;">
+<span class="material-symbols-outlined text-[16px]">delete</span> Supprimer
+                  </a>
+</div>
+</div>
+</div>
+</td>
+</tr>
+<!-- Row 5: Physique Fondamentale 2A -->
+<tr class="hover:bg-surface-container-low/70 transition-colors group class-row" data-dept="Physique" data-level="Licence" data-name="Physique Fondamentale 2A #PHYS-L2A">
+<td class="px-4 py-4 text-center">
+<input aria-label="Sélectionner Physique Fondamentale 2A" class="row-checkbox w-4 h-4 rounded text-primary focus:ring-0 cursor-pointer accent-primary" onchange="updateBatchState()" type="checkbox"/>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded-xl bg-surface-container text-on-surface flex items-center justify-center font-bold font-label-md text-label-md shrink-0">
+                2A
+              </div>
+<div>
+<span class="font-label-md text-label-md font-semibold text-on-surface block">Physique Fondamentale 2A</span>
+<span class="font-caption text-caption text-outline font-mono">#PHYS-L2A</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col items-start gap-1">
+<span class="px-2 py-0.5 rounded-full font-label-sm text-label-sm bg-surface-container-high text-on-surface font-medium">
+                Licence 2
+              </span>
+<span class="font-caption text-caption text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-outline">science</span>
+                Sciences Exactes
+              </span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="w-40">
+<div class="flex items-center justify-between font-label-sm text-label-sm mb-1">
+<span class="font-semibold text-on-surface">38 étudiants</span>
+<span class="font-caption text-caption text-outline">38 / 40</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 95%;"></div>
+</div>
+<div class="flex items-center -space-x-1.5 mt-2">
+<div class="w-5 h-5 rounded-full bg-surface-container-high text-on-surface font-caption text-[10px] flex items-center justify-center font-bold ring-1 ring-surface-container-lowest">RM</div>
+<div class="w-5 h-5 rounded-full bg-secondary-fixed text-primary font-caption text-[10px] flex items-center justify-center font-bold ring-1 ring-surface-container-lowest">SL</div>
+<span class="w-5 h-5 rounded-full bg-surface-container text-on-surface-variant font-caption text-[9px] flex items-center justify-center font-bold ring-1 ring-surface-container-lowest">+36</span>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">3 profs</span>
+<span class="font-caption text-caption text-on-surface-variant truncate max-w-[200px]" title="Prof. R. Mansouri, Dr. F. Benali">
+                Prof. R. Mansouri, etc.
+              </span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-on-surface font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-outline">meeting_room</span>
+                Salle 110
+              </span>
+<span class="font-caption text-caption text-outline">Pavillon Curie</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-label-sm text-label-sm bg-tertiary-fixed/40 text-tertiary font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+              Active
+            </span>
+</td>
+<td class="px-4 py-4 text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-colors" onclick="triggerToast('Modification : Physique Fondamentale 2A')" title="Éditer la classe" type="button">
+<span class="material-symbols-outlined text-[19px]">edit</span>
+</button>
+<button class="p-1.5 text-primary bg-primary-fixed/30 hover:bg-primary-fixed/60 rounded-lg transition-colors" onclick="triggerToast('Gestion des membres : Physique Fondamentale 2A')" title="Gérer les étudiants &amp; intervenants" type="button">
+<span class="material-symbols-outlined text-[19px]">group_add</span>
+</button>
+<div class="relative inline-block text-left">
+<button class="p-1.5 text-outline hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors" onclick="toggleRowDropdown('dropdown-row-5')" title="Plus d'options" type="button">
+<span class="material-symbols-outlined text-[19px]">more_vert</span>
+</button>
+<div class="hidden absolute right-0 mt-1 w-44 bg-surface-container-lowest rounded-xl shadow-xl z-20 py-1 text-left font-label-sm text-label-sm" id="dropdown-row-5">
+<a class="px-3 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2" href="#" onclick="triggerToast('Duplication en cours...'); return false;">
+<span class="material-symbols-outlined text-[16px]">content_copy</span> Dupliquer structure
+                  </a>
+<a class="px-3 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2" href="#" onclick="triggerToast('Emploi du temps ouvert'); return false;">
+<span class="material-symbols-outlined text-[16px]">schedule</span> Emploi du temps
+                  </a>
+<a class="px-3 py-2 text-error hover:bg-error-container/30 flex items-center gap-2" href="#" onclick="triggerToast('Attention: Suppression demandée'); return false;">
+<span class="material-symbols-outlined text-[16px]">delete</span> Supprimer
+                  </a>
+</div>
+</div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Bottom Table Footer & Pagination -->
+<div class="bg-surface-container-lowest p-space-md rounded-b-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-space-md border-t border-surface-container">
+<!-- Left Metadata & Rows per Page -->
+<div class="flex flex-wrap items-center gap-space-md">
+<span class="font-body-sm text-body-sm text-on-surface-variant" id="paginationSummary">
+        Affichage de <span class="font-semibold text-on-surface">1</span> à <span class="font-semibold text-on-surface">5</span> sur <span class="font-semibold text-on-surface">18</span> classes
+      </span>
+<div class="flex items-center gap-2">
+<span class="font-caption text-caption text-outline">Afficher :</span>
+<select aria-label="Nombre de lignes par page" class="h-8 px-2 bg-surface-container-low rounded-lg font-label-sm text-label-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer" onchange="triggerToast('Affichage mis à jour : ' + this.value + ' par page')">
+<option value="5">5 par page</option>
+<option selected="" value="10">10 par page</option>
+<option value="25">25 par page</option>
+<option value="50">50 par page</option>
+</select>
+</div>
+</div>
+<!-- Right Pagination Buttons -->
+<div class="flex items-center gap-1.5 self-center sm:self-auto">
+<!-- Previous -->
+<button class="h-9 px-3 bg-surface-container-low hover:bg-surface-container text-on-surface-variant disabled:opacity-40 rounded-xl font-label-sm text-label-sm flex items-center gap-1 transition-colors" disabled="" onclick="triggerToast('Page précédente')" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+<span class="hidden md:inline">Précédent</span>
+</button>
+<!-- Page 1 (Active) -->
+<button class="w-9 h-9 rounded-xl bg-primary-container text-on-primary font-label-sm text-label-sm font-semibold shadow-sm flex items-center justify-center" type="button">
+        1
+      </button>
+<!-- Page 2 -->
+<button class="w-9 h-9 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm font-semibold flex items-center justify-center transition-colors" onclick="triggerToast('Navigation vers la Page 2')" type="button">
+        2
+      </button>
+<!-- Page 3 -->
+<button class="w-9 h-9 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm font-semibold flex items-center justify-center transition-colors" onclick="triggerToast('Navigation vers la Page 3')" type="button">
+        3
+      </button>
+<span class="px-1 text-outline font-bold">...</span>
+<!-- Next -->
+<button class="h-9 px-3 bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm flex items-center gap-1 transition-colors" onclick="triggerToast('Page suivante')" type="button">
+<span class="hidden md:inline">Suivant</span>
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Educational Insight Banner (Secondary Content Module) -->
+<div class="mt-space-lg p-space-lg bg-surface-container-high rounded-xl flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-tertiary-fixed text-tertiary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 1;">insights</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg font-bold text-on-surface">Capacité globale &amp; Cohérence pédagogique</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          98% des groupes respectent les jauges d'amphithéâtres. Le module anti-fraude et de présence biométrique SmartClass est actif sur l'ensemble de ces 18 promotions.
+        </p>
+</div>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<button class="px-space-md h-10 bg-surface-container-lowest text-primary rounded-xl font-label-sm text-label-sm hover:bg-surface-container transition-all" onclick="triggerToast('Ouverture du rapport d\'attribution des salles')" type="button">
+        Rapport d'optimisation
+      </button>
+</div>
+</div>
+</div>
+<!-- Inline JavaScript for Table Controls, Search, and Toast Micro-interactions -->
+<script>
+  // Toast micro-interaction
+  function triggerToast(message) {
+    const toast = document.getElementById('toastNotification');
+    const msg = document.getElementById('toastMsg');
+    if (!toast || !msg) return;
+    
+    msg.textContent = message;
+    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+
+    clearTimeout(window._toastTimeout);
+    window._toastTimeout = setTimeout(() => {
+      toast.classList.add('translate-y-20', 'opacity-0');
+      toast.classList.remove('translate-y-0', 'opacity-100');
+    }, 2800);
+  }
+
+  // Row selection & Batch operations
+  function updateBatchState() {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    const checked = Array.from(checkboxes).filter(cb => cb.checked);
+    const countText = document.getElementById('selectedCountText');
+    const allBox = document.getElementById('selectAllCheckbox');
+    
+    if (countText) {
+      if (checked.length === 0) {
+        countText.textContent = "0 élément sélectionné";
+        countText.classList.remove('text-secondary');
+        countText.classList.add('text-primary');
+      } else {
+        countText.textContent = checked.length + " classe" + (checked.length > 1 ? "s" : "") + " sélectionnée" + (checked.length > 1 ? "s" : "");
+        countText.classList.remove('text-primary');
+        countText.classList.add('text-secondary');
+      }
+    }
+
+    if (allBox) {
+      allBox.checked = (checked.length === checkboxes.length && checkboxes.length > 0);
+    }
+  }
+
+  function toggleSelectAll(masterCheckbox) {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => {
+      cb.checked = masterCheckbox.checked;
+    });
+    updateBatchState();
+  }
+
+  // Row action menu dropdown toggle
+  function toggleRowDropdown(menuId) {
+    // Close other dropdowns
+    document.querySelectorAll('[id^="dropdown-row-"]').forEach(menu => {
+      if (menu.id !== menuId) {
+        menu.classList.add('hidden');
+      }
+    });
+
+    const target = document.getElementById(menuId);
+    if (target) {
+      target.classList.toggle('hidden');
+    }
+  }
+
+  // Close dropdown on click outside
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.relative')) {
+      document.querySelectorAll('[id^="dropdown-row-"]').forEach(menu => {
+        menu.classList.add('hidden');
+      });
+    }
+  });
+
+  // Client-side search and filters
+  function filterRows() {
+    const query = (document.getElementById('tableSearchInput')?.value || '').toLowerCase().trim();
+    const levelVal = document.getElementById('levelSelect')?.value || 'all';
+    const deptVal = document.getElementById('deptSelect')?.value || 'all';
+    const rows = document.querySelectorAll('.class-row');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+      const name = (row.getAttribute('data-name') || '').toLowerCase();
+      const level = row.getAttribute('data-level') || '';
+      const dept = row.getAttribute('data-dept') || '';
+
+      const matchesSearch = !query || name.includes(query);
+      const matchesLevel = (levelVal === 'all') || (level === levelVal);
+      const matchesDept = (deptVal === 'all') || (dept === deptVal);
+
+      if (matchesSearch && matchesLevel && matchesDept) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    const summary = document.getElementById('paginationSummary');
+    if (summary) {
+      summary.innerHTML = 'Affichage de <span class="font-semibold text-on-surface">' + (visibleCount > 0 ? 1 : 0) + '</span> à <span class="font-semibold text-on-surface">' + visibleCount + '</span> sur <span class="font-semibold text-on-surface">' + rows.length + '</span> classes filtrées';
+    }
+  }
+
+  function handleSearch(val) {
+    filterRows();
+  }
+
+  function filterByLevel(val) {
+    filterRows();
+  }
+
+  function filterByDept(val) {
+    filterRows();
+  }
+</script></main></div></body></html>

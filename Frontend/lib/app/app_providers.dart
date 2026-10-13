@@ -251,6 +251,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const AdminStudentsPage(),
           ),
           GoRoute(
+            path: '/admin/users',
+            name: 'admin-users',
+            builder: (context, state) => const AdminStudentsPage(),
+          ),
+          GoRoute(
             path: '/admin/classes/new',
             name: 'admin-class-new',
             builder: (context, state) => ClassCreatePage(
@@ -318,9 +323,10 @@ class MainScaffold extends ConsumerWidget {
   
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
     return Scaffold(
       body: child,
-      bottomNavigationBar: _BottomNavBar(),
+      bottomNavigationBar: isDesktop ? null : _BottomNavBar(),
     );
   }
 }

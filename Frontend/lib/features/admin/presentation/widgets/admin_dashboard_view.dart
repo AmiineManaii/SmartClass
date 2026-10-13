@@ -10,6 +10,7 @@ import '../../domain/entities/admin_overview.dart';
 import 'admin_nav_row.dart';
 import 'admin_section_header.dart';
 import 'admin_stat_card.dart';
+import '../views/web_admin_dashboard_view.dart';
 
 /// Locally dismissed alert ids (no backend status endpoint yet).
 final dismissedAdminAlertsProvider = StateProvider<Set<String>>((ref) => {});
@@ -19,6 +20,10 @@ class AdminDashboardView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (context.isDesktop) {
+      return const WebAdminDashboardPage();
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final user = ref.watch(authStateProvider).valueOrNull;

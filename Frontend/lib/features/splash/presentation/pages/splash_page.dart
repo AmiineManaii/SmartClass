@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_providers.dart';
 import '../../../../core/localization/app_localizations.dart';
 
+import '../widgets/web_splash_view.dart';
+
 /// Un écran de démarrage (Splash Screen) prestigieux, sobre et professionnel,
 /// directement inspiré du nouveau logo SmartClass (Livre ouvert + Réseau IA + Étoile dorée).
 class SplashPage extends ConsumerStatefulWidget {
@@ -163,6 +165,35 @@ class _SplashPageState extends ConsumerState<SplashPage>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final size = MediaQuery.sizeOf(context);
+
+    // Si on est sur un affichage Desktop / Web (largeur >= 900px)
+    if (size.width >= 900) {
+      return Scaffold(
+        body: AnimatedBuilder(
+          animation: Listenable.merge([
+            _ambientController,
+            _sequenceController,
+            _exitController,
+          ]),
+          builder: (context, _) {
+            final exitProgress = _exitController.value;
+            final exitOpacity = (1.0 - exitProgress).clamp(0.0, 1.0);
+            return Opacity(
+              opacity: exitOpacity,
+              child: WebSplashView(
+                ambientController: _ambientController,
+                sequenceController: _sequenceController,
+                progressValue: _progressValue,
+                starGleam: _starGleam,
+                statusIndex: _statusIndex,
+                isDark: isDark,
+                onNavigate: _completeAndNavigate,
+              ),
+            );
+          },
+        ),
+      );
+    }
 
     // Couleurs nobles inspirées du logo
     final bgColor = isDark ? const Color(0xFF090E17) : const Color(0xFFF8FAFC);

@@ -79,11 +79,27 @@ export const createApp = (options: CreateAppOptions = {}): Express => {
     cors({
       origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps, curl, server-to-server)
-        if (!origin || env.CORS_ORIGINS.includes(origin)) {
+        if (!origin) {
           callback(null, true);
-        } else {
-          callback(new Error(`Origin '${origin}' not allowed by CORS`));
+          return;
         }
+
+        // Whitelisted origins or wildcard
+        if (env.CORS_ORIGINS.includes('*') || env.CORS_ORIGINS.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        // In development: allow any localhost / 127.0.0.1 port (e.g. Flutter Web dynamic ports)
+        if (env.NODE_ENV === 'development') {
+          const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+          if (isLocalhost) {
+            callback(null, true);
+            return;
+          }
+        }
+
+        callback(new Error(`Origin '${origin}' not allowed by CORS`));
       },
       credentials: true,
     }) as unknown as RequestHandler,

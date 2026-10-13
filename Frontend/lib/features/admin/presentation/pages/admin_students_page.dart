@@ -11,6 +11,7 @@ import '../../domain/entities/admin_person.dart';
 import '../../domain/entities/managed_class.dart';
 import '../widgets/admin_person_avatar.dart';
 import '../widgets/admin_search_field.dart';
+import '../views/web_admin_users_view.dart';
 
 /// Global student directory (GET /api/v1/users?role=STUDENT) with
 /// enrolment into a class (class picker → real POST).
@@ -161,6 +162,10 @@ class _AdminStudentsPageState extends ConsumerState<AdminStudentsPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (context.isDesktop) {
+      return const WebAdminUsersPage();
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final studentsAsync = ref.watch(adminStudentsProvider(null));

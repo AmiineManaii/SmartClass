@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+
+<html lang="fr"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "on-secondary-fixed-variant": "#243da0",
+          "secondary-container": "#8197ff",
+          "surface-tint": "#4858a8",
+          "error": "#ba1a1a",
+          "tertiary": "#003627",
+          "surface-container-high": "#e3e7ff",
+          "on-surface": "#151b2f",
+          "on-error-container": "#93000a",
+          "secondary-fixed": "#dde1ff",
+          "on-secondary-container": "#09288e",
+          "primary-fixed": "#dee1ff",
+          "secondary": "#4056b9",
+          "tertiary-container": "#004f3b",
+          "primary-fixed-dim": "#b9c3ff",
+          "on-surface-variant": "#454651",
+          "tertiary-fixed": "#83f8cd",
+          "inverse-on-surface": "#eff0ff",
+          "surface-container-lowest": "#ffffff",
+          "on-tertiary-fixed": "#002116",
+          "on-primary-fixed-variant": "#2f408e",
+          "surface-container-low": "#f3f2ff",
+          "on-secondary-fixed": "#001257",
+          "on-primary": "#ffffff",
+          "on-tertiary": "#ffffff",
+          "error-container": "#ffdad6",
+          "surface-bright": "#faf8ff",
+          "surface-dim": "#d4d9f5",
+          "on-tertiary-fixed-variant": "#00513c",
+          "inverse-primary": "#b9c3ff",
+          "on-tertiary-container": "#4ec69f",
+          "surface-container-highest": "#dce1fe",
+          "on-error": "#ffffff",
+          "outline": "#757682",
+          "on-primary-fixed": "#001258",
+          "secondary-fixed-dim": "#b9c3ff",
+          "background": "#faf8ff",
+          "primary": "#122675",
+          "inverse-surface": "#2a3045",
+          "on-secondary": "#ffffff",
+          "surface-variant": "#dce1fe",
+          "outline-variant": "#c6c5d3",
+          "on-background": "#151b2f",
+          "surface-container": "#ebedff",
+          "tertiary-fixed-dim": "#65dbb2",
+          "on-primary-container": "#9eaeff",
+          "surface": "#faf8ff",
+          "primary-container": "#2d3e8c"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "space-lg": "1.5rem",
+          "space-xl": "2rem",
+          "space-sm": "0.5rem",
+          "space-xs": "0.25rem",
+          "gutter": "1rem",
+          "gutter-lg": "1.5rem",
+          "gutter-sm": "0.75rem",
+          "margin-lg": "2rem",
+          "margin-sm": "1rem",
+          "space-md": "1rem",
+          "margin": "1.25rem"
+        },
+        "fontFamily": {
+          "display-lg": [
+            "Inter"
+          ],
+          "label-md": [
+            "Inter"
+          ],
+          "headline-lg": [
+            "Inter"
+          ],
+          "label-sm": [
+            "Inter"
+          ],
+          "caption": [
+            "Inter"
+          ],
+          "body-md": [
+            "Inter"
+          ],
+          "headline-md": [
+            "Inter"
+          ],
+          "label-lg": [
+            "Inter"
+          ],
+          "body-sm": [
+            "Inter"
+          ],
+          "body-lg": [
+            "Inter"
+          ],
+          "headline-sm": [
+            "Inter"
+          ]
+        },
+        "fontSize": {
+          "display-lg": [
+            "34px",
+            {
+              "lineHeight": "41px",
+              "letterSpacing": "-0.022em",
+              "fontWeight": "700"
+            }
+          ],
+          "label-md": [
+            "15px",
+            {
+              "lineHeight": "20px",
+              "letterSpacing": "-0.008em",
+              "fontWeight": "600"
+            }
+          ],
+          "headline-lg": [
+            "28px",
+            {
+              "lineHeight": "34px",
+              "letterSpacing": "-0.019em",
+              "fontWeight": "600"
+            }
+          ],
+          "label-sm": [
+            "12px",
+            {
+              "lineHeight": "16px",
+              "letterSpacing": "0.002em",
+              "fontWeight": "600"
+            }
+          ],
+          "caption": [
+            "11px",
+            {
+              "lineHeight": "13px",
+              "letterSpacing": "0.006em",
+              "fontWeight": "500"
+            }
+          ],
+          "body-md": [
+            "15px",
+            {
+              "lineHeight": "20px",
+              "letterSpacing": "-0.008em",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-md": [
+            "22px",
+            {
+              "lineHeight": "28px",
+              "letterSpacing": "-0.015em",
+              "fontWeight": "600"
+            }
+          ],
+          "label-lg": [
+            "17px",
+            {
+              "lineHeight": "22px",
+              "letterSpacing": "-0.011em",
+              "fontWeight": "600"
+            }
+          ],
+          "body-sm": [
+            "13px",
+            {
+              "lineHeight": "18px",
+              "letterSpacing": "-0.003em",
+              "fontWeight": "400"
+            }
+          ],
+          "body-lg": [
+            "17px",
+            {
+              "lineHeight": "22px",
+              "letterSpacing": "-0.011em",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-sm": [
+            "20px",
+            {
+              "lineHeight": "25px",
+              "letterSpacing": "-0.012em",
+              "fontWeight": "600"
+            }
+          ]
+        }
+      },
+    },
+  }</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-72 bg-primary-container z-50 flex flex-col justify-between py-space-lg px-space-md shadow-[0_2px_8px_rgba(29,35,56,0.08)]"><div class="flex flex-col gap-space-lg"><div class="flex items-center gap-space-sm px-space-sm"><img alt="Brand logo. - Primary color: #2d3e8c
+- Font: inter
+- Mode: light
+- Roundness: rounded-md
+" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1UdnnfyC5auA4Kg2GAfR7oYIkqkoFZYHcVFL6oCE1OiU6fq_MerykwdalZQ0ivDtjCGXGaXvkx9oyCEe0FyFyLn3YptAjnmy4sTW962D6cyLkG9vBUh1_nINYMdTMJLJGA1pgNwg5XS1hJO_HYm2kTN6eiUynd3nlToIrNUShNgIe5hYpgLpxmtt5FMT0qz5TTwq0uIQPQCZNab9K-kMwHfAg8aRGYhjikVc_LtQQcSHJ9ajLieZ1B951c"/><span class="font-headline-sm text-headline-sm text-on-primary font-bold tracking-tight">SmartClass</span></div><nav class="flex flex-col gap-space-xs" data-active-classes="bg-surface-container-lowest text-primary font-label-md text-label-md rounded-xl shadow-[0_2px_8px_rgba(29,35,56,0.04)]"><a class="flex items-center gap-space-sm px-space-md py-3 rounded-xl text-primary-fixed-dim hover:bg-surface-container-high/20 hover:text-on-primary transition-all font-body-md text-body-md" data-path="tableau-de-bord" href="#"><span class="material-symbols-outlined text-[20px]">dashboard</span><span>Tableau de bord</span></a><a class="flex items-center gap-space-sm px-space-md py-3 rounded-xl text-primary-fixed-dim hover:bg-surface-container-high/20 hover:text-on-primary transition-all font-body-md text-body-md" data-path="classes" href="#"><span class="material-symbols-outlined text-[20px]">school</span><span>Classes</span></a><a class="flex items-center gap-space-sm px-space-md py-3 rounded-xl text-primary-fixed-dim hover:bg-surface-container-high/20 hover:text-on-primary transition-all font-body-md text-body-md" data-path="utilisateurs" href="#"><span class="material-symbols-outlined text-[20px]">group</span><span>Utilisateurs</span></a><a class="flex items-center gap-space-sm px-space-md py-3 rounded-xl text-primary-fixed-dim hover:bg-surface-container-high/20 hover:text-on-primary transition-all font-body-md text-body-md" data-path="emplois-du-temps" href="#"><span class="material-symbols-outlined text-[20px]">calendar_today</span><span>Emplois du temps</span></a><a aria-current="page" class="flex items-center gap-space-sm px-space-md py-3 transition-all bg-surface-container-lowest text-primary font-label-md text-label-md rounded-xl shadow-[0_2px_8px_rgba(29,35,56,0.04)]" data-path="rapports-de-fraude" href="#"><span class="material-symbols-outlined text-[20px]">policy</span><span>Rapports de fraude</span></a><a class="flex items-center gap-space-sm px-space-md py-3 rounded-xl text-primary-fixed-dim hover:bg-surface-container-high/20 hover:text-on-primary transition-all font-body-md text-body-md" data-path="parametres" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span>Paramètres</span></a></nav></div><div class="px-space-xs"><div class="flex items-center justify-between px-space-md py-3 bg-primary/40 rounded-xl"><div class="flex items-center gap-space-sm"><span class="w-2.5 h-2.5 rounded-full bg-tertiary-fixed animate-pulse"></span><div class="flex flex-col"><span class="font-label-sm text-label-sm text-on-primary">Session Active</span><span class="font-caption text-caption text-primary-fixed-dim">ID #ADM-2024</span></div></div><span class="material-symbols-outlined text-primary-fixed-dim text-[18px]">verified_user</span></div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface/80 backdrop-blur-xl z-40 flex items-center justify-between px-space-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-space-md w-96"><div class="flex items-center w-full bg-surface-container-lowest px-space-md py-2 rounded-xl shadow-[0_1px_2px_rgba(29,35,56,0.02)]"><span class="material-symbols-outlined text-on-surface-variant text-[20px] mr-2">search</span><input class="w-full bg-transparent font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant outline-none" placeholder="Rechercher des étudiants, classes, cours..." type="text"/></div></div><div class="flex items-center gap-space-lg"><button class="relative p-2 rounded-full text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error"></span></button><div class="h-6 w-px bg-outline-variant/30"></div><div class="flex items-center gap-space-sm"><div class="flex flex-col items-end"><span class="font-label-md text-label-md text-on-surface">Administrateur Principal</span><span class="font-caption text-caption text-on-surface-variant">Portail Central</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="relative pt-16 bg-surface min-h-screen px-space-xl py-space-lg"><div class="flex flex-col w-full gap-space-lg">
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const activeNav = document.querySelector('aside nav a[data-path="rapports-de-fraude"]');
+      if (activeNav) {
+        document.querySelectorAll('aside nav a').forEach(el => {
+          el.className = "flex items-center gap-space-sm px-space-md py-3 rounded-xl text-primary-fixed-dim hover:bg-surface-container-high/20 hover:text-on-primary transition-all font-body-md text-body-md";
+        });
+        activeNav.className = "flex items-center gap-space-sm px-space-md py-3 bg-surface-container-lowest text-primary font-label-md text-label-md rounded-xl shadow-[0_2px_8px_rgba(29,35,56,0.04)]";
+      }
+    });
+  </script>
+<!-- Top Page Header & Strategic Actions -->
+<header class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md bg-surface-container-lowest p-space-lg rounded-xl shadow-[0_2px_8px_rgba(29,35,56,0.04)]">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-2">
+<span class="font-caption text-caption text-secondary uppercase tracking-wider font-semibold">Supervision Académique</span>
+<span class="text-outline-variant font-caption text-caption">/</span>
+<span class="font-caption text-caption text-secondary uppercase tracking-wider font-semibold">Sécurité &amp; Examens</span>
+<span class="text-outline-variant font-caption text-caption">/</span>
+<span class="font-caption text-caption text-primary uppercase tracking-wider font-bold">Audit d'Intégrité</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface font-bold">Rapports de Fraude &amp; Intégrité des Examens</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-3xl">
+        Supervision télémétrique anti-triche assistée par consensus IA, analyse biométrique faciale et journaux d'infractions en temps réel.
+      </p>
+</div>
+<div class="flex flex-wrap items-center gap-space-sm">
+<button class="flex items-center gap-2 px-4 py-2.5 bg-surface-container text-primary font-label-md text-label-md rounded-xl hover:bg-surface-container-high transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[20px]">download</span>
+<span>Exporter l'audit (PDF/CSV)</span>
+</button>
+<button class="flex items-center gap-2 px-5 py-2.5 bg-primary-container text-on-primary font-label-md text-label-md rounded-xl hover:opacity-95 active:scale-98 transition-all shadow-md" type="button">
+<span class="material-symbols-outlined text-[20px]">gavel</span>
+<span>Session d'arbitrage</span>
+</button>
+</div>
+</header>
+<!-- KPI Metric Filter Tabs -->
+<section aria-label="Indicateurs clés" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- Non traités (Active focus) -->
+<div class="flex flex-col justify-between p-space-md bg-surface-container-lowest rounded-xl shadow-[0_2px_8px_rgba(29,35,56,0.04)] cursor-pointer group hover:bg-error-container/10 transition-colors">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-error animate-ping"></span>
+<span class="font-label-md text-label-md text-on-surface">Non traités</span>
+</div>
+<span class="px-2.5 py-0.5 rounded-full font-label-sm text-label-sm bg-error-container text-on-error-container font-bold">3 critiques</span>
+</div>
+<div class="mt-3 flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg text-error font-extrabold">03</span>
+<span class="font-caption text-caption text-on-surface-variant">dossiers en attente d'arbitrage</span>
+</div>
+<div class="mt-2 text-xs font-caption text-error font-medium">3 alertes rouges nécessitant clôture</div>
+</div>
+<!-- En cours d'examen -->
+<div class="flex flex-col justify-between p-space-md bg-surface-container-lowest rounded-xl shadow-[0_2px_8px_rgba(29,35,56,0.04)] cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary"></span>
+<span class="font-label-md text-label-md text-on-surface">En cours d'examen</span>
+</div>
+<span class="px-2.5 py-0.5 rounded-full font-label-sm text-label-sm bg-secondary-fixed text-on-secondary-fixed font-bold">2 en cours</span>
+</div>
+<div class="mt-3 flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg text-primary font-bold">02</span>
+<span class="font-caption text-caption text-on-surface-variant">auditions planifiées</span>
+</div>
+<div class="mt-2 text-xs font-caption text-on-surface-variant">Commissions de discipline convoquées</div>
+</div>
+<!-- Clôturés -->
+<div class="flex flex-col justify-between p-space-md bg-surface-container-lowest rounded-xl shadow-[0_2px_8px_rgba(29,35,56,0.04)] cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-tertiary-fixed-dim"></span>
+<span class="font-label-md text-label-md text-on-surface">Clôturés</span>
+</div>
+<span class="px-2.5 py-0.5 rounded-full font-label-sm text-label-sm bg-surface-container-high text-primary font-medium">12 archivés</span>
+</div>
+<div class="mt-3 flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg text-on-surface font-bold">12</span>
+<span class="font-caption text-caption text-on-surface-variant">sanctions / classements</span>
+</div>
+<div class="mt-2 text-xs font-caption text-on-surface-variant">100% avec horodatage scellé</div>
+</div>
+<!-- Taux d'intégrité globale -->
+<div class="flex flex-col justify-between p-space-md bg-surface-container-lowest rounded-xl shadow-[0_2px_8px_rgba(29,35,56,0.04)]">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface">Taux d'intégrité</span>
+<span class="px-2.5 py-0.5 rounded-full font-label-sm text-label-sm bg-tertiary-fixed text-on-tertiary-fixed font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>+0.4%
+        </span>
+</div>
+<div class="mt-3 flex items-baseline justify-between">
+<span class="font-display-lg text-display-lg text-primary font-extrabold">98.8%</span>
+<!-- Sparkline Vector -->
+<svg aria-hidden="true" class="w-24 h-8 text-tertiary-fixed-dim stroke-current fill-none stroke-[2.5]" viewbox="0 0 96 32">
+<path d="M0,28 L16,22 L32,25 L48,15 L64,18 L80,6 L96,4" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<div class="mt-2 text-xs font-caption text-on-surface-variant">Sur 2 450 épreuves passées ce trimestre</div>
+</div>
+</section>
+<!-- Filter & Action Controls Toolbar -->
+<section class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-space-md bg-surface-container-lowest p-space-md rounded-xl shadow-[0_2px_8px_rgba(29,35,56,0.04)]">
+<div class="flex items-center flex-1 max-w-lg bg-surface-container-low px-space-md py-2.5 rounded-xl">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px] mr-2">search</span>
+<input class="w-full bg-transparent font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant outline-none" placeholder="Rechercher par étudiant, matricule (#ETU-8921), incident (#FR-402)..." type="text"/>
+</div>
+<div class="flex flex-wrap items-center gap-space-sm">
+<div class="flex items-center bg-surface-container-low px-3 py-2 rounded-xl text-on-surface">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant mr-1.5">warning</span>
+<select class="bg-transparent font-label-sm text-label-sm outline-none cursor-pointer pr-2">
+<option>Gravité : Tous niveaux</option>
+<option>Critique (Score &gt; 85)</option>
+<option>Élevé (60 - 85)</option>
+<option>Modéré (&lt; 60)</option>
+</select>
+</div>
+<div class="flex items-center bg-surface-container-low px-3 py-2 rounded-xl text-on-surface">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant mr-1.5">filter_list</span>
+<select class="bg-transparent font-label-sm text-label-sm outline-none cursor-pointer pr-2">
+<option>Type d'incident : Tous</option>
+<option>Perte de focus / Écran</option>
+<option>Multi-visages webcam</option>
+<option>Anomalie réseau &amp; IP</option>
+<option>Presse-papiers &amp; IA</option>
+</select>
+</div>
+<div class="flex items-center bg-surface-container-low px-3 py-2 rounded-xl text-on-surface">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant mr-1.5">event</span>
+<select class="bg-transparent font-label-sm text-label-sm outline-none cursor-pointer pr-2">
+<option>Période : Ce semestre (S1 2026)</option>
+<option>Cette semaine</option>
+<option>Aujourd'hui</option>
+</select>
+</div>
+<button class="p-2.5 rounded-xl bg-surface-container text-primary hover:bg-surface-container-high transition-colors" title="Actualiser le flux télémétrique" type="button">
+<span class="material-symbols-outlined text-[20px]">sync</span>
+</button>
+</div>
+</section>
+<!-- Split View Master-Detail Grid -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
+<!-- Left Column: Incidents Table (58% width ~ 7 Cols on 12-col grid) -->
+<div class="xl:col-span-7 flex flex-col bg-surface-container-lowest rounded-xl shadow-[0_2px_8px_rgba(29,35,56,0.04)] overflow-hidden">
+<div class="p-space-md flex items-center justify-between bg-surface-container-low">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[22px]">policy</span>
+<span class="font-label-lg text-label-lg text-primary font-bold">Registre des Alertes Actives</span>
+<span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold">4 requêtes prioritaires</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-caption text-caption text-on-surface-variant">Vue d'ensemble synchrone</span>
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed animate-pulse"></span>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-surface-container text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+<tr>
+<th class="py-3 px-4" scope="col">
+<input class="rounded w-4 h-4 text-primary focus:ring-0" type="checkbox"/>
+</th>
+<th class="py-3 px-4" scope="col">Dossier / Étudiant</th>
+<th class="py-3 px-4" scope="col">Épreuve</th>
+<th class="py-3 px-4" scope="col">Type d'infraction</th>
+<th class="py-3 px-4" scope="col">Indice de risque</th>
+<th class="py-3 px-4 text-right" scope="col">Action</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm">
+<!-- Row 1: Selected & Highlighted -->
+<tr class="bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer">
+<td class="py-4 px-4 align-top">
+<input checked="" class="rounded w-4 h-4 text-primary focus:ring-0" type="checkbox"/>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex items-center gap-3">
+<img alt="Salma Mansouri" class="w-10 h-10 rounded-full object-cover shadow-sm" src="https://lh3.googleusercontent.com/aida/AEtjO1VeW_8U1o0eAYBmRVtUyZoLBZUNUSrlcZU0m1BAa3sdEov5kxp3aE80yJ_HnGvHDMgdpcsSZEuYijyXBzWdLLbwjoJY3aofhvA54-aQBusC0_KttEMETRWS3ImQCBLDJT5Z4ctzibuyXUDadbPk1dAaOtlHggIYuucTG3FBf-xFdkX7KlvM93Y_C5W_QgzJo9-Ufv01-g1RdZczF_9C5Yp6ltX-NJYginXUlXjWXttK08aE0k9qna0zpGep"/>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-primary font-bold">Salma Mansouri</span>
+<span class="font-caption text-caption text-on-surface-variant">Matr. #ETU-8921</span>
+<span class="inline-block mt-0.5 font-caption text-caption text-secondary font-medium">#FR-402</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Algorithmique S1</span>
+<span class="font-caption text-caption text-on-surface-variant">Informatique 3A</span>
+<span class="font-caption text-caption text-outline">12 Oct 2026, 10:45</span>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex flex-col gap-1 max-w-[200px]">
+<span class="font-label-sm text-label-sm text-error font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">visibility_off</span> Perte de focus (x5)
+                  </span>
+<span class="font-caption text-caption text-on-surface-variant">Plein écran quitté, double écran suspect</span>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-label-sm text-label-sm font-bold bg-error-container text-on-error-container">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                  Critique 94/100
+                </span>
+</td>
+<td class="py-4 px-4 align-top text-right">
+<button class="px-3 py-1.5 bg-primary-container text-on-primary font-label-sm text-label-sm rounded-lg shadow-sm hover:opacity-90" type="button">
+                  Examiner
+                </button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors cursor-pointer">
+<td class="py-4 px-4 align-top">
+<input class="rounded w-4 h-4 text-primary focus:ring-0" type="checkbox"/>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high text-primary flex items-center justify-center font-bold font-label-md text-label-md">
+                    YB
+                  </div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Yassine Berrada</span>
+<span class="font-caption text-caption text-on-surface-variant">Matr. #ETU-4102</span>
+<span class="inline-block mt-0.5 font-caption text-caption text-secondary font-medium">#FR-401</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Théorie des Graphes</span>
+<span class="font-caption text-caption text-on-surface-variant">Maths &amp; Info 2A</span>
+<span class="font-caption text-caption text-outline">12 Oct 2026, 09:12</span>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex flex-col gap-1 max-w-[200px]">
+<span class="font-label-sm text-label-sm text-on-surface font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-error">groups</span> Multi-visages
+                  </span>
+<span class="font-caption text-caption text-on-surface-variant">2 personnes face à la webcam</span>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-label-sm text-label-sm font-bold bg-surface-container-highest text-primary">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  Élevé 78/100
+                </span>
+</td>
+<td class="py-4 px-4 align-top text-right">
+<button class="px-3 py-1.5 bg-surface-container text-primary font-label-sm text-label-sm rounded-lg hover:bg-surface-container-high" type="button">
+                  Détails
+                </button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors cursor-pointer">
+<td class="py-4 px-4 align-top">
+<input class="rounded w-4 h-4 text-primary focus:ring-0" type="checkbox"/>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high text-primary flex items-center justify-center font-bold font-label-md text-label-md">
+                    KT
+                  </div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Karim Tazi</span>
+<span class="font-caption text-caption text-on-surface-variant">Matr. #ETU-3329</span>
+<span class="inline-block mt-0.5 font-caption text-caption text-secondary font-medium">#FR-398</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Architecture NoSQL</span>
+<span class="font-caption text-caption text-on-surface-variant">Génie Logiciel 3A</span>
+<span class="font-caption text-caption text-outline">11 Oct 2026, 16:30</span>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex flex-col gap-1 max-w-[200px]">
+<span class="font-label-sm text-label-sm text-on-surface font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-secondary">wifi_off</span> Rupture de flux
+                  </span>
+<span class="font-caption text-caption text-on-surface-variant">Reconnexion sur IP externe</span>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-label-sm text-label-sm font-semibold bg-surface-container text-on-surface-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+                  Modéré 45/100
+                </span>
+</td>
+<td class="py-4 px-4 align-top text-right">
+<button class="px-3 py-1.5 bg-surface-container text-primary font-label-sm text-label-sm rounded-lg hover:bg-surface-container-high" type="button">
+                  Détails
+                </button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low transition-colors cursor-pointer">
+<td class="py-4 px-4 align-top">
+<input class="rounded w-4 h-4 text-primary focus:ring-0" type="checkbox"/>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high text-primary flex items-center justify-center font-bold font-label-md text-label-md">
+                    LA
+                  </div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Leila Amrani</span>
+<span class="font-caption text-caption text-on-surface-variant">Matr. #ETU-6743</span>
+<span class="inline-block mt-0.5 font-caption text-caption text-secondary font-medium">#FR-395</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Probabilités &amp; Stats</span>
+<span class="font-caption text-caption text-on-surface-variant">Master M1 Data</span>
+<span class="font-caption text-caption text-outline">10 Oct 2026, 14:15</span>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<div class="flex flex-col gap-1 max-w-[200px]">
+<span class="font-label-sm text-label-sm text-on-surface font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-error">content_paste</span> Presse-papiers
+                  </span>
+<span class="font-caption text-caption text-on-surface-variant">Copier-coller massif via invite IA</span>
+</div>
+</td>
+<td class="py-4 px-4 align-top">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-label-sm text-label-sm font-bold bg-surface-container-highest text-primary">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  Élevé 82/100
+                </span>
+</td>
+<td class="py-4 px-4 align-top text-right">
+<button class="px-3 py-1.5 bg-surface-container text-primary font-label-sm text-label-sm rounded-lg hover:bg-surface-container-high" type="button">
+                  Détails
+                </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination footer -->
+<div class="p-space-md flex flex-col sm:flex-row items-center justify-between gap-space-sm bg-surface-container-low text-on-surface-variant font-caption text-caption">
+<span>Affichage de 1 à 4 sur 17 incidents enregistrés</span>
+<div class="flex items-center gap-2">
+<button class="w-8 h-8 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center hover:bg-surface-container-high" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<span class="px-3 py-1 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm font-bold">1</span>
+<span class="px-3 py-1 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm hover:bg-surface-container">2</span>
+<span class="px-3 py-1 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm hover:bg-surface-container">3</span>
+<button class="w-8 h-8 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center hover:bg-surface-container-high" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Right Column: Split View Investigation Panel / Dossier d'Instruction (42% width ~ 5 Cols) -->
+<div class="xl:col-span-5 flex flex-col bg-surface-container-lowest rounded-xl shadow-[0_2px_8px_rgba(29,35,56,0.04)] overflow-hidden">
+<!-- Panel Header -->
+<div class="p-space-md bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm font-bold">
+            Non Traité • Critique
+          </span>
+<span class="font-headline-sm text-headline-sm text-primary font-bold">Dossier #FR-402</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 text-on-surface-variant hover:text-on-surface" title="Imprimer le dossier" type="button">
+<span class="material-symbols-outlined text-[20px]">print</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:text-on-surface" title="Fermer le volet" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<div class="p-space-lg flex flex-col gap-space-lg">
+<!-- Candidate Identity & Anomaly Gauge Banner -->
+<div class="p-space-md bg-surface-container-low rounded-xl flex items-center justify-between gap-space-md">
+<div class="flex items-center gap-3">
+<img alt="Salma Mansouri" class="w-14 h-14 rounded-full object-cover shadow-md ring-2 ring-primary" src="https://lh3.googleusercontent.com/aida/AEtjO1VeW_8U1o0eAYBmRVtUyZoLBZUNUSrlcZU0m1BAa3sdEov5kxp3aE80yJ_HnGvHDMgdpcsSZEuYijyXBzWdLLbwjoJY3aofhvA54-aQBusC0_KttEMETRWS3ImQCBLDJT5Z4ctzibuyXUDadbPk1dAaOtlHggIYuucTG3FBf-xFdkX7KlvM93Y_C5W_QgzJo9-Ufv01-g1RdZczF_9C5Yp6ltX-NJYginXUlXjWXttK08aE0k9qna0zpGep"/>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface font-bold">Salma Mansouri</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Informatique 3A • Salle Exam-Alpha-04</span>
+<span class="font-caption text-caption text-secondary">Matricule : #ETU-8921</span>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-caption text-caption uppercase text-error font-bold">Indice d'Anomalie IA</span>
+<div class="flex items-baseline gap-1">
+<span class="font-display-lg text-display-lg font-black text-error">94</span>
+<span class="font-label-md text-label-md text-on-surface-variant">/100</span>
+</div>
+<div class="w-24 h-2 bg-surface-container-high rounded-full overflow-hidden mt-1">
+<div class="bg-error h-full rounded-full" style="width: 94%;"></div>
+</div>
+</div>
+</div>
+<!-- Telemetry & Sensor Proofs (Snapshots) -->
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-primary font-bold flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[20px]">photo_camera</span>
+              Preuves biométriques &amp; Captures (3 instantanés)
+            </span>
+<button class="font-caption text-caption text-secondary hover:underline font-semibold" type="button">Télécharger l'archive ZIP</button>
+</div>
+<div class="grid grid-cols-2 gap-space-sm">
+<!-- Snapshot 1 -->
+<div class="flex flex-col bg-surface-container-low rounded-xl overflow-hidden shadow-sm">
+<div class="relative h-32 bg-surface-container-high flex items-center justify-center overflow-hidden">
+<img alt="Salma Mansouri Webcam Frame" class="w-full h-full object-cover opacity-80 filter brightness-90" src="https://lh3.googleusercontent.com/aida/AEtjO1VeW_8U1o0eAYBmRVtUyZoLBZUNUSrlcZU0m1BAa3sdEov5kxp3aE80yJ_HnGvHDMgdpcsSZEuYijyXBzWdLLbwjoJY3aofhvA54-aQBusC0_KttEMETRWS3ImQCBLDJT5Z4ctzibuyXUDadbPk1dAaOtlHggIYuucTG3FBf-xFdkX7KlvM93Y_C5W_QgzJo9-Ufv01-g1RdZczF_9C5Yp6ltX-NJYginXUlXjWXttK08aE0k9qna0zpGep"/>
+<!-- AI Face Bounding Box Overlay -->
+<div class="absolute inset-4 border-2 border-dashed border-error rounded-lg flex flex-col justify-between p-1">
+<span class="bg-error text-on-error font-caption text-caption px-1 rounded w-max text-[10px]">Tête détournée (-48°)</span>
+<span class="bg-primary/90 text-on-primary font-caption text-caption px-1 rounded w-max text-[10px]">Confiance 98.2%</span>
+</div>
+</div>
+<div class="p-2.5 flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Instantané #1 • 10:45:12</span>
+<span class="font-caption text-caption text-error font-medium">Regard hors écran soutenu (&gt;14s)</span>
+</div>
+</div>
+<!-- Snapshot 2 -->
+<div class="flex flex-col bg-surface-container-low rounded-xl overflow-hidden shadow-sm">
+<div class="relative h-32 bg-surface-container flex flex-col justify-between p-2">
+<div class="flex items-center justify-between bg-surface-container-lowest/90 px-2 py-1 rounded">
+<span class="font-caption text-caption text-on-surface font-semibold text-[10px]">Navigateur Secondaire</span>
+<span class="px-1.5 py-0.2 rounded bg-error text-on-error font-caption text-caption text-[10px]">Non Autorisé</span>
+</div>
+<div class="p-2 bg-surface-container-lowest/80 backdrop-blur rounded flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-error font-bold text-xs truncate">chatgpt.com/c/68402</span>
+<span class="font-caption text-caption text-on-surface-variant text-[10px]">Requête : "Résoudre algo tri arbre AVL..."</span>
+</div>
+<div class="text-right">
+<span class="bg-primary-container text-on-primary font-caption text-caption px-1.5 py-0.5 rounded text-[10px]">Alt+Tab capturé</span>
+</div>
+</div>
+<div class="p-2.5 flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Capture Écran • 10:45:18</span>
+<span class="font-caption text-caption text-error font-medium">Page d'IA conversationnelle ouverte</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Incident Timeline -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-label-md text-label-md text-primary font-bold flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[20px]">timeline</span>
+            Chronologie Télémétrique de la Session
+          </span>
+<div class="relative pl-6 flex flex-col gap-space-sm before:content-[''] before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-surface-container-high">
+<div class="relative">
+<span class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-tertiary-fixed-dim"></span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">10:00:00 — Début de l'épreuve</span>
+<span class="font-caption text-caption text-on-surface-variant">Biométrie validée (reconnaissance faciale 99.8% conforme).</span>
+</div>
+</div>
+<div class="relative">
+<span class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-secondary"></span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">10:32:15 — Avertissement acoustique</span>
+<span class="font-caption text-caption text-on-surface-variant">Bruit ambiant suspect détecté (28 dB, chuchotements répétés).</span>
+</div>
+</div>
+<div class="relative">
+<span class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-error"></span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-error font-semibold">10:45:12 — Décrochage visuel majeur</span>
+<span class="font-caption text-caption text-on-surface-variant">Regard orienté hors écran pendant 14 secondes continues.</span>
+</div>
+</div>
+<div class="relative">
+<span class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-error animate-ping"></span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-error font-bold">10:45:18 — Infraction critique confirmée</span>
+<span class="font-caption text-caption text-on-surface-variant">Événement Alt+Tab détecté, plein écran violé (5e fois).</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Decision & Action Panel -->
+<div class="p-space-md bg-surface-container-low rounded-xl flex flex-col gap-space-md">
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-on-surface font-bold">Arbitrage &amp; Décision Disciplinaire</span>
+<span class="font-caption text-caption text-on-surface-variant">Saisir le motif officiel avant d'appliquer une sanction opposable.</span>
+</div>
+<textarea class="w-full p-3 bg-surface-container-lowest rounded-xl font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant outline-none resize-none shadow-sm" placeholder="Saisir la notification de décision transmise au jury d'examen et à l'étudiant..." rows="3"></textarea>
+<div class="flex flex-col gap-2">
+<button class="w-full py-2.5 bg-error text-on-error font-label-md text-label-md rounded-xl hover:opacity-95 transition-all shadow-md flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined text-[20px]">cancel</span>
+<span>Sanctionner &amp; Annuler l'épreuve (Note 0/20)</span>
+</button>
+<div class="grid grid-cols-2 gap-2">
+<button class="py-2.5 bg-surface-container text-primary font-label-sm text-label-sm rounded-xl hover:bg-surface-container-high transition-colors flex items-center justify-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[18px]">gavel</span>
+<span>Commission disciplinaire</span>
+</button>
+<button class="py-2.5 bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm rounded-xl hover:bg-surface-container hover:text-on-surface transition-colors flex items-center justify-center gap-1.5 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+<span>Classer sans suite</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Reassurance / Regulatory Banner -->
+<footer class="p-space-md bg-surface-container-lowest rounded-xl flex flex-col md:flex-row items-center justify-between gap-space-md shadow-[0_2px_8px_rgba(29,35,56,0.04)]">
+<div class="flex items-center gap-space-sm">
+<div class="p-2 rounded-lg bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-[22px]">lock</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Conformité RGPD &amp; Intégrité Académique</span>
+<span class="font-caption text-caption text-on-surface-variant">Données biométriques chiffrées de bout en bout • Journaux scellés par certificat SHA-256 inviolable.</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md text-xs font-caption text-on-surface-variant">
+<span class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></span>
+        Audit Hash: 9f82...da31
+      </span>
+<span>Délai de recours : 48h ouvrées</span>
+</div>
+</footer>
+</div></main></div></body></html>

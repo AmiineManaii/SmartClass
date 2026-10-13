@@ -16,6 +16,7 @@ import '../widgets/auth_top_bar.dart';
 import '../widgets/field_label.dart';
 import '../widgets/password_strength_bar.dart';
 import '../widgets/social_auth_buttons.dart';
+import '../views/web_register_view.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key});
@@ -145,6 +146,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (context.isDesktop) {
+      return const WebRegisterPage();
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final authState = ref.watch(authStateProvider);

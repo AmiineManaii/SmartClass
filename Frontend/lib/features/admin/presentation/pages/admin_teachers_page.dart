@@ -13,6 +13,7 @@ import '../../domain/entities/managed_class.dart';
 import '../../domain/repositories/admin_repository.dart';
 import '../widgets/admin_person_avatar.dart';
 import '../widgets/admin_search_field.dart';
+import '../views/web_admin_users_view.dart';
 
 /// Global teacher directory (GET /api/v1/users?role=TEACHER) with
 /// assignment to a class (class picker + subject dialog → real POST).
@@ -228,6 +229,10 @@ class _AdminTeachersPageState extends ConsumerState<AdminTeachersPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (context.isDesktop) {
+      return const WebAdminUsersPage();
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final teachersAsync = ref.watch(adminTeachersProvider(null));

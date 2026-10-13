@@ -10,6 +10,7 @@ import '../../../../core/widgets/app_text_field.dart';
 import '../../application/providers/admin_providers.dart';
 import '../../domain/entities/fraud_report.dart';
 import '../widgets/admin_filter_chips.dart';
+import '../views/web_admin_reports_view.dart';
 
 class AdminFraudsPage extends ConsumerStatefulWidget {
   const AdminFraudsPage({super.key});
@@ -116,6 +117,10 @@ class _AdminFraudsPageState extends ConsumerState<AdminFraudsPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (context.isDesktop) {
+      return const WebAdminReportsPage();
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final summaryAsync = ref.watch(adminFraudSummaryProvider);

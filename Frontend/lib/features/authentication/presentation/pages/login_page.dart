@@ -13,6 +13,7 @@ import '../widgets/auth_brand_header.dart';
 import '../widgets/auth_screen_scaffold.dart';
 import '../widgets/field_label.dart';
 import '../widgets/social_auth_buttons.dart';
+import '../views/web_login_view.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -89,6 +90,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (context.isDesktop) {
+      return const WebLoginPage();
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final authState = ref.watch(authStateProvider);

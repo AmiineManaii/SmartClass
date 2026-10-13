@@ -14,6 +14,7 @@ import '../widgets/admin_filter_chips.dart';
 import '../widgets/admin_search_field.dart';
 import '../widgets/admin_section_header.dart';
 import '../widgets/admin_stat_card.dart';
+import '../views/web_admin_classes_view.dart';
 
 class AdminClassesPage extends ConsumerStatefulWidget {
   const AdminClassesPage({super.key});
@@ -171,6 +172,10 @@ class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (context.isDesktop) {
+      return const WebAdminClassesPage();
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final classesAsync = ref.watch(adminClassesProvider);

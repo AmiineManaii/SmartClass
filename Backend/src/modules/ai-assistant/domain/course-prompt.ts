@@ -146,7 +146,7 @@ const FORMAT_GUIDANCE: Record<GenerateFormat, string> = {
     'structure demandée par le niveau choisi (court = synthèse + points ' +
     'clés + quiz ; normal = plan, intro, parties avec exemples, étude de ' +
     'cas + correction, quiz + correction, conclusion ; complet = normal ' +
-    'détaillé en sous-sections avec exercices corrigés).',
+    'détaillé en sous-sections avec exercices et applications).',
   flashcards:
     'Format FICHES MÉMO : paires Question / Réponse numérotées (10 si concis, ' +
     '15 si équilibré, 25 si détaillé), adaptées à la répétition espacée.',
