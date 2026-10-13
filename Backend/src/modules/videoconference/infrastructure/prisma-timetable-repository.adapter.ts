@@ -25,6 +25,25 @@ export class PrismaTimetableRepositoryAdapter implements TimetableRepositoryPort
     return row !== null;
   }
 
+  public async userCanReadClass(userId: string, classGroupId: string): Promise<boolean> {
+    const [member, assignment, referent] = await Promise.all([
+      this.prisma.groupMember.findUnique({
+        where: { classGroupId_userId: { classGroupId, userId } },
+        select: { userId: true },
+      }),
+      this.prisma.teacherAssignment.findUnique({
+        where: { classGroupId_teacherId: { classGroupId, teacherId: userId } },
+        select: { teacherId: true },
+      }),
+      this.prisma.classGroup.findFirst({
+        where: { id: classGroupId, referentId: userId },
+        select: { id: true },
+      }),
+    ]);
+
+    return member !== null || assignment !== null || referent !== null;
+  }
+
   public async weekSlots(input: TimetableSlotInput): Promise<TimetableEventView[]> {
     const rows = await this.prisma.timetableSlot.findMany({
       where: {

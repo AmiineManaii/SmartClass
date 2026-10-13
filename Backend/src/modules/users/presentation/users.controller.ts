@@ -1,5 +1,10 @@
 import type { Request, Response, NextFunction } from 'express';
+import { UnauthorizedError } from '../../../shared/errors/app-error.js';
+import { ErrorCodes } from '../../../shared/errors/error-codes.js';
 import type { ListUsersUseCase } from '../application/list-users.use-case.js';
+import type { SetMyRoleUseCase } from '../application/set-my-role.use-case.js';
+import type { Role } from '../../auth/index.js';
+import type { SetUserRoleUseCase } from '../application/set-user-role.use-case.js';
 import { getOffsetPaginationParams } from '../../../shared/http/pagination/index.js';
 import { parseSort } from '../../../shared/http/pagination/index.js';
 import { validatedQuery } from '../../../shared/http/validate.middleware.js';
@@ -14,7 +19,11 @@ interface ListUsersValidatedQuery {
 }
 
 export class UsersController {
-  constructor(private readonly listUsersUseCase: ListUsersUseCase) {}
+  constructor(
+    private readonly listUsersUseCase: ListUsersUseCase,
+    private readonly setMyRoleUseCase: SetMyRoleUseCase,
+    private readonly setUserRoleUseCase: SetUserRoleUseCase,
+  ) {}
 
   public listUsers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -40,6 +49,41 @@ export class UsersController {
       res.status(200).json({
         data: result.users,
         meta: result.meta,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public setMyRole = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const result = await this.setMyRoleUseCase.execute(
+        req.user.id,
+        (req.body as { role: string }).role,
+      );
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public setUserRole = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const result = await this.setUserRoleUseCase.execute(
+        req.user.id,
+        req.params.id as string,
+        (req.body as { role: Role }).role,
+      );
+      res.status(200).json({
+        data: result,
       });
     } catch (err) {
       next(err);

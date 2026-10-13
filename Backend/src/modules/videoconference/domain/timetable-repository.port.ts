@@ -9,4 +9,6 @@ export interface TimetableSlotInput {
 export interface TimetableRepositoryPort {
   classGroupExists(id: string): Promise<boolean>;
   weekSlots(input: TimetableSlotInput): Promise<TimetableEventView[]>;
+  /** True when the user may read the class timetable (member, assigned teacher, referent). */
+  userCanReadClass(userId: string, classGroupId: string): Promise<boolean>;
 }

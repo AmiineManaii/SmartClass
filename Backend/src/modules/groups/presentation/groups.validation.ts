@@ -32,6 +32,33 @@ export const createGroupBodySchema = z
     forumEnabled: z.boolean().default(true),
     entSyncEnabled: z.boolean().default(true),
     status: classStatusSchema.default('PUBLISHED'),
+    referentId: uuidSchema.nullable().optional(),
+  })
+  .strict();
+
+export const updateGroupBodySchema = z
+  .object({
+    name: z.string().trim().min(2).max(100).optional(),
+    level: classLevelSchema.optional(),
+    department: z.string().trim().max(100).nullable().optional(),
+    capacity: z.number().int().min(1).max(500).optional(),
+    description: z.string().trim().max(300).nullable().optional(),
+    forumEnabled: z.boolean().optional(),
+    entSyncEnabled: z.boolean().optional(),
+    status: classStatusSchema.optional(),
+    referentId: uuidSchema.nullable().optional(),
+  })
+  .strict();
+
+export const removeMembersBodySchema = z
+  .object({
+    studentIds: z.array(uuidSchema).min(1).max(100),
+  })
+  .strict();
+
+export const removeTeachersBodySchema = z
+  .object({
+    teacherIds: z.array(uuidSchema).min(1).max(100),
   })
   .strict();
 
@@ -60,5 +87,8 @@ export const assignTeachersBodySchema = z
 
 export type ListGroupsQueryInput = z.infer<typeof listGroupsQuerySchema>;
 export type CreateGroupBodyInput = z.infer<typeof createGroupBodySchema>;
+export type UpdateGroupBodyInput = z.infer<typeof updateGroupBodySchema>;
 export type AssignStudentsBodyInput = z.infer<typeof assignStudentsBodySchema>;
 export type AssignTeachersBodyInput = z.infer<typeof assignTeachersBodySchema>;
+export type RemoveMembersBodyInput = z.infer<typeof removeMembersBodySchema>;
+export type RemoveTeachersBodyInput = z.infer<typeof removeTeachersBodySchema>;

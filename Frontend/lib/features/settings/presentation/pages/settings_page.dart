@@ -161,6 +161,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
             const SizedBox(height: 24),
             _buildVersionInfo(context),
+            const SizedBox(height: 24),
+            _buildLogoutButton(context),
+            const SizedBox(height: 24),
           ],
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -528,8 +531,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Widget _buildVersionInfo(BuildContext context) {
-    final theme = Theme.of(context);
+  Widget _buildVersionInfo(BuildContext context) {    final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
     return AppCard(
@@ -562,6 +564,53 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
   
+  Widget _buildLogoutButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: _confirmLogout,
+        icon: const Icon(Icons.logout_rounded, size: 20),
+        label: Text(context.tr('logout')),
+        style: FilledButton.styleFrom(
+          backgroundColor: colorScheme.errorContainer,
+          foregroundColor: colorScheme.onErrorContainer,
+          minimumSize: const Size(double.infinity, 52),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: theme.textTheme.labelLarge,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('logout')),
+        content: Text(context.tr('logout_confirm_message')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.tr('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.tr('logout')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await ref.read(authStateProvider.notifier).logout();
+    // No manual navigation: the router guard redirects to /login
+    // via AuthRefreshNotifier as soon as the session clears.
+  }
+
   void _clearCache() {
     showDialog(
       context: context,

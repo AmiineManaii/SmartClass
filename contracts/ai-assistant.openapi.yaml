@@ -1,0 +1,757 @@
+openapi: 3.1.0
+info:
+  title: SmartClass API — AI Course Generation
+  version: 0.1.0
+  description: >
+    Course generation for teachers through the self-hosted local LLM
+    (Unsloth Desktop, OpenAI-compatible API — RG27: no third-party LLM API).
+    One endpoint per teacher-facing method: `from-topic` (from scratch),
+    `from-url` (fetch a link, then improve), `improve-pdf` (upload an old
+    PDF, then improve); the generic `generate` endpoint covers all modes.
+    The prompt is versioned (v5) and adapts to length — cours court
+    (≤800 mots: objectifs, synthèse, points clés, quiz 5 QCM), cours
+    normal (1200-2000 mots: plan, intro, parties avec exemples, étude de
+    cas + correction, quiz 5 QCM + correction, conclusion), cours complet
+    (2500-4000 mots: sous-sections, démos, code, 3 exercices corrigés
+    dont challenge) — difficulty (facile/moyen/difficile) and format
+    (cours structuré/fiches mémo/carte mentale en `graph TD`, `mindmap`
+    interdit car non supporté par flutter_mermaid 0.1.0). Output budget
+    per level (court 8K, normal 20K, complet 32K via AI_MAX_TOKENS=32768);
+    sources truncated to AI_MAX_SOURCE_CHARS. TEACHER or ADMIN only.
+servers:
+  - url: /api/v1
+    description: SmartClass API v1 prefix
+tags:
+  - name: ai
+    description: Local AI course generation
+paths:
+  /ai/status:
+    get:
+      operationId: getAiStatus
+      tags:
+        - ai
+      summary: Local model reachability
+      description: >
+        Probes the Unsloth Desktop gateway (`/v1/models`, short timeout,
+        API key forwarded — Unsloth requires auth even for listing).
+        Never fails: reports `available: false` when the desktop app is
+        closed so the UI can show the real model state.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Gateway status
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - available
+                      - model
+                    properties:
+                      available:
+                        type: boolean
+                      model:
+                        type: string
+                        example: Qwen3.5-4B-GGUF
+                      latencyMs:
+                        type: integer
+                        nullable: true
+              example:
+                data:
+                  available: true
+                  model: Qwen3.5-4B-GGUF
+                  latencyMs: 42
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+  /ai/courses/generate:
+    post:
+      operationId: generateCourse
+      tags:
+        - ai
+      summary: Generate a course with the local LLM
+      description: >
+        Builds a versioned, level/format-aware prompt and calls the local
+        model. `topic` generates from a subject (min 10 chars); `text`
+        improves provided course content (min 100 chars, e.g. extracted
+        PDF text); `url` fetches an http(s) HTML page (max ~2 MB, scripts
+        stripped) then improves it. Long sources are truncated to
+        AI_MAX_SOURCE_CHARS (flagged via `truncatedSource`). Tools
+        (web_search, fetch_url, execute_code, calculator) are attached only
+        when the teacher enabled `extras.webSearch` (or `extras.webImages`,
+        which implies search), since each server-side tool round trip delays
+        the first visible token by 20 s+; the prompt tells the model whether
+        tools are attached. Chain-of-thought follows `extras.thinking`.
+        Servers without tool support transparently
+        degrade. Strict limit: 20 generations/min per teacher. Binary PDF upload arrives with the
+        document pipeline (needs `multer` + a PDF parser — not installed).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - mode
+              properties:
+                mode:
+                  type: string
+                  enum: [topic, text, url]
+                level:
+                  type: string
+                  enum: [concis, equilibre, detaille]
+                  default: equilibre
+                  description: Output length (court/normal/long)
+                difficulty:
+                  type: string
+                  enum: [facile, moyen, difficile]
+                  default: moyen
+                  description: Pedagogical difficulty reshaping examples and depth
+                format:
+                  type: string
+                  enum: [resume, flashcards, carte-mentale]
+                  default: resume
+                extras:
+                  type: object
+                  description: Enrichments (defaults true/true/false/false/false)
+                  properties:
+                    examples:
+                      type: boolean
+                      description: Worked simple examples per section
+                    mermaid:
+                      type: boolean
+                      description: Figures/graphs as mermaid code blocks
+                    webImages:
+                      type: boolean
+                    webSearch:
+                      type: boolean
+                    thinking:
+                      type: boolean
+                      description: Web illustrations (search-result URLs only, implies tools)
+                    webSearch:
+                      type: boolean
+                      description: Teacher-chosen web tooling (delays 1st token ~20 s, default false)
+                    thinking:
+                      type: boolean
+                      description: Teacher-chosen chain-of-thought (slow, best for full/hard, default false)
+                subject:
+                  type: string
+                  maxLength: 500
+                  description: Required for topic mode (min 10 chars)
+                  example: Les arbres AVL en Algorithmique pour Licence 3
+                sourceText:
+                  type: string
+                  maxLength: 200000
+                  description: Required for text mode (min 100 chars)
+                url:
+                  type: string
+                  maxLength: 2000
+                  description: Required for url mode (http(s) HTML page)
+                  example: https://fr.wikipedia.org/wiki/Arbre_AVL
+              additionalProperties: false
+      responses:
+        '200':
+          description: Generated course (Markdown)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - content
+                      - mode
+                      - level
+                      - format
+                      - model
+                      - promptVersion
+                      - truncatedSource
+                      - sourceChars
+                      - toolsUsed
+                      - usage
+                    properties:
+                      content:
+                        type: string
+                        description: Generated course in Markdown
+                      mode:
+                        type: string
+                        enum: [topic, text, url]
+                      level:
+                        type: string
+                        enum: [concis, equilibre, detaille]
+                      difficulty:
+                        type: string
+                        enum: [facile, moyen, difficile]
+                      format:
+                        type: string
+                        enum: [resume, flashcards, carte-mentale]
+                      model:
+                        type: string
+                      promptVersion:
+                        type: string
+                        example: 2026-10-11.v2
+                      truncatedSource:
+                        type: boolean
+                      sourceChars:
+                        type: integer
+                      toolsUsed:
+                        type: boolean
+                        description: False when the server lacks tool support
+                      usage:
+                        type: object
+                        required:
+                          - promptTokens
+                          - completionTokens
+                        properties:
+                          promptTokens:
+                            type: integer
+                            nullable: true
+                          completionTokens:
+                            type: integer
+                            nullable: true
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          description: Generation rate limit exceeded (20/min per teacher)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: RATE_LIMITED
+                  message: Too many course generations, please try again later
+                  details: []
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+        '503':
+          description: Local model unreachable or overloaded
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: SERVICE_UNAVAILABLE
+                  message: The local AI model is currently unreachable. Start it in Unsloth Desktop and retry.
+                  details: []
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+  /ai/courses/from-topic:
+    post:
+      operationId: generateCourseFromTopic
+      tags:
+        - ai
+      summary: Generate a course from a subject
+      description: >
+        Dedicated per-method endpoint (no `mode` field): builds a full
+        course from the teacher's subject with difficulty, length, format
+        and enrichments. Same guard, rate limit and prompt version as
+        generation.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - subject
+              properties:
+                subject:
+                  type: string
+                  minLength: 10
+                  maxLength: 500
+                  example: Les arbres AVL en Algorithmique pour Licence 3
+                level:
+                  type: string
+                  enum: [concis, equilibre, detaille]
+                  default: equilibre
+                difficulty:
+                  type: string
+                  enum: [facile, moyen, difficile]
+                  default: moyen
+                format:
+                  type: string
+                  enum: [resume, flashcards, carte-mentale]
+                  default: resume
+                extras:
+                  type: object
+                  properties:
+                    examples:
+                      type: boolean
+                    mermaid:
+                      type: boolean
+                    webImages:
+                      type: boolean
+                    webSearch:
+                      type: boolean
+                    thinking:
+                      type: boolean
+              additionalProperties: false
+      responses:
+        '200':
+          description: Generated course (Markdown)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/GeneratedCourse'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          description: Generation rate limit exceeded (20/min per teacher)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '503':
+          description: Local model unreachable or overloaded
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+  /ai/courses/from-url:
+    post:
+      operationId: generateCourseFromUrl
+      tags:
+        - ai
+      summary: Generate a course from a web link
+      description: >
+        Dedicated per-method endpoint (no `mode` field): fetches the
+        http(s) HTML page server-side (scripts stripped, ~2 MB cap) then
+        improves it into a full course. Same guard, rate limit and prompt
+        version as generation.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  maxLength: 2000
+                  example: https://fr.wikipedia.org/wiki/Arbre_AVL
+                level:
+                  type: string
+                  enum: [concis, equilibre, detaille]
+                  default: equilibre
+                difficulty:
+                  type: string
+                  enum: [facile, moyen, difficile]
+                  default: moyen
+                format:
+                  type: string
+                  enum: [resume, flashcards, carte-mentale]
+                  default: resume
+                extras:
+                  type: object
+                  properties:
+                    examples:
+                      type: boolean
+                    mermaid:
+                      type: boolean
+                    webImages:
+                      type: boolean
+                    webSearch:
+                      type: boolean
+                    thinking:
+                      type: boolean
+              additionalProperties: false
+      responses:
+        '200':
+          description: Generated course (Markdown)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/GeneratedCourse'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          description: Generation rate limit exceeded (20/min per teacher)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '503':
+          description: Local model unreachable or overloaded
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+  /ai/courses/stream:
+    post:
+      operationId: streamCourseGeneration
+      tags:
+        - ai
+      summary: Generate a course with live progress (SSE)
+      description: >
+        Same payload and prompt as `generateCourse`, but the Markdown
+        streams back as `text/event-stream` frames (`data: {"delta": ...}`)
+        so the teacher UI shows live progress on long local generations
+        (2-4 min at ~12 tok/s). An SSE `: ping` comment is sent every 10 s
+        while the model is silent (server-side tool execution before the
+        first token) so mobile clients never hit their receive timeout.
+        Final frame: `data: {"done": true, ...meta}`.
+        Any failure (validation, gateway down, overload) arrives as
+        `data: {"error": {"code", "message"}}` with HTTP 200 — the client
+        must handle the error event. Same guard and 20/min strict limit.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - mode
+              properties:
+                mode:
+                  type: string
+                  enum: [topic, text, url]
+                level:
+                  type: string
+                  enum: [concis, equilibre, detaille]
+                  default: equilibre
+                difficulty:
+                  type: string
+                  enum: [facile, moyen, difficile]
+                  default: moyen
+                format:
+                  type: string
+                  enum: [resume, flashcards, carte-mentale]
+                  default: resume
+                extras:
+                  type: object
+                  properties:
+                    examples:
+                      type: boolean
+                    mermaid:
+                      type: boolean
+                    webImages:
+                      type: boolean
+                    webSearch:
+                      type: boolean
+                    thinking:
+                      type: boolean
+                subject:
+                  type: string
+                  maxLength: 500
+                sourceText:
+                  type: string
+                  maxLength: 200000
+                url:
+                  type: string
+                  maxLength: 2000
+              additionalProperties: false
+      responses:
+        '200':
+          description: SSE stream of deltas, done frame, or error event
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: |
+                  data: {"delta":"# Les Arbres AVL"}
+
+                  data: {"done":true,"mode":"topic","level":"equilibre","difficulty":"moyen","format":"resume","model":"unsloth/Qwen3.5-4B-GGUF","promptVersion":"2026-10-11.v2","truncatedSource":false,"sourceChars":0,"toolsUsed":true,"usage":{"promptTokens":657,"completionTokens":1656}}
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          description: Generation rate limit exceeded (20/min per teacher)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+  /ai/courses/improve-pdf-stream:
+    post:
+      operationId: streamPdfImprovement
+      tags:
+        - ai
+      summary: Improve a course PDF with live progress (SSE)
+      description: >
+        Same payload as `improvePdfCourse` with the `streamCourseGeneration`
+        framing: PDF text deltas stream back live, then the done frame;
+        any failure arrives as the error event. Pipeline progress is
+        narrated with `data: {"phase": ...}` events (`extracting` right
+        after headers, `generating` once the model takes over) so clients
+        can tell a long PDF parse apart from model silence.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Course PDF (max 25 MB)
+                level:
+                  type: string
+                  enum: [concis, equilibre, detaille]
+                  default: equilibre
+                difficulty:
+                  type: string
+                  enum: [facile, moyen, difficile]
+                  default: moyen
+                format:
+                  type: string
+                  enum: [resume, flashcards, carte-mentale]
+                  default: resume
+      responses:
+        '200':
+          description: SSE stream of deltas, done frame, or error event
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          description: Generation rate limit exceeded (20/min per teacher)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+  /ai/courses/improve-pdf:
+    post:
+      operationId: improvePdfCourse
+      tags:
+        - ai
+      summary: Improve an existing course PDF with the local LLM
+      description: >
+        Uploads the teacher's old course PDF (`file` field, max 25 MB,
+        PDF only — anything else is 422). Text is extracted server-side
+        (unpdf), validated (min 100 chars — scanned/image-only PDFs are
+        rejected with 422), truncated to AI_MAX_SOURCE_CHARS when needed,
+        then improved through the same versioned level/format prompt as
+        generation. Same TEACHER/ADMIN guard and 20/min strict limit.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Course PDF (max 25 MB)
+                level:
+                  type: string
+                  enum: [concis, equilibre, detaille]
+                  default: equilibre
+                format:
+                  type: string
+                  enum: [resume, flashcards, carte-mentale]
+                  default: resume
+      responses:
+        '200':
+          description: Improved course (Markdown)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - content
+                      - level
+                      - format
+                      - model
+                      - promptVersion
+                      - fileName
+                      - totalPages
+                      - truncatedSource
+                      - sourceChars
+                      - toolsUsed
+                      - usage
+                    properties:
+                      content:
+                        type: string
+                        description: Improved course in Markdown
+                      level:
+                        type: string
+                        enum: [concis, equilibre, detaille]
+                      format:
+                        type: string
+                        enum: [resume, flashcards, carte-mentale]
+                      model:
+                        type: string
+                      promptVersion:
+                        type: string
+                        example: 2026-10-11.v2
+                      fileName:
+                        type: string
+                        example: ancien-cours-algo.pdf
+                      totalPages:
+                        type: integer
+                        example: 12
+                      truncatedSource:
+                        type: boolean
+                      sourceChars:
+                        type: integer
+                      toolsUsed:
+                        type: boolean
+                      usage:
+                        type: object
+                        required:
+                          - promptTokens
+                          - completionTokens
+                        properties:
+                          promptTokens:
+                            type: integer
+                            nullable: true
+                          completionTokens:
+                            type: integer
+                            nullable: true
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          description: Generation rate limit exceeded (20/min per teacher)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: RATE_LIMITED
+                  message: Too many course generations, please try again later
+                  details: []
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+        '503':
+          description: Local model unreachable or overloaded
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: SERVICE_UNAVAILABLE
+                  message: The local AI model is currently unreachable. Start it in Unsloth Desktop and retry.
+                  details: []
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+components:
+  schemas:
+    GeneratedCourse:
+      type: object
+      required:
+        - content
+        - mode
+        - level
+        - difficulty
+        - format
+        - model
+        - promptVersion
+        - truncatedSource
+        - sourceChars
+        - toolsUsed
+        - usage
+      properties:
+        content:
+          type: string
+          description: Generated course in Markdown
+        mode:
+          type: string
+          enum: [topic, text, url]
+        level:
+          type: string
+          enum: [concis, equilibre, detaille]
+        difficulty:
+          type: string
+          enum: [facile, moyen, difficile]
+        format:
+          type: string
+          enum: [resume, flashcards, carte-mentale]
+        model:
+          type: string
+        promptVersion:
+          type: string
+          example: 2026-10-11.v2
+        truncatedSource:
+          type: boolean
+        sourceChars:
+          type: integer
+        toolsUsed:
+          type: boolean
+        usage:
+          type: object
+          required:
+            - promptTokens
+            - completionTokens
+          properties:
+            promptTokens:
+              type: integer
+              nullable: true
+            completionTokens:
+              type: integer
+              nullable: true

@@ -212,7 +212,7 @@ describe('Integration: Auth Endpoints', () => {
     expect(newLoginRes.body.data.accessToken).toBeDefined();
   });
 
-  it('supports 3 account roles (STUDENT, TEACHER, ADMIN) with French/English inputs', async () => {
+  it('supports TEACHER/STUDENT roles with French/English inputs, rejects ADMIN, leaves omitted role null (RG1)', async () => {
     // 1. Register with 'profesor' -> normalized to TEACHER
     const teacherRes = await request(app).post('/api/v1/auth/register').send({
       email: `prof_${Date.now()}@test.com`,
@@ -224,7 +224,7 @@ describe('Integration: Auth Endpoints', () => {
     expect(teacherRes.status).toBe(201);
     expect(teacherRes.body.data.user.role).toBe('TEACHER');
 
-    // 2. Register with 'administrateur' -> normalized to ADMIN
+    // 2. Register with 'administrateur' -> 403 (provisioned by seed/admin only)
     const adminRes = await request(app).post('/api/v1/auth/register').send({
       email: `admin_${Date.now()}@test.com`,
       password: 'AdminPassword123!',
@@ -232,10 +232,11 @@ describe('Integration: Auth Endpoints', () => {
       lastName: 'Admin',
       role: 'administrateur',
     });
-    expect(adminRes.status).toBe(201);
-    expect(adminRes.body.data.user.role).toBe('ADMIN');
+    expect(adminRes.status).toBe(403);
+    expect(adminRes.body.error.code).toBe('FORBIDDEN');
 
-    // 3. Register with default (omitted role) -> defaults to STUDENT
+    // 3. Register with omitted role -> null (chosen later on /role-selection
+    // via PATCH /users/me/role, otherwise RG1 once-only would be consumed)
     const studentRes = await request(app).post('/api/v1/auth/register').send({
       email: `student_default_${Date.now()}@test.com`,
       password: 'StudentPass123!',
@@ -243,7 +244,7 @@ describe('Integration: Auth Endpoints', () => {
       lastName: 'Eleve',
     });
     expect(studentRes.status).toBe(201);
-    expect(studentRes.body.data.user.role).toBe('STUDENT');
+    expect(studentRes.body.data.user.role).toBeNull();
   });
 
   it('supports fetching and updating account profile data via /auth/profile', async () => {

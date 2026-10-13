@@ -38,6 +38,10 @@ dependencies:
 
   # Network (ready for backend)
   dio: ^5.4.3+1
+  file_picker: ^13.1.0
+  flutter_markdown: ^0.7.7+1
+  markdown: ^7.3.1
+  flutter_mermaid: 0.1.0
   # retrofit: ^4.10.0
 
 dev_dependencies:

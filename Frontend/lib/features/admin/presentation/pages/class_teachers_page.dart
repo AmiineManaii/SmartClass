@@ -1,12 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/error/failure_localization.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_text_field.dart';
 import '../../application/providers/admin_providers.dart';
 import '../../domain/entities/admin_person.dart';
+import '../../domain/repositories/admin_repository.dart';
 import '../widgets/admin_filter_chips.dart';
 import '../widgets/admin_person_avatar.dart';
 import '../widgets/admin_search_field.dart';
@@ -22,35 +28,60 @@ class ClassTeachersPage extends ConsumerStatefulWidget {
 
 class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
   final _searchController = TextEditingController();
-  String _query = '';
+  Timer? _searchDebounce;
   String _filter = 'all';
+
+  /// Ids picked for a NEW assignment. Already-assigned teachers offer no
+  /// assign option (checkbox hidden) — only unassigning.
   final Set<String> _selected = {};
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final teachers = ref.read(adminTeachersProvider).valueOrNull ?? [];
-      setState(() {
-        _selected.addAll(
-          teachers.where((t) => t.initiallyAssigned).map((t) => t.id),
-        );
-      });
-    });
-  }
-
-  @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      ref.read(adminPersonSearchProvider.notifier).state = value.trim();
+    });
+  }
+
+  void _showFailure(Object error) {
+    final message = error is Failure
+        ? context.tr(failureL10n(error).key)
+        : context.tr('something_went_wrong');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
+
   Future<void> _confirm() async {
     if (_selected.isEmpty) return;
-    await ref.read(adminRepositoryProvider).assignTeachers(
-          widget.classId,
-          _selected.toList(),
-        );
+    final subject = await _askSubject();
+    if (subject == null || !mounted) return;
+    try {
+      await ref.read(adminRepositoryProvider).assignTeachers(
+            widget.classId,
+            _selected
+                .map((id) => TeacherAssignment(
+                      teacherId: id,
+                      subject: subject.subject,
+                      weeklyHours: subject.weeklyHours,
+                    ))
+                .toList(),
+          );
+    } catch (e) {
+      if (!mounted) return;
+      _showFailure(e);
+      return;
+    }
+    ref.invalidate(adminTeachersProvider(widget.classId));
+    ref.invalidate(adminClassDetailProvider(widget.classId));
+    ref.invalidate(adminOverviewProvider);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -64,11 +95,107 @@ class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
     context.pop();
   }
 
+  /// Subject (+ optional weekly hours) applied to every selected teacher.
+  Future<({String subject, String? weeklyHours})?> _askSubject() async {
+    final subjectController = TextEditingController();
+    final hoursController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    try {
+      return await showDialog<({String subject, String? weeklyHours})>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(context.tr('admin_assign_subject_title')),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppTextField(
+                  controller: subjectController,
+                  hint: context.tr('admin_subject_hint'),
+                  prefixIcon: const Icon(Icons.book_outlined),
+                  validator: (v) => (v == null || v.trim().length < 2)
+                      ? context.tr('required_field')
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                AppTextField(
+                  controller: hoursController,
+                  hint: context.tr('admin_hours_hint'),
+                  prefixIcon: const Icon(Icons.schedule_outlined),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(context.tr('cancel')),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (!(formKey.currentState?.validate() ?? false)) return;
+                Navigator.of(dialogContext).pop((
+                  subject: subjectController.text.trim(),
+                  weeklyHours: hoursController.text.trim().isEmpty
+                      ? null
+                      : hoursController.text.trim(),
+                ));
+              },
+              child: Text(context.tr('admin_confirm_assign')),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      subjectController.dispose();
+      hoursController.dispose();
+    }
+  }
+
+  Future<void> _unassign(String teacherId, String teacherName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('admin_unassign_title')),
+        content: Text(
+          context.tr('admin_unassign_message', args: {'name': teacherName}),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.tr('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.tr('admin_unassign_action')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref
+          .read(adminRepositoryProvider)
+          .removeTeachers(widget.classId, [teacherId]);
+    } catch (e) {
+      if (!mounted) return;
+      _showFailure(e);
+      return;
+    }
+    setState(() => _selected.remove(teacherId));
+    ref.invalidate(adminTeachersProvider(widget.classId));
+    ref.invalidate(adminClassDetailProvider(widget.classId));
+    ref.invalidate(adminOverviewProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final teachersAsync = ref.watch(adminTeachersProvider);
+    final teachersAsync = ref.watch(adminTeachersProvider(widget.classId));
+    final detailAsync = ref.watch(adminClassDetailProvider(widget.classId));
+    final loadedTeachers = teachersAsync.valueOrNull ?? const <AdminTeacher>[];
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -86,11 +213,15 @@ class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            Text(
-              context.tr('admin_class_label', args: {'name': 'Informatique 3A'}),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+            detailAsync.when(
+              data: (detail) => Text(
+                detail?.title ?? '',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
           ],
         ),
@@ -120,13 +251,20 @@ class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _CoverageCard(),
+                        detailAsync.when(
+                          data: (detail) => _CoverageCard(
+                            className: detail?.title ?? '',
+                            department: detail?.department ?? '',
+                            teachers: loadedTeachers,
+                          ),
+                          loading: () => const SizedBox(height: 24),
+                          error: (_, _) => const SizedBox(height: 24),
+                        ),
                         const SizedBox(height: 16),
                         AdminSearchField(
                           controller: _searchController,
                           hint: context.tr('admin_search_teacher_hint'),
-                          onChanged: (v) =>
-                              setState(() => _query = v.trim().toLowerCase()),
+                          onChanged: _onSearchChanged,
                           onFilterTap: () {},
                         ),
                         const SizedBox(height: 12),
@@ -143,7 +281,8 @@ class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          data: (teachers) => Column(
+                          data: (teachers) {
+                            return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               AdminFilterChips<String>(
@@ -154,10 +293,10 @@ class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
                                         args: {'count': '${teachers.length}'}),
                                   ),
                                   AdminFilterOption(
-                                    value: 'info',
-                                    label: context.tr('admin_dep_info', args: {
+                                    value: 'assigned',
+                                    label: context.tr('admin_assigned_f', args: {
                                       'count':
-                                          '${teachers.where((t) => t.department == 'Informatique').length}'
+                                          '${teachers.where((t) => t.initiallyAssigned).length}'
                                     }),
                                   ),
                                   AdminFilterOption(
@@ -165,13 +304,6 @@ class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
                                     label: context.tr('admin_available_f', args: {
                                       'count':
                                           '${teachers.where((t) => !t.initiallyAssigned).length}'
-                                    }),
-                                  ),
-                                  AdminFilterOption(
-                                    value: 'assigned',
-                                    label: context.tr('admin_assigned_f', args: {
-                                      'count':
-                                          '${teachers.where((t) => t.initiallyAssigned).length}'
                                     }),
                                   ),
                                 ],
@@ -192,11 +324,16 @@ class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
                                         _selected.add(teacher.id);
                                       }
                                     }),
+                                    onUnassign: teacher.initiallyAssigned
+                                        ? () => _unassign(
+                                            teacher.id, teacher.name)
+                                        : null,
                                   ),
                                 ),
                               ),
                             ],
-                          ),
+                          );
+                          },
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -219,8 +356,6 @@ class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
   List<AdminTeacher> _applyFilter(List<AdminTeacher> teachers) {
     var list = teachers;
     switch (_filter) {
-      case 'info':
-        list = list.where((t) => t.department == 'Informatique').toList();
       case 'available':
         list = list.where((t) => !t.initiallyAssigned).toList();
       case 'assigned':
@@ -229,23 +364,27 @@ class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
       default:
         break;
     }
-    if (_query.isNotEmpty) {
-      list = list
-          .where((t) =>
-              t.name.toLowerCase().contains(_query) ||
-              t.email.toLowerCase().contains(_query) ||
-              t.department.toLowerCase().contains(_query))
-          .toList();
-    }
     return list;
   }
 }
 
 class _CoverageCard extends StatelessWidget {
+  final String className;
+  final String department;
+  final List<AdminTeacher> teachers;
+
+  const _CoverageCard({
+    required this.className,
+    required this.department,
+    required this.teachers,
+  });
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final assigned = teachers.where((t) => t.initiallyAssigned).toList();
+    final subjects =
+        assigned.map((t) => t.specialty).where((s) => s.isNotEmpty).toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -281,13 +420,17 @@ class _CoverageCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text('Licence 3 Informatique 3A', style: theme.textTheme.headlineSmall),
           Text(
-            context.tr('admin_semester_dept', args: {'sem': '6', 'dept': 'Informatique'}),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
+            className.isNotEmpty ? className : '—',
+            style: theme.textTheme.headlineSmall,
           ),
+          if (department.isNotEmpty)
+            Text(
+              department,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -313,8 +456,8 @@ class _CoverageCard extends StatelessWidget {
                 ],
               ),
               Text(
-                context.tr('admin_assigned_ratio',
-                    args: {'done': '1', 'total': '4', 'pct': '25'}),
+                context.tr('admin_teachers_count',
+                    args: {'count': '${assigned.length}'}),
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: colorScheme.secondary,
                   fontWeight: FontWeight.w600,
@@ -323,33 +466,13 @@ class _CoverageCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(9999),
-            child: LinearProgressIndicator(
-              value: 0.25,
-              minHeight: 6,
-              backgroundColor: colorScheme.surfaceContainerHigh,
-              valueColor: AlwaysStoppedAnimation<Color>(colorScheme.secondary),
+          Text(
+            subjects.isEmpty
+                ? context.tr('admin_no_subjects')
+                : subjects.join(' • '),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
             ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                context.tr('admin_subjects_required', args: {'count': '4'}),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              Text(
-                context.tr('admin_open_posts', args: {'count': '3'}),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colorScheme.tertiary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -386,11 +509,13 @@ class _TeacherCard extends StatelessWidget {
   final AdminTeacher teacher;
   final bool selected;
   final VoidCallback onToggle;
+  final VoidCallback? onUnassign;
 
   const _TeacherCard({
     required this.teacher,
     required this.selected,
     required this.onToggle,
+    this.onUnassign,
   });
 
   @override
@@ -451,11 +576,12 @@ class _TeacherCard extends StatelessWidget {
                       spacing: 6,
                       runSpacing: 4,
                       children: [
-                        _MiniPill(
-                          text: teacher.specialty,
-                          bg: colorScheme.surfaceContainerLow,
-                          fg: colorScheme.secondary,
-                        ),
+                        if (teacher.specialty.isNotEmpty)
+                          _MiniPill(
+                            text: teacher.specialty,
+                            bg: colorScheme.surfaceContainerLow,
+                            fg: colorScheme.secondary,
+                          ),
                         _MiniPill(
                           text: context.tr(teacher.availabilityKey,
                               args: {'hours': teacher.availabilityArgs}),
@@ -468,8 +594,18 @@ class _TeacherCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              if (selected)
-                InkWell(
+              if (onUnassign != null)
+                IconButton(
+                  icon: const Icon(Icons.person_remove_outlined, size: 20),
+                  tooltip: context.tr('admin_unassign_action'),
+                  color: colorScheme.error,
+                  onPressed: onUnassign,
+                ),
+              // No assign option for already-assigned teachers:
+              // checkbox (or "Ajouter") only when unassigned.
+              if (!teacher.initiallyAssigned)
+                if (selected)
+                  InkWell(
                   onTap: onToggle,
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
@@ -535,14 +671,18 @@ class _TeacherCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    teacher.subjectLabel,
-                    style: theme.textTheme.bodyMedium,
+                    teacher.subjectLabel.isNotEmpty
+                        ? teacher.subjectLabel
+                        : context.tr('admin_not_assigned'),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: teacher.subjectLabel.isNotEmpty
+                          ? null
+                          : colorScheme.onSurfaceVariant,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Icon(Icons.unfold_more_rounded,
-                    size: 18, color: colorScheme.onSurfaceVariant),
               ],
             ),
           ),
@@ -552,8 +692,12 @@ class _TeacherCard extends StatelessWidget {
   }
 
   String _subjectStatus(BuildContext context, AdminTeacher teacher) {
-    if (teacher.initiallyAssigned) return teacher.subjectValue;
-    return context.tr(teacher.subjectValue);
+    if (teacher.initiallyAssigned) {
+      return teacher.subjectValue == 'admin_not_assigned'
+          ? ''
+          : teacher.subjectValue;
+    }
+    return context.tr('admin_not_assigned');
   }
 
   Color _availabilityBg(ColorScheme colors, AdminTeacher teacher) {

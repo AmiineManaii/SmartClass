@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:convert';
 
 import 'api_config.dart';
 import 'api_exception.dart';
@@ -142,6 +143,135 @@ class ApiClient {
           data: data,
           options: Options(extra: {'authenticated': authenticated}),
         ));
+  }
+
+  Future<Response<T>> delete<T>(
+    String path, {
+    Object? data,
+    bool authenticated = true,
+  }) {
+    return _guard(() => _dio.delete<T>(
+          path,
+          data: data,
+          options: Options(extra: {'authenticated': authenticated}),
+        ));
+  }
+
+  /// Raw SSE/event stream POST (long local generations).
+  ///
+  /// Uses [ApiConfig.streamReceiveTimeout] (minutes, not seconds): the
+  /// local LLM can stay silent for 20 s+ before the first token while it
+  /// runs server-side tools, and the global 15 s receive timeout would
+  /// otherwise surface as a fake "no internet" error mid-generation.
+  /// Emits every response line (including SSE `data:` frames) to [onLine].
+  /// Throws [ApiException] on non-200 responses (body drained and mapped)
+  /// and `REQUEST_CANCELLED` when [cancelToken] cancels.
+  Future<void> postStream(
+    String path, {
+    Object? data,
+    required void Function(String line) onLine,
+    CancelToken? cancelToken,
+    bool authenticated = true,
+  }) async {
+    final headers = <String, dynamic>{
+      'X-Request-Id': const Uuid().v4(),
+      'Accept': 'text/event-stream',
+    };
+    if (authenticated) {
+      final accessToken = await tokens.readAccessToken();
+      if (accessToken != null && accessToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $accessToken';
+      }
+    }
+    late Response<ResponseBody> res;
+    try {
+      res = await _dio.post<ResponseBody>(
+        path,
+        data: data,
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: headers,
+          // Per-request override: the base 15 s receive timeout must not
+          // apply to minute-long AI streams (backend also pings every
+          // 10 s with an SSE comment to keep the socket alive), and the
+          // 10 s send timeout must not abort large PDF uploads.
+          receiveTimeout: ApiConfig.streamReceiveTimeout,
+          sendTimeout: const Duration(minutes: 5),
+          extra: {'authenticated': authenticated},
+        ),
+        cancelToken: cancelToken,
+      );
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) {
+        throw const ApiException(
+          code: 'REQUEST_CANCELLED',
+          message: 'Request cancelled',
+        );
+      }
+      // With a streamed response the error body is a ResponseBody: drain it
+      // so the real backend error code reaches the UI (not a generic one).
+      final errorRes = e.response;
+      if (errorRes != null && errorRes.data is ResponseBody) {
+        throw await _streamError(Response<ResponseBody>(
+          requestOptions: errorRes.requestOptions,
+          statusCode: errorRes.statusCode,
+          data: errorRes.data as ResponseBody,
+        ));
+      }
+      throw _toApiException(e);
+    }
+    final stream = res.data?.stream;
+    if (res.statusCode != 200 || stream == null) {
+      throw await _streamError(res);
+    }
+    var buffer = '';
+    try {
+      await for (final chunk in stream) {
+        buffer += utf8.decode(chunk, allowMalformed: true);
+        final lines = buffer.split('\n');
+        buffer = lines.removeLast();
+        for (final line in lines) {
+          onLine(line);
+        }
+      }
+      if (buffer.trim().isNotEmpty) onLine(buffer);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) {
+        throw const ApiException(
+          code: 'REQUEST_CANCELLED',
+          message: 'Request cancelled',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  Future<ApiException> _streamError(Response<ResponseBody> res) async {
+    try {
+      final bytes = <int>[];
+      final stream = res.data?.stream;
+      if (stream != null) {
+        await for (final chunk in stream) {
+          bytes.addAll(chunk);
+        }
+      }
+      final body = jsonDecode(utf8.decode(bytes, allowMalformed: true));
+      if (body is Map<String, dynamic>) {
+        return _fromResponse(
+          Response(
+            requestOptions: res.requestOptions,
+            statusCode: res.statusCode,
+            data: body,
+          ),
+        );
+      }
+    } catch (_) {
+      // Fall through to the generic failure below.
+    }
+    return ApiException(
+      statusCode: res.statusCode,
+      message: 'Request failed (${res.statusCode})',
+    );
   }
 
   Future<Response<T>> _guard<T>(Future<Response<T>> Function() call) async {

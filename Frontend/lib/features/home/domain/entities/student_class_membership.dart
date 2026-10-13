@@ -2,10 +2,11 @@
 ///
 /// Pure Dart — no Flutter dependency.
 ///
-/// Source of truth (planned): `GET /api/v1/groups/memberships` (see
-/// `contracts/README.md` → groups: planned). Until that contract lands,
-/// [studentClassMembershipProvider] resolves to `null`, which the dashboard
-/// treats as "no class joined" (fail-safe, no mock data).
+/// Source of truth: `GET /api/v1/groups/mine` (see
+/// `contracts/groups.openapi.yaml` → `listMyGroups`). When the endpoint
+/// returns no STUDENT membership, [studentClassMembershipProvider]
+/// resolves to `null`, which the dashboard treats as "no class joined"
+/// (fail-safe, no mock data).
 class StudentClassMembership {
   final String id;
   final String name;

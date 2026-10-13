@@ -11,12 +11,14 @@ export interface VideoconferenceRouterOptions {
 
 export const createVideoconferenceRouter = (options: VideoconferenceRouterOptions): Router => {
   const router = Router();
-  const { controller, authenticateMiddleware, requireAdminMiddleware } = options;
+  const { controller, authenticateMiddleware } = options;
 
+  // Class-scoped read: any authenticated user belonging to the class
+  // (member, assigned teacher, referent) plus ADMIN. Membership is
+  // enforced in the use-case, not by a role guard.
   router.get(
     '/timetable',
     authenticateMiddleware,
-    requireAdminMiddleware,
     validate({ query: timetableQuerySchema }),
     controller.getTimetable,
   );

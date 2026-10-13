@@ -36,8 +36,12 @@ import 'failures.dart';
       return (key: 'not_found', args: noArgs);
     case 'FORBIDDEN':
       return (key: 'permission_denied', args: noArgs);
+    case 'ROLE_ALREADY_ASSIGNED':
+      return (key: 'role_already_assigned', args: noArgs);
     case 'RATE_LIMITED':
       return (key: 'too_many_requests', args: noArgs);
+    case 'SERVICE_UNAVAILABLE':
+      return (key: 'ai_model_offline', args: noArgs);
     case 'VALIDATION_ERROR':
       return (key: _validationKey(failure as ValidationFailure), args: noArgs);
     default:

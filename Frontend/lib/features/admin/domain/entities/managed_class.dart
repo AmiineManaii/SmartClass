@@ -1,11 +1,14 @@
 /// Class/cohort under administration (pure Dart).
 ///
-/// Backend endpoints: none yet (groups module planned).
-/// Values come from the mock datasource until then.
+/// Shapes mirror `contracts/groups.openapi.yaml` (ClassGroupSummary/Detail).
+/// Only backend-provided values: no attendance or course-engine figures
+/// exist server-side, so none are modelled here.
 enum ClassLevel { licence, master, doctorat }
 
 class AdminClassSummary {
   final String id;
+
+  /// Filière (department) + promo years, e.g. "Informatique • 2024–2025".
   final String promoTag;
   final String? statusKey;
   final bool statusActive;
@@ -13,9 +16,9 @@ class AdminClassSummary {
   final String icon;
   final int students;
   final int teachers;
+
+  /// Referent full name, or '' when the class has none.
   final String referent;
-  final int presencePct;
-  final int coursesActive;
   final ClassLevel level;
   final List<String> extraChips;
 
@@ -29,8 +32,6 @@ class AdminClassSummary {
     required this.students,
     required this.teachers,
     required this.referent,
-    required this.presencePct,
-    required this.coursesActive,
     required this.level,
     this.extraChips = const [],
   });
@@ -38,6 +39,8 @@ class AdminClassSummary {
 
 class AdminClassDetail extends AdminClassSummary {
   final int capacity;
+
+  /// Department (filière), or '' when unset.
   final String department;
 
   const AdminClassDetail({
@@ -50,8 +53,6 @@ class AdminClassDetail extends AdminClassSummary {
     required super.students,
     required super.teachers,
     required super.referent,
-    required super.presencePct,
-    required super.coursesActive,
     required super.level,
     super.extraChips,
     required this.capacity,

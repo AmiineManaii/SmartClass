@@ -23,6 +23,11 @@ class ApiConfig {
   static const Duration connectTimeout = Duration(seconds: 10);
   static const Duration receiveTimeout = Duration(seconds: 15);
 
+  /// Long generations stream for minutes (local LLM: TTFT alone can
+  /// exceed 20 s when server-side tools run before the first token).
+  /// Must stay well above the backend SSE heartbeat interval (10 s).
+  static const Duration streamReceiveTimeout = Duration(minutes: 10);
+
   static const String accessTokenKey = 'smartclass_access_token';
   static const String refreshTokenKey = 'smartclass_refresh_token';
 }

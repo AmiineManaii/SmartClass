@@ -13,8 +13,12 @@ export type {
 } from './domain/class-group.entity.js';
 export type {
   CreateGroupParams,
+  DepartmentView,
   GroupMemberUser,
+  GroupMemberView,
   GroupRepositoryPort,
   ListGroupsQuery,
   TeacherAssignInput,
+  TeacherAssignmentDetail,
+  UpdateGroupParams,
 } from './domain/group-repository.port.js';

@@ -8,3 +8,9 @@ export {
   ListUsersUseCase,
   type ListUsersResult as ListUsersUseCaseResult,
 } from './application/list-users.use-case.js';
+export {
+  SetMyRoleUseCase,
+  type SetMyRoleResult,
+  type AssignableRole,
+} from './application/set-my-role.use-case.js';
+export { SetUserRoleUseCase, type SetUserRoleResult } from './application/set-user-role.use-case.js';

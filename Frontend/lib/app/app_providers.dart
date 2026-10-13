@@ -7,6 +7,7 @@ import '../core/theme/app_theme.dart';
 import '../core/typography/typography_provider.dart';
 import '../core/typography/typography_config.dart';
 import '../core/constants/app_constants.dart';
+import '../core/error/failures.dart';
 import '../core/network/network_providers.dart';
 import '../features/authentication/application/providers/auth_repository_provider.dart';
 import '../features/authentication/domain/entities/user_entity.dart';
@@ -19,6 +20,7 @@ import '../features/authentication/presentation/pages/reset_password_page.dart';
 import '../features/authentication/presentation/pages/role_selection_page.dart';
 import '../features/authentication/presentation/pages/verify_email_page.dart';
 import '../features/courses/presentation/pages/ai_course_creator_page.dart';
+import '../features/courses/presentation/pages/course_reader_page.dart';
 import '../features/courses/presentation/pages/courses_page.dart';
 import '../features/groups/presentation/pages/groups_page.dart';
 import '../features/exams/presentation/pages/exams_page.dart';
@@ -33,6 +35,8 @@ import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/home/presentation/pages/home_page.dart';
 import '../features/splash/presentation/pages/splash_page.dart';
 import '../features/admin/presentation/pages/admin_classes_page.dart';
+import '../features/admin/presentation/pages/admin_students_page.dart';
+import '../features/admin/presentation/pages/admin_teachers_page.dart';
 import '../features/admin/presentation/pages/admin_frauds_page.dart';
 import '../features/admin/presentation/pages/admin_planning_page.dart';
 import '../features/admin/presentation/pages/class_create_page.dart';
@@ -195,6 +199,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const CoursesPage(),
           ),
           GoRoute(
+            path: '/courses/:courseId',
+            name: 'course-reader',
+            builder: (context, state) => CourseReaderPage(
+              courseId: state.pathParameters['courseId'] ?? '',
+            ),
+          ),
+          GoRoute(
             path: '/groups',
             name: 'groups',
             builder: (context, state) => const GroupsPage(),
@@ -230,9 +241,21 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const AdminClassesPage(),
           ),
           GoRoute(
+            path: '/admin/teachers',
+            name: 'admin-teachers',
+            builder: (context, state) => const AdminTeachersPage(),
+          ),
+          GoRoute(
+            path: '/admin/students',
+            name: 'admin-students',
+            builder: (context, state) => const AdminStudentsPage(),
+          ),
+          GoRoute(
             path: '/admin/classes/new',
             name: 'admin-class-new',
-            builder: (context, state) => const ClassCreatePage(),
+            builder: (context, state) => ClassCreatePage(
+              editClassId: state.extra is String ? state.extra as String : null,
+            ),
           ),
           GoRoute(
             path: '/admin/classes/:classId/students',
@@ -351,38 +374,32 @@ class _BottomNavBar extends ConsumerWidget {
               labelKey: 'home',
               route: '/home',
             ),
-      _NavItem(
-        icon: Icons.dashboard_outlined,
-        selectedIcon: Icons.dashboard_rounded,
-        labelKey: 'home',
-        route: '/home',
-      ),
-      _NavItem(
-        icon: Icons.menu_book_outlined,
-        selectedIcon: Icons.menu_book_rounded,
-        labelKey: 'nav_my_courses',
-        route: '/courses',
-      ),
-      _NavItem(
-        icon: Icons.auto_awesome_rounded,
-        selectedIcon: Icons.auto_awesome_rounded,
-        labelKey: 'ai_tutor',
-        route: '/ai-assistant',
-        isAiPill: true,
-      ),
-      _NavItem(
-        icon: Icons.forum_outlined,
-        selectedIcon: Icons.forum_rounded,
-        labelKey: 'community',
-        route: '/groups',
-      ),
-      _NavItem(
-        icon: Icons.person_outline_rounded,
-        selectedIcon: Icons.person_rounded,
-        labelKey: 'profile',
-        route: '/profile',
-      ),
-    ];
+            _NavItem(
+              icon: Icons.menu_book_outlined,
+              selectedIcon: Icons.menu_book_rounded,
+              labelKey: 'nav_my_courses',
+              route: '/courses',
+            ),
+            _NavItem(
+              icon: Icons.auto_awesome_rounded,
+              selectedIcon: Icons.auto_awesome_rounded,
+              labelKey: 'ai_tutor',
+              route: '/ai-assistant',
+              isAiPill: true,
+            ),
+            _NavItem(
+              icon: Icons.forum_outlined,
+              selectedIcon: Icons.forum_rounded,
+              labelKey: 'community',
+              route: '/groups',
+            ),
+            _NavItem(
+              icon: Icons.person_outline_rounded,
+              selectedIcon: Icons.person_rounded,
+              labelKey: 'profile',
+              route: '/profile',
+            ),
+          ];
 
     return Container(
       decoration: BoxDecoration(
@@ -741,12 +758,44 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     }
   }
 
-  /// Role has no backend endpoint yet: kept local-only until the
-  /// users module exposes it (see `contracts/README.md` → planned).
-  void updateRole(String role) {
+  /// Persists the onboarding role via `PATCH /users/me/role` (RG1, once-only).
+  /// Backend is the source of truth: the returned session (fresh tokens
+  /// embedding the role) replaces the local state.
+  /// ADMIN is never self-assignable — throws [Failure] (403) in that case.
+  /// If the role was already assigned (409 ROLE_ALREADY_ASSIGNED),
+  /// resyncs from `GET /auth/me` instead of failing the onboarding.
+  Future<void> updateRole(String role) async {
+    final normalized = role.toLowerCase();
+    if (normalized == 'admin') {
+      throw const AuthFailure(
+        'Administrator accounts must be provisioned by an existing administrator',
+        code: 'FORBIDDEN',
+      );
+    }
     final current = state.value;
-    if (current != null) {
-      _emit(AsyncValue.data(current.copyWith(role: role)));
+    _emit(const AsyncValue.loading());
+    try {
+      final session = await _repo.setMyRole(role: normalized);
+      _emit(AsyncValue.data(_fromUser(session.user, authenticated: true)));
+    } catch (e) {
+      // Role already set server-side: resync from the backend (source of
+      // truth). Only swallow the error when the synced role matches the
+      // request (e.g. retry after the app was killed post-success) —
+      // otherwise surface it so the user isn't sent to the wrong dashboard.
+      try {
+        final user = await _repo.getMe();
+        final synced = _fromUser(user, authenticated: true);
+        _emit(AsyncValue.data(synced));
+        if (synced.role == normalized) return;
+      } catch (_) {
+        // Fall through to restore previous state below.
+      }
+      if (current != null) {
+        _emit(AsyncValue.data(current));
+      } else {
+        _emit(AsyncValue.error(e, StackTrace.current));
+      }
+      rethrow;
     }
   }
 

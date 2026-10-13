@@ -53,6 +53,14 @@ paths:
                   type: string
                   enum: [TEACHER, STUDENT, ADMIN]
                   nullable: true
+                  description: >
+                    TEACHER or STUDENT only. ADMIN is rejected with 403 —
+                    administrator accounts are provisioned by seed or by an
+                    existing admin via PATCH /users/{id}/role, never
+                    self-registered. When omitted (or null), the role stays
+                    null and is chosen later on /role-selection via
+                    PATCH /users/me/role (RG1: one role per account,
+                    assigned once) — it must NOT default to STUDENT.
                   example: STUDENT
       responses:
         '201':
@@ -82,6 +90,18 @@ paths:
                 error:
                   code: EMAIL_ALREADY_USED
                   message: An account with this email address already exists
+                  details: []
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+        '403':
+          description: ADMIN role requested at public registration.
+          content:
+            application/json:
+              schema:
+                $ref: 'common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: FORBIDDEN
+                  message: Administrator accounts cannot be created through public registration
                   details: []
                   requestId: 9f84725e-38aa-4e12-b162-817346ac7901
         '422':

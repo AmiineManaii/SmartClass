@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/error/failure_localization.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../application/providers/admin_providers.dart';
@@ -20,14 +24,22 @@ class AdminClassesPage extends ConsumerStatefulWidget {
 
 class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
   final _searchController = TextEditingController();
-  String _query = '';
-  ClassLevel? _filter;
+  Timer? _searchDebounce;
   bool _sortByStudents = false;
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      ref.read(adminClassSearchProvider.notifier).state = value.trim();
+    });
   }
 
   void _showComingSoon() {
@@ -36,6 +48,57 @@ class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
         content: Text(context.tr('feature_coming_soon')),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showFailure(Object error) {
+    final message = error is Failure
+        ? context.tr(failureL10n(error).key)
+        : context.tr('something_went_wrong');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _confirmArchive(AdminClassSummary cls) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('admin_archive_title')),
+        content: Text(
+          context.tr('admin_archive_message', args: {'name': cls.title}),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.tr('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.tr('admin_archive_action')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref.read(adminRepositoryProvider).deleteClass(cls.id);
+    } catch (e) {
+      if (!mounted) return;
+      _showFailure(e);
+      return;
+    }
+    ref.invalidate(adminClassesProvider);
+    ref.invalidate(adminOverviewProvider);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.tr('admin_archive_done')),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -86,10 +149,17 @@ class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
               action(
                 Icons.calendar_month_outlined,
                 'admin_view_timetable',
-                () => context.push('/admin/planning'),
+                () {
+                  ref.read(adminPlanningClassProvider.notifier).state = cls.id;
+                  context.push('/admin/planning');
+                },
               ),
               action(Icons.mail_outline, 'admin_send_notice', _showComingSoon),
-              action(Icons.archive_outlined, 'admin_archive_cohort', _showComingSoon),
+              action(
+                Icons.archive_outlined,
+                'admin_archive_cohort',
+                () => _confirmArchive(cls),
+              ),
               action(Icons.close_rounded, 'close', () {}),
               const SizedBox(height: 8),
             ],
@@ -104,6 +174,7 @@ class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final classesAsync = ref.watch(adminClassesProvider);
+    final levelFilter = ref.watch(adminClassLevelFilterProvider);
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -170,7 +241,7 @@ class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
                     AdminSearchField(
                       controller: _searchController,
                       hint: context.tr('admin_search_class_hint'),
-                      onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+                      onChanged: _onSearchChanged,
                       onFilterTap: () {},
                     ),
                     const SizedBox(height: 12),
@@ -190,8 +261,10 @@ class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
                           label: context.tr('admin_filter_doctorat'),
                         ),
                       ],
-                      selected: _filter,
-                      onSelected: (v) => setState(() => _filter = v),
+                      selected: levelFilter,
+                      onSelected: (v) => ref
+                          .read(adminClassLevelFilterProvider.notifier)
+                          .state = v,
                     ),
                     const SizedBox(height: 16),
                     classesAsync.when(
@@ -228,22 +301,11 @@ class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
     );
   }
 
+  /// Server already filters by level/search; only the manual sort
+  /// toggle applies client-side on real data.
   List<AdminClassSummary> _applyFilter(List<AdminClassSummary> classes) {
-    var list = classes;
-    if (_filter != null) {
-      list = list.where((c) => c.level == _filter).toList();
-    }
-    if (_query.isNotEmpty) {
-      list = list
-          .where((c) =>
-              c.title.toLowerCase().contains(_query) ||
-              c.promoTag.toLowerCase().contains(_query))
-          .toList();
-    }
-    if (_sortByStudents) {
-      list = [...list]..sort((a, b) => b.students.compareTo(a.students));
-    }
-    return list;
+    if (!_sortByStudents) return classes;
+    return [...classes]..sort((a, b) => b.students.compareTo(a.students));
   }
 }
 
@@ -577,15 +639,9 @@ class _AdminClassCard extends StatelessWidget {
               children: [
                 _Pill(
                   icon: Icons.account_circle_outlined,
-                  text: cls.referent,
-                ),
-                _Pill(
-                  icon: Icons.verified_outlined,
-                  text: context.tr('admin_presence', args: {'pct': cls.presencePct.toString()}),
-                ),
-                _Pill(
-                  icon: Icons.menu_book_outlined,
-                  text: context.tr('admin_courses_active', args: {'count': cls.coursesActive.toString()}),
+                  text: cls.referent.isNotEmpty
+                      ? cls.referent
+                      : context.tr('admin_no_referent'),
                 ),
                 for (final chip in cls.extraChips) _Pill(icon: Icons.label_outline, text: chip),
               ],

@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { createAuthModule, type AuthModuleOptions, type Role } from './modules/auth/index.js';
 import { createUsersModule, type UsersModuleOptions } from './modules/users/index.js';
+import { createAdminModule, type AdminModuleOptions } from './modules/admin/index.js';
+import { createAiModule, type AiModuleOptions } from './modules/ai-assistant/index.js';
 import { createGroupsModule, type GroupsModuleOptions } from './modules/groups/index.js';
+import { createCoursesModule, type CoursesModuleOptions } from './modules/courses/index.js';
 import { createExamsModule, type ExamsModuleOptions } from './modules/exams/index.js';
 import {
   createVideoconferenceModule,
@@ -11,7 +14,10 @@ import {
 export interface ApiRouterOptions {
   authModuleOptions?: AuthModuleOptions;
   usersModuleOptions?: UsersModuleOptions;
+  adminModuleOptions?: AdminModuleOptions;
+  aiModuleOptions?: AiModuleOptions;
   groupsModuleOptions?: GroupsModuleOptions;
+  coursesModuleOptions?: CoursesModuleOptions;
   examsModuleOptions?: ExamsModuleOptions;
   videoconferenceModuleOptions?: VideoconferenceModuleOptions;
 }
@@ -30,12 +36,31 @@ export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
     requireAdminMiddleware: authModule.requireRoleMiddleware(['ADMIN'] as Role[]),
   };
 
-  // 2. Users directory (/api/v1/users)
+  // 2. Users directory + role management (/api/v1/users).
+  // Role endpoints need the auth internals (token issuance on role change),
+  // shared from the auth module rather than duplicated.
   const usersModule = createUsersModule({
     ...options.usersModuleOptions,
     ...adminGuard,
+    authRepository: options.usersModuleOptions?.authRepository ?? authModule.authRepository,
+    tokenService: options.usersModuleOptions?.tokenService ?? authModule.tokenService,
   });
   router.use('/users', usersModule.router);
+
+  // 2b. Admin overview aggregates (/api/v1/admin).
+  const adminModule = createAdminModule({
+    ...options.adminModuleOptions,
+    ...adminGuard,
+  });
+  router.use('/admin', adminModule.router);
+
+  // 2c. AI course generation (local LLM gateway, teachers only).
+  const aiModule = createAiModule({
+    ...options.aiModuleOptions,
+    authenticateMiddleware: adminGuard.authenticateMiddleware,
+    requireTeacherMiddleware: authModule.requireRoleMiddleware(['TEACHER', 'ADMIN'] as Role[]),
+  });
+  router.use('/ai', aiModule.router);
 
   // 3. Class groups (/api/v1/groups)
   const groupsModule = createGroupsModule({
@@ -43,6 +68,15 @@ export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
     ...adminGuard,
   });
   router.use('/groups', groupsModule.router);
+
+  // 3b. Generated courses (/api/v1/courses): teacher drafts + validation,
+  // published reading for every authenticated user.
+  const coursesModule = createCoursesModule({
+    ...options.coursesModuleOptions,
+    authenticateMiddleware: adminGuard.authenticateMiddleware,
+    requireTeacherMiddleware: authModule.requireRoleMiddleware(['TEACHER', 'ADMIN'] as Role[]),
+  });
+  router.use('/courses', coursesModule.router);
 
   // 4. Exams integrity slice (/api/v1/exams)
   const examsModule = createExamsModule({
@@ -59,7 +93,6 @@ export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
   router.use('/videoconference', videoconferenceModule.router);
 
   // Future bounded context modules will be mounted here:
-  // router.use('/courses', courseRoutes);
   // router.use('/collaboration', collaborationRoutes);
   // router.use('/ai-assistant', aiAssistantRoutes);
   // router.use('/notifications', notificationRoutes);

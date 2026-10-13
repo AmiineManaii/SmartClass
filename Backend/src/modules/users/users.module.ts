@@ -5,17 +5,22 @@ import {
   createRequireRoleMiddleware,
   type TokenServicePort,
 } from '../auth/index.js';
+import type { AuthRepositoryPort } from '../auth/index.js';
 import type { UserDirectoryPort } from './domain/user-directory.port.js';
 import { PrismaUserDirectoryAdapter } from './infrastructure/prisma-user-directory.adapter.js';
 import { ListUsersUseCase } from './application/list-users.use-case.js';
+import { SetMyRoleUseCase } from './application/set-my-role.use-case.js';
+import { SetUserRoleUseCase } from './application/set-user-role.use-case.js';
 import { UsersController } from './presentation/users.controller.js';
 import { createUsersRouter } from './presentation/users.routes.js';
 
 export interface UsersModuleOptions {
   userDirectory?: UserDirectoryPort;
+  authRepository?: AuthRepositoryPort;
   tokenService?: TokenServicePort;
   authenticateMiddleware?: RequestHandler;
   requireAdminMiddleware?: RequestHandler;
+  refreshExpirationDays?: number;
 }
 
 export interface UsersModule {
@@ -26,7 +31,21 @@ export interface UsersModule {
 export const createUsersModule = (options: UsersModuleOptions = {}): UsersModule => {
   const userDirectory = options.userDirectory ?? new PrismaUserDirectoryAdapter();
   const listUsersUseCase = new ListUsersUseCase(userDirectory);
-  const controller = new UsersController(listUsersUseCase);
+
+  // Role endpoints mint fresh tokens on change: they need the auth internals
+  // (shared from the auth module in routes.ts, never duplicated here).
+  const authRepository = options.authRepository;
+  const tokenService = options.tokenService;
+  if (!authRepository || !tokenService) {
+    throw new Error('UsersModule requires authRepository and tokenService for role endpoints');
+  }
+  const setMyRoleUseCase = new SetMyRoleUseCase(
+    authRepository,
+    tokenService,
+    options.refreshExpirationDays,
+  );
+  const setUserRoleUseCase = new SetUserRoleUseCase(authRepository);
+  const controller = new UsersController(listUsersUseCase, setMyRoleUseCase, setUserRoleUseCase);
 
   let authenticateMiddleware = options.authenticateMiddleware;
   if (!authenticateMiddleware) {

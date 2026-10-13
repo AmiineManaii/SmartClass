@@ -1,20 +1,22 @@
 /// Fraud / discipline reports (pure Dart).
 ///
-/// Backend endpoints: none yet (exams module planned).
+/// Shapes mirror `contracts/exams.openapi.yaml` (FraudReportView +
+/// fraud summary). No integrity percentage exists server-side (it needs
+/// the exams denominator), so none is modelled here.
 enum FraudSeverity { critical, medium, closed }
 
 enum FraudStatus { untreated, ongoing, closed }
 
-/// Aggregate counters returned alongside the report list by the future API.
+/// Aggregate counters from GET /api/v1/exams/fraud-reports/summary.
 class FraudSummary {
   final int unresolved;
+  final int inProgress;
   final int resolvedThisMonth;
-  final double integrityPct;
 
   const FraudSummary({
     required this.unresolved,
+    required this.inProgress,
     required this.resolvedThisMonth,
-    required this.integrityPct,
   });
 }
 
@@ -22,6 +24,8 @@ class FraudReport {
   final String id;
   final FraudSeverity severity;
   final FraudStatus status;
+
+  /// Local "HH:mm" rendering of [occurredAt] for compact display.
   final String time;
   final String title;
   final String subtitle;
@@ -32,6 +36,9 @@ class FraudReport {
   final String? reason;
   final String? resolution;
   final String? closedDate;
+
+  /// Raw occurrence timestamp (relative dates, sorting).
+  final DateTime occurredAt;
 
   const FraudReport({
     required this.id,
@@ -47,5 +54,6 @@ class FraudReport {
     this.reason,
     this.resolution,
     this.closedDate,
+    required this.occurredAt,
   });
 }

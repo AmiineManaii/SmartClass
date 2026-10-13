@@ -69,7 +69,9 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
 
   Future<void> _validate() async {
     final user = ref.read(authStateProvider).value;
-    final isAdmin = user?.role == 'admin';
+    // Only students fill study level + specialty: teachers and admins
+    // provide their institution only.
+    final needsStudyInfo = user?.role == 'student';
 
     if (_institutionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -78,7 +80,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
       return;
     }
 
-    if (!isAdmin &&
+    if (needsStudyInfo &&
         ((_level ?? '').isEmpty || _specialtyController.text.trim().isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.tr('required_field'))),
@@ -104,7 +106,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
     final colorScheme = theme.colorScheme;
     final levels = ref.watch(authStudyLevelsProvider);
     final user = ref.watch(authStateProvider).value;
-    final isAdmin = user?.role == 'admin';
+    final needsStudyInfo = user?.role == 'student';
 
     return AuthScreenScaffold(
       child: Column(
@@ -209,10 +211,10 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
           AppTextField(
             controller: _institutionController,
             hint: 'Ex: Université Paris-Saclay, Esprit...',
-            textInputAction: isAdmin ? TextInputAction.done : TextInputAction.next,
+            textInputAction: needsStudyInfo ? TextInputAction.next : TextInputAction.done,
             prefixIcon: const Icon(Icons.account_balance_outlined),
           ),
-          if (!isAdmin) ...[
+          if (needsStudyInfo) ...[
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

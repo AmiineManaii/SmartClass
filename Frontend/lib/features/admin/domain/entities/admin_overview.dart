@@ -1,7 +1,8 @@
 /// Dashboard overview models (pure Dart).
 ///
-/// Backend endpoints: none yet (users/groups/exams modules planned).
-/// All values below come from the mock datasource until then.
+/// Stats come from `GET /api/v1/admin/overview`; alerts wrap the latest
+/// untreated fraud reports. Badge arguments are real figures
+/// ("+N ce mois", "N% actifs") — never fabricated.
 enum AdminStatTone { info, success, warning, error }
 
 class AdminStat {

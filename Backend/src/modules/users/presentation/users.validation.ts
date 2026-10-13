@@ -16,4 +16,25 @@ export const listUsersQuerySchema = offsetPaginationQuerySchema
   })
   .strict();
 
+export const setMyRoleBodySchema = z
+  .object({
+    // ADMIN passes validation so the use-case rejects it with a documented
+    // 403 (rather than a bare 422): Zod is not the security boundary.
+    role: z.enum(['TEACHER', 'STUDENT', 'ADMIN']),
+  })
+  .strict();
+
+export const userIdParamsSchema = z
+  .object({ id: z.string().uuid() })
+  .strict();
+
+export const setUserRoleBodySchema = z
+  .object({
+    role: z.enum(['TEACHER', 'STUDENT', 'ADMIN']),
+  })
+  .strict();
+
+export type SetMyRoleBodyInput = z.infer<typeof setMyRoleBodySchema>;
+export type SetUserRoleBodyInput = z.infer<typeof setUserRoleBodySchema>;
+
 export type ListUsersQueryInput = z.infer<typeof listUsersQuerySchema>;

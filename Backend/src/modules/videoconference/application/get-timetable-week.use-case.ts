@@ -1,4 +1,4 @@
-import { NotFoundError } from '../../../shared/errors/app-error.js';
+import { ForbiddenError, NotFoundError } from '../../../shared/errors/app-error.js';
 import type { TimetableDayView, TimetableWeek } from '../domain/timetable.entity.js';
 import type { TimetableRepositoryPort } from '../domain/timetable-repository.port.js';
 
@@ -22,10 +22,23 @@ const TEACHING_KINDS = new Set(['CM', 'TP', 'TD']);
 export class GetTimetableWeekUseCase {
   constructor(private readonly timetable: TimetableRepositoryPort) {}
 
-  public async execute(classGroupId: string, weekStart?: Date): Promise<GetTimetableWeekResult> {
+  public async execute(
+    classGroupId: string,
+    weekStart?: Date,
+    reader?: { id: string; role: string | null },
+  ): Promise<GetTimetableWeekResult> {
     const exists = await this.timetable.classGroupExists(classGroupId);
     if (!exists) {
       throw new NotFoundError('Class group not found');
+    }
+
+    // ADMIN reads every timetable; anyone else must belong to the class
+    // (enrolled student, assigned teacher, or referent).
+    if (reader && reader.role !== 'ADMIN') {
+      const allowed = await this.timetable.userCanReadClass(reader.id, classGroupId);
+      if (!allowed) {
+        throw new ForbiddenError('You do not belong to this class group');
+      }
     }
 
     const monday = startOfWeekMonday(weekStart ?? new Date());

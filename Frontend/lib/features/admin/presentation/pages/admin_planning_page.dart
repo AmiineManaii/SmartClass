@@ -7,6 +7,7 @@ import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../application/providers/admin_providers.dart';
+import '../../domain/entities/managed_class.dart';
 import '../../domain/entities/timetable.dart';
 
 class AdminPlanningPage extends ConsumerStatefulWidget {
@@ -19,6 +20,7 @@ class AdminPlanningPage extends ConsumerStatefulWidget {
 class _AdminPlanningPageState extends ConsumerState<AdminPlanningPage> {
   int _weekOffset = 0;
   int _selectedDay = 0;
+  bool _classDefaulted = false;
 
   void _comingSoon() {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -33,11 +35,42 @@ class _AdminPlanningPageState extends ConsumerState<AdminPlanningPage> {
   String _localeTag(BuildContext context) =>
       Localizations.localeOf(context).languageCode;
 
+  /// Monday (YYYY-MM-DD) of the displayed week, driving the API call.
+  String _weekStartFor(int offset) {
+    final now = DateTime.now();
+    final monday = now
+        .subtract(Duration(days: now.weekday - 1))
+        .add(Duration(days: offset * 7));
+    return DateFormat('yyyy-MM-dd')
+        .format(DateTime(monday.year, monday.month, monday.day));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final classesAsync = ref.watch(adminClassesProvider);
+    final classes = classesAsync.valueOrNull ?? const [];
+    final selectedClassId = ref.watch(adminPlanningClassProvider);
+    final computedWeekStart = _weekStartFor(_weekOffset);
+    if (ref.watch(adminPlanningWeekStartProvider) != computedWeekStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(adminPlanningWeekStartProvider.notifier).state =
+            computedWeekStart;
+      });
+    }
+    if (!_classDefaulted && classes.isNotEmpty) {
+      _classDefaulted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (ref.read(adminPlanningClassProvider) == null) {
+          ref.read(adminPlanningClassProvider.notifier).state =
+              selectedClassId ?? classes.first.id;
+        }
+      });
+    }
     final weekAsync = ref.watch(adminWeekScheduleProvider);
+    final effectiveClassId =
+        selectedClassId ?? (classes.isNotEmpty ? classes.first.id : null);
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -78,7 +111,10 @@ class _AdminPlanningPageState extends ConsumerState<AdminPlanningPage> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async => ref.invalidate(adminWeekScheduleProvider),
+          onRefresh: () async {
+            ref.invalidate(adminClassesProvider);
+            ref.invalidate(adminWeekScheduleProvider);
+          },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.symmetric(
@@ -88,7 +124,7 @@ class _AdminPlanningPageState extends ConsumerState<AdminPlanningPage> {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 640),
-                child: weekAsync.when(
+                child: classesAsync.when(
                   loading: () => const Padding(
                     padding: EdgeInsets.symmetric(vertical: 48),
                     child: Center(child: CircularProgressIndicator()),
@@ -105,28 +141,106 @@ class _AdminPlanningPageState extends ConsumerState<AdminPlanningPage> {
                         const SizedBox(height: 12),
                         OutlinedButton(
                           onPressed: () =>
-                              ref.invalidate(adminWeekScheduleProvider),
+                              ref.invalidate(adminClassesProvider),
                           child: Text(context.tr('retry')),
                         ),
                       ],
                     ),
                   ),
-                  data: (week) => _PlanningBody(
-                    week: week,
-                    weekOffset: _weekOffset,
-                    selectedDay: _selectedDay,
-                    localeTag: _localeTag(context),
-                    onPrevWeek: () => setState(() => _weekOffset--),
-                    onNextWeek: () => setState(() => _weekOffset++),
-                    onToday: () => setState(() {
-                      _weekOffset = 0;
-                      _selectedDay = _todayIndex(week);
-                    }),
-                    onSelectDay: (i) => setState(() => _selectedDay = i),
-                    onTakeAttendance: _comingSoon,
-                    onReserve: _comingSoon,
-                    onNewSlot: _comingSoon,
-                  ),
+                  data: (_) {
+                    if (classes.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 48),
+                        child: Text(
+                          context.tr('admin_no_classes'),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _ClassSelector(
+                          classes: classes,
+                          selectedId: effectiveClassId,
+                          onSelected: (id) => setState(() {
+                            ref
+                                .read(adminPlanningClassProvider.notifier)
+                                .state = id;
+                            _selectedDay = 0;
+                          }),
+                        ),
+                        const SizedBox(height: 12),
+                        weekAsync.when(
+                          loading: () => const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 48),
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
+                          error: (_, _) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 32),
+                            child: Column(
+                              children: [
+                                Text(
+                                  context.tr('something_went_wrong'),
+                                  style: theme.textTheme.bodyMedium,
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 12),
+                                OutlinedButton(
+                                  onPressed: () => ref.invalidate(
+                                      adminWeekScheduleProvider),
+                                  child: Text(context.tr('retry')),
+                                ),
+                              ],
+                            ),
+                          ),
+                          data: (week) {
+                            if (week == null) {
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 48),
+                                child: Text(
+                                  context.tr('admin_no_timetable'),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              );
+                            }
+                            AdminClassSummary? selectedClass;
+                            for (final c in classes) {
+                              if (c.id == effectiveClassId) {
+                                selectedClass = c;
+                                break;
+                              }
+                            }
+                            return _PlanningBody(
+                              week: week,
+                              selectedClass: selectedClass,
+                              weekOffset: _weekOffset,
+                              selectedDay: _selectedDay,
+                              localeTag: _localeTag(context),
+                              onPrevWeek: () => setState(() => _weekOffset--),
+                              onNextWeek: () => setState(() => _weekOffset++),
+                              onToday: () => setState(() {
+                                _weekOffset = 0;
+                                _selectedDay = _todayIndex(week);
+                              }),
+                              onSelectDay: (i) =>
+                                  setState(() => _selectedDay = i),
+                              onTakeAttendance: _comingSoon,
+                              onReserve: _comingSoon,
+                              onNewSlot: _comingSoon,
+                            );
+                          },
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -148,8 +262,94 @@ class _AdminPlanningPageState extends ConsumerState<AdminPlanningPage> {
   }
 }
 
+class _ClassSelector extends StatelessWidget {
+  final List<AdminClassSummary> classes;
+  final String? selectedId;
+  final ValueChanged<String> onSelected;
+
+  const _ClassSelector({
+    required this.classes,
+    required this.selectedId,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final selected = classes.where((c) => c.id == selectedId);
+    final label = selected.isEmpty ? classes.first.title : selected.first.title;
+
+    return Material(
+      color: colorScheme.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () async {
+          final picked = await showModalBottomSheet<String>(
+            context: context,
+            showDragHandle: true,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            builder: (sheetContext) {
+              final sheetTheme = Theme.of(sheetContext);
+              return SafeArea(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  itemCount: classes.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (_, i) => ListTile(
+                    title: Text(classes[i].title,
+                        style: sheetTheme.textTheme.bodyMedium),
+                    subtitle: Text(classes[i].promoTag,
+                        style: sheetTheme.textTheme.bodySmall),
+                    trailing: classes[i].id == selectedId
+                        ? const Icon(Icons.check_rounded)
+                        : null,
+                    onTap: () =>
+                        Navigator.of(sheetContext).pop(classes[i].id),
+                  ),
+                ),
+              );
+            },
+          );
+          if (picked != null) onSelected(picked);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.school_outlined, size: 20, color: colorScheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodyMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(Icons.expand_more_rounded,
+                  color: colorScheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PlanningBody extends StatelessWidget {
   final PlannerWeek week;
+  final AdminClassSummary? selectedClass;
   final int weekOffset;
   final int selectedDay;
   final String localeTag;
@@ -163,6 +363,7 @@ class _PlanningBody extends StatelessWidget {
 
   const _PlanningBody({
     required this.week,
+    required this.selectedClass,
     required this.weekOffset,
     required this.selectedDay,
     required this.localeTag,
@@ -185,7 +386,7 @@ class _PlanningBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _PromoCard(),
+        _PromoCard(selectedClass: selectedClass),
         const SizedBox(height: 12),
         _WeekNavigator(
           range: range,
@@ -205,7 +406,6 @@ class _PlanningBody extends StatelessWidget {
         _WeekStats(
           hours: week.hoursScheduled,
           conflicts: week.conflicts,
-          ratePct: week.ratePct,
         ),
         const SizedBox(height: 20),
         _DayTimeline(
@@ -223,6 +423,22 @@ class _PlanningBody extends StatelessWidget {
 }
 
 class _PromoCard extends StatelessWidget {
+  final AdminClassSummary? selectedClass;
+
+  const _PromoCard({required this.selectedClass});
+
+  static String _levelLabel(BuildContext context, ClassLevel? level) {
+    switch (level) {
+      case ClassLevel.master:
+        return context.tr('admin_filter_master');
+      case ClassLevel.doctorat:
+        return context.tr('admin_filter_doctorat');
+      case ClassLevel.licence:
+      case null:
+        return context.tr('admin_filter_licence');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -265,7 +481,7 @@ class _PromoCard extends StatelessWidget {
                     Icon(Icons.filter_list_rounded, size: 14, color: colorScheme.secondary),
                     const SizedBox(width: 4),
                     Text(
-                      'L3 • G1',
+                      _levelLabel(context, selectedClass?.level),
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: colorScheme.secondary,
                         fontWeight: FontWeight.w600,
@@ -281,11 +497,10 @@ class _PromoCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Informatique 3A',
+                  selectedClass?.title ?? '—',
                   style: theme.textTheme.headlineSmall,
                 ),
               ),
-              const Icon(Icons.expand_more_rounded),
             ],
           ),
           const SizedBox(height: 6),
@@ -293,12 +508,13 @@ class _PromoCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 4,
             children: [
-              _MetaChip(icon: Icons.groups_outlined, text: '35 ${context.tr('admin_stat_students')}'),
               _MetaChip(
-                icon: null,
-                text: context.tr('admin_semester', args: {'n': '6'}),
+                icon: Icons.groups_outlined,
+                text:
+                    '${selectedClass?.students ?? 0} ${context.tr('admin_stat_students')}',
               ),
-              _MetaChip(icon: Icons.location_city_outlined, text: 'Bâtiment Turing'),
+              if ((selectedClass?.promoTag ?? '').isNotEmpty)
+                _MetaChip(icon: null, text: selectedClass!.promoTag),
             ],
           ),
         ],
@@ -472,9 +688,7 @@ class _DayCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dayName = DateFormat('EEE', localeTag).format(date).toUpperCase();
-    final sub = day.isMakeup
-        ? context.tr('admin_makeup')
-        : context.tr('admin_day_courses', args: {'count': '${day.courseCount}'});
+    final sub = context.tr('admin_day_courses', args: {'count': '${day.courseCount}'});
 
     return Material(
       color: selected ? colorScheme.primary : colorScheme.surfaceContainerLowest,
@@ -538,9 +752,8 @@ class _DayCell extends StatelessWidget {
 class _WeekStats extends StatelessWidget {
   final String hours;
   final int conflicts;
-  final int ratePct;
 
-  const _WeekStats({required this.hours, required this.conflicts, required this.ratePct});
+  const _WeekStats({required this.hours, required this.conflicts});
 
   @override
   Widget build(BuildContext context) {
@@ -582,14 +795,9 @@ class _WeekStats extends StatelessWidget {
             context.tr('admin_hours_scheduled', args: {'hours': hours}),
           ),
           item(
-            Icons.check_circle_outline_rounded,
-            colorScheme.tertiary,
+            conflicts == 0 ? Icons.check_circle_outline_rounded : Icons.warning_amber_rounded,
+            conflicts == 0 ? colorScheme.tertiary : colorScheme.error,
             context.tr('admin_no_conflict', args: {'count': '$conflicts'}),
-          ),
-          item(
-            Icons.trending_up_rounded,
-            colorScheme.secondary,
-            context.tr('admin_rate', args: {'pct': '$ratePct%'}),
           ),
         ],
       ),
@@ -618,6 +826,9 @@ class _DayTimeline extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final date = monday.add(Duration(days: selectedDay));
+    final dayKey = DateFormat('yyyy-MM-dd').format(date);
+    final dayEvents =
+        events.where((e) => e.date.isEmpty || e.date == dayKey).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -641,14 +852,26 @@ class _DayTimeline extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        for (final event in events) ...[
-          _TimelineRow(
-            event: event,
-            onTakeAttendance: onTakeAttendance,
-            onReserve: onReserve,
-          ),
-          const SizedBox(height: 10),
-        ],
+        if (dayEvents.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Text(
+              context.tr('admin_no_timetable'),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          )
+        else
+          for (final event in dayEvents) ...[
+            _TimelineRow(
+              event: event,
+              onTakeAttendance: onTakeAttendance,
+              onReserve: onReserve,
+            ),
+            const SizedBox(height: 10),
+          ],
       ],
     );
   }
@@ -931,12 +1154,17 @@ class _SessionCard extends StatelessWidget {
               ],
             ),
           ],
-          if (event.statusLines.isNotEmpty) ...[
+          if (event.statusLines.isNotEmpty || event.statusNotes.isNotEmpty) ...[
             const SizedBox(height: 8),
             for (final line in event.statusLines)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: _StatusLine(textKey: line),
+              ),
+            for (final note in event.statusNotes)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: _RawStatusLine(text: note),
               ),
           ],
           if (event.actionKey != null) ...[
@@ -978,7 +1206,6 @@ class _StatusLine extends StatelessWidget {
   final String textKey;
 
   const _StatusLine({required this.textKey});
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1000,6 +1227,34 @@ class _StatusLine extends StatelessWidget {
         Expanded(
           child: Text(
             context.tr(textKey),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RawStatusLine extends StatelessWidget {
+  final String text;
+
+  const _RawStatusLine({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.info_outline, size: 14, color: colorScheme.onSurfaceVariant),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
@@ -1068,12 +1323,16 @@ class _FreeSlotCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                context.tr('admin_room_available', args: {'room': 'Salle 102'}),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colorScheme.secondary,
-                ),
-              ),
+              if (event.roomValue != null)
+                Text(
+                  context.tr('admin_room_available',
+                      args: {'room': event.roomValue!}),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.secondary,
+                  ),
+                )
+              else
+                const Spacer(),
               OutlinedButton.icon(
                 onPressed: onReserve,
                 icon: const Icon(Icons.add_rounded, size: 16),

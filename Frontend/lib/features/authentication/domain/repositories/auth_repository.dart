@@ -73,4 +73,9 @@ abstract class AuthRepository {
     String? birthDate,
     bool? onboardingCompleted,
   });
+
+  /// Persists the onboarding role via `PATCH /users/me/role`
+  /// (TEACHER/STUDENT only — ADMIN is never self-assignable).
+  /// Rotates tokens server-side; implementations must persist them.
+  Future<AuthenticatedSession> setMyRole({required String role});
 }

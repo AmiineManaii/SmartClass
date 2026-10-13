@@ -192,4 +192,15 @@ class AuthRepositoryImpl implements AuthRepository {
       return UserModel.fromJson(user).toEntity();
     });
   }
+
+  @override
+  Future<AuthenticatedSession> setMyRole({required String role}) {
+    return _guard(() async {
+      final apiRole = UserModel.appRoleToApi(role) ?? role.toUpperCase();
+      final data = await _remote.setMyRole(role: apiRole);
+      // Response envelope content: { message, accessToken, refreshToken, expiresIn, user }.
+      final session = AuthSessionModel.fromJson(data).toAuthenticatedSession();
+      return _persist(session);
+    });
+  }
 }

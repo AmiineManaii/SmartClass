@@ -144,4 +144,16 @@ class AuthRemoteDataSource {
     );
     return apiEnvelope(res);
   }
+
+  /// Persists the onboarding role (RG1, assign-once).
+  /// Backend: `PATCH /api/v1/users/me/role` — TEACHER/STUDENT only,
+  /// ADMIN is never self-assignable (403). Returns the `{ data: ... }`
+  /// envelope content (`{ message, accessToken, refreshToken, expiresIn, user }`).
+  Future<Map<String, dynamic>> setMyRole({required String role}) async {
+    final res = await _client.patch<dynamic>(
+      '$_base/users/me/role',
+      data: {'role': role},
+    );
+    return apiEnvelope(res);
+  }
 }

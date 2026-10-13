@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/error/failure_localization.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/app_text_field.dart';
 import '../../application/providers/admin_providers.dart';
 import '../../domain/entities/fraud_report.dart';
 import '../widgets/admin_filter_chips.dart';
@@ -26,6 +29,89 @@ class _AdminFraudsPageState extends ConsumerState<AdminFraudsPage> {
         duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  void _showFailure(Object error) {
+    final message = error is Failure
+        ? context.tr(failureL10n(error).key)
+        : context.tr('something_went_wrong');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  String? _apiStatus(String filter) {
+    switch (filter) {
+      case 'untreated':
+        return 'UNTREATED';
+      case 'ongoing':
+        return 'IN_PROGRESS';
+      case 'closed':
+        return 'CLOSED';
+      default:
+        return null;
+    }
+  }
+
+  Future<void> _takeCharge(FraudReport report) async {
+    try {
+      await ref.read(adminRepositoryProvider).updateFraudReport(
+            report.id,
+            status: FraudStatus.ongoing,
+          );
+    } catch (e) {
+      if (!mounted) return;
+      _showFailure(e);
+      return;
+    }
+    ref.invalidate(adminFraudReportsProvider);
+    ref.invalidate(adminFraudSummaryProvider);
+    ref.invalidate(adminOverviewProvider);
+  }
+
+  Future<void> _closeReport(FraudReport report) async {
+    final resolutionController = TextEditingController();
+    try {
+      final resolution = await showDialog<String?>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(context.tr('admin_close_title')),
+          content: AppTextField(
+            controller: resolutionController,
+            hint: context.tr('admin_resolution_hint'),
+            maxLines: 3,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(context.tr('cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext)
+                  .pop(resolutionController.text.trim()),
+              child: Text(context.tr('admin_close_report')),
+            ),
+          ],
+        ),
+      );
+      if (resolution == null || !mounted) return;
+      try {
+        await ref.read(adminRepositoryProvider).updateFraudReport(
+              report.id,
+              status: FraudStatus.closed,
+              resolution: resolution.isEmpty ? null : resolution,
+            );
+      } catch (e) {
+        if (!mounted) return;
+        _showFailure(e);
+        return;
+      }
+      ref.read(adminFraudReportsProvider.notifier).refresh();
+      ref.invalidate(adminFraudSummaryProvider);
+      ref.invalidate(adminOverviewProvider);
+    } finally {
+      resolutionController.dispose();
+    }
   }
 
   @override
@@ -82,7 +168,7 @@ class _AdminFraudsPageState extends ConsumerState<AdminFraudsPage> {
         child: RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(adminFraudSummaryProvider);
-            ref.invalidate(adminFraudReportsProvider);
+            await ref.read(adminFraudReportsProvider.notifier).refresh();
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -118,15 +204,31 @@ class _AdminFraudsPageState extends ConsumerState<AdminFraudsPage> {
                             ),
                             const SizedBox(height: 12),
                             OutlinedButton(
-                              onPressed: () =>
-                                  ref.invalidate(adminFraudReportsProvider),
+                              onPressed: () => ref
+                                  .read(adminFraudReportsProvider.notifier)
+                                  .refresh(),
                               child: Text(context.tr('retry')),
                             ),
                           ],
                         ),
                       ),
-                      data: (reports) =>
-                          _ReportsBody(reports: reports, onAction: _comingSoon),
+                      data: (page) => _ReportsBody(
+                        reports: page.reports,
+                        hasMore: page.hasMore,
+                        loadingMore: page.loadingMore,
+                        filter: _filter,
+                        onFilter: (v) {
+                          setState(() => _filter = v);
+                          ref
+                              .read(adminFraudReportsProvider.notifier)
+                              .loadInitial(status: _apiStatus(v));
+                        },
+                        onLoadMore: () => ref
+                            .read(adminFraudReportsProvider.notifier)
+                            .loadMore(),
+                        onTakeCharge: _takeCharge,
+                        onClose: _closeReport,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
@@ -265,14 +367,14 @@ class _StatusCard extends StatelessWidget {
                   context.tr('admin_unresolved'),
                 ),
                 stat(
-                  '${summary.resolvedThisMonth}',
+                  '${summary.inProgress}',
                   colorScheme.secondary,
-                  context.tr('admin_resolved_month'),
+                  context.tr('admin_in_progress'),
                 ),
                 stat(
-                  '${summary.integrityPct}%',
+                  '${summary.resolvedThisMonth}',
                   colorScheme.tertiary,
-                  context.tr('admin_integrity'),
+                  context.tr('admin_resolved_month'),
                 ),
               ],
             ),
@@ -283,46 +385,32 @@ class _StatusCard extends StatelessWidget {
   }
 }
 
-class _ReportsBody extends StatefulWidget {
+class _ReportsBody extends StatelessWidget {
   final List<FraudReport> reports;
-  final VoidCallback onAction;
+  final bool hasMore;
+  final bool loadingMore;
+  final String filter;
+  final ValueChanged<String> onFilter;
+  final VoidCallback onLoadMore;
+  final ValueChanged<FraudReport> onTakeCharge;
+  final ValueChanged<FraudReport> onClose;
 
-  const _ReportsBody({required this.reports, required this.onAction});
-
-  @override
-  State<_ReportsBody> createState() => _ReportsBodyState();
-}
-
-class _ReportsBodyState extends State<_ReportsBody> {
-  String _filter = 'all';
-
-  List<FraudReport> get _filtered {
-    switch (_filter) {
-      case 'untreated':
-        return widget.reports
-            .where((r) => r.status == FraudStatus.untreated)
-            .toList();
-      case 'ongoing':
-        return widget.reports
-            .where((r) => r.status == FraudStatus.ongoing)
-            .toList();
-      case 'closed':
-        return widget.reports
-            .where((r) => r.status == FraudStatus.closed)
-            .toList();
-      case 'all':
-      default:
-        return widget.reports;
-    }
-  }
+  const _ReportsBody({
+    required this.reports,
+    required this.hasMore,
+    required this.loadingMore,
+    required this.filter,
+    required this.onFilter,
+    required this.onLoadMore,
+    required this.onTakeCharge,
+    required this.onClose,
+  });
 
   int _count(FraudStatus status) =>
-      widget.reports.where((r) => r.status == status).length;
+      reports.where((r) => r.status == status).length;
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filtered;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -331,7 +419,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
             AdminFilterOption(
               value: 'all',
               label: context.tr('admin_all_count',
-                  args: {'count': '${widget.reports.length}'}),
+                  args: {'count': '${reports.length}'}),
             ),
             AdminFilterOption(
               value: 'untreated',
@@ -349,11 +437,11 @@ class _ReportsBodyState extends State<_ReportsBody> {
                   args: {'count': '${_count(FraudStatus.closed)}'}),
             ),
           ],
-          selected: _filter,
-          onSelected: (v) => setState(() => _filter = v),
+          selected: filter,
+          onSelected: onFilter,
         ),
         const SizedBox(height: 12),
-        if (filtered.isEmpty)
+        if (reports.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Text(
@@ -365,10 +453,27 @@ class _ReportsBodyState extends State<_ReportsBody> {
             ),
           )
         else
-          for (int i = 0; i < filtered.length; i++) ...[
-            _FraudCard(report: filtered[i], onAction: widget.onAction),
-            if (i < filtered.length - 1) const SizedBox(height: 12),
+          for (int i = 0; i < reports.length; i++) ...[
+            _FraudCard(
+              report: reports[i],
+              onTakeCharge: () => onTakeCharge(reports[i]),
+              onClose: () => onClose(reports[i]),
+            ),
+            if (i < reports.length - 1) const SizedBox(height: 12),
           ],
+        if (hasMore) ...[
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: loadingMore ? null : onLoadMore,
+            child: loadingMore
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(context.tr('admin_load_more')),
+          ),
+        ],
       ],
     );
   }
@@ -376,9 +481,14 @@ class _ReportsBodyState extends State<_ReportsBody> {
 
 class _FraudCard extends StatelessWidget {
   final FraudReport report;
-  final VoidCallback onAction;
+  final VoidCallback onTakeCharge;
+  final VoidCallback onClose;
 
-  const _FraudCard({required this.report, required this.onAction});
+  const _FraudCard({
+    required this.report,
+    required this.onTakeCharge,
+    required this.onClose,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -564,7 +674,11 @@ class _FraudCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 12),
-            _CardActions(report: report, onAction: onAction),
+            _CardActions(
+              report: report,
+              onTakeCharge: onTakeCharge,
+              onClose: onClose,
+            ),
           ],
         ),
       ),
@@ -641,23 +755,31 @@ class _SeverityPill extends StatelessWidget {
 
 class _CardActions extends StatelessWidget {
   final FraudReport report;
-  final VoidCallback onAction;
+  final VoidCallback onTakeCharge;
+  final VoidCallback onClose;
 
-  const _CardActions({required this.report, required this.onAction});
+  const _CardActions({
+    required this.report,
+    required this.onTakeCharge,
+    required this.onClose,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    switch (report.severity) {
-      case FraudSeverity.critical:
+    // Real audit workflow (PATCH /exams/fraud-reports/:id):
+    // UNTREATED → IN_PROGRESS → CLOSED (terminal). No video/log engine
+    // exists server-side, so only status transitions are offered.
+    switch (report.status) {
+      case FraudStatus.untreated:
         return Row(
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: onAction,
+                onPressed: onTakeCharge,
                 icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
-                label: Text(context.tr('admin_view_video')),
+                label: Text(context.tr('admin_take_charge')),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(0, 44),
                   shape: RoundedRectangleBorder(
@@ -670,45 +792,9 @@ class _CardActions extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: FilledButton.icon(
-                onPressed: onAction,
-                icon: const Icon(Icons.gavel_outlined, size: 18),
-                label: Text(context.tr('admin_sanction')),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  foregroundColor: Theme.of(context).colorScheme.onError,
-                  minimumSize: const Size(0, 44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  textStyle: theme.textTheme.labelMedium,
-                ),
-              ),
-            ),
-          ],
-        );
-      case FraudSeverity.medium:
-        return Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: onAction,
-                icon: const Icon(Icons.receipt_long_outlined, size: 18),
-                label: Text(context.tr('admin_network_logs')),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(0, 44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  textStyle: theme.textTheme.labelMedium,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: onAction,
-                icon: const Icon(Icons.mail_outline_rounded, size: 18),
-                label: Text(context.tr('admin_summon')),
+                onPressed: onClose,
+                icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                label: Text(context.tr('admin_close_report')),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(0, 44),
                   shape: RoundedRectangleBorder(
@@ -720,13 +806,13 @@ class _CardActions extends StatelessWidget {
             ),
           ],
         );
-      case FraudSeverity.closed:
+      case FraudStatus.ongoing:
         return SizedBox(
           width: double.infinity,
-          child: FilledButton.tonalIcon(
-            onPressed: onAction,
-            icon: const Icon(Icons.verified_outlined, size: 18),
-            label: Text(context.tr('admin_audit_history')),
+          child: FilledButton.icon(
+            onPressed: onClose,
+            icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+            label: Text(context.tr('admin_close_report')),
             style: FilledButton.styleFrom(
               minimumSize: const Size(0, 44),
               shape: RoundedRectangleBorder(
@@ -736,6 +822,10 @@ class _CardActions extends StatelessWidget {
             ),
           ),
         );
+      case FraudStatus.closed:
+        // Terminal state (409 on any further transition): audit trail
+        // above (reason/resolution/date) is the record. No actions.
+        return const SizedBox.shrink();
     }
   }
 }

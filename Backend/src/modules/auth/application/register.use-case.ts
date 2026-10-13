@@ -3,7 +3,7 @@ import type { AuthRepositoryPort } from '../domain/auth-repository.port.js';
 import type { PasswordHasherPort } from '../domain/password-hasher.port.js';
 import type { EmailPort } from '../domain/email.port.js';
 import type { Role, SafeUser } from '../domain/user.entity.js';
-import { ConflictError } from '../../../shared/errors/app-error.js';
+import { ConflictError, ForbiddenError } from '../../../shared/errors/app-error.js';
 import { ErrorCodes } from '../../../shared/errors/error-codes.js';
 
 export interface RegisterDTO {
@@ -28,6 +28,14 @@ export class RegisterUseCase {
   ) {}
 
   public async execute(dto: RegisterDTO): Promise<RegisterResult> {
+    // ADMIN accounts are never self-registered (provisioned by seed or by
+    // an existing admin via PATCH /users/:id/role). Fail closed.
+    if (dto.role === 'ADMIN') {
+      throw new ForbiddenError(
+        'Administrator accounts cannot be created through public registration',
+      );
+    }
+
     const existingUser = await this.authRepository.findUserByEmail(dto.email);
     if (existingUser) {
       throw new ConflictError(

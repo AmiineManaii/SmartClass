@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_providers.dart';
+import '../../../../core/error/failure_localization.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../widgets/auth_screen_scaffold.dart';
@@ -19,17 +21,33 @@ class RoleSelectionPage extends ConsumerStatefulWidget {
 
 class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
   late String _selectedRole;
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     final role = ref.read(authStateProvider).valueOrNull?.role;
-    _selectedRole = (role != null && role.isNotEmpty) ? role : 'student';
+    // ADMIN is never self-assignable (backend 403, seeded/provisioned only):
+    // only student/teacher can be picked here. An existing ADMIN skips
+    // this screen via the router guard (onboardingCompleted).
+    _selectedRole = (role == 'teacher') ? 'teacher' : 'student';
   }
 
-  void _confirm() {
-    ref.read(authStateProvider.notifier).updateRole(_selectedRole);
-    context.go('/profile-setup');
+  Future<void> _confirm() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await ref.read(authStateProvider.notifier).updateRole(_selectedRole);
+    } on Failure catch (failure) {
+      if (!mounted) return;
+      final l10n = failureL10n(failure);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
+      );
+      setState(() => _saving = false);
+      return;
+    }
+    if (mounted) context.go('/profile-setup');
   }
 
   @override
@@ -82,7 +100,7 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
             showRecommended: true,
             recommendedLabel: context.tr('recommended'),
             selected: _selectedRole == 'student',
-            onTap: () => setState(() => _selectedRole = 'student'),
+            onTap: _saving ? null : () => setState(() => _selectedRole = 'student'),
             tags: [
               RoleTag(icon: Icons.menu_book_outlined, label: context.tr('tag_homework')),
               RoleTag(icon: Icons.psychology_outlined, label: context.tr('tag_ai_tutor')),
@@ -94,22 +112,10 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
             title: context.tr('role_teacher'),
             description: context.tr('role_teacher_desc'),
             selected: _selectedRole == 'teacher',
-            onTap: () => setState(() => _selectedRole = 'teacher'),
+            onTap: _saving ? null : () => setState(() => _selectedRole = 'teacher'),
             tags: [
               RoleTag(icon: Icons.assignment_turned_in_outlined, label: context.tr('tag_corrections')),
               RoleTag(icon: Icons.groups_outlined, label: context.tr('tag_classes')),
-            ],
-          ),
-          const SizedBox(height: 16),
-          RoleOptionCard(
-            icon: Icons.admin_panel_settings_outlined,
-            title: context.tr('role_admin'),
-            description: context.tr('role_admin_desc'),
-            selected: _selectedRole == 'admin',
-            onTap: () => setState(() => _selectedRole = 'admin'),
-            tags: [
-              RoleTag(icon: Icons.analytics_outlined, label: context.tr('tag_dashboard')),
-              RoleTag(icon: Icons.key_outlined, label: context.tr('tag_security')),
             ],
           ),
           const SizedBox(height: 24),
@@ -118,7 +124,8 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
           AppButton(
             text: context.tr('continue_action'),
             trailingIcon: Icons.arrow_forward,
-            onPressed: _confirm,
+            isLoading: _saving,
+            onPressed: _saving ? null : _confirm,
           ),
           const SizedBox(height: 12),
           Text(

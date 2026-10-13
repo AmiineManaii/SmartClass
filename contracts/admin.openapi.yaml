@@ -1,0 +1,131 @@
+openapi: 3.1.0
+info:
+  title: SmartClass API — Admin Overview
+  version: 0.1.0
+  description: >
+    Aggregated supervision counters backing the admin dashboard
+    (students, teachers, classes, fraud alerts). Every figure is computed
+    live from the database — no fabricated statistics. ADMIN-only.
+servers:
+  - url: /api/v1
+    description: SmartClass API v1 prefix
+tags:
+  - name: admin
+    description: Admin supervision aggregates
+paths:
+  /admin/overview:
+    get:
+      operationId: getAdminOverview
+      tags:
+        - admin
+      summary: Supervision counters for the admin dashboard
+      description: >
+        Live aggregates: account totals per role, new accounts since the
+        first day of the current month (UTC), teacher activity share,
+        total enrolments across classes, and the fraud-report status
+        breakdown. Powers the dashboard stat cards and their badges
+        ("+N ce mois", "N% actifs") with real data.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Admin overview aggregates
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminOverview'
+              example:
+                data:
+                  students:
+                    total: 3
+                    newThisMonth: 1
+                  teachers:
+                    total: 2
+                    newThisMonth: 0
+                    activePct: 100
+                  classes:
+                    total: 1
+                    newThisMonth: 0
+                  enrollments: 3
+                  frauds:
+                    untreated: 1
+                    inProgress: 0
+                    closed: 0
+                    resolvedThisMonth: 0
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+components:
+  schemas:
+    AdminOverviewCounts:
+      type: object
+      required:
+        - total
+        - newThisMonth
+      properties:
+        total:
+          type: integer
+          minimum: 0
+        newThisMonth:
+          type: integer
+          minimum: 0
+          description: Created since the first day of the current month (UTC)
+      additionalProperties: false
+    AdminOverview:
+      type: object
+      required:
+        - students
+        - teachers
+        - classes
+        - enrollments
+        - frauds
+      properties:
+        students:
+          $ref: '#/components/schemas/AdminOverviewCounts'
+        teachers:
+          allOf:
+            - $ref: '#/components/schemas/AdminOverviewCounts'
+            - type: object
+              required:
+                - activePct
+              properties:
+                activePct:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                  description: Share of ACTIVE teacher accounts
+        classes:
+          $ref: '#/components/schemas/AdminOverviewCounts'
+        enrollments:
+          type: integer
+          minimum: 0
+          description: Total student enrolments across all classes
+        frauds:
+          type: object
+          required:
+            - untreated
+            - inProgress
+            - closed
+            - resolvedThisMonth
+          properties:
+            untreated:
+              type: integer
+              minimum: 0
+            inProgress:
+              type: integer
+              minimum: 0
+            closed:
+              type: integer
+              minimum: 0
+            resolvedThisMonth:
+              type: integer
+              minimum: 0
+          additionalProperties: false
+      additionalProperties: false

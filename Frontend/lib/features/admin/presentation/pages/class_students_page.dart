@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/error/failure_localization.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -22,27 +26,74 @@ class ClassStudentsPage extends ConsumerStatefulWidget {
 
 class _ClassStudentsPageState extends ConsumerState<ClassStudentsPage> {
   final _searchController = TextEditingController();
-  String _query = '';
+  Timer? _searchDebounce;
   String _filter = 'all';
   final Set<String> _selected = {};
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      ref.read(adminPersonSearchProvider.notifier).state = value.trim();
+    });
+  }
+
+  void _showFailure(Object error) {
+    final message = error is Failure
+        ? context.tr(failureL10n(error).key)
+        : context.tr('something_went_wrong');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  void _showComingSoon() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.tr('feature_coming_soon')),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   Future<void> _assign() async {
     if (_selected.isEmpty) return;
-    await ref.read(adminRepositoryProvider).assignStudents(
-          widget.classId,
-          _selected.toList(),
-        );
+    // Safety net: only unassigned students can be (re)assigned — assigned
+    // rows offer no assign option, so this is normally already the case.
+    final students = ref.read(adminStudentsProvider(widget.classId)).valueOrNull ?? [];
+    final allowed = students
+        .where((s) => s.assignedClassId == null)
+        .map((s) => s.id)
+        .toSet();
+    final ids = _selected.where(allowed.contains).toList();
+    if (ids.isEmpty) return;
+    final count = ids.length;
+    try {
+      await ref.read(adminRepositoryProvider).assignStudents(
+            widget.classId,
+            ids,
+          );
+    } catch (e) {
+      if (!mounted) return;
+      _showFailure(e);
+      return;
+    }
+    ref.invalidate(adminStudentsProvider(widget.classId));
+    ref.invalidate(adminClassDetailProvider(widget.classId));
+    ref.invalidate(adminOverviewProvider);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          context.tr('admin_selected_count', args: {'count': _selected.length.toString()}),
+          context.tr('admin_selected_count', args: {'count': '$count'}),
         ),
         behavior: SnackBarBehavior.floating,
       ),
@@ -50,11 +101,47 @@ class _ClassStudentsPageState extends ConsumerState<ClassStudentsPage> {
     context.pop();
   }
 
+  Future<void> _unassign(String studentId, String studentName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('admin_unassign_title')),
+        content: Text(
+          context.tr('admin_unassign_message', args: {'name': studentName}),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.tr('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.tr('admin_unassign_action')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref
+          .read(adminRepositoryProvider)
+          .removeStudents(widget.classId, [studentId]);
+    } catch (e) {
+      if (!mounted) return;
+      _showFailure(e);
+      return;
+    }
+    setState(() => _selected.remove(studentId));
+    ref.invalidate(adminStudentsProvider(widget.classId));
+    ref.invalidate(adminClassDetailProvider(widget.classId));
+    ref.invalidate(adminOverviewProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final studentsAsync = ref.watch(adminStudentsProvider);
+    final studentsAsync = ref.watch(adminStudentsProvider(widget.classId));
     final detailAsync = ref.watch(adminClassDetailProvider(widget.classId));
 
     return Scaffold(
@@ -73,11 +160,15 @@ class _ClassStudentsPageState extends ConsumerState<ClassStudentsPage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            Text(
-              context.tr('admin_class_label', args: {'name': 'Informatique 3A'}),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+            detailAsync.when(
+              data: (detail) => Text(
+                detail?.title ?? '',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
           ],
         ),
@@ -85,7 +176,7 @@ class _ClassStudentsPageState extends ConsumerState<ClassStudentsPage> {
           IconButton(
             icon: const Icon(Icons.upload_file_outlined),
             tooltip: context.tr('admin_import_csv'),
-            onPressed: () {},
+            onPressed: _showComingSoon,
           ),
           const Padding(
             padding: EdgeInsets.only(right: 12),
@@ -113,19 +204,21 @@ class _ClassStudentsPageState extends ConsumerState<ClassStudentsPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         detailAsync.when(
-                          data: (detail) => _ClassCapacityCard(
-                            enrolled: detail?.students ?? 17,
-                            capacity: detail?.capacity ?? 35,
-                          ),
+                          data: (detail) => detail == null
+                              ? const SizedBox(height: 24)
+                              : _ClassCapacityCard(
+                                  title: detail.title,
+                                  enrolled: detail.students,
+                                  capacity: detail.capacity,
+                                ),
                           loading: () => const SizedBox(height: 120),
-                          error: (_, _) => const SizedBox(height: 120),
+                          error: (_, _) => const SizedBox(height: 24),
                         ),
                         const SizedBox(height: 16),
                         AdminSearchField(
                           controller: _searchController,
                           hint: context.tr('admin_search_person_hint'),
-                          onChanged: (v) =>
-                              setState(() => _query = v.trim().toLowerCase()),
+                          onChanged: _onSearchChanged,
                           onFilterTap: () {},
                         ),
                         const SizedBox(height: 12),
@@ -178,8 +271,12 @@ class _ClassStudentsPageState extends ConsumerState<ClassStudentsPage> {
                               students: filtered,
                               selectedIds: _selected,
                               onToggleAll: () => setState(() {
-                                final all =
-                                    filtered.map((s) => s.id).toSet();
+                                // Already-assigned students offer no assign
+                                // option: select-all only takes unassigned ones.
+                                final all = filtered
+                                    .where((s) => s.assignedClassId == null)
+                                    .map((s) => s.id)
+                                    .toSet();
                                 if (_selected.length == all.length &&
                                     all.isNotEmpty) {
                                   _selected.clear();
@@ -194,6 +291,8 @@ class _ClassStudentsPageState extends ConsumerState<ClassStudentsPage> {
                                   _selected.add(id);
                                 }
                               }),
+                              onUnassign: (student) =>
+                                  _unassign(student.id, student.name),
                             );
                           },
                         ),
@@ -215,27 +314,26 @@ class _ClassStudentsPageState extends ConsumerState<ClassStudentsPage> {
     );
   }
 
+  /// Server already searches; only the assigned/unassigned chip
+  /// filters client-side on real membership.
   List<AdminStudent> _applyFilter(List<AdminStudent> students) {
-    var list = students;
     if (_filter == 'unassigned') {
-      list = list.where((s) => s.assignedClassId == null).toList();
+      return students.where((s) => s.assignedClassId == null).toList();
     }
-    if (_query.isNotEmpty) {
-      list = list
-          .where((s) =>
-              s.name.toLowerCase().contains(_query) ||
-              s.email.toLowerCase().contains(_query))
-          .toList();
-    }
-    return list;
+    return students;
   }
 }
 
 class _ClassCapacityCard extends StatelessWidget {
+  final String title;
   final int enrolled;
   final int capacity;
 
-  const _ClassCapacityCard({required this.enrolled, required this.capacity});
+  const _ClassCapacityCard({
+    required this.title,
+    required this.enrolled,
+    required this.capacity,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -294,7 +392,7 @@ class _ClassCapacityCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Licence 3 Informatique 3A',
+            title,
             style: theme.textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
@@ -334,12 +432,14 @@ class _StudentsBody extends StatelessWidget {
   final Set<String> selectedIds;
   final VoidCallback onToggleAll;
   final ValueChanged<String> onToggle;
+  final ValueChanged<AdminStudent> onUnassign;
 
   const _StudentsBody({
     required this.students,
     required this.selectedIds,
     required this.onToggleAll,
     required this.onToggle,
+    required this.onUnassign,
   });
 
   @override
@@ -389,6 +489,9 @@ class _StudentsBody extends StatelessWidget {
             student: students[i],
             selected: selectedIds.contains(students[i].id),
             onToggle: () => onToggle(students[i].id),
+            onUnassign: students[i].assignedClassId == null
+                ? null
+                : () => onUnassign(students[i]),
           ),
           if (i < students.length - 1) const SizedBox(height: 10),
         ],
@@ -401,11 +504,13 @@ class _StudentRow extends StatelessWidget {
   final AdminStudent student;
   final bool selected;
   final VoidCallback? onToggle;
+  final VoidCallback? onUnassign;
 
   const _StudentRow({
     required this.student,
     required this.selected,
     this.onToggle,
+    this.onUnassign,
   });
 
   @override
@@ -465,11 +570,16 @@ class _StudentRow extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: colorScheme.tertiaryFixed.withValues(alpha: 0.5),
+                      color: (student.verified
+                              ? colorScheme.tertiaryFixed
+                              : colorScheme.surfaceContainer)
+                          .withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      student.badge,
+                      context.tr(student.verified
+                          ? 'admin_verified'
+                          : 'admin_unverified'),
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: colorScheme.onSurface,
                       ),
@@ -479,7 +589,17 @@ class _StudentRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            _CheckBox(selected: selected, onTap: onToggle),
+            if (onUnassign != null)
+              IconButton(
+                icon: const Icon(Icons.person_remove_outlined, size: 20),
+                tooltip: context.tr('admin_unassign_action'),
+                color: colorScheme.error,
+                onPressed: onUnassign,
+              ),
+            // No assign checkbox for already-assigned students:
+            // their only action is unassigning.
+            if (student.assignedClassId == null)
+              _CheckBox(selected: selected, onTap: onToggle),
           ],
         ),
       ),

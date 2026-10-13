@@ -91,5 +91,159 @@ paths:
           $ref: './common.yaml#/components/responses/Forbidden'
         '422':
           $ref: './common.yaml#/components/responses/ValidationError'
+  /users/me/role:
+    patch:
+      operationId: setMyRole
+      tags:
+        - users
+      summary: Assign my own role once (onboarding)
+      description: >
+        Assigns TEACHER or STUDENT to the caller's account exactly once
+        (RG1). ADMIN is never self-assignable here (403) — admin accounts
+        are provisioned by seed or by an existing admin via
+        PATCH /users/{id}/role. All previous sessions are revoked and a
+        fresh token pair embedding the new role is returned.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - role
+              properties:
+                role:
+                  type: string
+                  enum: [TEACHER, STUDENT, ADMIN]
+                  description: >
+                    TEACHER or STUDENT to assign. ADMIN passes validation so
+                    the server rejects it with the documented 403 below
+                    (Zod is not the security boundary).
+              additionalProperties: false
+      responses:
+        '200':
+          description: Role assigned, fresh session issued.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Account role assigned successfully
+                      accessToken:
+                        type: string
+                      refreshToken:
+                        type: string
+                      expiresIn:
+                        type: integer
+                        example: 900
+                      user:
+                        $ref: './auth.openapi.yaml#/components/schemas/SafeUser'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          description: ADMIN role requested (self-provisioning forbidden).
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: FORBIDDEN
+                  message: Administrator accounts must be provisioned by an existing administrator
+                  details: []
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          description: Role already assigned (RG1, set-once).
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: ROLE_ALREADY_ASSIGNED
+                  message: Account role has already been assigned and cannot be changed here
+                  details: []
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /users/{id}/role:
+    patch:
+      operationId: setUserRole
+      tags:
+        - users
+      summary: Set any user's role (admin only)
+      description: >
+        Allows an administrator to assign TEACHER, STUDENT or ADMIN to
+        another account (e.g. onboarding an admin chosen in the app, or
+        correcting roles). Self-modification is forbidden (403) so an admin
+        can never lock themselves out or escalate silently. The target's
+        sessions are revoked, forcing re-login with the new role.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - role
+              properties:
+                role:
+                  type: string
+                  enum: [TEACHER, STUDENT, ADMIN]
+              additionalProperties: false
+      responses:
+        '200':
+          description: Role updated, target sessions revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: User role updated successfully
+                      user:
+                        $ref: './auth.openapi.yaml#/components/schemas/SafeUser'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          description: Not an admin, or attempt to change own role.
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: FORBIDDEN
+                  message: You cannot change your own role through this endpoint
+                  details: []
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
 components:
   schemas: {}

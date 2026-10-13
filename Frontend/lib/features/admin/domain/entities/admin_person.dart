@@ -1,6 +1,10 @@
 /// People managed by the admin (pure Dart).
 ///
-/// Backend endpoints: none yet (users module planned).
+/// Students map SafeUser rows (`GET /api/v1/users?role=STUDENT`) with the
+/// class membership resolved per class; teachers merge the directory with
+/// the class assignments (`GET /api/v1/groups/:id/teachers`) so subject
+/// and hours are real. `specialty` carries the assigned subject ('' when
+/// unassigned); teachers have no department server-side.
 enum PersonAssignState { selected, unselected, assigned, pending, warning }
 
 class AdminStudent {
@@ -38,6 +42,19 @@ class AdminTeacher {
   final PersonAssignState state;
   final bool initiallyAssigned;
 
+  /// Initials derived from the name (avatar display).
+  String? get initials {
+    final parts =
+        name.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return null;
+    final first = parts.first[0];
+    final second = parts.length > 1 ? parts[1][0] : '';
+    return '$first$second'.toUpperCase();
+  }
+
+  /// Backend email verification flag (SafeUser.emailVerified).
+  final bool verified;
+
   const AdminTeacher({
     required this.id,
     required this.name,
@@ -50,5 +67,6 @@ class AdminTeacher {
     required this.subjectValue,
     this.state = PersonAssignState.unselected,
     this.initiallyAssigned = false,
+    this.verified = false,
   });
 }

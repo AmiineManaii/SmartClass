@@ -37,6 +37,29 @@ const envSchema = z.object({
   SMTP_USER: z.string().default('faroukmessay006@gmail.com'),
   SMTP_PASS: z.string().optional().default(''),
   SMTP_FROM: z.string().default('SmartClass <faroukmessay006@gmail.com>'),
+  // Local LLM gateway (Unsloth Desktop, OpenAI-compatible API).
+  // The API runs inside Docker: host.docker.internal reaches the desktop
+  // app on the host. AI_MAX_TOKENS is the generation budget: raised to 32K
+  // for detailed courses — the model context in Unsloth Desktop must be
+  // set accordingly (context window >= prompt + AI_MAX_TOKENS, ~34K).
+  AI_BASE_URL: z.string().default('http://host.docker.internal:8888'),
+  AI_MODEL: z.string().default('unsloth/Qwen3.5-4B-GGUF'),
+  AI_API_KEY: z.string().optional().default(''),
+  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(300000),
+  AI_STATUS_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+  AI_MAX_TOKENS: z.coerce.number().int().positive().default(32768),
+  AI_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.7),
+  AI_MAX_SOURCE_CHARS: z.coerce.number().int().positive().default(16000),
+  AI_ENABLE_WEB_SEARCH: z
+    .preprocess((val) => val === 'true' || val === true, z.boolean())
+    .default(true),
+  AI_ENABLE_THINKING: z
+    .preprocess((val) => val === 'true' || val === true, z.boolean())
+    .default(true),
+  AI_MAX_TOOL_ITERATIONS: z.coerce.number().int().positive().default(10),
+  // Unsloth refuses tool execution without it ("confirm_tool_calls ..."
+  // 400). 'off' = run declared tools without interactive confirmation.
+  AI_PERMISSION_MODE: z.enum(['off', 'auto', 'confirm']).default('off'),
 });
 
 export type Env = z.infer<typeof envSchema>;

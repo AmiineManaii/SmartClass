@@ -73,6 +73,7 @@ model User {
   taughtSlots          TimetableSlot[]        @relation("SlotTeacher")
   fraudReports         FraudReport[]
   referredClasses      ClassGroup[]           @relation("ClassReferent")
+  authoredCourses      Course[]               @relation("AuthoredCourses")
 
   @@index([email])
   @@index([role])
@@ -158,6 +159,29 @@ model TimetableSlot {
   @@index([classGroupId])
   @@index([startsAt])
   @@map("timetable_slots")
+}
+
+/// Teacher-generated course content (AI or manual). Saved as DRAFT on
+/// generation: only the author (and admins) can read it until it is
+/// validated (PUBLISHED), after which every authenticated user can read it.
+model Course {
+  id         String      @id @default(uuid()) @db.Uuid
+  title      String
+  subject    String?
+  content    String      @db.Text
+  level      String      @default("equilibre")
+  difficulty String      @default("moyen")
+  format     String      @default("resume")
+  status     ClassStatus @default(DRAFT)
+  authorId   String      @map("author_id") @db.Uuid
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  author User @relation("AuthoredCourses", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([authorId])
+  @@map("courses")
 }
 
 model FraudReport {

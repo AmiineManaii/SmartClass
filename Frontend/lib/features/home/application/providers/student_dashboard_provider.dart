@@ -1,21 +1,34 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/network/network_providers.dart';
 import '../../domain/entities/student_assignment.dart';
 import '../../domain/entities/student_class_membership.dart';
 import '../../domain/entities/student_course_progress.dart';
 import '../../domain/entities/today_live_session.dart';
+import '../../infrastructure/datasources/groups_remote_datasource.dart';
+
+final groupsRemoteDataSourceProvider = Provider<GroupsRemoteDataSource>((ref) {
+  return GroupsRemoteDataSource(ref.watch(apiClientProvider));
+});
 
 /// Membership of the current student in a class.
 ///
-/// Seam for `GET /api/v1/groups/memberships` (groups contract: planned,
-/// see `contracts/README.md`). Resolves to `null` until wired: the dashboard
-/// treats `null` as "no class joined" and shows the administration-contact
+/// Backed by `GET /api/v1/groups/mine` (any authenticated role): the
+/// first STUDENT membership, if any. Resolves to `null` when the student
+/// joined no class — the dashboard shows the administration-contact
 /// notice instead of inventing a class.
 final studentClassMembershipProvider =
     FutureProvider<StudentClassMembership?>((ref) async {
-  // TODO(groups-contract): fetch membership, e.g.
-  // `ref.watch(groupsRepositoryProvider).myMembership()`.
-  return null;
+  final groups = await ref.watch(groupsRemoteDataSourceProvider).myGroups();
+  final mine = groups.where((g) => g['myRole'] == 'STUDENT').toList();
+  final first = mine.isNotEmpty ? mine.first : null;
+  if (first == null) return null;
+  final department = (first['department'] as String?)?.trim();
+  return StudentClassMembership(
+    id: (first['id'] as String?) ?? '',
+    name: (first['name'] as String?) ?? '',
+    institution: (department == null || department.isEmpty) ? null : department,
+  );
 });
 
 /// Today's live session, if the student really has a course today.

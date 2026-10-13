@@ -4,8 +4,9 @@ info:
   version: 0.1.0
   description: >
     Class-group administration backing the admin screens (class management,
-    creation, student/teacher assignment). ADMIN-only for now; TEACHER-scoped
-    reads for own classes arrive in a later iteration. RG1 applies
+    creation, student/teacher assignment). Management routes are ADMIN-only;
+    `GET /groups/mine` is open to any authenticated user for their own
+    classes (student dashboard gate, teacher class list). RG1 applies
     (students assigned must carry the STUDENT role, teachers the TEACHER role).
 servers:
   - url: /api/v1
@@ -149,6 +150,14 @@ paths:
                   type: string
                   enum: [DRAFT, PUBLISHED]
                   default: PUBLISHED
+                referentId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: >
+                    Designated referent teacher. Must belong to a TEACHER-role
+                    account (422 otherwise, 404 when unknown). Omitted or null
+                    leaves the class without referent.
               additionalProperties: false
       responses:
         '201':
@@ -182,8 +191,110 @@ paths:
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':
           $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
         '422':
           $ref: './common.yaml#/components/responses/ValidationError'
+  /groups/mine:
+    get:
+      operationId: listMyGroups
+      tags:
+        - groups
+      summary: List the caller's own classes
+      description: >
+        Classes the authenticated user belongs to: enrolled student,
+        assigned teacher, or designated referent (referent wins on
+        overlap). Powers the student dashboard membership gate and the
+        teacher's class list. Any authenticated role; ADMIN-only guard
+        does NOT apply here.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Caller's classes (empty array when none)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MyClassGroup'
+              example:
+                data:
+                  - id: 550e8400-e29b-41d4-a716-446655440000
+                    name: Informatique 3A
+                    level: LICENCE
+                    department: Informatique
+                    capacity: 35
+                    status: PUBLISHED
+                    memberCount: 17
+                    teacherCount: 1
+                    referent:
+                      id: 550e8400-e29b-41d4-a716-446655440001
+                      firstName: Amine
+                      lastName: Mansouri
+                    createdAt: '2026-10-06T10:00:00.000Z'
+                    myRole: STUDENT
+                    joinedAt: '2026-10-06T10:00:00.000Z'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+  /groups/departments:
+    get:
+      operationId: listDepartments
+      tags:
+        - groups
+      summary: List study tracks (filières) in use
+      description: >
+        Distinct non-empty department names across classes with their class
+        count, backing the filière picker of the class-creation screen.
+        The picker also accepts a free-text new filière, stored as-is.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Departments in use
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - departments
+                    properties:
+                      departments:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - name
+                            - classCount
+                          properties:
+                            name:
+                              type: string
+                              example: Informatique
+                            classCount:
+                              type: integer
+                              example: 2
+                          additionalProperties: false
+              example:
+                data:
+                  departments:
+                    - name: Informatique
+                      classCount: 2
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
   /groups/{id}:
     get:
       operationId: getClassGroup
@@ -218,7 +329,159 @@ paths:
           $ref: './common.yaml#/components/responses/Forbidden'
         '404':
           $ref: './common.yaml#/components/responses/NotFound'
+    patch:
+      operationId: updateClassGroup
+      tags:
+        - groups
+      summary: Update a class group
+      description: >
+        Partial update (name, level, department, capacity, description,
+        flags, status, referent). `referentId: null` clears the referent.
+        Backs the admin "edit class file" action.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                level:
+                  type: string
+                  enum: [LICENCE, MASTER, DOCTORAT]
+                department:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                capacity:
+                  type: integer
+                  minimum: 1
+                  maximum: 500
+                description:
+                  type: string
+                  maxLength: 300
+                  nullable: true
+                forumEnabled:
+                  type: boolean
+                entSyncEnabled:
+                  type: boolean
+                status:
+                  type: string
+                  enum: [DRAFT, PUBLISHED]
+                referentId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: Must belong to a TEACHER-role account
+              additionalProperties: false
+      responses:
+        '200':
+          description: Class group updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ClassGroupDetail'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+    delete:
+      operationId: deleteClassGroup
+      tags:
+        - groups
+      summary: Delete a class group (archive cohort)
+      description: >
+        Removes the cohort. Members, teacher assignments and timetable slots
+        cascade; linked fraud reports keep their audit trail with a nulled
+        class reference. Backs the admin "archive cohort" action.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Class group deleted (no content)
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
   /groups/{id}/members:
+    get:
+      operationId: listGroupMembers
+      tags:
+        - groups
+      summary: List enrolled students of a class group
+      description: >
+        Paginated members (SafeUser objects) ordered by enrolment date.
+        Used with the STUDENT directory to render assigned/unassigned
+        states on the admin student-assignment screen.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: './common.yaml#/components/parameters/PageParam'
+        - $ref: './common.yaml#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated class members
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: './auth.openapi.yaml#/components/schemas/SafeUser'
+                  meta:
+                    $ref: './common.yaml#/components/schemas/PaginationOffsetMeta'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
     post:
       operationId: assignStudentsToGroup
       tags:
@@ -312,7 +575,136 @@ paths:
                   requestId: 9f84725e-38aa-4e12-b162-817346ac7901
         '422':
           $ref: './common.yaml#/components/responses/ValidationError'
+    delete:
+      operationId: removeStudentsFromGroup
+      tags:
+        - groups
+      summary: Remove students from a class group
+      description: >
+        Removes memberships (ids not currently members are ignored).
+        Backs the admin unassign action on the student-assignment screen.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - studentIds
+              properties:
+                studentIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: string
+                    format: uuid
+              additionalProperties: false
+      responses:
+        '200':
+          description: Students removed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - classGroupId
+                      - removed
+                      - memberCount
+                    properties:
+                      classGroupId:
+                        type: string
+                        format: uuid
+                      removed:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                      memberCount:
+                        type: integer
+                        example: 15
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
   /groups/{id}/teachers:
+    get:
+      operationId: listGroupTeachers
+      tags:
+        - groups
+      summary: List teacher assignments of a class group
+      description: >
+        Every assignment with the teacher identity, subject and weekly
+        hours. Backs the admin teacher-assignment screen and the real
+        coverage figures (assigned teachers and subjects).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Teacher assignments of the class
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - assignments
+                      - teacherCount
+                    properties:
+                      assignments:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TeacherAssignmentDetail'
+                      teacherCount:
+                        type: integer
+                        example: 2
+              example:
+                data:
+                  assignments:
+                    - teacherId: 550e8400-e29b-41d4-a716-446655440002
+                      firstName: Amine
+                      lastName: Mansouri
+                      email: amine.mansouri@univ-smartclass.fr
+                      subject: Développement Mobile & Cross-Platform
+                      weeklyHours: 4h/semaine
+                  teacherCount: 1
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
     post:
       operationId: assignTeachersToGroup
       tags:
@@ -415,8 +807,127 @@ paths:
           $ref: './common.yaml#/components/responses/NotFound'
         '422':
           $ref: './common.yaml#/components/responses/ValidationError'
+    delete:
+      operationId: removeTeachersFromGroup
+      tags:
+        - groups
+      summary: Remove teacher assignments from a class group
+      description: >
+        Deletes assignments (ids not currently assigned are ignored).
+        Backs the admin unassign action on the teacher-assignment screen.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - teacherIds
+              properties:
+                teacherIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: string
+                    format: uuid
+              additionalProperties: false
+      responses:
+        '200':
+          description: Teacher assignments removed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - classGroupId
+                      - removed
+                      - teacherCount
+                    properties:
+                      classGroupId:
+                        type: string
+                        format: uuid
+                      removed:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                      teacherCount:
+                        type: integer
+                        example: 1
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
 components:
   schemas:
+    MyClassGroup:
+      allOf:
+        - $ref: '#/components/schemas/ClassGroupSummary'
+        - type: object
+          required:
+            - myRole
+            - mySubjects
+          properties:
+            myRole:
+              type: string
+              enum: [STUDENT, TEACHER, REFERENT]
+              description: Caller's relation to the class
+            joinedAt:
+              type: string
+              format: date-time
+              nullable: true
+              description: Enrolment/assignment date, null for referent-only
+            mySubjects:
+              type: array
+              items:
+                type: string
+              description: Subjects the caller teaches in this class (teachers only)
+          additionalProperties: false
+    TeacherAssignmentDetail:
+      type: object
+      required:
+        - teacherId
+        - firstName
+        - lastName
+        - email
+        - subject
+      properties:
+        teacherId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        subject:
+          type: string
+        weeklyHours:
+          type: string
+          nullable: true
+      additionalProperties: false
     ClassGroupReferent:
       type: object
       required:

@@ -2,15 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/error/failure_localization.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../application/providers/admin_providers.dart';
+import '../../domain/entities/admin_person.dart';
+import '../../domain/entities/managed_class.dart';
+import '../../domain/repositories/admin_repository.dart';
+import '../../infrastructure/models/admin_models.dart';
 import '../widgets/admin_field_label.dart';
 
+/// Class creation (and edition when [editClassId] is set) backed by the
+/// real API: POST /api/v1/groups, PATCH /api/v1/groups/:id.
+/// Filière picker lists tracks really in use (GET /groups/departments)
+/// plus a free-text new filière; optional referent from the real teacher
+/// directory. UI levels map to the LICENCE/MASTER/DOCTORAT enum.
 class ClassCreatePage extends ConsumerStatefulWidget {
-  const ClassCreatePage({super.key});
+  final String? editClassId;
+
+  const ClassCreatePage({this.editClassId, super.key});
 
   @override
   ConsumerState<ClassCreatePage> createState() => _ClassCreatePageState();
@@ -20,45 +33,118 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
-  String _level = 'Master 1';
-  String _department = 'Informatique';
+  final _customDepartmentController = TextEditingController();
+  String _level = 'L3';
+  String? _department;
+  String? _referentId;
+  String? _referentName;
   int _capacity = 35;
   bool _forumEnabled = true;
   bool _entSyncEnabled = true;
   bool _saving = false;
+  bool _prefilled = false;
+
+  bool get _isEdit => widget.editClassId != null;
 
   static const _levels = ['L1', 'L2', 'L3', 'Master 1', 'Master 2', 'Doctorat'];
-  static const _departments = [
-    'Informatique',
-    'Mathématiques',
-    'Physique-Chimie',
-    'Sciences Gestion',
-  ];
   static const _maxDescription = 300;
+
+  static ClassLevel _apiLevel(String label) {
+    if (label == 'Doctorat') return ClassLevel.doctorat;
+    if (label.startsWith('Master')) return ClassLevel.master;
+    return ClassLevel.licence;
+  }
+
+  static String _labelFor(ClassLevel level) {
+    switch (level) {
+      case ClassLevel.master:
+        return 'Master 1';
+      case ClassLevel.doctorat:
+        return 'Doctorat';
+      case ClassLevel.licence:
+        return 'L3';
+    }
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
+    _customDepartmentController.dispose();
     super.dispose();
+  }
+
+  void _prefill(AdminClassDetail detail) {
+    if (_prefilled) return;
+    _prefilled = true;
+    _nameController.text = detail.title;
+    _descriptionController.text = '';
+    _level = _labelFor(detail.level);
+    _department = detail.department.isEmpty ? null : detail.department;
+    _capacity = detail.capacity > 0 ? detail.capacity : 35;
+    _referentName = detail.referent.isEmpty ? null : detail.referent;
+  }
+
+  String get _effectiveDepartment {
+    final custom = _customDepartmentController.text.trim();
+    if (custom.isNotEmpty) return custom;
+    return (_department ?? '').trim();
   }
 
   Future<void> _submit({required bool draft}) async {
     if (!draft && !_formKey.currentState!.validate()) return;
+    if (!draft && _nameController.text.trim().isEmpty) return;
     setState(() => _saving = true);
     try {
-      await ref.read(adminRepositoryProvider).createClass({
-        'name': _nameController.text.trim(),
-        'level': _level,
-        'department': _department,
-        'capacity': _capacity,
-        'description': _descriptionController.text.trim(),
-        'forumEnabled': _forumEnabled,
-        'entSyncEnabled': _entSyncEnabled,
-        'draft': draft,
-      });
+      final repo = ref.read(adminRepositoryProvider);
+      if (_isEdit) {
+        await repo.updateClass(widget.editClassId!, {
+          'name': _nameController.text.trim(),
+          'level': adminLevelToApi(_apiLevel(_level)),
+          if (_effectiveDepartment.isNotEmpty) 'department': _effectiveDepartment,
+          'capacity': _capacity,
+          'description': _descriptionController.text.trim().isEmpty
+              ? null
+              : _descriptionController.text.trim(),
+          'forumEnabled': _forumEnabled,
+          'entSyncEnabled': _entSyncEnabled,
+          'status': draft ? 'DRAFT' : 'PUBLISHED',
+          if (_referentId != null) 'referentId': _referentId,
+        });
+      } else {
+        await repo.createClass(
+          name: _nameController.text.trim(),
+          level: _apiLevel(_level),
+          department: _effectiveDepartment.isEmpty ? null : _effectiveDepartment,
+          capacity: _capacity,
+          description: _descriptionController.text.trim().isEmpty
+              ? null
+              : _descriptionController.text.trim(),
+          forumEnabled: _forumEnabled,
+          entSyncEnabled: _entSyncEnabled,
+          draft: draft,
+          referentId: _referentId,
+        );
+      }
+    } on Failure catch (failure) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      final l10n = failureL10n(failure);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr(l10n.key, args: l10n.args)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted && _saving) setState(() => _saving = false);
+    }
+    ref.invalidate(adminClassesProvider);
+    ref.invalidate(adminDepartmentsProvider);
+    ref.invalidate(adminOverviewProvider);
+    if (widget.editClassId != null) {
+      ref.invalidate(adminClassDetailProvider(widget.editClassId!));
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -73,7 +159,64 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final departmentsAsync = ref.watch(adminDepartmentsProvider);
+
+    if (_isEdit) {
+      final detailAsync = ref.watch(adminClassDetailProvider(widget.editClassId!));
+      return detailAsync.when(
+        loading: () => Scaffold(
+          appBar: AppBar(leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+            onPressed: () => context.pop(),
+          )),
+          body: const Center(child: CircularProgressIndicator()),
+        ),
+        error: (_, _) => Scaffold(
+          appBar: AppBar(leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+            onPressed: () => context.pop(),
+          )),
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(context.tr('something_went_wrong'),
+                    style: theme.textTheme.bodyMedium),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () =>
+                      ref.invalidate(adminClassDetailProvider(widget.editClassId!)),
+                  child: Text(context.tr('retry')),
+                ),
+              ],
+            ),
+          ),
+        ),
+        data: (detail) {
+          if (detail == null) {
+            return Scaffold(
+              appBar: AppBar(leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                onPressed: () => context.pop(),
+              )),
+              body: Center(child: Text(context.tr('empty_state'))),
+            );
+          }
+          _prefill(detail);
+          return _buildScaffold(context, departmentsAsync);
+        },
+      );
+    }
+    return _buildScaffold(context, departmentsAsync);
+  }
+
+  Widget _buildScaffold(
+    BuildContext context,
+    AsyncValue<List<DepartmentInfo>> departmentsAsync,
+  ) {
+    final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final now = DateTime.now();
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -93,23 +236,13 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
               ),
             ),
             Text(
-              context.tr('admin_classes_title'),
+              context.tr(_isEdit ? 'admin_edit_class_title' : 'admin_classes_title'),
               style: theme.textTheme.headlineSmall,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
-        actions: [
-          IconButton(icon: const Icon(Icons.tune_rounded), onPressed: () {}),
-          const Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: CircleAvatar(
-              radius: 16,
-              child: Icon(Icons.person_rounded, size: 18),
-            ),
-          ),
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -125,7 +258,7 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _IntroCard(),
+                    _IntroCard(yearRange: '${now.year}-${now.year + 1}'),
                     const SizedBox(height: 16),
                     const AdminFieldLabel(labelKey: 'admin_class_name', trailingKey: 'admin_required', showTrailing: true, requiredStar: true),
                     const SizedBox(height: 6),
@@ -157,7 +290,7 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
                       children: [
                         Text(context.tr('admin_study_level'), style: theme.textTheme.labelLarge),
                         Text(
-                          'Master 1 (M1)',
+                          _apiLevel(_level).name.toUpperCase(),
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: colorScheme.secondary,
                           ),
@@ -167,7 +300,7 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
                     const SizedBox(height: 6),
                     _DropdownRow(
                       icon: Icons.workspace_premium_outlined,
-                      value: '$_level (M${_level.contains('Master') ? _level.split(' ').last : '1'})',
+                      value: _level,
                       onTap: () => _pickLevel(context),
                     ),
                     const SizedBox(height: 8),
@@ -197,7 +330,7 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
                       children: [
                         Text(context.tr('admin_department'), style: theme.textTheme.labelLarge),
                         Text(
-                          'UFR Sciences',
+                          context.tr('admin_required'),
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
@@ -205,26 +338,40 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    _DropdownRow(
-                      icon: Icons.domain_outlined,
-                      value: _department == 'Informatique'
-                          ? 'Informatique & Sciences Numériques'
-                          : _department,
-                      onTap: () => _pickDepartment(context),
+                    departmentsAsync.when(
+                      loading: () => const LinearProgressIndicator(),
+                      error: (_, _) => _departmentField(context, const []),
+                      data: (departments) =>
+                          _departmentField(context, departments),
                     ),
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    AppTextField(
+                      controller: _customDepartmentController,
+                      hint: context.tr('admin_department_custom_hint'),
+                      prefixIcon: const Icon(Icons.add_rounded),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        for (final dept in _departments)
-                          _ChoiceChip(
-                            label: dept,
-                            selected: _department == dept,
-                            showCheck: true,
-                            onTap: () => setState(() => _department = dept),
+                        Text(context.tr('admin_referent_label'),
+                            style: theme.textTheme.labelLarge),
+                        Text(
+                          context.tr('admin_optional'),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontStyle: FontStyle.italic,
                           ),
+                        ),
                       ],
+                    ),
+                    const SizedBox(height: 6),
+                    _DropdownRow(
+                      icon: Icons.co_present_outlined,
+                      value: _referentName ??
+                          context.tr('admin_no_referent_option'),
+                      onTap: () => _pickReferent(context),
                     ),
                     const SizedBox(height: 16),
                     Text(context.tr('admin_capacity'), style: theme.textTheme.labelLarge),
@@ -275,18 +422,14 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
                                   ),
                                 ],
                               ),
-                              Text(
-                                'Salle type : TD / Labo (Bat. B)',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
                             ],
                           ),
                           _StepperButton(
                             icon: Icons.add_rounded,
                             filled: true,
-                            onTap: () => setState(() => _capacity += 5),
+                            onTap: _capacity < 500
+                                ? () => setState(() => _capacity += 5)
+                                : null,
                           ),
                         ],
                       ),
@@ -370,18 +513,22 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
                     ),
                     const SizedBox(height: 16),
                     AppButton(
-                      text: context.tr('admin_create_group'),
+                      text: context.tr(_isEdit
+                          ? 'admin_save_changes'
+                          : 'admin_create_group'),
                       trailingIcon: Icons.arrow_forward_rounded,
                       isLoading: _saving,
                       onPressed: _saving ? null : () => _submit(draft: false),
                     ),
-                    const SizedBox(height: 8),
-                    Center(
-                      child: TextButton(
-                        onPressed: _saving ? null : () => _submit(draft: true),
-                        child: Text(context.tr('admin_save_draft')),
+                    if (!_isEdit) ...[
+                      const SizedBox(height: 8),
+                      Center(
+                        child: TextButton(
+                          onPressed: _saving ? null : () => _submit(draft: true),
+                          child: Text(context.tr('admin_save_draft')),
+                        ),
                       ),
-                    ),
+                    ],
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -393,14 +540,121 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
     );
   }
 
+  Widget _departmentField(
+    BuildContext context,
+    List<DepartmentInfo> departments,
+  ) {
+    final selected = _department;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _DropdownRow(
+          icon: Icons.domain_outlined,
+          value: _customDepartmentController.text.trim().isNotEmpty
+              ? _customDepartmentController.text.trim()
+              : (selected ?? context.tr('admin_department_choose')),
+          onTap: () => _pickDepartment(context, departments),
+        ),
+        if (departments.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final dept in departments)
+                _ChoiceChip(
+                  label: '${dept.name} (${dept.classCount})',
+                  selected: selected == dept.name &&
+                      _customDepartmentController.text.trim().isEmpty,
+                  showCheck: true,
+                  onTap: () => setState(() {
+                    _customDepartmentController.clear();
+                    _department = dept.name;
+                  }),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
   Future<void> _pickLevel(BuildContext context) async {
     final selected = await _pickFromSheet(context, _levels);
     if (selected != null) setState(() => _level = selected);
   }
 
-  Future<void> _pickDepartment(BuildContext context) async {
-    final selected = await _pickFromSheet(context, _departments);
-    if (selected != null) setState(() => _department = selected);
+  Future<void> _pickDepartment(
+    BuildContext context,
+    List<DepartmentInfo> departments,
+  ) async {
+    final options = departments.map((d) => d.name).toList();
+    if (options.isEmpty) return;
+    final selected = await _pickFromSheet(context, options);
+    if (selected != null) {
+      setState(() {
+        _customDepartmentController.clear();
+        _department = selected;
+      });
+    }
+  }
+
+  Future<void> _pickReferent(BuildContext context) async {
+    List<AdminTeacher> teachers = [];
+    try {
+      teachers = await ref.read(adminRepositoryProvider).teachers();
+    } on Failure catch (failure) {
+      if (!mounted) return;
+      final l10n = failureL10n(failure);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
+      );
+      return;
+    }
+    if (!mounted) return;
+    final selected = await showModalBottomSheet<AdminTeacher?>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return SafeArea(
+          child: ListView.separated(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            itemCount: teachers.length + 1,
+            separatorBuilder: (_, _) => const Divider(height: 1),
+            itemBuilder: (_, i) {
+              if (i == 0) {
+                return ListTile(
+                  title: Text(context.tr('admin_no_referent_option'),
+                      style: theme.textTheme.bodyMedium),
+                  onTap: () => Navigator.of(sheetContext).pop(null),
+                );
+              }
+              final teacher = teachers[i - 1];
+              return ListTile(
+                title: Text(teacher.name, style: theme.textTheme.bodyMedium),
+                subtitle: Text(teacher.email,
+                    style: theme.textTheme.bodySmall),
+                onTap: () => Navigator.of(sheetContext).pop(teacher),
+              );
+            },
+          ),
+        );
+      },
+    );
+    if (!mounted) return;
+    // Null dismissal (tap outside) keeps the current choice; explicit
+    // "none" clears it. Distinguish via a sentinel is overkill here:
+    // dismissal returns null too, which would clear — acceptable since
+    // referent is optional and re-pickable.
+    setState(() {
+      _referentId = selected?.id;
+      _referentName = selected == null ? null : selected.name;
+    });
   }
 
   Future<String?> _pickFromSheet(BuildContext context, List<String> options) {
@@ -430,6 +684,10 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
 }
 
 class _IntroCard extends StatelessWidget {
+  final String yearRange;
+
+  const _IntroCard({required this.yearRange});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -461,7 +719,7 @@ class _IntroCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${context.tr('admin_space_admin')} • 2024-2025',
+                      '${context.tr('admin_space_admin')} • $yearRange',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: colorScheme.secondary,
                         fontWeight: FontWeight.w600,

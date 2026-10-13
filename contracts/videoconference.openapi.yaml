@@ -22,8 +22,11 @@ paths:
       description: >
         Returns one bounded week (Monday to Saturday) of scheduled slots plus
         per-day course counts. The fixed 7-day scope is intentionally not
-        paginated (bounded view, not an open-ended list). ADMIN-only for now;
-        TEACHER-scoped reads for own classes arrive in a later iteration.
+        paginated (bounded view, not an open-ended list). Class-scoped read:
+        ADMIN reads every timetable; any other authenticated user must belong
+        to the class (enrolled student, assigned teacher, or referent) —
+        otherwise 403. Powers the admin schedule screen and the teacher's
+        upcoming sessions.
       security:
         - bearerAuth: []
       x-status: implemented

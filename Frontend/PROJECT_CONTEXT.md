@@ -597,29 +597,138 @@ lib/features/authentication/
 
 ## 16. Module Admin — 7 écrans (maquettes `assets/design/ancien/smartclass_*`, ADR-0004)
 
-> Backend : seuls `auth` + `health` implémentés → **données réelles = identité admin
-> uniquement** (`AuthState` via `/auth/me`) ; tout le reste en mocks isolés
-> (`MockAdminDataSource`, un seam par futur endpoint documenté en TODO).
+> **Données 100 % réelles** (`MockAdminDataSource` supprimé) via
+> `AdminRemoteDataSource` + `AdminRepositoryImpl` (endpoints ADMIN-only,
+> voir `contracts/admin|users|groups|exams|videoconference.openapi.yaml`).
+> Chiffres sans dénominateur server-side (présence, intégrité, taux de
+> remplissage, « +32 ») supprimés des écrans — jamais fabriqués.
 
 - Feature `lib/features/admin/` (Clean Architecture stricte) : entités
   (`admin_overview`, `managed_class`, `admin_person`, `timetable`, `fraud_report`
-  + `FraudSummary` agrégé), `AdminRepository` (9 méthodes), impl + providers.
-- Écrans : dashboard (`/home` si rôle admin), classes (`/admin/classes`),
-  création (`/admin/classes/new`, draft + stepper + switches),
-  étudiants (`/admin/classes/:id/students`, multi-sélection + bottom bar),
-  enseignants (`/admin/classes/:id/teachers`, couverture 25% + statuts),
-  planning (`/admin/planning`, semaine réelle via `DateTime.now()` + `intl`,
-  timeline CM/TP/TD/pauses/créneau libre), fraudes (`/admin/frauds`,
-  filtres calculés + actions + export).
+  + `FraudSummary` réel `{unresolved, inProgress, resolvedThisMonth}`),
+  `AdminRepository` réel (overview, classes, detail, create/update/delete,
+  departments, students/teachers + memberIds, assign/remove, timetable,
+  fraudReports paginés cursor + summary + transitions), impl + providers
+  (recherche serveur debouncée, curseur fraudes avec « charger plus »,
+  classe/semaine de planning sélectionnables).
+- Écrans : dashboard (compteurs `GET /admin/overview` + alertes = 2 derniers
+  rapports UNTREATED), classes (filtres serveur level/search, mini-stats de
+  page, édition via `/admin/classes/new` + `extra`, archivage DELETE avec
+  confirmation, planning pré-sélectionné depuis le menu),
+  création/édition (`POST/PATCH /groups` : nom, niveau→enum, **filière au
+  choix** parmi celles utilisées + saisie libre, capacité, description,
+  switches, brouillon=DRAFT, référent optionnel du annuaire enseignants),
+  étudiants (`/admin/classes/:id/students` : capacité réelle, assignés/non
+  assignés réels, retrait avec confirmation),
+  enseignants (`/admin/classes/:id/teachers` : matières/heures réelles,
+  matière+heures demandées à la confirmation, retrait),
+  planning (`/admin/planning` : sélecteur de classe réelle, semaine
+  `weekStart` lundi, timeline filtrée par jour, heures calculées,
+  conflits calculés, notes backend verbatim),
+  fraudes (`/admin/frauds` : compteurs réels, transitions
+  UNTREATED→IN_PROGRESS→CLOSED avec résolution, CLOSED terminal, export
+  restant `feature_coming_soon` — pas d'export backend).
 - Shell : `_BottomNavBar` par rôle (Tableau/Classes/Planning/Fraudes/Paramètres) ;
   guard `/admin/*` → `/home` si non-admin ; `HomePage` branche admin.
-- Règles appliquées : compteurs calculés (jamais de 84/26 codés), jours via
-  `DateFormat` localisé, actions sans backend → snackbar `feature_coming_soon`
-  localisé, `context.tr()` partout, `theme.textTheme` uniquement, `gen-l10n`
-  régénéré (~130 clés `admin_*` FR/EN).
-- Maquettes déplacées vers `ancien/` après implémentation complète.
+- Règles appliquées : `context.tr()` partout (+ ~30 clés `admin_*`
+  FR/EN : filière, référent, transitions, suppressions), `theme.textTheme`
+  uniquement, `ApiClient.delete` ajouté, erreurs mappées (`failureL10n`,
+  409/422/404), états vides honnêtes (`empty_state`, `admin_no_classes`,
+  `admin_no_timetable`).
+- Non couvert (pas de backend) : CRUD créneaux timetable (boutons
+  `feature_coming_soon`), import CSV, avis académique, export audit,
+  appel présentiel, module courses.
+- Membership étudiant réel : `GET /groups/mine` → premier membership
+  STUDENT (sinon notice « aucune classe ») ; options d'affectation masquées
+  si déjà affecté (pages classe + annuaires, avec pré-vérification).
 
 ---
 
-*Dernière mise à jour : 2026-10-10*
-*Version : 1.4.0*
+## 18. Profil prof, dashboard prof réel, génération de cours IA
+
+- Onboarding : niveau/filière exigés pour les seuls étudiants (`needsStudyInfo`) ;
+  profs et admins : établissement uniquement.
+- Dashboard prof 100 % réel (`teacherDashboardProvider` : classes via
+  `GET /groups/mine` + matières `mySubjects` + prochain créneau via
+  timetables, notice « aucune classe » si non affecté ; mocks prof,
+  `TeacherStatsRow`, `TeacherClassCard`, `LiveSessionPill` supprimés).
+- Création de cours IA branchée sur `POST /api/v1/ai/courses/generate`
+  (modes sujet/texte/lien, niveaux concis/équilibré/détaillé qui reshapent
+  la consigne, formats résumé/flashcards/carte mentale, matières réelles du
+  prof, statut modèle réel, résultat sélectionnable + métadonnées ; PDF binaire en attente
+  du pipeline backend — zone d'import honnête en attendant).
+- Upload PDF direct : `POST /ai/courses/improve-pdf` (multipart, `file_picker`
+  v13), carte fichier avec retrait, modes Sujet/PDF/Lien.
+- Génération orientée cours : difficulté (Facile/Moyenne/Difficile),
+   longueur Court/Normal/Long, extras (exemples, mermaid, images web,
+   recherche web, reflexion),
+  3 endpoints dédiés (`from-topic`, `from-url`, `improve-pdf`).
+- Progression live : `ApiClient.postStream` + endpoints SSE (`/stream`,
+  `/improve-pdf-stream`), carte live (texte temps réel, tokens, écoulé,
+  annulation), édition avant validation (Modifier/Valider/Copier).
+
+---
+
+## 17. Rôle — source de vérité backend (fix dashboard par rôle)
+
+> Le backend est la seule source de vérité du rôle (`TEACHER/STUDENT/ADMIN`
+> → app `teacher/student/admin`). L'ancien `updateRole` local-only affichait
+> un dashboard admin usurpable et était écrasé au login suivant.
+
+- `AuthRemoteDataSource.setMyRole` → `PATCH /api/v1/users/me/role`
+  (TEACHER/STUDENT) ; `AuthRepository.setMyRole` persiste la paire de tokens
+  fraîche retournée ; `AuthNotifier.updateRole` async (ADMIN → `AuthFailure`
+  FORBIDDEN local ; 409 → resync `GET /auth/me`).
+- `RoleSelectionPage` : choix étudiant/enseignant uniquement (ADMIN jamais
+  auto-assignable, 403 backend) + `_confirm` async avec erreurs localisées.
+- `HomePage` : rôle `null/vide` → `_MissingRoleView` (retour `/role-selection`)
+  au lieu du dashboard student par défaut ; `AdminDashboardView` si `admin`,
+  `TeacherDashboardView` si `teacher`. Doublon `home` du `_BottomNavBar` supprimé.
+- Comptes ADMIN provisionnés côté backend uniquement (seed ou
+  `PATCH /users/:id/role` par un admin) : `admin@gmail.com`, `admin1@gmail.com`,
+  `admin2@gmail.com`.
+
+---
+
+### Fix génération IA + Mes cours réel (v1.6.4)
+
+- **Bug « Erreur du serveur »** : `ai_course_creator_page` envoyait `exExamples`/`exMermaid`/`exWebImages` en clés racines du JSON alors que `generateCourseBodySchema` (Zod `.strict()`, `contracts/ai-assistant.openapi.yaml`) exige `extras: {examples, mermaid, webImages}` → 422. Corrigé : `extras` imbriqué (comme le fait déjà `AiCourseRemoteDataSource._options` pour les endpoints non-stream). `ApiClient.postStream` draine désormais le corps d'erreur streamé (le code backend réel était masqué en `server_error` générique).
+- Côté backend : `AI_PERMISSION_MODE=off` + en-tête `X-Unsloth-Events: 1` dans la gateway pour que l'exécution d'outils Unsloth accepte effectivement les tools (sinon 400 + dégradation silencieuse).
+- **Mes cours** : zéro mock — `CoursesRemoteDataSource` (`GET /groups/mine`), entité domaine `CourseEntry`, `myCoursesProvider`/`courseFilterProvider` ; cartes = classes réelles (nom, filière/niveau, compteurs membres/enseignants, statut PUBLISHED/DRAFT, rôle). Aucun progrès/leçons fabriqués (module cours backend 📋 planned) ; la recherche au-dessus de la liste affiche `feature_coming_soon`.
+
+### Rendu visuel du cours IA (Markdown → document) (v1.6.5)
+
+- Packages ajoutés : `flutter_markdown` (+ sa dépendance `markdown` en direct pour le builder d'éléments) — justifiés par le rendu réel des cours générés.
+- Nouveau widget `courses/presentation/widgets/markdown_course_view.dart` : rendu Markdown sélectionnable stylé Material 3 (H1/H2/H3 colorés, gras, listes, tableaux bordés, citations) ; blocs de code en carte sombre avec étiquette (`figure_mermaid` quand la source commence par `graph|flowchart|mindmap|…`, sinon `code_block`) ; images `![](url)` via `sizedImageBuilder` avec fallback propre.
+- `_ResultCard` : le texte brut est remplacé par ce rendu (affichage type document). `_EditorCard` devient stateful avec bascule **Aperçu / Modifier** (clés `ai_preview` / `ai_edit`, FR/EN) : aperçu live du Markdown pendant l'édition, éditeur monospace en mode texte.
+- Mermaid resté source copiable (pas de webview dans l'app ; un rendu graphique demanderait `webview_flutter` + serveur mermaid — décision ouverte).
+
+### Rendu Mermaid + quiz pédagogique (v1.6.6)
+
+- **Mermaid** : rendu réel des diagrammes en image PNG via l'encodeur mermaid.ink (`base64Url(code)` → `https://mermaid.ink/img/<b64>?type=png` — aucune donnée sensible : juste la syntaxe du graphe) ; fallback vers la carte de code sombre si hors-ligne.
+- **Quiz** : `formatQuizForDisplay` (affichage seulement, le Markdown copié reste brut) — propositions `A) B) C) D)` forcées une par ligne (liste à puces), `Réponse : X` extrait et regroupé dans un bloc `### Corrigé du quiz` (clé `quiz_correction` FR/EN) rendu APRÈS toutes les questions : on ne voit pas les réponses en lisant. Tests unitaires `test/markdown_course_view_test.dart`.
+
+### Mermaid natif via flutter_mermaid (v1.6.7)
+- Package `flutter_mermaid: ^0.1.0` : rendu natif des diagrammes (`InteractiveMermaidDiagram`, zoom/pan, offline OK — plus de dépendance à mermaid.ink).
+- Types supportés par le renderer : `graph`/`flowchart`, `sequenceDiagram`, `pie`, `gantt`, `timeline` — `mindmap` NON supporté : le prompt backend l'interdit (remplacé par `graph TD` hiérarchique) et `_MermaidFigure` affiche un fallback code brut copiable pour tout bloc non supporté.
+- Compatible avec le prompt backend v5 (cours court/normal/complet : plan, intro, parties avec exemples, étude de cas + correction, quiz 5 QCM + correction, conclusion, sous-sections et exercices challenge pour le complet — voir BACKEND_CONTEXT §18).
+- Labels UI : niveaux `Cours court` / `Cours normal` / `Cours complet`, formats `Cours structuré` / `Fiches mémo` / `Carte mentale`.
+
+### Cours générés : brouillon → validation → lecture (v1.7.0)
+
+- Backend `GET/POST /api/v1/courses` (`contracts/courses.openapi.yaml`) : sauvegarde en DRAFT, listes `mine` (enseignant) / `published` (tous), lecture `/:id`, `publish`/`unpublish`/`delete` (auteur ou ADMIN).
+- Création IA (`ai_course_creator_page`) : bouton **Enregistrer** dans `_ResultCard` (titre dérivé du 1er `# `, garde anti-double-tap, snackbar `course_saved`) ; ré-édition après sauvegarde réarme le bouton (nouveau brouillon, pas de doublon silencieux).
+- `CoursesPage` : section **Cours générés** (enseignant : Valider + Supprimer inline, tap → lecteur) ; section **Cours publiés** (étudiants : tap → lecteur).
+- `course_reader_page.dart` (`/courses/:courseId`) : `MarkdownCourseView` + actions auteur/admin (Valider/Dépublier/Supprimer), erreurs localisées via `failureL10n`.
+- Entité `GeneratedCourse`, datasource dédiée, providers `myGeneratedCoursesProvider` / `publishedCoursesProvider` / `generatedCourseProvider(id)`. Tests `test/generated_course_test.dart`.
+
+### Génération en tâche de fond (v1.7.1)
+
+- `courseGenerationJobProvider` (`StateNotifier`, jamais auto-disposé) : le stream SSE tourne même si l'enseignant quitte la page ; à la fin, **auto-save en DRAFT** (titre dérivé du 1er `# `) + snack `course_ready` avec action « Voir mes brouillons ». Annulation explicite uniquement (`REQUEST_CANCELLED` → idle) ; les erreurs stream remontent via listener (plus de faux « hors-ligne » : timeout stream 10 min + heartbeat `: ping` backend).
+- Page créateur refactorée en observatrice : plus de `Timer`/`CancelToken` locaux, `dispose` n'annule rien ; édition locale (`_editedContent`) puis `saveCurrentEdits` (remplace l'ancien brouillon auto-sauvé, pas de doublon) ; `reset()` = « Nouvelle génération ».
+- `CoursesPage` (enseignant) : bannière `_RunningJobBanner` (tokens • temps + Annuler) au-dessus des brouillons pendant un run.
+- `deriveCourseTitle` extrait dans `application/derive_course_title.dart` (partagé job/page). Tests `test/course_generation_job_test.dart` (faux datasources : auto-save, re-save avec suppression de l'ancien, erreur, idle).
+- v1.7.1 — phases visibles : `onPhase` datasource → `phase` du job → carte de progrès (« Analyse du PDF… » pendant l'extraction) ; `sendTimeout` 5 min pour les gros PDF ; `postStream` inchangé par ailleurs.
+
+*Dernière mise à jour : 2026-10-12*
+*Version : 1.7.0*

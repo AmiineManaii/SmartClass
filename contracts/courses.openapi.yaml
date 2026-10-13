@@ -1,0 +1,382 @@
+openapi: 3.1.0
+info:
+  title: SmartClass API — Generated Courses
+  version: 0.1.0
+  description: >
+    Teacher-generated course library. A generation is saved as DRAFT
+    (visible to its author and admins only); validating it (PUBLISHED)
+    makes it readable by every authenticated user (students included).
+    TEACHER or ADMIN for writes, any authenticated user for published reads.
+servers:
+  - url: /api/v1
+    description: SmartClass API v1 prefix
+tags:
+  - name: courses
+    description: Generated course drafts, validation and reading
+paths:
+  /courses:
+    post:
+      operationId: saveCourse
+      tags:
+        - courses
+      summary: Save a generated course as draft
+      description: >
+        Persists an AI-generated (or hand-written) Markdown course as DRAFT.
+        Drafts are invisible to students until validated via `publishCourse`.
+        TEACHER or ADMIN only.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - content
+                - level
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  example: Fonction Récursive en Python
+                subject:
+                  type: string
+                  maxLength: 500
+                  example: fonctions recursive en python
+                content:
+                  type: string
+                  minLength: 1
+                  maxLength: 500000
+                  description: Course body in Markdown
+                level:
+                  type: string
+                  enum: [concis, equilibre, detaille]
+                difficulty:
+                  type: string
+                  enum: [facile, moyen, difficile]
+                  default: moyen
+                format:
+                  type: string
+                  enum: [resume, flashcards, carte-mentale]
+                  default: resume
+              additionalProperties: false
+      responses:
+        '201':
+          description: Saved draft (with Markdown body)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CourseDetail'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /courses/mine:
+    get:
+      operationId: listMyCourses
+      tags:
+        - courses
+      summary: List my generated courses
+      description: >
+        Newest-first summaries (no Markdown body) authored by the caller,
+        drafts and published mixed. TEACHER or ADMIN only.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Own course summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CourseSummary'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+  /courses/published:
+    get:
+      operationId: listPublishedCourses
+      tags:
+        - courses
+      summary: List validated courses
+      description: >
+        Newest-first summaries of PUBLISHED courses (no Markdown body),
+        readable by every authenticated user (students included).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Published course summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CourseSummary'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+  /courses/{id}:
+    get:
+      operationId: getCourse
+      tags:
+        - courses
+      summary: Read one course
+      description: >
+        Full course with the Markdown body. Published courses are readable
+        by every authenticated user; drafts only by their author or an
+        admin (other callers get 404 so draft existence never leaks).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Course detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CourseDetail'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '404':
+          description: Unknown course or draft of another author
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+    delete:
+      operationId: deleteCourse
+      tags:
+        - courses
+      summary: Delete a course
+      description: >
+        Deletes a draft or published course. Author or ADMIN only
+        (strangers get 403). TEACHER or ADMIN only.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deletion receipt
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - id
+                      - deleted
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      deleted:
+                        type: boolean
+                        example: true
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          description: Unknown course
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /courses/{id}/publish:
+    patch:
+      operationId: publishCourse
+      tags:
+        - courses
+      summary: Validate a draft
+      description: >
+        Moves a DRAFT to PUBLISHED so every authenticated user (students
+        included) can read it. Author or ADMIN only. TEACHER or ADMIN only.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Published course (with Markdown body)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CourseDetail'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          description: Unknown course
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /courses/{id}/unpublish:
+    patch:
+      operationId: unpublishCourse
+      tags:
+        - courses
+      summary: Return a course to draft
+      description: >
+        Moves a PUBLISHED course back to DRAFT (hidden from students
+        again). Author or ADMIN only. TEACHER or ADMIN only.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Draft course (with Markdown body)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CourseDetail'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          description: Unknown course
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+components:
+  schemas:
+    CourseSummary:
+      type: object
+      required:
+        - id
+        - title
+        - subject
+        - level
+        - difficulty
+        - format
+        - status
+        - authorId
+        - authorName
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: Fonction Récursive en Python
+        subject:
+          type: string
+          nullable: true
+        level:
+          type: string
+          enum: [concis, equilibre, detaille]
+        difficulty:
+          type: string
+          enum: [facile, moyen, difficile]
+        format:
+          type: string
+          enum: [resume, flashcards, carte-mentale]
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED]
+        authorId:
+          type: string
+          format: uuid
+        authorName:
+          type: string
+          example: Thomas Laurent
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CourseDetail:
+      allOf:
+        - $ref: '#/components/schemas/CourseSummary'
+        - type: object
+          required:
+            - content
+          properties:
+            content:
+              type: string
+              description: Course body in Markdown

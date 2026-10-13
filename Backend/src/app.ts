@@ -15,6 +15,8 @@ import {
 import type { AuthModuleOptions } from './modules/auth/index.js';
 import { createHealthModule, type HealthModuleOptions } from './modules/health/index.js';
 import type { UsersModuleOptions } from './modules/users/index.js';
+import type { AdminModuleOptions } from './modules/admin/index.js';
+import type { AiModuleOptions } from './modules/ai-assistant/index.js';
 import type { GroupsModuleOptions } from './modules/groups/index.js';
 import type { ExamsModuleOptions } from './modules/exams/index.js';
 import type { VideoconferenceModuleOptions } from './modules/videoconference/index.js';
@@ -24,6 +26,8 @@ export interface CreateAppOptions {
   healthModuleOptions?: HealthModuleOptions;
   authModuleOptions?: AuthModuleOptions;
   usersModuleOptions?: UsersModuleOptions;
+  adminModuleOptions?: AdminModuleOptions;
+  aiModuleOptions?: AiModuleOptions;
   groupsModuleOptions?: GroupsModuleOptions;
   examsModuleOptions?: ExamsModuleOptions;
   videoconferenceModuleOptions?: VideoconferenceModuleOptions;
@@ -103,6 +107,8 @@ export const createApp = (options: CreateAppOptions = {}): Express => {
   const apiRouter = createApiRouter({
     authModuleOptions: options.authModuleOptions,
     usersModuleOptions: options.usersModuleOptions,
+    adminModuleOptions: options.adminModuleOptions,
+    aiModuleOptions: options.aiModuleOptions,
     groupsModuleOptions: options.groupsModuleOptions,
     examsModuleOptions: options.examsModuleOptions,
     videoconferenceModuleOptions: options.videoconferenceModuleOptions,

@@ -34,7 +34,11 @@ export const registerSchema = z
     password: z.string().min(8, 'Password must be at least 8 characters long').regex(passwordRegex, passwordMessage),
     firstName: z.string().trim().min(2, 'First name must be at least 2 characters').max(100),
     lastName: z.string().trim().min(2, 'Last name must be at least 2 characters').max(100),
-    role: roleSchema.default('STUDENT'),
+    // RG1: the onboarding role is chosen AFTER registration on
+    // /role-selection (PATCH /users/me/role). An omitted (or null) role
+    // stays null — it must NOT default to STUDENT, otherwise the
+    // once-only assignment would be consumed before onboarding.
+    role: z.preprocess((val) => (val === null ? undefined : val), roleSchema.optional()),
   })
   .strict();
 

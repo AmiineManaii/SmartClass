@@ -1,19 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../infrastructure/datasources/mock_ai_course_options_datasource.dart';
+import '../../../../core/network/network_providers.dart';
+import '../../infrastructure/datasources/ai_course_remote_datasource.dart';
 
-final mockAiCourseOptionsDataSourceProvider = Provider<MockAiCourseOptionsDataSource>((ref) {
-  return const MockAiCourseOptionsDataSource();
+final aiCourseRemoteDataSourceProvider = Provider<AiCourseRemoteDataSource>((ref) {
+  return AiCourseRemoteDataSource(ref.watch(apiClientProvider));
 });
 
-final aiCourseSubjectsProvider = Provider<List<String>>((ref) {
-  return ref.watch(mockAiCourseOptionsDataSourceProvider).subjects();
+/// Subjects the teacher really teaches (their assignments).
+/// Empty when the teacher has no class yet.
+final aiTeacherSubjectsProvider = FutureProvider<List<String>>((ref) {
+  return ref.watch(aiCourseRemoteDataSourceProvider).myTeachingSubjects();
 });
 
-final aiCourseLevelsProvider = Provider<List<String>>((ref) {
-  return ref.watch(mockAiCourseOptionsDataSourceProvider).levels();
-});
-
-final aiCourseSuggestionChipsProvider = Provider<List<AiSuggestionChip>>((ref) {
-  return ref.watch(mockAiCourseOptionsDataSourceProvider).suggestionChips();
+/// Local model reachability (never throws: `available: false` when down).
+final aiModelStatusProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  try {
+    return await ref.watch(aiCourseRemoteDataSourceProvider).status();
+  } catch (_) {
+    return const {'available': false, 'model': ''};
+  }
 });

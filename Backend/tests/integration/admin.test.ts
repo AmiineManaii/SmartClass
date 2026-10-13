@@ -47,8 +47,11 @@ describe('Integration: Admin endpoints (users / groups / exams / videoconference
     await registerAndVerify(studentEmail, 'Salma', 'Benali');
 
     // ADMIN is never self-assignable via the API: promote directly for tests.
+    // New accounts register with role null (chosen later on /role-selection),
+    // so every fixture role is set explicitly here.
     await prisma.user.update({ where: { email: adminEmail }, data: { role: 'ADMIN' } });
     await prisma.user.update({ where: { email: teacherEmail }, data: { role: 'TEACHER' } });
+    await prisma.user.update({ where: { email: studentEmail }, data: { role: 'STUDENT' } });
 
     const adminLogin = await request(app)
       .post('/api/v1/auth/login')
@@ -206,6 +209,29 @@ describe('Integration: Admin endpoints (users / groups / exams / videoconference
     expect(wrongRole.status).toBe(422);
   });
 
+  it('GET /groups/mine returns the caller classes with roles (no admin required)', async () => {
+    const student = await request(app).get('/api/v1/groups/mine').set(auth(studentToken));
+
+    expect(student.status).toBe(200);
+    expect(student.body.data).toHaveLength(1);
+    expect(student.body.data[0]).toMatchObject({ id: groupId, myRole: 'STUDENT' });
+
+    const teacherLogin = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: teacherEmail, password });
+    expect(teacherLogin.status).toBe(200);
+    const teacher = await request(app)
+      .get('/api/v1/groups/mine')
+      .set(auth(teacherLogin.body.data.accessToken as string));
+
+    expect(teacher.status).toBe(200);
+    expect(teacher.body.data).toHaveLength(1);
+    expect(teacher.body.data[0]).toMatchObject({ id: groupId, myRole: 'TEACHER' });
+
+    const anonymous = await request(app).get('/api/v1/groups/mine');
+    expect(anonymous.status).toBe(401);
+  });
+
   it('GET /exams/fraud-reports/summary returns counters', async () => {
     await prisma.fraudReport.create({
       data: {
@@ -332,10 +358,178 @@ describe('Integration: Admin endpoints (users / groups / exams / videoconference
     expect(badDate.status).toBe(422);
   });
 
+  it('GET /videoconference/timetable is class-scoped (member/teacher 200, outsider 403)', async () => {
+    const teacherLogin = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: teacherEmail, password });
+    expect(teacherLogin.status).toBe(200);
+
+    const teacher = await request(app)
+      .get('/api/v1/videoconference/timetable')
+      .query({ classGroupId: groupId })
+      .set(auth(teacherLogin.body.data.accessToken as string));
+    expect(teacher.status).toBe(200);
+    expect(teacher.body.data.days).toHaveLength(6);
+
+    const student = await request(app)
+      .get('/api/v1/videoconference/timetable')
+      .query({ classGroupId: groupId })
+      .set(auth(studentToken));
+    expect(student.status).toBe(200);
+
+    const outsiderEmail = `outsider_${stamp}@test.com`;
+    await request(app).post('/api/v1/auth/register').send({
+      email: outsiderEmail,
+      password,
+      firstName: 'Out',
+      lastName: 'Sider',
+    });
+    const sent = emailService.getSentEmails();
+    await request(app)
+      .post('/api/v1/auth/verify-email')
+      .send({ email: outsiderEmail, code: sent[sent.length - 1]?.code ?? '' });
+    const outsiderLogin = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: outsiderEmail, password });
+    const outsider = await request(app)
+      .get('/api/v1/videoconference/timetable')
+      .query({ classGroupId: groupId })
+      .set(auth(outsiderLogin.body.data.accessToken as string));
+    expect(outsider.status).toBe(403);
+    expect(outsider.body.error.code).toBe('FORBIDDEN');
+  });
+
   it('non-admin callers are rejected on admin routes (403)', async () => {
     const res = await request(app)
       .get('/api/v1/exams/fraud-reports/summary')
       .set(auth(studentToken));
     expect(res.status).toBe(403);
+  });
+
+  it('GET /admin/overview returns live aggregates and rejects non-admins', async () => {
+    const res = await request(app).get('/api/v1/admin/overview').set(auth(adminToken));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.students.total).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.teachers.total).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.classes.total).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.enrollments).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.teachers.activePct).toBeGreaterThanOrEqual(0);
+    expect(res.body.data.frauds.untreated).toBeGreaterThanOrEqual(0);
+
+    const forbidden = await request(app).get('/api/v1/admin/overview').set(auth(studentToken));
+    expect(forbidden.status).toBe(403);
+  });
+
+  it('GET /groups/departments lists filières in use', async () => {
+    const res = await request(app).get('/api/v1/groups/departments').set(auth(adminToken));
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data.departments)).toBe(true);
+    expect(res.body.data.departments.length).toBeGreaterThanOrEqual(1);
+    for (const department of res.body.data.departments as Array<{
+      name: string;
+      classCount: number;
+    }>) {
+      expect(typeof department.name).toBe('string');
+      expect(department.classCount).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('PATCH /groups/:id updates a class and validates the referent', async () => {
+    const updated = await request(app)
+      .patch(`/api/v1/groups/${groupId}`)
+      .set(auth(adminToken))
+      .send({ description: 'Promo mise à jour', referentId: teacherId });
+
+    expect(updated.status).toBe(200);
+    expect(updated.body.data.description).toBe('Promo mise à jour');
+    expect(updated.body.data.referent?.id).toBe(teacherId);
+
+    const wrongRole = await request(app)
+      .patch(`/api/v1/groups/${groupId}`)
+      .set(auth(adminToken))
+      .send({ referentId: studentId });
+    expect(wrongRole.status).toBe(422);
+
+    const cleared = await request(app)
+      .patch(`/api/v1/groups/${groupId}`)
+      .set(auth(adminToken))
+      .send({ referentId: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.data.referent).toBeNull();
+
+    const missing = await request(app)
+      .patch('/api/v1/groups/00000000-0000-0000-0000-000000000000')
+      .set(auth(adminToken))
+      .send({ name: 'Ghost' });
+    expect(missing.status).toBe(404);
+  });
+
+  it('DELETE /groups/:id archives a class (204, then 404)', async () => {
+    const created = await request(app)
+      .post('/api/v1/groups')
+      .set(auth(adminToken))
+      .send({ name: `Temp ${stamp}`, level: 'LICENCE', capacity: 10 });
+    expect(created.status).toBe(201);
+    const tempId = created.body.data.id as string;
+
+    const deleted = await request(app).delete(`/api/v1/groups/${tempId}`).set(auth(adminToken));
+    expect(deleted.status).toBe(204);
+
+    const gone = await request(app).get(`/api/v1/groups/${tempId}`).set(auth(adminToken));
+    expect(gone.status).toBe(404);
+
+    const missing = await request(app)
+      .delete('/api/v1/groups/00000000-0000-0000-0000-000000000000')
+      .set(auth(adminToken));
+    expect(missing.status).toBe(404);
+  });
+
+  it('GET /groups/:id/members lists enrolments and DELETE removes them', async () => {
+    const list = await request(app)
+      .get(`/api/v1/groups/${groupId}/members`)
+      .query({ page: 1, limit: 20 })
+      .set(auth(adminToken));
+
+    expect(list.status).toBe(200);
+    expect(list.body.meta.total).toBe(1);
+    expect(list.body.data[0].id).toBe(studentId);
+
+    const removed = await request(app)
+      .delete(`/api/v1/groups/${groupId}/members`)
+      .set(auth(adminToken))
+      .send({ studentIds: [studentId] });
+
+    expect(removed.status).toBe(200);
+    expect(removed.body.data.removed).toEqual([studentId]);
+    expect(removed.body.data.memberCount).toBe(0);
+
+    const relisted = await request(app)
+      .get(`/api/v1/groups/${groupId}/members`)
+      .set(auth(adminToken));
+    expect(relisted.body.meta.total).toBe(0);
+  });
+
+  it('GET /groups/:id/teachers lists assignments and DELETE removes them', async () => {
+    const list = await request(app)
+      .get(`/api/v1/groups/${groupId}/teachers`)
+      .set(auth(adminToken));
+
+    expect(list.status).toBe(200);
+    expect(list.body.data.teacherCount).toBe(1);
+    expect(list.body.data.assignments[0]).toMatchObject({
+      teacherId,
+      subject: 'Algorithmique',
+    });
+
+    const removed = await request(app)
+      .delete(`/api/v1/groups/${groupId}/teachers`)
+      .set(auth(adminToken))
+      .send({ teacherIds: [teacherId] });
+
+    expect(removed.status).toBe(200);
+    expect(removed.body.data.removed).toEqual([teacherId]);
+    expect(removed.body.data.teacherCount).toBe(0);
   });
 });
