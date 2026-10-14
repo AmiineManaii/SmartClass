@@ -7,6 +7,7 @@ import type { ListMyCoursesUseCase } from '../application/list-my-courses.use-ca
 import type { ListPublishedCoursesUseCase } from '../application/list-published-courses.use-case.js';
 import type { PublishCourseUseCase } from '../application/publish-course.use-case.js';
 import type { SaveCourseUseCase } from '../application/save-course.use-case.js';
+import type { UpdateCourseUseCase } from '../application/update-course.use-case.js';
 import type { UnpublishCourseUseCase } from '../application/unpublish-course.use-case.js';
 
 const requireUser = (req: Request): { id: string; role: Role | null } => {
@@ -19,6 +20,7 @@ const requireUser = (req: Request): { id: string; role: Role | null } => {
 export class CoursesController {
   constructor(
     private readonly saveCourseUseCase: SaveCourseUseCase,
+    private readonly updateCourseUseCase: UpdateCourseUseCase,
     private readonly listMyCoursesUseCase: ListMyCoursesUseCase,
     private readonly listPublishedCoursesUseCase: ListPublishedCoursesUseCase,
     private readonly getCourseUseCase: GetCourseUseCase,
@@ -26,6 +28,25 @@ export class CoursesController {
     private readonly unpublishCourseUseCase: UnpublishCourseUseCase,
     private readonly deleteCourseUseCase: DeleteCourseUseCase,
   ) {}
+
+  public updateCourse = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const user = requireUser(req);
+      const result = await this.updateCourseUseCase.execute({
+        requesterId: user.id,
+        requesterRole: user.role,
+        courseId: req.params.id as string,
+        ...req.body,
+      });
+      res.status(200).json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
 
   public saveCourse = async (
     req: Request,

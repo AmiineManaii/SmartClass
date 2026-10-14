@@ -86,8 +86,39 @@ class GeneratedCoursesRemoteDataSource {
     return _toOne(res.data);
   }
 
+  /// Updates an existing course draft (author or ADMIN).
+  Future<GeneratedCourse> updateCourse({
+    required String id,
+    String? title,
+    String? subject,
+    String? content,
+    String? level,
+    String? difficulty,
+    String? format,
+  }) async {
+    final res = await _client.patch<dynamic>(
+      '$_base/courses/$id',
+      data: {
+        // ignore: use_null_aware_elements
+        if (title != null) 'title': title,
+        // ignore: use_null_aware_elements
+        if (subject != null) 'subject': subject,
+        // ignore: use_null_aware_elements
+        if (content != null) 'content': content,
+        // ignore: use_null_aware_elements
+        if (level != null) 'level': level,
+        // ignore: use_null_aware_elements
+        if (difficulty != null) 'difficulty': difficulty,
+        // ignore: use_null_aware_elements
+        if (format != null) 'format': format,
+      },
+    );
+    return _toOne(res.data);
+  }
+
   /// Deletes a course (author or ADMIN).
   Future<void> deleteCourse(String id) async {
     await _client.delete<dynamic>('$_base/courses/$id');
   }
 }
+

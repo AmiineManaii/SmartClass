@@ -3,6 +3,8 @@ import type {
   GenerateCourseDTO,
   GenerateCourseUseCase,
 } from '../application/generate-course.use-case.js';
+import type { GenerateOutlineUseCase } from '../application/generate-outline.use-case.js';
+import type { RefineSectionUseCase } from '../application/refine-section.use-case.js';
 import type { GetAiStatusUseCase } from '../application/get-ai-status.use-case.js';
 import type { ImprovePdfUseCase } from '../application/improve-pdf.use-case.js';
 import type {
@@ -20,7 +22,39 @@ export class AiController {
     private readonly generateCourseUseCase: GenerateCourseUseCase,
     private readonly improvePdfUseCase: ImprovePdfUseCase,
     private readonly getAiStatusUseCase: GetAiStatusUseCase,
+    private readonly generateOutlineUseCase: GenerateOutlineUseCase,
+    private readonly refineSectionUseCase: RefineSectionUseCase,
   ) {}
+
+  public generateOutline = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const result = await this.generateOutlineUseCase.execute(req.body);
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public refineSection = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const result = await this.refineSectionUseCase.execute(req.body);
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
 
   public generateCourse = async (
     req: Request,

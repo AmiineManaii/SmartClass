@@ -4,6 +4,7 @@ import { validate } from '../../../shared/http/validate.middleware.js';
 import {
   courseIdParamsSchema,
   saveCourseBodySchema,
+  updateCourseBodySchema,
 } from './courses.validation.js';
 
 export interface CoursesRouterOptions {
@@ -35,6 +36,14 @@ export const createCoursesRouter = (options: CoursesRouterOptions): Router => {
     authenticateMiddleware,
     validate({ params: courseIdParamsSchema }),
     controller.getCourse,
+  );
+
+  router.patch(
+    '/:id',
+    authenticateMiddleware,
+    requireTeacherMiddleware,
+    validate({ params: courseIdParamsSchema, body: updateCourseBodySchema }),
+    controller.updateCourse,
   );
 
   router.patch(

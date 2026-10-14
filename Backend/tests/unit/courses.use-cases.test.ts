@@ -8,8 +8,10 @@ import type {
 import type {
   CourseRepositoryPort,
   SaveCourseParams,
+  UpdateCourseParams,
 } from '../../src/modules/courses/domain/course-repository.port.js';
 import { SaveCourseUseCase } from '../../src/modules/courses/application/save-course.use-case.js';
+import { UpdateCourseUseCase } from '../../src/modules/courses/application/update-course.use-case.js';
 import { ListMyCoursesUseCase } from '../../src/modules/courses/application/list-my-courses.use-case.js';
 import { ListPublishedCoursesUseCase } from '../../src/modules/courses/application/list-published-courses.use-case.js';
 import { GetCourseUseCase } from '../../src/modules/courses/application/get-course.use-case.js';
@@ -75,6 +77,23 @@ class FakeCourseRepository implements CourseRepositoryPort {
 
   async remove(id: string): Promise<void> {
     this.store.delete(id);
+  }
+
+  async update(id: string, params: UpdateCourseParams): Promise<CourseDetail> {
+    const course = this.store.get(id);
+    if (!course) throw new Error('missing in fake');
+    const next: CourseDetail = {
+      ...course,
+      ...(params.title !== undefined ? { title: params.title } : {}),
+      ...(params.subject !== undefined ? { subject: params.subject } : {}),
+      ...(params.content !== undefined ? { content: params.content } : {}),
+      ...(params.level !== undefined ? { level: params.level } : {}),
+      ...(params.difficulty !== undefined ? { difficulty: params.difficulty } : {}),
+      ...(params.format !== undefined ? { format: params.format } : {}),
+      updatedAt: new Date(),
+    };
+    this.store.set(id, next);
+    return next;
   }
 }
 
@@ -253,4 +272,41 @@ describe('Unit: publish / unpublish / delete', () => {
       }),
     ).rejects.toMatchObject({ statusCode: 404 });
   });
+
+  it('updates draft course by author or admin, rejects strangers', async () => {
+    const repo = new FakeCourseRepository();
+    const draft = await seedDraft(repo, TEACHER);
+    const updateUseCase = new UpdateCourseUseCase(repo);
+
+    await expect(
+      updateUseCase.execute({
+        requesterId: OTHER_TEACHER,
+        requesterRole: TEACHER_ROLE,
+        courseId: draft.id,
+        title: 'Nouveau titre piraté',
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+
+    const updated = await updateUseCase.execute({
+      requesterId: TEACHER,
+      requesterRole: TEACHER_ROLE,
+      courseId: draft.id,
+      title: 'Titre mis à jour',
+      content: '# Nouveau contenu amélioré',
+    });
+
+    expect(updated.title).toBe('Titre mis à jour');
+    expect(updated.content).toBe('# Nouveau contenu amélioré');
+    expect(updated.subject).toBe(draft.subject);
+
+    // Admin can also update
+    const adminUpdated = await updateUseCase.execute({
+      requesterId: 'admin-id',
+      requesterRole: ADMIN,
+      courseId: draft.id,
+      difficulty: 'avance',
+    });
+    expect(adminUpdated.difficulty).toBe('avance');
+  });
 });
+

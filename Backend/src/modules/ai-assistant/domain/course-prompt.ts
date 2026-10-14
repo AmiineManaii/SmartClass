@@ -219,3 +219,121 @@ export const buildCoursePrompt = (input: CoursePromptInput): CoursePrompt => {
 
   return { version: COURSE_PROMPT_VERSION, system, user };
 };
+
+export interface CourseOutlineSection {
+  id: string;
+  title: string;
+  description: string;
+  keyTopics: string[];
+  estimatedMinutes?: number;
+}
+
+export interface CourseOutline {
+  title: string;
+  targetAudience: string;
+  prerequisites: string[];
+  sections: CourseOutlineSection[];
+}
+
+export const buildOutlinePrompt = (input: {
+  topic: string;
+  level: GenerateLevel;
+  difficulty: GenerateDifficulty;
+  sourceContext?: string;
+}): CoursePrompt => {
+  const system =
+    `Tu es un concepteur pédagogique universitaire expert.\n` +
+    `Ton rôle est de concevoir le plan structuré (syllabus/sommaire) d'un cours universitaire de niveau ${input.level} et difficulté ${input.difficulty}.\n` +
+    `Le plan doit être logique, rigoureux, progressif et adapté au système LMD.\n` +
+    `Format de sortie : STRICTEMENT un bloc de code JSON valide (sans aucun texte avant ou après) respectant ce schéma exact :\n` +
+    `{\n` +
+    `  "title": "<Titre précis et académique du cours>",\n` +
+    `  "targetAudience": "<Public visé, ex: Licence 3 Informatique>",\n` +
+    `  "prerequisites": ["<Prérequis 1>", "<Prérequis 2>"],\n` +
+    `  "sections": [\n` +
+    `    {\n` +
+    `      "id": "sec-1",\n` +
+    `      "title": "<Titre du Chapitre ou de la Partie>",\n` +
+    `      "description": "<Résumé en 1-2 phrases des notions abordées>",\n` +
+    `      "keyTopics": ["<Notion clé 1>", "<Notion clé 2>", "<Exemple ou cas pratique>"],\n` +
+    `      "estimatedMinutes": 15\n` +
+    `    }\n` +
+    `  ]\n` +
+    `}`;
+
+  const user =
+    `Sujet du cours : ${input.topic}\n` +
+    (input.sourceContext ? `Contenu de référence extrait :\n${input.sourceContext.slice(0, 4000)}\n\n` : '') +
+    `Génère entre 4 et 7 chapitres structurés au format JSON pur.`;
+
+  return { version: COURSE_PROMPT_VERSION, system, user };
+};
+
+export const buildCourseFromOutlinePrompt = (input: {
+  outline: CourseOutline;
+  level: GenerateLevel;
+  difficulty: GenerateDifficulty;
+  extras: GenerateExtras;
+  format: GenerateFormat;
+  toolsOffered: boolean;
+}): CoursePrompt => {
+  const base = buildCoursePrompt({
+    mode: 'topic',
+    level: input.level,
+    difficulty: input.difficulty,
+    extras: input.extras,
+    format: input.format,
+    subject: input.outline.title,
+    toolsOffered: input.toolsOffered,
+  });
+
+  const sectionsList = input.outline.sections
+    .map(
+      (s, idx) =>
+        `Partie ${idx + 1} : ${s.title}\n` +
+        `Objectifs / Notions obligatoires : ${s.keyTopics.join(', ')}\n` +
+        `Description : ${s.description}`,
+    )
+    .join('\n\n');
+
+  const customUser =
+    `Titre du cours validé : ${input.outline.title}\n` +
+    `Public cible : ${input.outline.targetAudience}\n` +
+    (input.outline.prerequisites.length > 0 ? `Prérequis : ${input.outline.prerequisites.join(', ')}\n\n` : '\n') +
+    `Rédige le cours complet en suivant STRICTEMENT et EXHAUSTIVEMENT le plan validé ci-dessous par l'enseignant. Ne saute aucun chapitre et respecte scrupuleusement cet ordre :\n\n` +
+    `--- PLAN VALIDÉ PAR L'ENSEIGNANT ---\n` +
+    `${sectionsList}\n` +
+    `--- FIN DU PLAN ---\n\n` +
+    `Assure-toi que chaque chapitre est complet, riche d'explications et d'exemples pratiques résolus, et intègre le quiz d'évaluation final comme convenu.`;
+
+  return {
+    version: COURSE_PROMPT_VERSION,
+    system: base.system,
+    user: customUser,
+  };
+};
+
+export const buildRefineSectionPrompt = (input: {
+  courseTitle?: string;
+  selectedText: string;
+  instruction: string;
+  fullContext?: string;
+}): CoursePrompt => {
+  const system =
+    `Tu es un assistant pédagogique universitaire de haut niveau.\n` +
+    `L'enseignant révise son cours et souhaite modifier spécifiquement un passage sélectionné.\n` +
+    `Ta mission : appliquer STRICTEMENT la consigne demandée par l'enseignant sur le passage sélectionné, tout en maintenant un ton académique, clair et rigoureux.\n` +
+    `- Format de sortie : uniquement le texte Markdown de remplacement (la nouvelle version du passage). N'ajoute aucune formule de politesse, ni introduction. Produis directement le contenu prêt à remplacer le passage sélectionné.`;
+
+  const user =
+    (input.courseTitle ? `Titre du cours : ${input.courseTitle}\n\n` : '') +
+    (input.fullContext ? `Contexte général du cours (pour cohérence) :\n${input.fullContext.slice(0, 3000)}\n\n` : '') +
+    `--- PASSAGE ACTUEL SÉLECTIONNÉ PAR L'ENSEIGNANT ---\n` +
+    `${input.selectedText}\n` +
+    `--- FIN DU PASSAGE ACTUEL ---\n\n` +
+    `CONSIGNE DE L'ENSEIGNANT POUR CE PASSAGE :\n` +
+    `"${input.instruction}"\n\n` +
+    `Rédige maintenant le nouveau texte de remplacement :`;
+
+  return { version: COURSE_PROMPT_VERSION, system, user };
+};

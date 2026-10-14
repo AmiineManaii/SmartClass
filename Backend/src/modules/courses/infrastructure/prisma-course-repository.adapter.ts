@@ -10,6 +10,7 @@ import type {
 import type {
   CourseRepositoryPort,
   SaveCourseParams,
+  UpdateCourseParams,
 } from '../domain/course-repository.port.js';
 
 interface RawCourseRow {
@@ -70,6 +71,22 @@ export class PrismaCourseRepositoryAdapter implements CourseRepositoryPort {
         format: params.format,
         status: 'DRAFT',
         authorId: params.authorId,
+      },
+      include: this.withAuthor,
+    })) as unknown as RawCourseRow;
+    return this.toDetail(row);
+  }
+
+  public async update(id: string, params: UpdateCourseParams): Promise<CourseDetail> {
+    const row = (await this.prisma.course.update({
+      where: { id },
+      data: {
+        ...(params.title !== undefined ? { title: params.title } : {}),
+        ...(params.subject !== undefined ? { subject: params.subject } : {}),
+        ...(params.content !== undefined ? { content: params.content } : {}),
+        ...(params.level !== undefined ? { level: params.level } : {}),
+        ...(params.difficulty !== undefined ? { difficulty: params.difficulty } : {}),
+        ...(params.format !== undefined ? { format: params.format } : {}),
       },
       include: this.withAuthor,
     })) as unknown as RawCourseRow;

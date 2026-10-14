@@ -43,6 +43,7 @@ const extractText = (content: unknown): string => {
 export class OpenAICompatibleGateway implements AiGatewayPort {
   private readonly baseUrl: string;
   private readonly model: string;
+  private readonly fallbackModel: string;
   private readonly apiKey: string;
   private readonly timeoutMs: number;
   private readonly statusTimeoutMs: number;
@@ -50,6 +51,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
   constructor(params?: {
     baseUrl?: string;
     model?: string;
+    fallbackModel?: string;
     apiKey?: string;
     timeoutMs?: number;
     statusTimeoutMs?: number;
@@ -57,6 +59,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
     const env = getEnv();
     this.baseUrl = (params?.baseUrl ?? env.AI_BASE_URL).replace(/\/+$/, '');
     this.model = params?.model ?? env.AI_MODEL;
+    this.fallbackModel = params?.fallbackModel ?? env.AI_FALLBACK_MODEL;
     this.apiKey = params?.apiKey ?? env.AI_API_KEY;
     this.timeoutMs = params?.timeoutMs ?? env.AI_TIMEOUT_MS;
     this.statusTimeoutMs = params?.statusTimeoutMs ?? env.AI_STATUS_TIMEOUT_MS;
@@ -96,6 +99,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
     input: ChatCompletionInput,
     tools: ChatTool[] | undefined,
     timeoutMs: number,
+    modelName: string = this.model,
   ): Promise<ChatCompletionsBody & { httpStatus: number }> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -108,7 +112,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
           ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
         },
         body: JSON.stringify({
-          model: this.model,
+          model: modelName,
           messages: [
             { role: 'system', content: input.system },
             { role: 'user', content: input.user },
@@ -133,8 +137,38 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
 
   public async chatCompletion(input: ChatCompletionInput): Promise<ChatCompletionResult> {
     const tools = input.tools && input.tools.length > 0 ? input.tools : undefined;
+    let activeModel = this.model;
 
-    let raw = await this.postOrThrow(input, tools);
+    let raw: ChatCompletionsBody & { httpStatus: number };
+    try {
+      raw = await this.postOrThrow(input, tools, activeModel);
+    } catch (err) {
+      if (this.fallbackModel && this.fallbackModel !== activeModel) {
+        logger.warn(
+          { primary: activeModel, fallback: this.fallbackModel, error: err },
+          'Primary AI model unreachable, attempting fallback model',
+        );
+        activeModel = this.fallbackModel;
+        raw = await this.postOrThrow(input, tools, activeModel);
+      } else {
+        throw err;
+      }
+    }
+
+    // If model not found (404) or server error (500) with primary model, retry with fallback
+    if (
+      (raw.httpStatus === 404 || raw.httpStatus >= 500) &&
+      this.fallbackModel &&
+      this.fallbackModel !== activeModel
+    ) {
+      logger.warn(
+        { primary: activeModel, fallback: this.fallbackModel, status: raw.httpStatus },
+        'Primary AI model returned error, attempting fallback model',
+      );
+      activeModel = this.fallbackModel;
+      raw = await this.postOrThrow(input, tools, activeModel);
+    }
+
     let toolsUsed = tools !== undefined;
 
     // The local server may not support tool calling (400): degrade
@@ -142,7 +176,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
     if (raw.httpStatus === 400 && tools !== undefined) {
       logger.info('AI gateway rejected tools, retrying without them');
       toolsUsed = false;
-      raw = await this.postOrThrow(input, undefined);
+      raw = await this.postOrThrow(input, undefined, activeModel);
     }
 
     if (raw.httpStatus === 429) {
@@ -167,7 +201,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
       content,
       promptTokens: raw.usage?.prompt_tokens ?? null,
       completionTokens: raw.usage?.completion_tokens ?? null,
-      model: raw.model ?? this.model,
+      model: raw.model ?? activeModel,
       toolsUsed,
     };
   }
@@ -175,11 +209,12 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
   private async postOrThrow(
     input: ChatCompletionInput,
     tools: ChatTool[] | undefined,
+    modelName: string = this.model,
   ): Promise<ChatCompletionsBody & { httpStatus: number }> {
     try {
-      return await this.postCompletions(input, tools, this.timeoutMs);
+      return await this.postCompletions(input, tools, this.timeoutMs, modelName);
     } catch (error) {
-      logger.warn({ err: error }, 'AI gateway unreachable');
+      logger.warn({ err: error, model: modelName }, 'AI gateway request failed');
       throw new ServiceUnavailableError(
         'The local AI model is currently unreachable. Start it in Unsloth Desktop and retry.',
       );
@@ -191,13 +226,30 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
     onDelta: (delta: string) => void,
   ): Promise<StreamCompletionUsage> {
     const tools = input.tools && input.tools.length > 0 ? input.tools : undefined;
-    const events = await this.openStream(input, tools);
+    let activeModel = this.model;
+    let events: ReadableStream<Uint8Array> | null = null;
+
+    try {
+      events = await this.openStream(input, tools, activeModel);
+    } catch (err) {
+      if (this.fallbackModel && this.fallbackModel !== activeModel) {
+        logger.warn(
+          { primary: activeModel, fallback: this.fallbackModel, error: err },
+          'Primary AI model stream failed, attempting fallback model',
+        );
+        activeModel = this.fallbackModel;
+        events = await this.openStream(input, tools, activeModel);
+      } else {
+        throw err;
+      }
+    }
+
     let stream = events;
     if (stream === null) {
       // The local server may not support tool calling (400): degrade
       // gracefully by retrying the same prompt without tools.
       logger.info('AI gateway rejected tools, retrying stream without them');
-      stream = await this.openStream(input, undefined);
+      stream = await this.openStream(input, undefined, activeModel);
       if (stream === null) {
         throw new InternalError('Course generation failed on the AI gateway.');
       }
@@ -217,6 +269,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
   private async openStream(
     input: ChatCompletionInput,
     tools: ChatTool[] | undefined,
+    modelName: string = this.model,
   ): Promise<ReadableStream<Uint8Array> | null> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -230,7 +283,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
           ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
         },
         body: JSON.stringify({
-          model: this.model,
+          model: modelName,
           messages: [
             { role: 'system', content: input.system },
             { role: 'user', content: input.user },
@@ -246,6 +299,10 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
         signal: controller.signal,
       });
       if (response.status === 400 && tools !== undefined) return null;
+      if (response.status === 404 && modelName !== this.fallbackModel && this.fallbackModel) {
+        logger.warn({ primary: modelName, fallback: this.fallbackModel }, 'Model 404, falling back in stream');
+        return await this.openStream(input, tools, this.fallbackModel);
+      }
       if (response.status === 429) {
         throw new ServiceUnavailableError(
           'The local AI model is overloaded, please retry later.',
@@ -340,6 +397,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.statusTimeoutMs);
+      let detectedModel = this.model;
       try {
         // Unsloth requires the API key even on GET /v1/models.
         const response = await fetch(`${this.baseUrl}/v1/models`, {
@@ -351,12 +409,23 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
         if (!response.ok) {
           return { available: false, model: this.model, latencyMs: null };
         }
-        // Drain the body so sockets are reused.
-        await response.arrayBuffer().catch(() => null);
+        const body = (await response.json().catch(() => null)) as { data?: Array<{ id: string }> } | null;
+        if (body?.data && Array.isArray(body.data)) {
+          const ids = body.data.map((m) => m.id);
+          const hasPrimary = ids.some((id) => id === this.model || id.toLowerCase().includes('gemma'));
+          const hasFallback = ids.some((id) => id === this.fallbackModel || id.toLowerCase().includes('qwen'));
+          if (hasPrimary) {
+            detectedModel = ids.find((id) => id === this.model || id.toLowerCase().includes('gemma')) ?? this.model;
+          } else if (hasFallback) {
+            detectedModel = ids.find((id) => id === this.fallbackModel || id.toLowerCase().includes('qwen')) ?? this.fallbackModel;
+          } else if (ids.length > 0 && ids[0]) {
+            detectedModel = ids[0];
+          }
+        }
       } finally {
         clearTimeout(timer);
       }
-      return { available: true, model: this.model, latencyMs: Date.now() - startedAt };
+      return { available: true, model: detectedModel, latencyMs: Date.now() - startedAt };
     } catch {
       return { available: false, model: this.model, latencyMs: null };
     }

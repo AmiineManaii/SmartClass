@@ -34,6 +34,93 @@ const courseOptions = {
   extras: extrasSchema,
 };
 
+const outlineSectionSchema = z
+  .object({
+    id: z.string().optional(),
+    title: z.string(),
+    description: z.string().optional().default(''),
+    keyTopics: z.array(z.string()).optional().default([]),
+    subtopics: z.array(z.string()).optional().default([]),
+    estimatedMinutes: z.number().optional().default(15),
+  })
+  .passthrough()
+  .transform((s) => ({
+    id: s.id || `sec-${Math.random().toString(36).substring(2, 7)}`,
+    title: s.title,
+    description: s.description || '',
+    keyTopics:
+      s.keyTopics && s.keyTopics.length > 0
+        ? s.keyTopics
+        : s.subtopics && s.subtopics.length > 0
+        ? s.subtopics
+        : [],
+    estimatedMinutes: s.estimatedMinutes ?? 15,
+  }));
+
+export const courseOutlineSchema = z
+  .object({
+    title: z.string().default('Cours'),
+    targetAudience: z.string().optional().default('Étudiants universitaires'),
+    prerequisites: z.array(z.string()).optional().default([]),
+    description: z.string().optional().default(''),
+    sections: z.array(outlineSectionSchema),
+  })
+  .passthrough();
+
+export const generateOutlineBodySchema = z
+  .object({
+    topic: z.string().trim().max(500).optional(),
+    subject: z.string().trim().max(500).optional(),
+    level: levelSchema.default('equilibre'),
+    difficulty: difficultySchema.default('moyen'),
+    format: formatSchema.optional(),
+    mode: modeSchema.optional(),
+    sourceContext: z.string().max(200000).optional(),
+    sourceText: z.string().max(200000).optional(),
+    url: z.string().trim().max(2000).optional(),
+    extras: extrasSchema.optional(),
+  })
+  .passthrough()
+  .refine(
+    (data) => {
+      const main =
+        data.topic ||
+        data.subject ||
+        data.sourceContext ||
+        data.sourceText ||
+        data.url;
+      return typeof main === 'string' && main.trim().length >= 2;
+    },
+    {
+      message: 'Un sujet ou un contenu source est requis (au moins 2 caractères).',
+      path: ['subject'],
+    },
+  )
+  .transform((data) => ({
+    topic: (data.topic || data.subject || data.url || 'Cours sans titre').trim(),
+    level: data.level,
+    difficulty: data.difficulty,
+    sourceContext: data.sourceContext || data.sourceText || data.url,
+  }));
+
+export const refineSectionBodySchema = z
+  .object({
+    courseTitle: z.string().trim().max(200).optional(),
+    selectedText: z.string().min(1).max(50000),
+    instruction: z.string().trim().min(1).max(2000),
+    fullContext: z.string().max(200000).optional(),
+    courseContent: z.string().max(200000).optional(),
+    level: levelSchema.optional(),
+    difficulty: difficultySchema.optional(),
+  })
+  .passthrough()
+  .transform((data) => ({
+    courseTitle: data.courseTitle,
+    selectedText: data.selectedText,
+    instruction: data.instruction,
+    fullContext: data.fullContext || data.courseContent,
+  }));
+
 export const generateCourseBodySchema = z
   .object({
     mode: modeSchema,
@@ -41,14 +128,16 @@ export const generateCourseBodySchema = z
     subject: z.string().trim().max(500).optional(),
     sourceText: z.string().max(200000).optional(),
     url: z.string().trim().max(2000).optional(),
+    outline: courseOutlineSchema.optional(),
   })
   .strict();
 
 /// One endpoint per teacher-facing method (simpler payloads, no `mode`).
 export const fromTopicBodySchema = z
   .object({
-    subject: z.string().trim().min(10).max(500),
+    subject: z.string().trim().min(5).max(500),
     ...courseOptions,
+    outline: courseOutlineSchema.optional(),
   })
   .strict();
 
@@ -74,3 +163,6 @@ export type GenerateCourseBodyInput = z.infer<typeof generateCourseBodySchema>;
 export type FromTopicBodyInput = z.infer<typeof fromTopicBodySchema>;
 export type FromUrlBodyInput = z.infer<typeof fromUrlBodySchema>;
 export type ImprovePdfFieldsInput = z.infer<typeof improvePdfFieldsSchema>;
+export type GenerateOutlineBodyInput = z.infer<typeof generateOutlineBodySchema>;
+export type RefineSectionBodyInput = z.infer<typeof refineSectionBodySchema>;
+

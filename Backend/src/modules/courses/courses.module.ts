@@ -8,6 +8,7 @@ import {
 import type { CourseRepositoryPort } from './domain/course-repository.port.js';
 import { PrismaCourseRepositoryAdapter } from './infrastructure/prisma-course-repository.adapter.js';
 import { SaveCourseUseCase } from './application/save-course.use-case.js';
+import { UpdateCourseUseCase } from './application/update-course.use-case.js';
 import { ListMyCoursesUseCase } from './application/list-my-courses.use-case.js';
 import { ListPublishedCoursesUseCase } from './application/list-published-courses.use-case.js';
 import { GetCourseUseCase } from './application/get-course.use-case.js';
@@ -33,6 +34,7 @@ export const createCoursesModule = (options: CoursesModuleOptions = {}): Courses
   const courseRepository = options.courseRepository ?? new PrismaCourseRepositoryAdapter();
 
   const saveCourseUseCase = new SaveCourseUseCase(courseRepository);
+  const updateCourseUseCase = new UpdateCourseUseCase(courseRepository);
   const listMyCoursesUseCase = new ListMyCoursesUseCase(courseRepository);
   const listPublishedCoursesUseCase = new ListPublishedCoursesUseCase(courseRepository);
   const getCourseUseCase = new GetCourseUseCase(courseRepository);
@@ -42,6 +44,7 @@ export const createCoursesModule = (options: CoursesModuleOptions = {}): Courses
 
   const controller = new CoursesController(
     saveCourseUseCase,
+    updateCourseUseCase,
     listMyCoursesUseCase,
     listPublishedCoursesUseCase,
     getCourseUseCase,

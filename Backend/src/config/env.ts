@@ -43,8 +43,9 @@ const envSchema = z.object({
   // for detailed courses — the model context in Unsloth Desktop must be
   // set accordingly (context window >= prompt + AI_MAX_TOKENS, ~34K).
   AI_BASE_URL: z.string().default('http://host.docker.internal:8888'),
-  AI_MODEL: z.string().default('unsloth/Qwen3.5-4B-GGUF'),
-  AI_API_KEY: z.string().optional().default(''),
+  AI_MODEL: z.string().default('unsloth/gemma-4-E4B-it-GGUF'),
+  AI_FALLBACK_MODEL: z.string().default('unsloth/Qwen3.5-4B-GGUF'),
+  AI_API_KEY: z.string().optional().default('sk-unsloth-f4212eed452c85fc015d7a8d9aff7a50'),
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(300000),
   AI_STATUS_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
   AI_MAX_TOKENS: z.coerce.number().int().positive().default(32768),

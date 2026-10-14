@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_config.dart';
 import '../../../../core/network/api_exception.dart';
+import '../../domain/entities/course_outline.dart';
 
 /// Teacher side of the AI course generation API
 /// (`contracts/ai-assistant.openapi.yaml`, TEACHER or ADMIN).
@@ -15,6 +16,81 @@ class AiCourseRemoteDataSource {
   final ApiClient _client;
 
   static String get _base => ApiConfig.apiPrefix;
+
+  /// Rapidly generates a structured course outline in ~3s.
+  Future<CourseOutline> generateOutline({
+    required String mode,
+    required String level,
+    required String difficulty,
+    required String format,
+    String? subject,
+    String? sourceText,
+    String? url,
+    bool examples = true,
+    bool mermaid = true,
+    bool webImages = false,
+    bool webSearch = false,
+    bool thinking = false,
+  }) async {
+    final cleanSubject = subject?.trim();
+    final res = await _client.post<dynamic>(
+      '$_base/ai/courses/generate-outline',
+      receiveTimeout: const Duration(minutes: 3),
+      data: {
+        'mode': mode,
+        'level': level,
+        'difficulty': difficulty,
+        'format': format,
+        if (cleanSubject != null && cleanSubject.isNotEmpty) ...{
+          'subject': cleanSubject,
+          'topic': cleanSubject,
+        },
+        if (sourceText != null && sourceText.trim().isNotEmpty) ...{
+          'sourceText': sourceText.trim(),
+          'sourceContext': sourceText.trim(),
+        },
+        if (url != null && url.trim().isNotEmpty) 'url': url.trim(),
+        'extras': {
+          'examples': examples,
+          'mermaid': mermaid,
+          'webImages': webImages,
+          'webSearch': webSearch,
+          'thinking': thinking,
+        },
+      },
+    );
+    final env = apiEnvelope(res);
+    final outlineData = env['outline'];
+    if (outlineData is Map<String, dynamic>) {
+      return CourseOutline.fromJson(outlineData);
+    }
+    throw const ApiException(message: 'Invalid outline response');
+  }
+
+  /// Selectively refines, expands, simplifies or edits a course section.
+  Future<Map<String, dynamic>> refineSection({
+    required String courseContent,
+    required String selectedText,
+    required String instruction,
+    String? level,
+    String? difficulty,
+  }) async {
+    final res = await _client.post<dynamic>(
+      '$_base/ai/courses/refine-section',
+      receiveTimeout: const Duration(minutes: 3),
+      data: {
+        'courseContent': courseContent,
+        'fullContext': courseContent,
+        'selectedText': selectedText,
+        'instruction': instruction,
+        // ignore: use_null_aware_elements
+        if (level != null) 'level': level,
+        // ignore: use_null_aware_elements
+        if (difficulty != null) 'difficulty': difficulty,
+      },
+    );
+    return apiEnvelope(res);
+  }
 
   Future<Map<String, dynamic>> generate({
     required String mode,

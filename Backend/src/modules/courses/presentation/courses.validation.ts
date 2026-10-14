@@ -9,7 +9,6 @@ export const courseIdParamsSchema = z
   .object({ id: uuidSchema })
   .strict();
 
-/** Saves a generated course as DRAFT (validation is a separate step). */
 export const saveCourseBodySchema = z
   .object({
     title: z.string().trim().min(1).max(200),
@@ -21,4 +20,17 @@ export const saveCourseBodySchema = z
   })
   .strict();
 
+export const updateCourseBodySchema = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    subject: z.string().trim().max(500).optional(),
+    content: z.string().min(1).max(500000).optional(),
+    level: levelSchema.optional(),
+    difficulty: difficultySchema.optional(),
+    format: formatSchema.optional(),
+  })
+  .strict();
+
 export type SaveCourseBodyInput = z.infer<typeof saveCourseBodySchema>;
+export type UpdateCourseBodyInput = z.infer<typeof updateCourseBodySchema>;
+

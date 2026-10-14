@@ -14,6 +14,8 @@ import { OpenAICompatibleGateway } from './infrastructure/openai-compatible-gate
 import { NativeUrlFetcher } from './infrastructure/native-url-fetcher.adapter.js';
 import { UnpdfTextExtractor } from './infrastructure/pdf-text-extractor.adapter.js';
 import { GenerateCourseUseCase } from './application/generate-course.use-case.js';
+import { GenerateOutlineUseCase } from './application/generate-outline.use-case.js';
+import { RefineSectionUseCase } from './application/refine-section.use-case.js';
 import { ImprovePdfUseCase } from './application/improve-pdf.use-case.js';
 import { GetAiStatusUseCase } from './application/get-ai-status.use-case.js';
 import { AiController } from './presentation/ai.controller.js';
@@ -40,7 +42,15 @@ export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
   const generateCourseUseCase = new GenerateCourseUseCase(gateway, urlFetcher);
   const improvePdfUseCase = new ImprovePdfUseCase(pdfExtractor, gateway);
   const getAiStatusUseCase = new GetAiStatusUseCase(gateway);
-  const controller = new AiController(generateCourseUseCase, improvePdfUseCase, getAiStatusUseCase);
+  const generateOutlineUseCase = new GenerateOutlineUseCase(gateway);
+  const refineSectionUseCase = new RefineSectionUseCase(gateway);
+  const controller = new AiController(
+    generateCourseUseCase,
+    improvePdfUseCase,
+    getAiStatusUseCase,
+    generateOutlineUseCase,
+    refineSectionUseCase,
+  );
 
   let authenticateMiddleware = options.authenticateMiddleware;
   if (!authenticateMiddleware) {

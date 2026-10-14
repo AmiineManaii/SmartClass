@@ -12,6 +12,9 @@ import '../../../../core/network/api_exception.dart';
 import '../../../../core/widgets/app_picker_row.dart';
 import '../../application/providers/ai_course_options_provider.dart';
 import '../../application/providers/course_generation_job_provider.dart';
+import '../../domain/entities/course_outline.dart';
+import '../widgets/ai_section_refine_dialog.dart';
+import '../widgets/course_outline_editor_card.dart';
 import '../widgets/markdown_course_view.dart';
 
 const _genLevels = ['concis', 'equilibre', 'detaille'];
@@ -75,15 +78,19 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
   /// Cleared on every new run so a fresh generation never shows stale text.
   String? _editedContent;
 
+  /// Proposed course outline before full text generation.
+  CourseOutline? _outline;
+  bool _generatingOutline = false;
+  final _scrollController = ScrollController();
+
   static const _maxPdfBytes = 25 * 1024 * 1024;
 
   @override
   void dispose() {
-    // NOTE: no job cancellation here on purpose — leaving the page never
-    // stops a running generation (it auto-saves to drafts when ready).
     _topicController.dispose();
     _urlController.dispose();
     _editController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -150,19 +157,17 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
   /// Starts a background generation: the page may be left immediately —
   /// the job keeps streaming, then auto-saves the DRAFT (see
   /// `CourseGenerationJob`). Progress and result are observed below.
-  Future<void> _generate() async {
-    final job = ref.read(courseGenerationJobProvider);
-    if (job.status == GenerationJobStatus.running) return;
+  bool _validateInputs() {
     final topic = _topicController.text.trim();
     final url = _urlController.text.trim();
-    if (_mode == 'topic' && topic.length < 10) {
+    if (_mode == 'topic' && topic.length < 3) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.tr('ai_topic_too_short')),
           behavior: SnackBarBehavior.floating,
         ),
       );
-      return;
+      return false;
     }
     if (_mode == 'pdf' && (_pdfBytes == null || _pdfName == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -171,7 +176,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      return;
+      return false;
     }
     if (_mode == 'url' && url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -180,8 +185,65 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      return;
+      return false;
     }
+    return true;
+  }
+
+  /// Rapidly proposes a structured outline in ~3s for the teacher to validate.
+  Future<void> _generateOutline() async {
+    if (!_validateInputs()) return;
+    final topic = _topicController.text.trim();
+    final url = _urlController.text.trim();
+    final subject = switch (_mode) {
+      'pdf' => _pdfName ?? '',
+      'url' => url,
+      _ => topic,
+    };
+
+    setState(() => _generatingOutline = true);
+    try {
+      final remote = ref.read(aiCourseRemoteDataSourceProvider);
+      final outline = await remote.generateOutline(
+        mode: _mode,
+        level: _level,
+        difficulty: _difficulty,
+        format: _format,
+        subject: subject,
+        url: url.isNotEmpty ? url : null,
+        examples: _exExamples,
+        mermaid: _exMermaid,
+        webImages: _exWebImages,
+        webSearch: _exWebSearch,
+        thinking: _exThinking,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _outline = outline;
+        _generatingOutline = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Plan proposé en ~3s ! Vous pouvez réordonner ou modifier les chapitres avant la rédaction.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _generatingOutline = false);
+      _showFailure(e);
+    }
+  }
+
+  /// Starts full course background generation (with or without outline).
+  Future<void> _generate({bool useOutline = true}) async {
+    final job = ref.read(courseGenerationJobProvider);
+    if (job.status == GenerationJobStatus.running) return;
+    if (!_validateInputs()) return;
+
+    final topic = _topicController.text.trim();
+    final url = _urlController.text.trim();
     final subject = switch (_mode) {
       'pdf' => _pdfName ?? '',
       'url' => url,
@@ -207,8 +269,27 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
             webImages: _exWebImages,
             webSearch: _exWebSearch,
             thinking: _exThinking,
+            outline: useOutline ? _outline : null,
           ),
         );
+  }
+
+  Future<void> _onApplyRefinedSection(String oldText, String newText) async {
+    final job = ref.read(courseGenerationJobProvider);
+    final current = _displayedContent(job) ?? '';
+    String updated;
+    if (current.contains(oldText)) {
+      updated = current.replaceFirst(oldText, newText);
+    } else {
+      updated = current.replaceAll(oldText.trim(), newText);
+    }
+    setState(() {
+      _editedContent = updated;
+      _validated = true;
+    });
+    await ref
+        .read(courseGenerationJobProvider.notifier)
+        .applyRefinedContent(updated);
   }
 
   void _resetResult() {
@@ -217,6 +298,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
       _editing = false;
       _validated = false;
       _editedContent = null;
+      _outline = null;
     });
   }
 
@@ -315,10 +397,21 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
     // BuildContext of its own). Cancellation goes silently back to idle.
     ref.listen<GenerationJobStatus>(
       courseGenerationJobProvider.select((s) => s.status),
-      (_, next) {
+      (prev, next) {
         if (next == GenerationJobStatus.error) {
           final error = ref.read(courseGenerationJobProvider).error;
           if (error != null) _showFailure(error);
+        } else if (next == GenerationJobStatus.done &&
+            prev != GenerationJobStatus.done) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(
+                _scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.easeOutCubic,
+              );
+            }
+          });
         }
       },
     );
@@ -370,6 +463,11 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.menu_book_rounded),
+            tooltip: context.tr('my_courses'),
+            onPressed: () => context.push('/courses'),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Container(
@@ -392,6 +490,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
+          controller: _scrollController,
           padding: EdgeInsets.symmetric(
             horizontal: context.screenWidth >= 600 ? 32 : 20,
             vertical: 16,
@@ -432,6 +531,58 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                     loading: () => const SizedBox.shrink(),
                     error: (_, _) => const SizedBox.shrink(),
                   ),
+                  if (displayed != null) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: colorScheme.primary.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle_rounded,
+                              color: colorScheme.primary, size: 22),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '🎉 Cours généré avec succès !',
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.onPrimaryContainer,
+                                  ),
+                                ),
+                                Text(
+                                  'Faites défiler vers le bas ou appuyez sur Voir.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          FilledButton.tonal(
+                            onPressed: () {
+                              if (_scrollController.hasClients) {
+                                _scrollController.animateTo(
+                                  _scrollController.position.maxScrollExtent,
+                                  duration: const Duration(milliseconds: 500),
+                                  curve: Curves.easeOutCubic,
+                                );
+                              }
+                            },
+                            child: const Text('Voir'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   Text(context.tr('ai_create_title'), style: theme.textTheme.headlineLarge),
                   const SizedBox(height: 4),
@@ -680,11 +831,62 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                     }),
                   ),
                   const SizedBox(height: 16),
-                  _GenerateButton(
-                    generating: running,
-                    hasResult: displayed != null,
-                    onPressed: _generate,
-                  ),
+                  if (_outline != null) ...[
+                    CourseOutlineEditorCard(
+                      outline: _outline!,
+                      generating: running,
+                      onOutlineChanged: (o) => setState(() => _outline = o),
+                      onGenerateFullCourse: () => _generate(useOutline: true),
+                      onRegenerateOutline: _generateOutline,
+                      onCancel: () => setState(() => _outline = null),
+                    ),
+                  ] else ...[
+                    // Primary Outline Validation Button (Recommended: 3s outline preview)
+                    FilledButton.icon(
+                      onPressed: running || _generatingOutline
+                          ? null
+                          : _generateOutline,
+                      icon: _generatingOutline
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.schema_rounded, size: 20),
+                      label: Text(
+                        _generatingOutline
+                            ? context.tr('ai_outline_generating')
+                            : '💡 Proposer le plan en 3s (Recommandé)',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: colorScheme.onPrimary,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Direct generation button (without outline)
+                    OutlinedButton.icon(
+                      onPressed: running || _generatingOutline
+                          ? null
+                          : () => _generate(useOutline: false),
+                      icon: const Icon(Icons.bolt_rounded, size: 18),
+                      label: Text(context.tr('ai_outline_generate_direct')),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -720,6 +922,15 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                         showDraftsLink: job.courseId != null,
                         onReset: _resetResult,
                         onEdit: () => _startEdit(displayed),
+                        onRefineWithAi: () {
+                          AiSectionRefineDialog.show(
+                            context: context,
+                            fullCourseContent: displayed,
+                            level: _level,
+                            difficulty: _difficulty,
+                            onApply: _onApplyRefinedSection,
+                          );
+                        },
                         onSave: () => ref
                             .read(courseGenerationJobProvider.notifier)
                             .saveCurrentEdits(displayed),
@@ -844,6 +1055,7 @@ class _ResultCard extends StatelessWidget {
   final bool showDraftsLink;
   final VoidCallback onReset;
   final VoidCallback onEdit;
+  final VoidCallback onRefineWithAi;
   final VoidCallback onSave;
   final VoidCallback onViewDrafts;
 
@@ -855,6 +1067,7 @@ class _ResultCard extends StatelessWidget {
     required this.showDraftsLink,
     required this.onReset,
     required this.onEdit,
+    required this.onRefineWithAi,
     required this.onSave,
     required this.onViewDrafts,
   });
@@ -886,6 +1099,10 @@ class _ResultCard extends StatelessWidget {
       if (result['truncatedSource'] == true) context.tr('ai_truncated_warn'),
       if (validated) context.tr('ai_validated'),
     ].where((s) => s.toString().isNotEmpty).join(' • ');
+
+    final contentStr = '${result['content'] ?? ''}';
+    final words = contentStr.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+    final readingMin = (words / 200).ceil().clamp(1, 180);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -926,6 +1143,46 @@ class _ResultCard extends StatelessWidget {
               ),
             ),
           ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.schedule_rounded, size: 14, color: colorScheme.primary),
+                    const SizedBox(width: 4),
+                    Text(
+                      '~$readingMin min de lecture',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$words mots',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Container(
             constraints: const BoxConstraints(maxHeight: 480),
@@ -937,10 +1194,25 @@ class _ResultCard extends StatelessWidget {
             child: SingleChildScrollView(
               // Markdown rendered as a clean document (titles, figures,
               // code, images) — no raw markup shown to the teacher.
-              child: MarkdownCourseView(data: '${result['content'] ?? ''}'),
+              child: MarkdownCourseView(data: contentStr),
             ),
           ),
           const SizedBox(height: 12),
+          // AI In-line refinement button
+          FilledButton.icon(
+            onPressed: onRefineWithAi,
+            icon: const Icon(Icons.auto_fix_high, size: 18),
+            label: Text(context.tr('ai_refine_btn')),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.tertiary,
+              foregroundColor: colorScheme.onTertiary,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
@@ -961,10 +1233,40 @@ class _ResultCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          // Manual save (edited text, or retry after an auto-save failure).
-          // The background job auto-saves on completion; this button only
-          // shows when the displayed text has no saved snapshot.
-          if (!saved)
+          // Save status and actions.
+          if (saved) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainer,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.cloud_done_rounded,
+                      size: 20, color: colorScheme.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Enregistré dans vos brouillons',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: onViewDrafts,
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                    label: Text(context.tr('view_drafts')),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -978,18 +1280,21 @@ class _ResultCard extends StatelessWidget {
                     : const Icon(Icons.save_outlined, size: 18),
                 label: Text(context.tr('save_course')),
                 style: FilledButton.styleFrom(
-                  backgroundColor: colorScheme.secondaryContainer,
-                  foregroundColor: colorScheme.onSecondaryContainer,
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ),
-          if (showDraftsLink) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Center(
               child: TextButton.icon(
                 onPressed: onViewDrafts,
-                icon: const Icon(Icons.drafts_outlined, size: 18),
-                label: Text(context.tr('view_drafts')),
+                icon: const Icon(Icons.menu_book_outlined, size: 18),
+                label: Text(context.tr('my_courses')),
               ),
             ),
           ],
@@ -1317,82 +1622,3 @@ class _ExtrasBox extends StatelessWidget {
   }
 }
 
-class _GenerateButton extends StatelessWidget {
-  final bool generating;
-  final bool hasResult;
-  final VoidCallback? onPressed;
-
-  const _GenerateButton({
-    required this.generating,
-    required this.hasResult,
-    this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    final (Color bg, Color fg, Widget content) = switch ((generating, hasResult)) {
-      (true, _) => (
-          colorScheme.secondaryContainer,
-          colorScheme.onSecondaryContainer,
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    colorScheme.onSecondaryContainer,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Flexible(child: Text(context.tr('generating_course'))),
-            ],
-          ),
-        ),
-      (false, true) => (
-          colorScheme.tertiaryFixed,
-          colorScheme.onTertiaryFixed,
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.check_circle_outline, size: 22),
-              const SizedBox(width: 8),
-              Flexible(child: Text(context.tr('course_generated'))),
-            ],
-          ),
-        ),
-      (false, false) => (
-          colorScheme.secondaryContainer,
-          colorScheme.onSecondaryContainer,
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.auto_awesome, size: 22),
-              const SizedBox(width: 8),
-              Flexible(child: Text(context.tr('generate_course_full'))),
-            ],
-          ),
-        ),
-    };
-
-    return FilledButton(
-      onPressed: generating ? null : onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: bg,
-        foregroundColor: fg,
-        disabledBackgroundColor: bg,
-        disabledForegroundColor: fg,
-        minimumSize: const Size(double.infinity, 52),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: theme.textTheme.labelLarge,
-      ),
-      child: content,
-    );
-  }
-}

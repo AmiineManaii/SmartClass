@@ -14,6 +14,9 @@ import 'failures.dart';
   const noArgs = <String, String>{};
 
   if (failure is NetworkFailure) {
+    if (failure.code == 'TIMEOUT') {
+      return (key: 'timeout_error', args: noArgs);
+    }
     return (key: 'no_internet', args: noArgs);
   }
 

@@ -17,9 +17,20 @@ export interface SaveCourseParams {
   authorId: string;
 }
 
+export interface UpdateCourseParams {
+  title?: string;
+  subject?: string | null;
+  content?: string;
+  level?: CourseLevel;
+  difficulty?: CourseDifficulty;
+  format?: CourseFormat;
+}
+
 export interface CourseRepositoryPort {
   /** Persists a new course (always DRAFT — validation is a separate step). */
   save(params: SaveCourseParams): Promise<CourseDetail>;
+  /** Updates an existing course. */
+  update(id: string, params: UpdateCourseParams): Promise<CourseDetail>;
   /** Newest-first summaries authored by one teacher. */
   listByAuthor(authorId: string): Promise<CourseSummary[]>;
   /** Newest-first summaries of validated courses (every authenticated user). */

@@ -9,7 +9,14 @@ import type {
   GenerateMode,
 } from '../domain/ai-gateway.port.js';
 import { COURSE_TOOLS } from '../domain/ai-tools.js';
-import { buildCoursePrompt, COURSE_PROMPT_VERSION, maxTokensForLevel, shouldOfferTools } from '../domain/course-prompt.js';
+import {
+  buildCourseFromOutlinePrompt,
+  buildCoursePrompt,
+  COURSE_PROMPT_VERSION,
+  maxTokensForLevel,
+  shouldOfferTools,
+  type CourseOutline,
+} from '../domain/course-prompt.js';
 import type { UrlFetcherPort } from '../domain/url-fetcher.port.js';
 
 export const DEFAULT_EXTRAS: GenerateExtras = {
@@ -29,6 +36,7 @@ export interface GenerateCourseDTO {
   subject?: string;
   sourceText?: string;
   url?: string;
+  outline?: CourseOutline;
 }
 
 export interface GenerateCourseResult {
@@ -54,7 +62,16 @@ export class GenerateCourseUseCase {
   public async execute(dto: GenerateCourseDTO): Promise<GenerateCourseResult> {
     const env = getEnv();
     const prepared = await this.prepare(dto);
-    const prompt = buildCoursePrompt(prepared);
+    const prompt = prepared.outline
+      ? buildCourseFromOutlinePrompt({
+          outline: prepared.outline,
+          level: prepared.level,
+          difficulty: prepared.difficulty,
+          extras: prepared.extras,
+          format: prepared.format,
+          toolsOffered: prepared.toolsOffered,
+        })
+      : buildCoursePrompt(prepared);
 
     const completion = await this.gateway.chatCompletion({
       system: prompt.system,
@@ -99,7 +116,17 @@ export class GenerateCourseUseCase {
   ): Promise<Omit<GenerateCourseResult, 'content'>> {
     const env = getEnv();
     const prepared = await this.prepare(dto);
-    const prompt = buildCoursePrompt(prepared);
+    const prompt = prepared.outline
+      ? buildCourseFromOutlinePrompt({
+          outline: prepared.outline,
+          level: prepared.level,
+          difficulty: prepared.difficulty,
+          extras: prepared.extras,
+          format: prepared.format,
+          toolsOffered: prepared.toolsOffered,
+        })
+      : buildCoursePrompt(prepared);
+
     const usage = await this.gateway.streamCompletion(
       {
         system: prompt.system,
@@ -141,14 +168,15 @@ export class GenerateCourseUseCase {
     toolsOffered: boolean;
     truncatedSource: boolean;
     sourceChars: number;
+    outline?: CourseOutline;
   }> {
     const env = getEnv();
-    let subject = dto.subject?.trim() || undefined;
+    let subject = dto.subject?.trim() || dto.outline?.title?.trim() || undefined;
     let sourceText = dto.sourceText?.trim() || undefined;
     let sourceUrl: string | null = null;
 
     if (dto.mode === 'topic') {
-      if (!subject || subject.length < 10) {
+      if (!subject || (dto.outline ? subject.length < 3 : subject.length < 10)) {
         throw new ValidationError('A subject of at least 10 characters is required', [
           { path: 'subject', message: 'Describe the course subject (min 10 characters)' },
         ]);

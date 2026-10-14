@@ -124,12 +124,16 @@ class ApiClient {
   Future<Response<T>> post<T>(
     String path, {
     Object? data,
+    Duration? receiveTimeout,
     bool authenticated = true,
   }) {
     return _guard(() => _dio.post<T>(
           path,
           data: data,
-          options: Options(extra: {'authenticated': authenticated}),
+          options: Options(
+            receiveTimeout: receiveTimeout,
+            extra: {'authenticated': authenticated},
+          ),
         ));
   }
 
@@ -284,9 +288,13 @@ class ApiClient {
 
   ApiException _toApiException(DioException e) {
     switch (e.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
+      case DioExceptionType.sendTimeout:
+        return const ApiException(
+          code: 'TIMEOUT',
+          message: 'Délai d\'attente dépassé.',
+        );
+      case DioExceptionType.connectionTimeout:
       case DioExceptionType.connectionError:
         return const ApiException(
           code: 'NETWORK_ERROR',

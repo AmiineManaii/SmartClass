@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_exception.dart';
+import '../../domain/entities/course_outline.dart';
 import '../derive_course_title.dart';
 import 'ai_course_options_provider.dart';
 import 'courses_provider.dart';
@@ -28,6 +29,7 @@ class GenerationJobParams {
   final bool webImages;
   final bool webSearch;
   final bool thinking;
+  final CourseOutline? outline;
 
   const GenerationJobParams({
     required this.mode,
@@ -43,6 +45,7 @@ class GenerationJobParams {
     required this.webImages,
     required this.webSearch,
     required this.thinking,
+    this.outline,
   });
 }
 
@@ -258,6 +261,7 @@ class CourseGenerationJob extends StateNotifier<GenerationJobState> {
         'level': params.level,
         'difficulty': params.difficulty,
         'format': params.format,
+        if (params.outline != null) 'outline': params.outline!.toJson(),
         'extras': {
           'examples': params.examples,
           'mermaid': params.mermaid,
@@ -274,6 +278,8 @@ class CourseGenerationJob extends StateNotifier<GenerationJobState> {
               'level': params.level,
               'difficulty': params.difficulty,
               'format': params.format,
+              if (params.outline != null)
+                'outline': jsonEncode(params.outline!.toJson()),
               // Multipart has no nesting: the server parses this JSON string.
               'extras': jsonEncode({
                 'examples': params.examples,
@@ -339,6 +345,29 @@ class CourseGenerationJob extends StateNotifier<GenerationJobState> {
     _buffer.clear();
     _params = null;
     state = GenerationJobState(seq: state.seq + 1);
+  }
+
+  /// Directly applies refined/edited content and auto-updates the backend draft if saved.
+  Future<void> applyRefinedContent(String newContent) async {
+    if (!mounted) return;
+    state = state.copyWith(
+      content: newContent,
+      chars: newContent.length,
+      preview: _tail(newContent),
+      savedContent: state.courseId != null ? newContent : state.savedContent,
+    );
+
+    final courseId = state.courseId;
+    if (courseId != null) {
+      try {
+        await _ref
+            .read(generatedCoursesDataSourceProvider)
+            .updateCourse(id: courseId, content: newContent);
+        _ref.invalidate(myGeneratedCoursesProvider);
+      } catch (_) {
+        // Soft fail; teacher can still manually click Enregistrer
+      }
+    }
   }
 
   /// Manually saves [content] as a draft (edited text, or retry after an

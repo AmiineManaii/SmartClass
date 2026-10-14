@@ -20,8 +20,8 @@ class ApiConfig {
 
   static const String apiPrefix = '/api/v1';
 
-  static const Duration connectTimeout = Duration(seconds: 10);
-  static const Duration receiveTimeout = Duration(seconds: 15);
+  static const Duration connectTimeout = Duration(seconds: 15);
+  static const Duration receiveTimeout = Duration(minutes: 3);
 
   /// Long generations stream for minutes (local LLM: TTFT alone can
   /// exceed 20 s when server-side tools run before the first token).
