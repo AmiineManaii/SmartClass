@@ -29,7 +29,7 @@ class OtpDisplayBoxes extends StatelessWidget {
         late final Color background;
         late final Widget content;
         if (isFilled) {
-          background = colorScheme.surfaceContainerLow ?? colorScheme.surfaceContainer;
+          background = colorScheme.surfaceContainerLow;
           content = Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -55,7 +55,7 @@ class OtpDisplayBoxes extends StatelessWidget {
           background = colorScheme.surfaceContainerHigh;
           content = _PulsingCursor(color: colorScheme.primary);
         } else {
-          background = colorScheme.surfaceContainerLowest ?? colorScheme.surface;
+          background = colorScheme.surfaceContainerLowest;
           content = Container(
             width: 10,
             height: 10,

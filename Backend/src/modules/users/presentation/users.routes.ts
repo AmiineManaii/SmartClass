@@ -5,6 +5,7 @@ import {
   listUsersQuerySchema,
   setMyRoleBodySchema,
   setUserRoleBodySchema,
+  updateTeacherApprovalBodySchema,
   userIdParamsSchema,
 } from './users.validation.js';
 
@@ -41,6 +42,14 @@ export const createUsersRouter = (options: UsersRouterOptions): Router => {
     requireAdminMiddleware,
     validate({ params: userIdParamsSchema, body: setUserRoleBodySchema }),
     controller.setUserRole,
+  );
+
+  router.patch(
+    '/:id/teacher-approval',
+    authenticateMiddleware,
+    requireAdminMiddleware,
+    validate({ params: userIdParamsSchema, body: updateTeacherApprovalBodySchema }),
+    controller.updateTeacherApproval,
   );
 
   return router;

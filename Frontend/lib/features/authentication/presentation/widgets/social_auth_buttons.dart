@@ -80,7 +80,7 @@ class SocialAuthButton extends StatelessWidget {
 
     return Expanded(
       child: Material(
-        color: colorScheme.surfaceContainerLowest ?? colorScheme.surface,
+        color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
         elevation: 0,
         child: InkWell(

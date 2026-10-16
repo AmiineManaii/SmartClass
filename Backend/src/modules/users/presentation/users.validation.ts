@@ -34,7 +34,14 @@ export const setUserRoleBodySchema = z
   })
   .strict();
 
+export const updateTeacherApprovalBodySchema = z
+  .object({
+    status: z.enum(['APPROVED', 'REJECTED']),
+  })
+  .strict();
+
 export type SetMyRoleBodyInput = z.infer<typeof setMyRoleBodySchema>;
 export type SetUserRoleBodyInput = z.infer<typeof setUserRoleBodySchema>;
+export type UpdateTeacherApprovalBodyInput = z.infer<typeof updateTeacherApprovalBodySchema>;
 
 export type ListUsersQueryInput = z.infer<typeof listUsersQuerySchema>;

@@ -118,6 +118,7 @@ export class LoginUseCase {
       email: user.email,
       role: user.role,
       status: user.status,
+      teacherApprovalStatus: user.teacherApprovalStatus,
     });
 
     const rawRefreshToken = this.tokenService.generateRefreshToken();

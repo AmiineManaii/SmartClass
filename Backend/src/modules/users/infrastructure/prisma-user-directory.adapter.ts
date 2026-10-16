@@ -13,6 +13,7 @@ interface RawUserRow {
   firstName: string;
   lastName: string;
   role: string | null;
+  teacherApprovalStatus?: string | null;
   birthDate: Date | null;
   status: string;
   emailVerified: boolean;
@@ -33,6 +34,7 @@ export class PrismaUserDirectoryAdapter implements UserDirectoryPort {
       firstName: raw.firstName,
       lastName: raw.lastName,
       role: (raw.role ?? null) as SafeUser['role'],
+      teacherApprovalStatus: (raw.teacherApprovalStatus as SafeUser['teacherApprovalStatus']) ?? null,
       birthDate: raw.birthDate ? raw.birthDate.toISOString().slice(0, 10) : null,
       status: raw.status as SafeUser['status'],
       emailVerified: raw.emailVerified,
@@ -72,6 +74,7 @@ export class PrismaUserDirectoryAdapter implements UserDirectoryPort {
           firstName: true,
           lastName: true,
           role: true,
+          teacherApprovalStatus: true,
           birthDate: true,
           status: true,
           emailVerified: true,

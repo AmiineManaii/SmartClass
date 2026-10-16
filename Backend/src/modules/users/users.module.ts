@@ -11,6 +11,8 @@ import { PrismaUserDirectoryAdapter } from './infrastructure/prisma-user-directo
 import { ListUsersUseCase } from './application/list-users.use-case.js';
 import { SetMyRoleUseCase } from './application/set-my-role.use-case.js';
 import { SetUserRoleUseCase } from './application/set-user-role.use-case.js';
+import { UpdateTeacherApprovalUseCase } from './application/update-teacher-approval.use-case.js';
+import { PrismaAuditService, type AuditServicePort } from '../../shared/audit/audit.service.js';
 import { UsersController } from './presentation/users.controller.js';
 import { createUsersRouter } from './presentation/users.routes.js';
 
@@ -18,6 +20,7 @@ export interface UsersModuleOptions {
   userDirectory?: UserDirectoryPort;
   authRepository?: AuthRepositoryPort;
   tokenService?: TokenServicePort;
+  auditService?: AuditServicePort;
   authenticateMiddleware?: RequestHandler;
   requireAdminMiddleware?: RequestHandler;
   refreshExpirationDays?: number;
@@ -39,13 +42,20 @@ export const createUsersModule = (options: UsersModuleOptions = {}): UsersModule
   if (!authRepository || !tokenService) {
     throw new Error('UsersModule requires authRepository and tokenService for role endpoints');
   }
+  const auditService = options.auditService ?? new PrismaAuditService();
   const setMyRoleUseCase = new SetMyRoleUseCase(
     authRepository,
     tokenService,
     options.refreshExpirationDays,
   );
   const setUserRoleUseCase = new SetUserRoleUseCase(authRepository);
-  const controller = new UsersController(listUsersUseCase, setMyRoleUseCase, setUserRoleUseCase);
+  const updateTeacherApprovalUseCase = new UpdateTeacherApprovalUseCase(authRepository, auditService);
+  const controller = new UsersController(
+    listUsersUseCase,
+    setMyRoleUseCase,
+    setUserRoleUseCase,
+    updateTeacherApprovalUseCase,
+  );
 
   let authenticateMiddleware = options.authenticateMiddleware;
   if (!authenticateMiddleware) {

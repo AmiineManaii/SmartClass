@@ -24,6 +24,7 @@ export class PrismaAuthRepositoryAdapter implements AuthRepositoryPort {
     firstName: string;
     lastName: string;
     role: string | null;
+    teacherApprovalStatus?: string | null;
     birthDate: Date | null;
     status: string;
     emailVerified: boolean;
@@ -40,6 +41,7 @@ export class PrismaAuthRepositoryAdapter implements AuthRepositoryPort {
       firstName: raw.firstName,
       lastName: raw.lastName,
       role: (raw.role as Role) || null,
+      teacherApprovalStatus: (raw.teacherApprovalStatus as any) || null,
       birthDate: raw.birthDate,
       status: (raw.status as UserStatus) || 'ACTIVE',
       emailVerified: raw.emailVerified,
@@ -73,6 +75,7 @@ export class PrismaAuthRepositoryAdapter implements AuthRepositoryPort {
         firstName: params.firstName.trim(),
         lastName: params.lastName.trim(),
         role: params.role ?? null,
+        teacherApprovalStatus: params.teacherApprovalStatus ?? (params.role === 'TEACHER' ? 'PENDING' : null),
         status: params.status ?? 'ACTIVE',
         emailVerified: params.emailVerified ?? false,
       },
@@ -87,6 +90,7 @@ export class PrismaAuthRepositoryAdapter implements AuthRepositoryPort {
       firstName?: string;
       lastName?: string;
       role?: Role | null;
+      teacherApprovalStatus?: any;
       birthDate?: Date | null;
       status?: UserStatus;
       emailVerified?: boolean;

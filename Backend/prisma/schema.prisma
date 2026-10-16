@@ -26,6 +26,19 @@ enum ClassLevel {
 enum ClassStatus {
   DRAFT
   PUBLISHED
+  ARCHIVED
+}
+
+enum TeacherApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum InvitationStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
 }
 
 enum TimetableKind {
@@ -50,20 +63,21 @@ enum FraudStatus {
 }
 
 model User {
-  id                  String     @id @default(uuid()) @db.Uuid
-  email               String     @unique
-  passwordHash        String     @map("password_hash")
-  firstName           String     @map("first_name")
-  lastName            String     @map("last_name")
-  role                Role?
-  birthDate           DateTime?  @map("birth_date") @db.Date
-  status              UserStatus @default(ACTIVE)
-  emailVerified       Boolean    @default(false) @map("email_verified")
-  onboardingCompleted Boolean    @default(false) @map("onboarding_completed")
-  failedLoginAttempts Int        @default(0) @map("failed_login_attempts")
-  lockedUntil         DateTime?  @map("locked_until") @db.Timestamptz
-  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+  id                    String                 @id @default(uuid()) @db.Uuid
+  email                 String                 @unique
+  passwordHash          String                 @map("password_hash")
+  firstName             String                 @map("first_name")
+  lastName              String                 @map("last_name")
+  role                  Role?
+  teacherApprovalStatus TeacherApprovalStatus? @map("teacher_approval_status")
+  birthDate             DateTime?              @map("birth_date") @db.Date
+  status                UserStatus             @default(ACTIVE)
+  emailVerified         Boolean                @default(false) @map("email_verified")
+  onboardingCompleted   Boolean                @default(false) @map("onboarding_completed")
+  failedLoginAttempts   Int                    @default(0) @map("failed_login_attempts")
+  lockedUntil           DateTime?              @map("locked_until") @db.Timestamptz
+  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime               @updatedAt @map("updated_at") @db.Timestamptz
 
   refreshTokens        RefreshToken[]
   verificationCodes    EmailVerificationCode[]
@@ -73,11 +87,15 @@ model User {
   taughtSlots          TimetableSlot[]        @relation("SlotTeacher")
   fraudReports         FraudReport[]
   referredClasses      ClassGroup[]           @relation("ClassReferent")
+  ownedClasses         ClassGroup[]           @relation("ClassOwner")
   authoredCourses      Course[]               @relation("AuthoredCourses")
+  createdInvitations   ClassInvitation[]      @relation("InvitationCreator")
+  auditLogs            AuditLog[]
 
   @@index([email])
   @@index([role])
   @@index([status])
+  @@index([teacherApprovalStatus])
   @@map("users")
 }
 
@@ -86,24 +104,32 @@ model ClassGroup {
   name           String
   level          ClassLevel
   department     String?
+  academicYear   String?     @map("academic_year")
   capacity       Int
   description    String?
   forumEnabled   Boolean     @default(true) @map("forum_enabled")
   entSyncEnabled Boolean     @default(true) @map("ent_sync_enabled")
   status         ClassStatus @default(PUBLISHED)
+  isVirtual      Boolean     @default(false) @map("is_virtual")
+  ownerId        String?     @map("owner_id") @db.Uuid
   referentId     String?     @map("referent_id") @db.Uuid
   createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz
 
   referent    User?               @relation("ClassReferent", fields: [referentId], references: [id], onDelete: SetNull)
+  owner       User?               @relation("ClassOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   members     GroupMember[]
   teachers    TeacherAssignment[]
   slots       TimetableSlot[]
   fraudCases  FraudReport[]
+  invitations ClassInvitation[]
+  courses     CourseClassGroup[]
 
   @@index([level])
   @@index([status])
   @@index([referentId])
+  @@index([ownerId])
+  @@index([isVirtual])
   @@map("class_groups")
 }
 
@@ -177,11 +203,66 @@ model Course {
   createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamptz
 
-  author User @relation("AuthoredCourses", fields: [authorId], references: [id], onDelete: Cascade)
+  author      User               @relation("AuthoredCourses", fields: [authorId], references: [id], onDelete: Cascade)
+  classGroups CourseClassGroup[]
 
   @@index([status])
   @@index([authorId])
   @@map("courses")
+}
+
+model CourseClassGroup {
+  id           String   @id @default(uuid()) @db.Uuid
+  courseId     String   @map("course_id") @db.Uuid
+  classGroupId String   @map("class_group_id") @db.Uuid
+  assignedAt   DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+
+  course     Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  classGroup ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, classGroupId])
+  @@index([courseId])
+  @@index([classGroupId])
+  @@map("course_class_groups")
+}
+
+model ClassInvitation {
+  id           String           @id @default(uuid()) @db.Uuid
+  classGroupId String           @map("class_group_id") @db.Uuid
+  codeHash     String           @unique @map("code_hash")
+  codePrefix   String?          @map("code_prefix")
+  creatorId    String           @map("creator_id") @db.Uuid
+  status       InvitationStatus @default(ACTIVE)
+  expiresAt    DateTime?        @map("expires_at") @db.Timestamptz
+  maxUses      Int?             @map("max_uses")
+  usedCount    Int              @default(0) @map("used_count")
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  classGroup ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  creator    User       @relation("InvitationCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([classGroupId])
+  @@index([status])
+  @@map("class_invitations")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String
+  targetType String   @map("target_type")
+  targetId   String?  @map("target_id")
+  details    Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
 
 model FraudReport {

@@ -11,7 +11,9 @@ import '../models/user_model.dart';
 /// into [Failure] and persists rotated tokens in [TokenStorage].
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({required AuthRemoteDataSource remote, required TokenStorage tokens})
+      // ignore: prefer_initializing_formals
       : _remote = remote,
+        // ignore: prefer_initializing_formals
         _tokens = tokens;
 
   final AuthRemoteDataSource _remote;

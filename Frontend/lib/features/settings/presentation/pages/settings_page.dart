@@ -5,9 +5,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/typography/typography_config.dart';
 import '../../../../core/typography/typography_provider.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/network/health_remote_datasource.dart';
 import '../../../../core/network/network_providers.dart';
-import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../app/app_providers.dart';
 
@@ -413,8 +411,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     required IconData icon,
     required Color iconColor,
   }) {
-    final theme = Theme.of(context);
-    
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(
@@ -442,8 +438,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     required Color iconColor,
     required VoidCallback onTap,
   }) {
-    final theme = Theme.of(context);
-    
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(

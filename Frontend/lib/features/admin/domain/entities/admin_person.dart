@@ -55,6 +55,9 @@ class AdminTeacher {
   /// Backend email verification flag (SafeUser.emailVerified).
   final bool verified;
 
+  /// Backend teacher approval status ('PENDING', 'APPROVED', 'REJECTED').
+  final String approvalStatus;
+
   const AdminTeacher({
     required this.id,
     required this.name,
@@ -68,5 +71,6 @@ class AdminTeacher {
     this.state = PersonAssignState.unselected,
     this.initiallyAssigned = false,
     this.verified = false,
+    this.approvalStatus = 'APPROVED',
   });
 }

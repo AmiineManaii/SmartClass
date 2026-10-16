@@ -19,11 +19,14 @@ export interface CreateGroupParams {
   name: string;
   level: ClassLevel;
   department?: string | null;
+  academicYear?: string | null;
   capacity: number;
   description?: string | null;
   forumEnabled: boolean;
   entSyncEnabled: boolean;
   status: ClassStatus;
+  isVirtual?: boolean;
+  ownerId?: string | null;
   referentId?: string | null;
 }
 
@@ -31,6 +34,7 @@ export interface UpdateGroupParams {
   name?: string;
   level?: ClassLevel;
   department?: string | null;
+  academicYear?: string | null;
   capacity?: number;
   description?: string | null;
   forumEnabled?: boolean;
@@ -107,4 +111,27 @@ export interface GroupRepositoryPort {
     groupId: string,
     assignments: TeacherAssignInput[],
   ): Promise<{ assigned: TeacherAssignmentView[]; teacherCount: number }>;
+  isTeacherAuthorizedForGroup(groupId: string, teacherId: string): Promise<boolean>;
+  findUserClassMembership(groupId: string, userId: string): Promise<{ isMember: boolean; isTeacher: boolean; isReferent: boolean; isOwner: boolean }>;
+  createInvitation(params: {
+    groupId: string;
+    creatorId: string;
+    codeHash: string;
+    codePrefix?: string | null;
+    expiresAt?: Date | null;
+    maxUses?: number | null;
+  }): Promise<import('./class-group.entity.js').ClassInvitationView>;
+  findActiveInvitationByGroupId(groupId: string): Promise<import('./class-group.entity.js').ClassInvitationView | null>;
+  findInvitationByCodeHash(codeHash: string): Promise<(import('./class-group.entity.js').ClassInvitationView & { classGroup: ClassGroupSummary }) | null>;
+  rotateInvitation(params: {
+    groupId: string;
+    creatorId: string;
+    codeHash: string;
+    codePrefix?: string | null;
+    expiresAt?: Date | null;
+    maxUses?: number | null;
+  }): Promise<import('./class-group.entity.js').ClassInvitationView>;
+  revokeInvitation(groupId: string): Promise<boolean>;
+  joinGroupWithInvitation(invitationId: string, groupId: string, studentId: string): Promise<{ classGroup: ClassGroupDetail }>;
+  leaveGroup(groupId: string, studentId: string): Promise<boolean>;
 }

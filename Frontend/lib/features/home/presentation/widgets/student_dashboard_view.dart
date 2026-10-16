@@ -7,6 +7,7 @@ import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../application/providers/student_dashboard_provider.dart';
 import '../../domain/entities/student_assignment.dart';
+import '../../domain/entities/student_class_membership.dart';
 import '../../domain/entities/student_course_progress.dart';
 import '../../domain/entities/today_live_session.dart';
 import 'no_class_notice.dart';
@@ -31,6 +32,175 @@ class StudentDashboardView extends ConsumerWidget {
     );
   }
 
+  void _showJoinClassDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+    bool isLoading = false;
+    String? errorMessage;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text('Rejoindre une classe'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Entrez le code d\'invitation partagé par votre enseignant ou administrateur.',
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    textCapitalization: TextCapitalization.characters,
+                    autofocus: true,
+                    enabled: !isLoading,
+                    decoration: InputDecoration(
+                      labelText: 'Code d\'invitation',
+                      hintText: 'ex: SC-AB12CD',
+                      prefixIcon: const Icon(Icons.vpn_key_rounded),
+                      errorText: errorMessage,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Annuler'),
+                ),
+                FilledButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          final code = controller.text.trim();
+                          if (code.isEmpty) {
+                            setState(() {
+                              errorMessage = 'Veuillez saisir un code';
+                            });
+                            return;
+                          }
+                          setState(() {
+                            isLoading = true;
+                            errorMessage = null;
+                          });
+                          try {
+                            await ref
+                                .read(groupsRemoteDataSourceProvider)
+                                .joinClass(code);
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop();
+                            }
+                            ref.invalidate(myGroupsProvider);
+                            ref.invalidate(studentClassMembershipProvider);
+                            ref.invalidate(studentEnrolledCoursesProvider);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Vous avez rejoint la classe avec succès !'),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setState(() {
+                              isLoading = false;
+                              errorMessage = e.toString().replaceFirst('ApiException: ', '');
+                            });
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Rejoindre'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmLeaveClass(
+    BuildContext context,
+    WidgetRef ref,
+    StudentClassMembership membership,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text('Quitter la classe'),
+          content: Text(
+            'Êtes-vous sûr de vouloir quitter la classe "${membership.name}" ? Vous ne pourrez plus accéder aux cours associés sans nouveau code d\'invitation.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                try {
+                  await ref
+                      .read(groupsRemoteDataSourceProvider)
+                      .leaveClass(membership.id);
+                  ref.invalidate(myGroupsProvider);
+                  ref.invalidate(studentClassMembershipProvider);
+                  ref.invalidate(studentEnrolledCoursesProvider);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Vous avez quitté la classe.'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().replaceFirst('ApiException: ', ''),
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Quitter'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -46,6 +216,7 @@ class StudentDashboardView extends ConsumerWidget {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
+            ref.invalidate(myGroupsProvider);
             ref.invalidate(studentClassMembershipProvider);
             ref.invalidate(studentTodayLiveProvider);
             ref.invalidate(studentEnrolledCoursesProvider);
@@ -78,10 +249,21 @@ class StudentDashboardView extends ConsumerWidget {
                         padding: EdgeInsets.symmetric(vertical: 32),
                         child: Center(child: CircularProgressIndicator()),
                       ),
-                      error: (_, _) => const NoClassNotice(),
+                      error: (_, _) => NoClassNotice(
+                        onJoinTap: () => _showJoinClassDialog(context, ref),
+                      ),
                       data: (membership) => membership == null
-                          ? const NoClassNotice()
+                          ? NoClassNotice(
+                              onJoinTap: () =>
+                                  _showJoinClassDialog(context, ref),
+                            )
                           : _EnrolledContent(
+                              membership: membership,
+                              onLeaveClass: () => _confirmLeaveClass(
+                                context,
+                                ref,
+                                membership,
+                              ),
                               onJoinLive: () =>
                                   context.push('/videoconference'),
                               onCourseSummaryTap: () =>
@@ -123,6 +305,8 @@ class StudentDashboardView extends ConsumerWidget {
 
 /// Full dashboard, rendered only with a real class membership.
 class _EnrolledContent extends ConsumerWidget {
+  final StudentClassMembership membership;
+  final VoidCallback onLeaveClass;
   final VoidCallback onJoinLive;
   final VoidCallback onCourseSummaryTap;
   final VoidCallback onPracticeQuizTap;
@@ -132,6 +316,8 @@ class _EnrolledContent extends ConsumerWidget {
   final ValueChanged<String> onAssignmentAction;
 
   const _EnrolledContent({
+    required this.membership,
+    required this.onLeaveClass,
     required this.onJoinLive,
     required this.onCourseSummaryTap,
     required this.onPracticeQuizTap,
@@ -143,6 +329,8 @@ class _EnrolledContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final live = ref.watch(studentTodayLiveProvider);
     final courses = ref.watch(studentEnrolledCoursesProvider);
     final assignments = ref.watch(studentAssignmentsProvider);
@@ -150,6 +338,83 @@ class _EnrolledContent extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Enrolled class banner
+        InkWell(
+          onTap: () =>
+              context.push('/groups/${membership.id}', extra: membership.name),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.school_rounded,
+                  color: colorScheme.primary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      membership.name,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (membership.institution != null &&
+                        membership.institution!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        membership.institution!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+                IconButton(
+                  icon: Icon(
+                    Icons.logout_rounded,
+                    color: colorScheme.error,
+                    size: 20,
+                  ),
+                  tooltip: 'Quitter la classe',
+                  onPressed: onLeaveClass,
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: colorScheme.onSurfaceVariant,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
         // Live widget appears ONLY with a real session today.
         live.when(
           data: (session) => _LiveSection(session: session, onJoin: onJoinLive),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/extensions/extensions.dart';
@@ -44,9 +43,6 @@ class VideoconferencePage extends ConsumerWidget {
   }
   
   Widget _buildSessionList(BuildContext context, String filter) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    
     final sessions = filter == 'live'
         ? [
             {'title': 'Introduction à la POO', 'teacher': 'Prof. Martin', 'participants': 24, 'isLive': true, 'group': 'L3 Info - Groupe A'},

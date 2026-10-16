@@ -156,6 +156,7 @@ AdminTeacher adminTeacherFromSafeUser(
     state: assigned ? PersonAssignState.assigned : PersonAssignState.unselected,
     initiallyAssigned: assigned,
     verified: json['emailVerified'] as bool? ?? false,
+    approvalStatus: json['teacherApprovalStatus'] as String? ?? 'APPROVED',
   );
 }
 

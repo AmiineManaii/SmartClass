@@ -4,6 +4,7 @@
 /// `GET /api/v1/videoconference/timetable` (next session). No fabricated
 /// figures: stats without a server-side denominator (courses, corrections)
 /// are not modelled.
+library;
 
 /// A class taught by the current teacher.
 class TeacherDashboardClass {

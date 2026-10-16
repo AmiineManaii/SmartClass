@@ -497,7 +497,7 @@ class AppTheme {
       ),
       
       extensions: <ThemeExtension<dynamic>>[
-        _CustomThemeExtension(
+        CustomThemeExtensionData(
           successColor: success,
           successContainer: successContainer,
           onSuccessContainer: onSuccessContainer,
@@ -557,7 +557,7 @@ class AppTheme {
   }
 }
 
-class _CustomThemeExtension extends ThemeExtension<_CustomThemeExtension> {
+class CustomThemeExtensionData extends ThemeExtension<CustomThemeExtensionData> {
   final Color successColor;
   final Color successContainer;
   final Color onSuccessContainer;
@@ -570,7 +570,7 @@ class _CustomThemeExtension extends ThemeExtension<_CustomThemeExtension> {
   final List<BoxShadow> level2Shadow;
   final List<BoxShadow> level3Shadow;
 
-  const _CustomThemeExtension({
+  const CustomThemeExtensionData({
     required this.successColor,
     required this.successContainer,
     required this.onSuccessContainer,
@@ -585,7 +585,7 @@ class _CustomThemeExtension extends ThemeExtension<_CustomThemeExtension> {
   });
 
   @override
-  _CustomThemeExtension copyWith({
+  CustomThemeExtensionData copyWith({
     Color? successColor,
     Color? successContainer,
     Color? onSuccessContainer,
@@ -598,7 +598,7 @@ class _CustomThemeExtension extends ThemeExtension<_CustomThemeExtension> {
     List<BoxShadow>? level2Shadow,
     List<BoxShadow>? level3Shadow,
   }) {
-    return _CustomThemeExtension(
+    return CustomThemeExtensionData(
       successColor: successColor ?? this.successColor,
       successContainer: successContainer ?? this.successContainer,
       onSuccessContainer: onSuccessContainer ?? this.onSuccessContainer,
@@ -614,9 +614,9 @@ class _CustomThemeExtension extends ThemeExtension<_CustomThemeExtension> {
   }
 
   @override
-  _CustomThemeExtension lerp(ThemeExtension<_CustomThemeExtension>? other, double t) {
-    if (other is! _CustomThemeExtension) return this;
-    return _CustomThemeExtension(
+  CustomThemeExtensionData lerp(ThemeExtension<CustomThemeExtensionData>? other, double t) {
+    if (other is! CustomThemeExtensionData) return this;
+    return CustomThemeExtensionData(
       successColor: Color.lerp(successColor, other.successColor, t)!,
       successContainer: Color.lerp(successContainer, other.successContainer, t)!,
       onSuccessContainer: Color.lerp(onSuccessContainer, other.onSuccessContainer, t)!,
@@ -633,7 +633,7 @@ class _CustomThemeExtension extends ThemeExtension<_CustomThemeExtension> {
 }
 
 extension CustomThemeExtension on ThemeData {
-  _CustomThemeExtension get custom => extension<_CustomThemeExtension>()!;
+  CustomThemeExtensionData get custom => extension<CustomThemeExtensionData>()!;
   
   Color get successColor => custom.successColor;
   Color get successContainer => custom.successContainer;

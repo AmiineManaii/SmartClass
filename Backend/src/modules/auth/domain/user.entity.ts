@@ -1,5 +1,6 @@
 export type Role = 'TEACHER' | 'STUDENT' | 'ADMIN';
 export type UserStatus = 'ACTIVE' | 'SUSPENDED';
+export type TeacherApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface UserEntityProps {
   id: string;
@@ -8,6 +9,7 @@ export interface UserEntityProps {
   firstName: string;
   lastName: string;
   role: Role | null;
+  teacherApprovalStatus?: TeacherApprovalStatus | null;
   birthDate: Date | null;
   status: UserStatus;
   emailVerified: boolean;
@@ -24,6 +26,7 @@ export interface SafeUser {
   firstName: string;
   lastName: string;
   role: Role | null;
+  teacherApprovalStatus: TeacherApprovalStatus | null;
   birthDate: string | null;
   status: UserStatus;
   emailVerified: boolean;
@@ -57,6 +60,10 @@ export class UserEntity {
 
   public get role(): Role | null {
     return this.props.role;
+  }
+
+  public get teacherApprovalStatus(): TeacherApprovalStatus | null {
+    return this.props.teacherApprovalStatus ?? null;
   }
 
   public get birthDate(): Date | null {
@@ -108,6 +115,7 @@ export class UserEntity {
       firstName: this.props.firstName,
       lastName: this.props.lastName,
       role: this.props.role,
+      teacherApprovalStatus: this.props.teacherApprovalStatus ?? null,
       birthDate: this.props.birthDate ? this.props.birthDate.toISOString().split('T')[0] ?? null : null,
       status: this.props.status,
       emailVerified: this.props.emailVerified,

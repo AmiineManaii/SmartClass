@@ -11,6 +11,11 @@ final groupsRemoteDataSourceProvider = Provider<GroupsRemoteDataSource>((ref) {
   return GroupsRemoteDataSource(ref.watch(apiClientProvider));
 });
 
+final myGroupsProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  return ref.watch(groupsRemoteDataSourceProvider).myGroups();
+});
+
 /// Membership of the current student in a class.
 ///
 /// Backed by `GET /api/v1/groups/mine` (any authenticated role): the
@@ -19,7 +24,7 @@ final groupsRemoteDataSourceProvider = Provider<GroupsRemoteDataSource>((ref) {
 /// notice instead of inventing a class.
 final studentClassMembershipProvider =
     FutureProvider<StudentClassMembership?>((ref) async {
-  final groups = await ref.watch(groupsRemoteDataSourceProvider).myGroups();
+  final groups = await ref.watch(myGroupsProvider.future);
   final mine = groups.where((g) => g['myRole'] == 'STUDENT').toList();
   final first = mine.isNotEmpty ? mine.first : null;
   if (first == null) return null;

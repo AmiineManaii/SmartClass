@@ -371,7 +371,7 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
                       icon: Icons.co_present_outlined,
                       value: _referentName ??
                           context.tr('admin_no_referent_option'),
-                      onTap: () => _pickReferent(context),
+                      onTap: _pickReferent,
                     ),
                     const SizedBox(height: 16),
                     Text(context.tr('admin_capacity'), style: theme.textTheme.labelLarge),
@@ -599,7 +599,7 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
     }
   }
 
-  Future<void> _pickReferent(BuildContext context) async {
+  Future<void> _pickReferent() async {
     List<AdminTeacher> teachers = [];
     try {
       teachers = await ref.read(adminRepositoryProvider).teachers();
@@ -629,7 +629,7 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
             itemBuilder: (_, i) {
               if (i == 0) {
                 return ListTile(
-                  title: Text(context.tr('admin_no_referent_option'),
+                  title: Text(sheetContext.tr('admin_no_referent_option'),
                       style: theme.textTheme.bodyMedium),
                   onTap: () => Navigator.of(sheetContext).pop(null),
                 );
@@ -653,7 +653,7 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
     // referent is optional and re-pickable.
     setState(() {
       _referentId = selected?.id;
-      _referentName = selected == null ? null : selected.name;
+      _referentName = selected?.name;
     });
   }
 

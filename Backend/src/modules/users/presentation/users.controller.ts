@@ -10,6 +10,9 @@ import { parseSort } from '../../../shared/http/pagination/index.js';
 import { validatedQuery } from '../../../shared/http/validate.middleware.js';
 import { userSortableFields } from './users.validation.js';
 
+import type { UpdateTeacherApprovalUseCase } from '../application/update-teacher-approval.use-case.js';
+import type { TeacherApprovalStatus } from '../../auth/index.js';
+
 interface ListUsersValidatedQuery {
   role?: 'TEACHER' | 'STUDENT' | 'ADMIN';
   search?: string;
@@ -23,6 +26,7 @@ export class UsersController {
     private readonly listUsersUseCase: ListUsersUseCase,
     private readonly setMyRoleUseCase: SetMyRoleUseCase,
     private readonly setUserRoleUseCase: SetUserRoleUseCase,
+    private readonly updateTeacherApprovalUseCase?: UpdateTeacherApprovalUseCase,
   ) {}
 
   public listUsers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -81,6 +85,27 @@ export class UsersController {
         req.user.id,
         req.params.id as string,
         (req.body as { role: Role }).role,
+      );
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public updateTeacherApproval = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      if (!this.updateTeacherApprovalUseCase) {
+        throw new Error('UpdateTeacherApprovalUseCase not configured');
+      }
+      const result = await this.updateTeacherApprovalUseCase.execute(
+        req.user.id,
+        req.params.id as string,
+        (req.body as { status: TeacherApprovalStatus }).status,
       );
       res.status(200).json({
         data: result,

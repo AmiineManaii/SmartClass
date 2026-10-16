@@ -386,6 +386,7 @@ class AppGroupCard extends StatelessWidget {
   final String? invitationCode;
   final VoidCallback? onTap;
   final VoidCallback? onInvite;
+  final VoidCallback? onLeave;
   
   const AppGroupCard({
     required this.name,
@@ -395,6 +396,7 @@ class AppGroupCard extends StatelessWidget {
     this.invitationCode,
     this.onTap,
     this.onInvite,
+    this.onLeave,
     super.key,
   });
   
@@ -508,9 +510,15 @@ class AppGroupCard extends StatelessWidget {
           ),
           if (onInvite != null)
             IconButton(
-              icon: Icon(Icons.person_add_rounded, color: colorScheme.primary),
+              icon: Icon(Icons.key_rounded, color: colorScheme.primary),
               onPressed: onInvite,
-              tooltip: 'Inviter',
+              tooltip: 'Code d\'invitation',
+            ),
+          if (onLeave != null)
+            IconButton(
+              icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+              onPressed: onLeave,
+              tooltip: 'Quitter la classe',
             ),
         ],
       ),

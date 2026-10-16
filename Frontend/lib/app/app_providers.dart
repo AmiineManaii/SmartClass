@@ -23,6 +23,7 @@ import '../features/courses/presentation/pages/ai_course_creator_page.dart';
 import '../features/courses/presentation/pages/course_reader_page.dart';
 import '../features/courses/presentation/pages/courses_page.dart';
 import '../features/groups/presentation/pages/groups_page.dart';
+import '../features/groups/presentation/pages/class_detail_page.dart';
 import '../features/exams/presentation/pages/exams_page.dart';
 import '../features/videoconference/presentation/pages/videoconference_page.dart';
 import '../features/collaboration/presentation/pages/collaboration_page.dart'
@@ -211,6 +212,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const GroupsPage(),
           ),
           GoRoute(
+            path: '/groups/:groupId',
+            name: 'group-detail',
+            builder: (context, state) => ClassDetailPage(
+              groupId: state.pathParameters['groupId'] ?? '',
+              initialTitle:
+                  state.extra is String ? state.extra as String : null,
+            ),
+          ),
+          GoRoute(
             path: '/exams',
             name: 'exams',
             builder: (context, state) => const ExamsPage(),
@@ -332,16 +342,16 @@ class MainScaffold extends ConsumerWidget {
 }
 
 class _BottomNavBar extends ConsumerWidget {
+  const _BottomNavBar();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final location = GoRouterState.of(context).matchedLocation;
     final role = ref.watch(authStateProvider).valueOrNull?.role;
 
-    // Admin shell (mockup: Tableau / Classes / Planning / Fraudes / Paramètres).
+    // Admin shell (Tableau / Classes / Planning / Fraudes / Paramètres).
     final items = role == 'admin'
-        ? [
+        ? const [
             _NavItem(
               icon: Icons.dashboard_outlined,
               selectedIcon: Icons.dashboard_rounded,
@@ -373,7 +383,7 @@ class _BottomNavBar extends ConsumerWidget {
               route: '/settings',
             ),
           ]
-        : [
+        : const [
             _NavItem(
               icon: Icons.dashboard_outlined,
               selectedIcon: Icons.dashboard_rounded,
@@ -407,95 +417,114 @@ class _BottomNavBar extends ConsumerWidget {
             ),
           ];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.95),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.shadow.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, -2),
-          ),
-        ],
-        border: Border(
-          top: BorderSide(
-            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-            width: 0.5,
-          ),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 4, 14, 10),
+        child: Container(
           height: 64,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(
+              color: const Color(0xFF122675).withValues(alpha: 0.08),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+                spreadRadius: -2,
+              ),
+              BoxShadow(
+                color: const Color(0xFF122675).withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: items.map((item) {
-              final isSelected = location.startsWith(item.route);
+              final isSelected = item.route == '/home'
+                  ? (location == '/home' || location == '/')
+                  : location.startsWith(item.route);
 
-              if (item.isAiPill) {
-                return InkWell(
-                  onTap: () => context.go(item.route),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: colorScheme.secondaryFixed.withValues(alpha: 0.5),
-                          ),
-                          alignment: Alignment.center,
-                          child: Icon(
-                            item.selectedIcon,
-                            size: 20,
-                            color: colorScheme.secondary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          context.tr(item.labelKey),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.secondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              final color = isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant;
+              final label = context.tr(item.labelKey);
 
               return InkWell(
                 onTap: () => context.go(item.route),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  constraints: const BoxConstraints(minWidth: 56),
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                  child: Column(
+                borderRadius: BorderRadius.circular(24),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  padding: isSelected
+                      ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8)
+                      : const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    gradient: isSelected
+                        ? (item.isAiPill
+                            ? const LinearGradient(
+                                colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : const LinearGradient(
+                                colors: [Color(0xFF122675), Color(0xFF263EA8)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ))
+                        : null,
+                    color: !isSelected && item.isAiPill
+                        ? const Color(0xFFEEF2FF)
+                        : Colors.transparent,
+                    border: !isSelected && item.isAiPill
+                        ? Border.all(
+                            color: const Color(0xFFC7D2FE),
+                            width: 0.8,
+                          )
+                        : null,
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: (item.isAiPill
+                                      ? const Color(0xFF6366F1)
+                                      : const Color(0xFF122675))
+                                  .withValues(alpha: 0.30),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         isSelected ? item.selectedIcon : item.icon,
-                        size: 24,
-                        color: color,
+                        size: 20,
+                        color: isSelected
+                            ? Colors.white
+                            : (item.isAiPill
+                                ? const Color(0xFF4F46E5)
+                                : const Color(0xFF64748B)),
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        context.tr(item.labelKey),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                          color: color,
+                      if (isSelected) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),

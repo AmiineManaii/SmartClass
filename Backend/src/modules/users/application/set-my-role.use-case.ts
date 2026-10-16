@@ -46,7 +46,10 @@ export class SetMyRoleUseCase {
       );
     }
 
-    const updatedUser = await this.authRepository.updateUser(userId, { role: assignableRole });
+    const updatedUser = await this.authRepository.updateUser(userId, {
+      role: assignableRole,
+      teacherApprovalStatus: assignableRole === 'TEACHER' ? 'PENDING' : null,
+    });
 
     // Old sessions carry the previous (empty) role: revoke everything and
     // issue a fresh pair embedding the new role.
@@ -57,6 +60,7 @@ export class SetMyRoleUseCase {
       email: updatedUser.email,
       role: updatedUser.role,
       status: updatedUser.status,
+      teacherApprovalStatus: updatedUser.teacherApprovalStatus,
     });
 
     const rawRefreshToken = this.tokenService.generateRefreshToken();

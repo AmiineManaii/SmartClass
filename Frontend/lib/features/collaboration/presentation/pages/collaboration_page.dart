@@ -514,7 +514,7 @@ class _CreateCollaborationSheetState extends ConsumerState<_CreateCollaborationS
               Expanded(
                 child: InkWell(
                   onTap: () async {
-                    final date = await showDatePicker(
+                    await showDatePicker(
                       context: context,
                       initialDate: DateTime.now().add(const Duration(days: 1)),
                       firstDate: DateTime.now(),
@@ -534,7 +534,7 @@ class _CreateCollaborationSheetState extends ConsumerState<_CreateCollaborationS
               Expanded(
                 child: InkWell(
                   onTap: () async {
-                    final time = await showTimePicker(
+                    await showTimePicker(
                       context: context,
                       initialTime: TimeOfDay(hour: 18, minute: 0),
                     );

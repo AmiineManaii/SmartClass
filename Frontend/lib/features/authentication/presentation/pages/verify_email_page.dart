@@ -201,7 +201,7 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerLow ?? colorScheme.surfaceContainer,
+                color: colorScheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(9999),
                 boxShadow: [
                   BoxShadow(
@@ -246,7 +246,7 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerLowest ?? colorScheme.surface,
+              color: colorScheme.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(

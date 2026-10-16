@@ -16,6 +16,13 @@ import type {
 } from '../application/remove-teacher-assignments.use-case.js';
 import type { AssignStudentsUseCase } from '../application/assign-students.use-case.js';
 import type { AssignTeachersUseCase } from '../application/assign-teachers.use-case.js';
+import type { GenerateInvitationUseCase } from '../application/generate-invitation.use-case.js';
+import type { RotateInvitationUseCase } from '../application/rotate-invitation.use-case.js';
+import type { RevokeInvitationUseCase } from '../application/revoke-invitation.use-case.js';
+import type { GetInvitationStatusUseCase } from '../application/get-invitation-status.use-case.js';
+import type { JoinClassUseCase } from '../application/join-class.use-case.js';
+import type { LeaveClassUseCase } from '../application/leave-class.use-case.js';
+import type { CreateVirtualClassroomUseCase } from '../application/create-virtual-classroom.use-case.js';
 import type { UpdateGroupParams } from '../domain/group-repository.port.js';
 import { UnauthorizedError } from '../../../shared/errors/app-error.js';
 import { ErrorCodes } from '../../../shared/errors/error-codes.js';
@@ -47,6 +54,13 @@ export class GroupsController {
     private readonly removeTeacherAssignmentsUseCase: RemoveTeacherAssignmentsUseCase,
     private readonly assignStudentsUseCase: AssignStudentsUseCase,
     private readonly assignTeachersUseCase: AssignTeachersUseCase,
+    private readonly generateInvitationUseCase?: GenerateInvitationUseCase,
+    private readonly rotateInvitationUseCase?: RotateInvitationUseCase,
+    private readonly revokeInvitationUseCase?: RevokeInvitationUseCase,
+    private readonly getInvitationStatusUseCase?: GetInvitationStatusUseCase,
+    private readonly joinClassUseCase?: JoinClassUseCase,
+    private readonly leaveClassUseCase?: LeaveClassUseCase,
+    private readonly createVirtualClassroomUseCase?: CreateVirtualClassroomUseCase,
   ) {}
 
   public listGroups = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -110,7 +124,11 @@ export class GroupsController {
 
   public getGroup = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const result = await this.getGroupUseCase.execute(req.params.id as string);
+      const result = await this.getGroupUseCase.execute(
+        req.params.id as string,
+        req.user?.id,
+        req.user?.role ?? undefined,
+      );
       res.status(200).json({
         data: result.group,
       });
@@ -168,6 +186,8 @@ export class GroupsController {
         req.params.id as string,
         page,
         limit,
+        req.user?.id,
+        req.user?.role ?? undefined,
       );
       res.status(200).json({
         data: result.members,
@@ -187,6 +207,8 @@ export class GroupsController {
       const result = await this.removeMembersUseCase.execute(
         req.params.id as string,
         (req.body as { studentIds: string[] }).studentIds,
+        req.user?.id,
+        req.user?.role ?? undefined,
       );
       res.status(200).json({
         data: result,
@@ -264,6 +286,190 @@ export class GroupsController {
         ).assignments,
       );
       res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public generateInvitation = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      if (!this.generateInvitationUseCase) {
+        throw new Error('generateInvitationUseCase not configured');
+      }
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const body = req.body as { expiresInHours?: number | null; maxUses?: number | null };
+      const result = await this.generateInvitationUseCase.execute({
+        groupId: req.params.id as string,
+        actorId: req.user.id,
+        actorRole: req.user.role ?? '',
+        expiresInHours: body?.expiresInHours,
+        maxUses: body?.maxUses,
+      });
+      res.status(201).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public rotateInvitation = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      if (!this.rotateInvitationUseCase) {
+        throw new Error('rotateInvitationUseCase not configured');
+      }
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const body = req.body as { expiresInHours?: number | null; maxUses?: number | null };
+      const result = await this.rotateInvitationUseCase.execute({
+        groupId: req.params.id as string,
+        actorId: req.user.id,
+        actorRole: req.user.role ?? '',
+        expiresInHours: body?.expiresInHours,
+        maxUses: body?.maxUses,
+      });
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public revokeInvitation = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      if (!this.revokeInvitationUseCase) {
+        throw new Error('revokeInvitationUseCase not configured');
+      }
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const result = await this.revokeInvitationUseCase.execute({
+        groupId: req.params.id as string,
+        actorId: req.user.id,
+        actorRole: req.user.role ?? '',
+      });
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public getInvitationStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      if (!this.getInvitationStatusUseCase) {
+        throw new Error('getInvitationStatusUseCase not configured');
+      }
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const result = await this.getInvitationStatusUseCase.execute({
+        groupId: req.params.id as string,
+        actorId: req.user.id,
+        actorRole: req.user.role ?? '',
+      });
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public joinClass = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      if (!this.joinClassUseCase) {
+        throw new Error('joinClassUseCase not configured');
+      }
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const body = req.body as { code: string };
+      const result = await this.joinClassUseCase.execute({
+        rawCode: body.code,
+        studentId: req.user.id,
+        studentRole: req.user.role ?? '',
+      });
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public leaveClass = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      if (!this.leaveClassUseCase) {
+        throw new Error('leaveClassUseCase not configured');
+      }
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const result = await this.leaveClassUseCase.execute({
+        groupId: req.params.id as string,
+        studentId: req.user.id,
+      });
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public createVirtualClassroom = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      if (!this.createVirtualClassroomUseCase) {
+        throw new Error('createVirtualClassroomUseCase not configured');
+      }
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const body = req.body as { name: string; capacity?: number; description?: string | null };
+      const result = await this.createVirtualClassroomUseCase.execute({
+        teacherId: req.user.id,
+        teacherRole: req.user.role ?? '',
+        name: body.name,
+        capacity: body.capacity,
+        description: body.description,
+      });
+      res.status(201).json({
         data: result,
       });
     } catch (err) {

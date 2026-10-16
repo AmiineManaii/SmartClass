@@ -81,6 +81,9 @@ abstract class AdminRepository {
     required FraudStatus status,
     String? resolution,
   });
+
+  /// PATCH /api/v1/users/:id/teacher-approval
+  Future<void> updateTeacherApproval(String userId, String status);
 }
 
 /// Filière in use with its class count.

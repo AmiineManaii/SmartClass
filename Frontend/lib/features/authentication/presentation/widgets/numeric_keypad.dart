@@ -100,7 +100,7 @@ class _KeyButton extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Material(
-      color: background ?? colorScheme.surfaceContainerLowest ?? colorScheme.surface,
+      color: background ?? colorScheme.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,

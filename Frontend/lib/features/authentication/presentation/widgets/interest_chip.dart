@@ -22,7 +22,7 @@ class InterestChip extends StatelessWidget {
     return Material(
       color: selected
           ? colorScheme.primaryContainer
-          : (colorScheme.surfaceContainerLowest ?? colorScheme.surface),
+          : colorScheme.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(9999),
       child: InkWell(
         onTap: onTap,

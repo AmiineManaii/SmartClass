@@ -122,6 +122,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           // If resend failed, continue displaying standard failure message
         }
       }
+      if (!mounted) return;
       String message;
       if (failure is ValidationFailure && failure.fieldErrors.isNotEmpty) {
         message = failure.fieldErrors.values.join('\n');

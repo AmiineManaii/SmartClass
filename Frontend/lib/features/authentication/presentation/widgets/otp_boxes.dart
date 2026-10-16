@@ -55,7 +55,7 @@ class _OtpBoxesState extends State<OtpBoxes> {
             height: 64,
             margin: EdgeInsets.only(left: i == 0 ? 0 : 8),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerLow ?? colorScheme.surfaceContainer,
+              color: colorScheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(12),
             ),
             alignment: Alignment.center,

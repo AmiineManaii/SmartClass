@@ -17,6 +17,7 @@ export const saveCourseBodySchema = z
     level: levelSchema,
     difficulty: difficultySchema.default('moyen'),
     format: formatSchema.default('resume'),
+    classGroupIds: z.array(uuidSchema).max(50).optional(),
   })
   .strict();
 
@@ -28,6 +29,7 @@ export const updateCourseBodySchema = z
     level: levelSchema.optional(),
     difficulty: difficultySchema.optional(),
     format: formatSchema.optional(),
+    classGroupIds: z.array(uuidSchema).max(50).optional(),
   })
   .strict();
 

@@ -6,7 +6,9 @@ import '../../../../app/app_providers.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../application/providers/teacher_dashboard_provider.dart';
+import '../../application/providers/student_dashboard_provider.dart';
 import '../../domain/entities/teacher_dashboard.dart';
+import '../../../groups/presentation/widgets/class_invitation_sheet.dart';
 import 'ai_create_banner.dart';
 import 'teacher_greeting_header.dart';
 
@@ -59,7 +61,7 @@ class TeacherDashboardView extends ConsumerWidget {
                           ? const _NoClassNotice()
                           : _DashboardBody(data: data),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 96),
                   ],
                 ),
               ),
@@ -146,14 +148,95 @@ class _NoClassNotice extends StatelessWidget {
   }
 }
 
-class _DashboardBody extends StatelessWidget {
+class _DashboardBody extends ConsumerWidget {
   final TeacherDashboardData data;
 
   const _DashboardBody({required this.data});
 
+  void _showCreateVirtualDialog(BuildContext context, WidgetRef ref) {
+    final nameCtrl = TextEditingController();
+    final capCtrl = TextEditingController(text: '50');
+    final descCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nouvelle classe virtuelle'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Nom de la classe',
+                  hintText: 'ex: Atelier Informatique',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: capCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Capacité maximale',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Description (optionnel)',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final name = nameCtrl.text.trim();
+              if (name.isEmpty) return;
+              Navigator.pop(ctx);
+              try {
+                final remote = ref.read(groupsRemoteDataSourceProvider);
+                await remote.createVirtualClassroom(
+                  name: name,
+                  capacity: int.tryParse(capCtrl.text.trim()),
+                  description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+                );
+                ref.invalidate(teacherDashboardProvider);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Classe virtuelle créée avec succès !'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString()),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: const Text('Créer'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -196,41 +279,86 @@ class _DashboardBody extends StatelessWidget {
         const SizedBox(height: 24),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   context.tr('my_classes'),
-                  style: theme.textTheme.headlineSmall,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  width: 20,
-                  height: 20,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                    shape: BoxShape.circle,
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(9999),
                   ),
-                  child: Center(
-                    child: Text(
-                      '${data.classes.length}',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                  child: Text(
+                    '${data.classes.length}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
                     ),
                   ),
                 ),
               ],
             ),
-            TextButton(
-              onPressed: () => context.push('/groups'),
-              child: Text(
-                context.tr('view_all_count',
-                    args: {'count': '${data.classes.length}'}),
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.secondary,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.add_rounded, size: 14),
+                  label: const Text('Classe'),
+                  style: OutlinedButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    textStyle: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(9999),
+                    ),
+                  ),
+                  onPressed: () => _showCreateVirtualDialog(context, ref),
                 ),
-              ),
+                const SizedBox(width: 6),
+                TextButton(
+                  onPressed: () => context.push('/groups'),
+                  style: TextButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Voir tout',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.secondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 16,
+                        color: theme.colorScheme.secondary,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -380,108 +508,366 @@ class _TeacherClassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.shadow.withValues(alpha: 0.04),
-            offset: const Offset(0, 2),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(9999),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () =>
+            context.push('/groups/${teacherClass.id}', extra: teacherClass.name),
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: const Color(0xFF122675).withValues(alpha: 0.08),
+              width: 1.2,
             ),
-            child: Text(
-              teacherClass.promoTag,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: colorScheme.secondary,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF122675).withValues(alpha: 0.06),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
               ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(teacherClass.name, style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.groups_outlined,
-                  size: 16, color: colorScheme.outline),
-              const SizedBox(width: 6),
-              Text(
-                '${teacherClass.memberCount} ${context.tr('stat_students')}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
               ),
             ],
           ),
-          if (teacherClass.subjects.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              context.tr('teacher_subjects_label'),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final subject in teacherClass.subjects)
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Row 1: Promo badge + Status chip
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: colorScheme.secondaryFixed
-                          .withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(9999),
+                      color: const Color(0xFFEEF2FF),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text(
-                      subject,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSecondaryFixed,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.school_rounded,
+                          size: 13,
+                          color: Color(0xFF4338CA),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          teacherClass.promoTag,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            color: Color(0xFF4338CA),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFFA7F3D0),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF10B981),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          'Actif',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            color: Color(0xFF047857),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Row 2: Class Avatar + Title + Arrow indicator
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF122675), Color(0xFF2E45B8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              const Color(0xFF122675).withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.class_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          teacherClass.name,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                            letterSpacing: -0.4,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Gérer les cours & étudiants',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF1F5F9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 12,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Row 3: Stats row (Students count chip, subjects, next session)
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: const Color(0xFFE2E8F0),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.people_alt_rounded,
+                          size: 14,
+                          color: Color(0xFF2563EB),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${teacherClass.memberCount} ${context.tr('stat_students')}',
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF334155),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  for (final subject in teacherClass.subjects)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.menu_book_rounded,
+                            size: 13,
+                            color: Color(0xFF475569),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            subject,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (teacherClass.nextSessionLabel != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFBEB),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: const Color(0xFFFDE68A),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.schedule_rounded,
+                            size: 13,
+                            color: Color(0xFFD97706),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            teacherClass.nextSessionLabel!,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFB45309),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Hairline Divider
+              const Divider(
+                  height: 1, thickness: 0.8, color: Color(0xFFF1F5F9)),
+              const SizedBox(height: 12),
+
+              // Row 4: Action Footer
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => ClassInvitationSheet.show(
+                        context,
+                        classGroupId: teacherClass.id,
+                        className: teacherClass.name,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Ink(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEEF2FF),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFFC7D2FE),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.key_rounded,
+                              size: 15,
+                              color: Color(0xFF4338CA),
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              "Code d'invitation",
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                color: Color(0xFF4338CA),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-              ],
-            ),
-          ],
-          if (teacherClass.nextSessionLabel != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.schedule_outlined,
-                    size: 16, color: colorScheme.outline),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    teacherClass.nextSessionLabel!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Text(
+                        'Ouvrir la classe',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF122675),
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 16,
+                        color: Color(0xFF122675),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-          ],
-        ],
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

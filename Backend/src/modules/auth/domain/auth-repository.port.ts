@@ -1,4 +1,4 @@
-import type { Role, UserEntity, UserStatus } from './user.entity.js';
+import type { Role, TeacherApprovalStatus, UserEntity, UserStatus } from './user.entity.js';
 
 export interface CreateUserParams {
   email: string;
@@ -6,6 +6,7 @@ export interface CreateUserParams {
   firstName: string;
   lastName: string;
   role?: Role | null;
+  teacherApprovalStatus?: TeacherApprovalStatus | null;
   status?: UserStatus;
   emailVerified?: boolean;
 }
@@ -46,6 +47,7 @@ export interface AuthRepositoryPort {
     firstName?: string;
     lastName?: string;
     role?: Role | null;
+    teacherApprovalStatus?: TeacherApprovalStatus | null;
     birthDate?: Date | null;
     status?: UserStatus;
     emailVerified?: boolean;

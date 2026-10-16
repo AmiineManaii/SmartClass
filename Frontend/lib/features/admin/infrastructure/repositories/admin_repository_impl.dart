@@ -11,6 +11,7 @@ import '../models/admin_models.dart';
 /// [AdminRepository] backed by the real API. Translates transport errors
 /// into [ApiException] (mapped to [Failure] by callers) — never mock data.
 class AdminRepositoryImpl implements AdminRepository {
+  // ignore: prefer_initializing_formals
   AdminRepositoryImpl({required AdminRemoteDataSource remote}) : _remote = remote;
 
   final AdminRemoteDataSource _remote;
@@ -311,5 +312,10 @@ class AdminRepositoryImpl implements AdminRepository {
       status: fraudStatusToApi(status),
       resolution: resolution,
     );
+  }
+
+  @override
+  Future<void> updateTeacherApproval(String userId, String status) async {
+    await _remote.updateTeacherApproval(userId, status);
   }
 }

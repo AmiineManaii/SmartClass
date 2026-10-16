@@ -35,7 +35,7 @@ class RoleOptionCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Material(
-      color: colorScheme.surfaceContainerLowest ?? colorScheme.surface,
+      color: colorScheme.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,

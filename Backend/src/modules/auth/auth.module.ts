@@ -24,6 +24,7 @@ import { createAuthRouter } from './presentation/auth.routes.js';
 import {
   createAuthenticateMiddleware,
   createRequireRoleMiddleware,
+  createRequireApprovedTeacherMiddleware,
 } from './presentation/auth.middleware.js';
 import type { Role } from './domain/user.entity.js';
 
@@ -43,6 +44,7 @@ export interface AuthModule {
   controller: AuthController;
   authenticateMiddleware: RequestHandler;
   requireRoleMiddleware: (allowedRoles: Role[]) => RequestHandler;
+  requireApprovedTeacherMiddleware: (allowedRoles?: Role[]) => RequestHandler;
   tokenService: TokenServicePort;
   authRepository: AuthRepositoryPort;
   emailService: EmailPort;
@@ -134,6 +136,7 @@ export const createAuthModule = (options: AuthModuleOptions = {}): AuthModule =>
     controller,
     authenticateMiddleware,
     requireRoleMiddleware: createRequireRoleMiddleware,
+    requireApprovedTeacherMiddleware: createRequireApprovedTeacherMiddleware,
     tokenService,
     authRepository,
     emailService,

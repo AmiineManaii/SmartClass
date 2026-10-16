@@ -186,7 +186,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerLowest ?? colorScheme.surface,
+                        color: colorScheme.surfaceContainerLowest,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
@@ -228,7 +228,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerLowest ?? colorScheme.surface,
+              color: colorScheme.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
@@ -333,7 +333,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerLowest ?? colorScheme.surface,
+                    color: colorScheme.surfaceContainerLowest,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(

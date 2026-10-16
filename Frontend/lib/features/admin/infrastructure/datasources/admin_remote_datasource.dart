@@ -50,7 +50,7 @@ class AdminRemoteDataSource {
       queryParameters: {
         'page': page,
         'limit': limit,
-        if (level != null) 'level': level,
+        'level': ?level,
         if (search != null && search.isNotEmpty) 'search': search,
       },
     );
@@ -84,7 +84,7 @@ class AdminRemoteDataSource {
         'forumEnabled': forumEnabled,
         'entSyncEnabled': entSyncEnabled,
         'status': draft ? 'DRAFT' : 'PUBLISHED',
-        if (referentId != null) 'referentId': referentId,
+        'referentId': ?referentId,
       },
     );
     return apiEnvelope(res);
@@ -218,8 +218,8 @@ class AdminRemoteDataSource {
       '$_base/exams/fraud-reports',
       queryParameters: {
         'limit': limit,
-        if (status != null) 'status': status,
-        if (cursor != null) 'cursor': cursor,
+        'status': ?status,
+        'cursor': ?cursor,
       },
     );
     return _listEnvelope(res);
@@ -241,6 +241,17 @@ class AdminRemoteDataSource {
         'status': status,
         if (resolution != null && resolution.isNotEmpty) 'resolution': resolution,
       },
+    );
+    return apiEnvelope(res);
+  }
+
+  Future<Map<String, dynamic>> updateTeacherApproval(
+    String userId,
+    String status,
+  ) async {
+    final res = await _client.patch<dynamic>(
+      '$_base/users/$userId/teacher-approval',
+      data: {'status': status},
     );
     return apiEnvelope(res);
   }

@@ -1,10 +1,11 @@
-import type { Role, UserStatus } from './user.entity.js';
+import type { Role, TeacherApprovalStatus, UserStatus } from './user.entity.js';
 
 export interface TokenPayload {
   sub: string;
   email: string;
   role: Role | null;
   status: UserStatus;
+  teacherApprovalStatus?: TeacherApprovalStatus | null;
 }
 
 export interface AuthTokens {

@@ -26,6 +26,7 @@ interface RawCourseRow {
   createdAt: Date;
   updatedAt: Date;
   author: { firstName: string; lastName: string };
+  classGroups?: { classGroupId: string }[];
 }
 
 const authorName = (row: RawCourseRow): string =>
@@ -47,6 +48,7 @@ export class PrismaCourseRepositoryAdapter implements CourseRepositoryPort {
       status: row.status as CourseStatus,
       authorId: row.authorId,
       authorName: authorName(row),
+      classGroupIds: row.classGroups?.map((cg) => cg.classGroupId) ?? [],
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -56,8 +58,11 @@ export class PrismaCourseRepositoryAdapter implements CourseRepositoryPort {
     return { ...this.toSummary(row), content: row.content };
   }
 
-  private get withAuthor() {
-    return { author: { select: { firstName: true, lastName: true } } } as const;
+  private get withIncludes() {
+    return {
+      author: { select: { firstName: true, lastName: true } },
+      classGroups: { select: { classGroupId: true } },
+    } as const;
   }
 
   public async save(params: SaveCourseParams): Promise<CourseDetail> {
@@ -71,13 +76,32 @@ export class PrismaCourseRepositoryAdapter implements CourseRepositoryPort {
         format: params.format,
         status: 'DRAFT',
         authorId: params.authorId,
+        ...(params.classGroupIds && params.classGroupIds.length > 0
+          ? {
+              classGroups: {
+                create: params.classGroupIds.map((classGroupId) => ({ classGroupId })),
+              },
+            }
+          : {}),
       },
-      include: this.withAuthor,
+      include: this.withIncludes,
     })) as unknown as RawCourseRow;
     return this.toDetail(row);
   }
 
   public async update(id: string, params: UpdateCourseParams): Promise<CourseDetail> {
+    if (params.classGroupIds !== undefined) {
+      await this.prisma.courseClassGroup.deleteMany({ where: { courseId: id } });
+      if (params.classGroupIds.length > 0) {
+        await this.prisma.courseClassGroup.createMany({
+          data: params.classGroupIds.map((classGroupId) => ({
+            courseId: id,
+            classGroupId,
+          })),
+        });
+      }
+    }
+
     const row = (await this.prisma.course.update({
       where: { id },
       data: {
@@ -88,7 +112,7 @@ export class PrismaCourseRepositoryAdapter implements CourseRepositoryPort {
         ...(params.difficulty !== undefined ? { difficulty: params.difficulty } : {}),
         ...(params.format !== undefined ? { format: params.format } : {}),
       },
-      include: this.withAuthor,
+      include: this.withIncludes,
     })) as unknown as RawCourseRow;
     return this.toDetail(row);
   }
@@ -97,7 +121,7 @@ export class PrismaCourseRepositoryAdapter implements CourseRepositoryPort {
     const rows = (await this.prisma.course.findMany({
       where: { authorId },
       orderBy: { createdAt: 'desc' },
-      include: this.withAuthor,
+      include: this.withIncludes,
     })) as unknown as RawCourseRow[];
     return rows.map((row) => this.toSummary(row));
   }
@@ -106,7 +130,7 @@ export class PrismaCourseRepositoryAdapter implements CourseRepositoryPort {
     const rows = (await this.prisma.course.findMany({
       where: { status: 'PUBLISHED' },
       orderBy: { createdAt: 'desc' },
-      include: this.withAuthor,
+      include: this.withIncludes,
     })) as unknown as RawCourseRow[];
     return rows.map((row) => this.toSummary(row));
   }
@@ -114,7 +138,7 @@ export class PrismaCourseRepositoryAdapter implements CourseRepositoryPort {
   public async findById(id: string): Promise<CourseDetail | null> {
     const row = (await this.prisma.course.findUnique({
       where: { id },
-      include: this.withAuthor,
+      include: this.withIncludes,
     })) as unknown as RawCourseRow | null;
     return row ? this.toDetail(row) : null;
   }
@@ -123,7 +147,7 @@ export class PrismaCourseRepositoryAdapter implements CourseRepositoryPort {
     const row = (await this.prisma.course.update({
       where: { id },
       data: { status },
-      include: this.withAuthor,
+      include: this.withIncludes,
     })) as unknown as RawCourseRow;
     return this.toDetail(row);
   }

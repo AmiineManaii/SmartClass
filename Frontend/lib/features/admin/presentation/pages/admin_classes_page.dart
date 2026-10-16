@@ -12,8 +12,6 @@ import '../../application/providers/admin_providers.dart';
 import '../../domain/entities/managed_class.dart';
 import '../widgets/admin_filter_chips.dart';
 import '../widgets/admin_search_field.dart';
-import '../widgets/admin_section_header.dart';
-import '../widgets/admin_stat_card.dart';
 import '../views/web_admin_classes_view.dart';
 
 class AdminClassesPage extends ConsumerStatefulWidget {
@@ -141,6 +139,11 @@ class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+              ),
+              action(
+                Icons.analytics_outlined,
+                'admin_view_details',
+                () => context.push('/groups/${cls.id}', extra: cls.title),
               ),
               action(
                 Icons.edit_outlined,
@@ -286,7 +289,7 @@ class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
                         onToggleSort: () =>
                             setState(() => _sortByStudents = !_sortByStudents),
                         onMenu: _openClassMenu,
-                        onOpen: (id) => context.push('/admin/classes/$id/students'),
+                        onOpen: (id) => context.push('/groups/$id'),
                       ),
                     ),
                     const SizedBox(height: 96),

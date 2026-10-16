@@ -26,7 +26,7 @@ class AuthRemoteDataSource {
         'password': password,
         'firstName': firstName,
         'lastName': lastName,
-        if (role case final r?) 'role': r,
+        'role': ?role,
       },
     );
     return apiEnvelope(res);
@@ -112,7 +112,7 @@ class AuthRemoteDataSource {
     final res = await _client.post<dynamic>(
       '$_base/auth/logout',
       authenticated: false,
-      data: {if (refreshToken case final t?) 'refreshToken': t},
+      data: {'refreshToken': ?refreshToken},
     );
     return apiEnvelope(res);
   }
@@ -136,10 +136,10 @@ class AuthRemoteDataSource {
     final res = await _client.patch<dynamic>(
       '$_base/auth/profile',
       data: {
-        if (firstName case final v?) 'firstName': v,
-        if (lastName case final v?) 'lastName': v,
-        if (birthDate case final v?) 'birthDate': v,
-        if (onboardingCompleted case final v?) 'onboardingCompleted': v,
+        'firstName': ?firstName,
+        'lastName': ?lastName,
+        'birthDate': ?birthDate,
+        'onboardingCompleted': ?onboardingCompleted,
       },
     );
     return apiEnvelope(res);

@@ -18,8 +18,11 @@ import { DeleteCourseUseCase } from './application/delete-course.use-case.js';
 import { CoursesController } from './presentation/courses.controller.js';
 import { createCoursesRouter } from './presentation/courses.routes.js';
 
+import type { GroupRepositoryPort } from '../groups/domain/group-repository.port.js';
+
 export interface CoursesModuleOptions {
   courseRepository?: CourseRepositoryPort;
+  groupRepository?: GroupRepositoryPort;
   tokenService?: TokenServicePort;
   authenticateMiddleware?: RequestHandler;
   requireTeacherMiddleware?: RequestHandler;
@@ -32,12 +35,13 @@ export interface CoursesModule {
 
 export const createCoursesModule = (options: CoursesModuleOptions = {}): CoursesModule => {
   const courseRepository = options.courseRepository ?? new PrismaCourseRepositoryAdapter();
+  const groupRepository = options.groupRepository;
 
-  const saveCourseUseCase = new SaveCourseUseCase(courseRepository);
-  const updateCourseUseCase = new UpdateCourseUseCase(courseRepository);
+  const saveCourseUseCase = new SaveCourseUseCase(courseRepository, groupRepository);
+  const updateCourseUseCase = new UpdateCourseUseCase(courseRepository, groupRepository);
   const listMyCoursesUseCase = new ListMyCoursesUseCase(courseRepository);
-  const listPublishedCoursesUseCase = new ListPublishedCoursesUseCase(courseRepository);
-  const getCourseUseCase = new GetCourseUseCase(courseRepository);
+  const listPublishedCoursesUseCase = new ListPublishedCoursesUseCase(courseRepository, groupRepository);
+  const getCourseUseCase = new GetCourseUseCase(courseRepository, groupRepository);
   const publishCourseUseCase = new PublishCourseUseCase(courseRepository);
   const unpublishCourseUseCase = new UnpublishCourseUseCase(courseRepository);
   const deleteCourseUseCase = new DeleteCourseUseCase(courseRepository);

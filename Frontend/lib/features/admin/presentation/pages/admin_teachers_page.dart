@@ -227,6 +227,23 @@ class _AdminTeachersPageState extends ConsumerState<AdminTeachersPage> {
     }
   }
 
+  Future<void> _updateApproval(AdminTeacher teacher, String status) async {
+    try {
+      await ref.read(adminRepositoryProvider).updateTeacherApproval(teacher.id, status);
+      ref.invalidate(adminTeachersProvider(null));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(status == 'APPROVED' ? 'Compte enseignant validé avec succès' : 'Compte enseignant refusé'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showFailure(e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (context.isDesktop) {
@@ -345,6 +362,8 @@ class _AdminTeachersPageState extends ConsumerState<AdminTeachersPage> {
                                 teacher: filtered[i],
                                 busy: _assigning,
                                 onAssign: () => _assign(filtered[i]),
+                                onApprove: () => _updateApproval(filtered[i], 'APPROVED'),
+                                onReject: () => _updateApproval(filtered[i], 'REJECTED'),
                               ),
                               if (i < filtered.length - 1)
                                 const SizedBox(height: 10),
@@ -369,17 +388,46 @@ class _TeacherRow extends StatelessWidget {
   final AdminTeacher teacher;
   final bool busy;
   final VoidCallback onAssign;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
 
   const _TeacherRow({
     required this.teacher,
     required this.busy,
     required this.onAssign,
+    required this.onApprove,
+    required this.onReject,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+
+    final isPending = teacher.approvalStatus == 'PENDING';
+    final isRejected = teacher.approvalStatus == 'REJECTED';
+
+    final Color badgeBg;
+    final Color badgeText;
+    final String badgeLabel;
+    final IconData badgeIcon;
+
+    if (isPending) {
+      badgeBg = Colors.amber.withValues(alpha: 0.15);
+      badgeText = Colors.amber.shade900;
+      badgeLabel = 'En attente';
+      badgeIcon = Icons.hourglass_top_rounded;
+    } else if (isRejected) {
+      badgeBg = Colors.red.withValues(alpha: 0.12);
+      badgeText = Colors.red.shade800;
+      badgeLabel = 'Rejeté';
+      badgeIcon = Icons.cancel_outlined;
+    } else {
+      badgeBg = Colors.green.withValues(alpha: 0.12);
+      badgeText = Colors.green.shade800;
+      badgeLabel = 'Approuvé';
+      badgeIcon = Icons.check_circle_outline_rounded;
+    }
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -424,10 +472,65 @@ class _TeacherRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(badgeIcon, size: 12, color: badgeText),
+                      const SizedBox(width: 4),
+                      Text(
+                        badgeLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: badgeText,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(width: 8),
+          if (isPending) ...[
+            IconButton(
+              icon: const Icon(Icons.check_circle_rounded, color: Colors.green),
+              iconSize: 22,
+              tooltip: 'Valider le professeur',
+              onPressed: onApprove,
+              visualDensity: VisualDensity.compact,
+            ),
+            IconButton(
+              icon: const Icon(Icons.cancel_rounded, color: Colors.red),
+              iconSize: 22,
+              tooltip: 'Refuser le professeur',
+              onPressed: onReject,
+              visualDensity: VisualDensity.compact,
+            ),
+          ] else if (isRejected) ...[
+            IconButton(
+              icon: const Icon(Icons.replay_rounded, color: Colors.green),
+              iconSize: 22,
+              tooltip: 'Réapprouver',
+              onPressed: onApprove,
+              visualDensity: VisualDensity.compact,
+            ),
+          ] else ...[
+            IconButton(
+              icon: Icon(Icons.block_rounded, size: 18, color: Colors.grey.shade600),
+              tooltip: 'Suspendre / Révoquer',
+              onPressed: onReject,
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
+          const SizedBox(width: 4),
           OutlinedButton(
             onPressed: busy ? null : onAssign,
             style: OutlinedButton.styleFrom(

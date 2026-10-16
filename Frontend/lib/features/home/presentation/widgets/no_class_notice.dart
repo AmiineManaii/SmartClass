@@ -8,7 +8,9 @@ import '../../../../core/localization/app_localizations.dart';
 /// absence of membership data — no class is ever invented. The student is
 /// directed to their institution's administration.
 class NoClassNotice extends StatelessWidget {
-  const NoClassNotice({super.key});
+  final VoidCallback? onJoinTap;
+
+  const NoClassNotice({super.key, this.onJoinTap});
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +64,14 @@ class NoClassNotice extends StatelessWidget {
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
+                if (onJoinTap != null) ...[
+                  const SizedBox(height: 12),
+                  FilledButton.tonalIcon(
+                    icon: const Icon(Icons.login_rounded, size: 18),
+                    label: const Text('Rejoindre avec un code'),
+                    onPressed: onJoinTap,
+                  ),
+                ],
               ],
             ),
           ),

@@ -18,6 +18,7 @@ export interface CourseSummary {
   status: CourseStatus;
   authorId: string;
   authorName: string;
+  classGroupIds?: string[];
   createdAt: Date;
   updatedAt: Date;
 }

@@ -15,6 +15,7 @@ export interface SaveCourseParams {
   difficulty: CourseDifficulty;
   format: CourseFormat;
   authorId: string;
+  classGroupIds?: string[];
 }
 
 export interface UpdateCourseParams {
@@ -24,6 +25,7 @@ export interface UpdateCourseParams {
   level?: CourseLevel;
   difficulty?: CourseDifficulty;
   format?: CourseFormat;
+  classGroupIds?: string[];
 }
 
 export interface CourseRepositoryPort {

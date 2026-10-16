@@ -62,15 +62,18 @@ export class CoursesController {
         level: 'concis' | 'equilibre' | 'detaille';
         difficulty?: 'facile' | 'moyen' | 'difficile';
         format?: 'resume' | 'flashcards' | 'carte-mentale';
+        classGroupIds?: string[];
       };
       const result = await this.saveCourseUseCase.execute({
         requesterId: user.id,
+        requesterRole: user.role,
         title: body.title,
         subject: body.subject ?? null,
         content: body.content,
         level: body.level,
         difficulty: body.difficulty,
         format: body.format,
+        classGroupIds: body.classGroupIds,
       });
       res.status(201).json({ data: result });
     } catch (err) {
@@ -93,12 +96,15 @@ export class CoursesController {
   };
 
   public listPublishedCourses = async (
-    _req: Request,
+    req: Request,
     res: Response,
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const result = await this.listPublishedCoursesUseCase.execute();
+      const result = await this.listPublishedCoursesUseCase.execute(
+        req.user?.id,
+        req.user?.role,
+      );
       res.status(200).json({ data: result });
     } catch (err) {
       next(err);

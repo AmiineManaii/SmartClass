@@ -25,7 +25,7 @@ class PasswordRuleChecklist extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow ?? colorScheme.surfaceContainer,
+        color: colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(

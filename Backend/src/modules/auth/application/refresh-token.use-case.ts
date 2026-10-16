@@ -73,6 +73,7 @@ export class RefreshTokenUseCase {
       email: user.email,
       role: user.role,
       status: user.status,
+      teacherApprovalStatus: user.teacherApprovalStatus,
     });
 
     return {

@@ -632,10 +632,7 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                     physics: const NeverScrollableScrollPhysics(),
                     buildDefaultDragHandles: false,
                     itemCount: sections.length,
-                    onReorder: (oldIndex, newIndex) {
-                      if (oldIndex < newIndex) {
-                        newIndex -= 1;
-                      }
+                    onReorderItem: (oldIndex, newIndex) {
                       _moveSection(oldIndex, newIndex);
                     },
                     itemBuilder: (context, index) {

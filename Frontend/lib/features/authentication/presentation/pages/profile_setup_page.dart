@@ -149,7 +149,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerLowest ?? colorScheme.surface,
+              color: colorScheme.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
@@ -299,7 +299,7 @@ class _PickerRow extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Material(
-      color: colorScheme.surfaceContainerLowest ?? colorScheme.surface,
+      color: colorScheme.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,

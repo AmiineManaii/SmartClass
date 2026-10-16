@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/extensions/extensions.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_text_field.dart';
 
 class AiAssistantPage extends ConsumerStatefulWidget {
@@ -96,9 +94,6 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
   
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    
     return Scaffold(
       appBar: AppBar(
         title: Text(context.tr('ai_assistant')),

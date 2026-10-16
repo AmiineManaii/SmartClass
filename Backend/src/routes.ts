@@ -58,7 +58,7 @@ export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
   const aiModule = createAiModule({
     ...options.aiModuleOptions,
     authenticateMiddleware: adminGuard.authenticateMiddleware,
-    requireTeacherMiddleware: authModule.requireRoleMiddleware(['TEACHER', 'ADMIN'] as Role[]),
+    requireTeacherMiddleware: authModule.requireApprovedTeacherMiddleware(['TEACHER', 'ADMIN'] as Role[]),
   });
   router.use('/ai', aiModule.router);
 
@@ -73,8 +73,9 @@ export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
   // published reading for every authenticated user.
   const coursesModule = createCoursesModule({
     ...options.coursesModuleOptions,
+    groupRepository: groupsModule.groupRepository,
     authenticateMiddleware: adminGuard.authenticateMiddleware,
-    requireTeacherMiddleware: authModule.requireRoleMiddleware(['TEACHER', 'ADMIN'] as Role[]),
+    requireTeacherMiddleware: authModule.requireApprovedTeacherMiddleware(['TEACHER', 'ADMIN'] as Role[]),
   });
   router.use('/courses', coursesModule.router);
 

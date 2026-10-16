@@ -24,7 +24,7 @@ class AuthTopBar extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerLow ?? colorScheme.surfaceContainer,
+              color: colorScheme.surfaceContainerLow,
               shape: BoxShape.circle,
             ),
             child: IconButton(
