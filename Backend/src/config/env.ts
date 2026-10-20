@@ -44,7 +44,9 @@ const envSchema = z.object({
   // set accordingly (context window >= prompt + AI_MAX_TOKENS, ~34K).
   AI_BASE_URL: z.string().default('http://host.docker.internal:8888'),
   AI_MODEL: z.string().default('unsloth/gemma-4-E4B-it-GGUF'),
-  AI_FALLBACK_MODEL: z.string().default('unsloth/Qwen3.5-4B-GGUF'),
+  // Fallback model served by Ollama (HF GGUF tag) when the primary
+  // Unsloth model is unreachable or errors out.
+  AI_FALLBACK_MODEL: z.string().default('hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1'),
   AI_API_KEY: z.string().optional().default('sk-unsloth-f4212eed452c85fc015d7a8d9aff7a50'),
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(300000),
   AI_STATUS_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
@@ -61,6 +63,21 @@ const envSchema = z.object({
   // Unsloth refuses tool execution without it ("confirm_tool_calls ..."
   // 400). 'off' = run declared tools without interactive confirmation.
   AI_PERMISSION_MODE: z.enum(['off', 'auto', 'confirm']).default('off'),
+  // Local embedding server (Ollama, RG27 — no third-party LLM APIs).
+  // EmbeddingGemma outputs 768-dim vectors (course_passages.embedding).
+  EMBEDDING_BASE_URL: z.string().default('http://host.docker.internal:11434'),
+  EMBEDDING_MODEL: z.string().default('embeddinggemma'),
+  EMBEDDING_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
+  // ComfyUI image generation (section illustrations, SDXL workflow
+  // image_sdxl_simple.json at 512x512). Empty = disabled: the adapter
+  // answers IMAGE_SERVICE_UNAVAILABLE. This base is the origin the BACKEND
+  // calls (from its container: host.docker.internal works, LAN IP may not).
+  COMFYUI_BASE_URL: z.string().optional().default(''),
+  // Origin embedded in the imageUrl returned to the app, which resolves the
+  // host itself (host.docker.internal is Docker-only). Empty = reuse
+  // COMFYUI_BASE_URL. Use your LAN IP when testing from a device (ComfyUI
+  // must then listen on 0.0.0.0).
+  COMFYUI_PUBLIC_URL: z.string().optional().default(''),
 });
 
 export type Env = z.infer<typeof envSchema>;

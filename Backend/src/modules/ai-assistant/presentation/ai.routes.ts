@@ -7,6 +7,7 @@ import {
   generateCourseBodySchema,
   generateOutlineBodySchema,
   refineSectionBodySchema,
+  validateSectionBodySchema,
 } from './ai.validation.js';
 import { pdfUploadMiddleware } from './pdf-upload.middleware.js';
 
@@ -38,6 +39,33 @@ export const createAiRouter = (options: AiRouterOptions): Router => {
     generateRateLimiter,
     validate({ body: refineSectionBodySchema }),
     controller.refineSection,
+  );
+
+  // --- Section-by-section build (RG27: nothing published unvalidated) ---
+  // Build state: course metadata + ordered sections (lazily materialized
+  // from the teacher-validated outline on first open).
+  router.get('/courses/:id/build', controller.getCourseBuild);
+
+  // Generation is validated inline in the controller so a bad payload can
+  // still answer 422 before any SSE header is written.
+  router.post('/courses/sections/generate', generateRateLimiter, controller.streamGenerateSection);
+
+  router.post(
+    '/courses/sections/regenerate',
+    generateRateLimiter,
+    controller.streamRegenerateSection,
+  );
+
+  router.post(
+    '/courses/sections/validate',
+    validate({ body: validateSectionBodySchema }),
+    controller.validateSection,
+  );
+
+  router.post(
+    '/courses/sections/image',
+    generateRateLimiter,
+    controller.generateSectionImage,
   );
 
   router.post(

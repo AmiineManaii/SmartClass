@@ -246,4 +246,7 @@ paths:
         '422':
           $ref: './common.yaml#/components/responses/ValidationError'
 components:
+  securitySchemes:
+    bearerAuth:
+      $ref: './common.yaml#/components/securitySchemes/bearerAuth'
   schemas: {}

@@ -4,6 +4,7 @@ import type {
   CourseDifficulty,
   CourseFormat,
   CourseLevel,
+  CourseOutlineData,
   CourseStatus,
   CourseSummary,
 } from '../domain/course.entity.js';
@@ -23,6 +24,7 @@ interface RawCourseRow {
   format: string;
   status: string;
   authorId: string;
+  outline: unknown;
   createdAt: Date;
   updatedAt: Date;
   author: { firstName: string; lastName: string };
@@ -31,6 +33,13 @@ interface RawCourseRow {
 
 const authorName = (row: RawCourseRow): string =>
   `${row.author.firstName} ${row.author.lastName}`.trim();
+
+const toOutline = (value: unknown): CourseOutlineData | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const outline = value as Record<string, unknown>;
+  if (!Array.isArray(outline.sections)) return null;
+  return value as CourseOutlineData;
+};
 
 export class PrismaCourseRepositoryAdapter implements CourseRepositoryPort {
   private get prisma() {
@@ -55,7 +64,7 @@ export class PrismaCourseRepositoryAdapter implements CourseRepositoryPort {
   }
 
   private toDetail(row: RawCourseRow): CourseDetail {
-    return { ...this.toSummary(row), content: row.content };
+    return { ...this.toSummary(row), content: row.content, outline: toOutline(row.outline) };
   }
 
   private get withIncludes() {
@@ -76,6 +85,7 @@ export class PrismaCourseRepositoryAdapter implements CourseRepositoryPort {
         format: params.format,
         status: 'DRAFT',
         authorId: params.authorId,
+        ...(params.outline !== undefined ? { outline: params.outline ?? undefined } : {}),
         ...(params.classGroupIds && params.classGroupIds.length > 0
           ? {
               classGroups: {

@@ -63,6 +63,9 @@ paths:
         '403':
           $ref: './common.yaml#/components/responses/Forbidden'
 components:
+  securitySchemes:
+    bearerAuth:
+      $ref: './common.yaml#/components/securitySchemes/bearerAuth'
   schemas:
     AdminOverviewCounts:
       type: object

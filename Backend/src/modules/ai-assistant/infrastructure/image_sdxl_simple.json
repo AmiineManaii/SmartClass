@@ -1,0 +1,107 @@
+{
+  "7": {
+    "inputs": {
+      "filename_prefix": "sdxl_simple",
+      "images": [
+        "14",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Enregistrer Image"
+    }
+  },
+  "10": {
+    "inputs": {
+      "text": "masterpiece, best quality, ultra-photorealistic, close-up, 1man, solo, Batman, cowl featuring intricate carbon fiber texture, sharp, highly detailed facial features and clear eyes, tight close-up on the face, intense expression, subtle rim lighting defining the cheekbones and nose, dynamic shadow and depth, cinematic lighting, 8k resolution, tactical Batsuit, dark and gritty, Gotham City background blurred, hyper-detailed skin texture, realistic breath vapor",
+      "clip": [
+        "15",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  },
+  "11": {
+    "inputs": {
+      "text": "cartoon, 3d render, anime, comic, low quality, blurry, extra fingers, deformed face, mask error, missing eyes, smooth skin, plastic, doll, bad anatomy, overexposure, flat lighting, text, watermark",
+      "clip": [
+        "15",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative Prompt"
+    }
+  },
+  "12": {
+    "inputs": {
+      "seed": 209087739553733,
+      "steps": 20,
+      "cfg": 8,
+      "sampler_name": "uni_pc_bh2",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": [
+        "15",
+        0
+      ],
+      "positive": [
+        "10",
+        0
+      ],
+      "negative": [
+        "11",
+        0
+      ],
+      "latent_image": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "13": {
+    "inputs": {
+      "width": 512,
+      "height": 512,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent"
+    }
+  },
+  "14": {
+    "inputs": {
+      "samples": [
+        "12",
+        0
+      ],
+      "vae": [
+        "15",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "15": {
+    "inputs": {
+      "ckpt_name": "sd_xl_base_1.0.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Charger Point de Contrôle"
+    }
+  }
+}

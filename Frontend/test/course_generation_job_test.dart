@@ -8,6 +8,7 @@ import 'package:smartclass/core/network/token_storage.dart';
 import 'package:smartclass/features/courses/application/providers/ai_course_options_provider.dart';
 import 'package:smartclass/features/courses/application/providers/course_generation_job_provider.dart';
 import 'package:smartclass/features/courses/application/providers/courses_provider.dart';
+import 'package:smartclass/features/courses/domain/entities/course_outline.dart';
 import 'package:smartclass/features/courses/domain/entities/generated_course.dart';
 import 'package:smartclass/features/courses/infrastructure/datasources/ai_course_remote_datasource.dart';
 import 'package:smartclass/features/courses/infrastructure/datasources/generated_courses_remote_datasource.dart';
@@ -59,6 +60,7 @@ class _FakeGen extends GeneratedCoursesRemoteDataSource {
 
   int saves = 0;
   final deleted = <String>[];
+  CourseOutline? lastOutline;
 
   @override
   Future<GeneratedCourse> saveDraft({
@@ -68,8 +70,10 @@ class _FakeGen extends GeneratedCoursesRemoteDataSource {
     required String level,
     required String difficulty,
     required String format,
+    CourseOutline? outline,
   }) async {
     saves += 1;
+    lastOutline = outline;
     return GeneratedCourse(
       id: 'c$saves',
       title: title,

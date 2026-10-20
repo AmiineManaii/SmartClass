@@ -3,6 +3,7 @@ import type {
   CourseDifficulty,
   CourseFormat,
   CourseLevel,
+  CourseOutlineData,
   CourseStatus,
   CourseSummary,
 } from './course.entity.js';
@@ -16,6 +17,8 @@ export interface SaveCourseParams {
   format: CourseFormat;
   authorId: string;
   classGroupIds?: string[];
+  /** Teacher-validated plan (drives the section-by-section build). */
+  outline?: CourseOutlineData | null;
 }
 
 export interface UpdateCourseParams {

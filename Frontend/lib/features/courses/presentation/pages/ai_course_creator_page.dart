@@ -434,7 +434,10 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
               behavior: SnackBarBehavior.floating,
               action: SnackBarAction(
                 label: context.tr('view_drafts'),
-                onPressed: () => context.push('/courses'),
+                // go, not push: ai-create sits outside the ShellRoute —
+                // pushing '/courses' would stack a second ShellRoute page
+                // with the same key and trip the Navigator assertion.
+                onPressed: () => context.go('/courses'),
               ),
             ),
           );
@@ -466,7 +469,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
           IconButton(
             icon: const Icon(Icons.menu_book_rounded),
             tooltip: context.tr('my_courses'),
-            onPressed: () => context.push('/courses'),
+            onPressed: () => context.go('/courses'),
           ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -934,7 +937,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                         onSave: () => ref
                             .read(courseGenerationJobProvider.notifier)
                             .saveCurrentEdits(displayed),
-                        onViewDrafts: () => context.push('/courses'),
+                        onViewDrafts: () => context.go('/courses'),
                       ),
                   ],
                   if (running) ...[

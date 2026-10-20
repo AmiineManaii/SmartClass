@@ -6,7 +6,9 @@ import {
   type TokenServicePort,
 } from '../auth/index.js';
 import type { CourseRepositoryPort } from './domain/course-repository.port.js';
+import type { CourseSectionRepositoryPort } from './domain/course-section-repository.port.js';
 import { PrismaCourseRepositoryAdapter } from './infrastructure/prisma-course-repository.adapter.js';
+import { PrismaCourseSectionRepositoryAdapter } from './infrastructure/prisma-course-section-repository.adapter.js';
 import { SaveCourseUseCase } from './application/save-course.use-case.js';
 import { UpdateCourseUseCase } from './application/update-course.use-case.js';
 import { ListMyCoursesUseCase } from './application/list-my-courses.use-case.js';
@@ -22,6 +24,7 @@ import type { GroupRepositoryPort } from '../groups/domain/group-repository.port
 
 export interface CoursesModuleOptions {
   courseRepository?: CourseRepositoryPort;
+  sectionRepository?: CourseSectionRepositoryPort;
   groupRepository?: GroupRepositoryPort;
   tokenService?: TokenServicePort;
   authenticateMiddleware?: RequestHandler;
@@ -35,6 +38,8 @@ export interface CoursesModule {
 
 export const createCoursesModule = (options: CoursesModuleOptions = {}): CoursesModule => {
   const courseRepository = options.courseRepository ?? new PrismaCourseRepositoryAdapter();
+  const sectionRepository =
+    options.sectionRepository ?? new PrismaCourseSectionRepositoryAdapter();
   const groupRepository = options.groupRepository;
 
   const saveCourseUseCase = new SaveCourseUseCase(courseRepository, groupRepository);
@@ -42,7 +47,7 @@ export const createCoursesModule = (options: CoursesModuleOptions = {}): Courses
   const listMyCoursesUseCase = new ListMyCoursesUseCase(courseRepository);
   const listPublishedCoursesUseCase = new ListPublishedCoursesUseCase(courseRepository, groupRepository);
   const getCourseUseCase = new GetCourseUseCase(courseRepository, groupRepository);
-  const publishCourseUseCase = new PublishCourseUseCase(courseRepository);
+  const publishCourseUseCase = new PublishCourseUseCase(courseRepository, sectionRepository);
   const unpublishCourseUseCase = new UnpublishCourseUseCase(courseRepository);
   const deleteCourseUseCase = new DeleteCourseUseCase(courseRepository);
 

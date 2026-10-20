@@ -49,10 +49,10 @@ npx --yes @redocly/cli@latest lint contracts/*.yaml
 | users | `users.openapi.yaml` | `/api/v1/users` | ✅ implemented (directory only) |
 | admin | `admin.openapi.yaml` | `/api/v1/admin` | ✅ implemented (overview aggregates) |
 | groups | `groups.openapi.yaml` | `/api/v1/groups` | ✅ implemented |
-| courses | `courses.openapi.yaml` | `/api/v1/courses` | ✅ implemented (drafts, validation, reading) |
+| courses | `courses.openapi.yaml` | `/api/v1/courses` | ✅ implemented (drafts + validated outline, validation, reading, publish gate 409) |
 | exams | `exams.openapi.yaml` | `/api/v1/exams` | ✅ implemented (fraud reporting slice only) |
 | videoconference | `videoconference.openapi.yaml` | `/api/v1/videoconference` | ✅ implemented (timetable read-only) |
-| ai-assistant | `ai-assistant.openapi.yaml` | `/api/v1/ai` | ✅ implemented (course generation via local LLM) |
+| ai-assistant | `ai-assistant.openapi.yaml` | `/api/v1/ai` | ✅ implemented (course generation via local LLM + section-by-section build, refine with vector memory, SDXL section illustration with LLM-optimized prompts) |
 | collaboration | not created yet | `/api/v1/collaboration` | 📋 planned |
 | ai-assistant | not created yet | `/api/v1/ai-assistant` | 📋 planned |
 | notifications | not created yet | `/api/v1/notifications` | 📋 planned |

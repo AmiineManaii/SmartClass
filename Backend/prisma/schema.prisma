@@ -29,6 +29,17 @@ enum ClassStatus {
   ARCHIVED
 }
 
+enum SectionStatus {
+  PENDING
+  GENERATED
+  VALIDATED
+}
+
+enum PassageKind {
+  SECTION
+  REFINED
+}
+
 enum TeacherApprovalStatus {
   PENDING
   APPROVED
@@ -79,18 +90,19 @@ model User {
   createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime               @updatedAt @map("updated_at") @db.Timestamptz
 
-  refreshTokens        RefreshToken[]
-  verificationCodes    EmailVerificationCode[]
-  passwordResetCodes   PasswordResetCode[]
-  groupMemberships     GroupMember[]
-  teacherAssignments   TeacherAssignment[]
-  taughtSlots          TimetableSlot[]        @relation("SlotTeacher")
-  fraudReports         FraudReport[]
-  referredClasses      ClassGroup[]           @relation("ClassReferent")
-  ownedClasses         ClassGroup[]           @relation("ClassOwner")
-  authoredCourses      Course[]               @relation("AuthoredCourses")
-  createdInvitations   ClassInvitation[]      @relation("InvitationCreator")
-  auditLogs            AuditLog[]
+  refreshTokens      RefreshToken[]
+  verificationCodes  EmailVerificationCode[]
+  passwordResetCodes PasswordResetCode[]
+  groupMemberships   GroupMember[]
+  teacherAssignments TeacherAssignment[]
+  taughtSlots        TimetableSlot[]         @relation("SlotTeacher")
+  fraudReports       FraudReport[]
+  referredClasses    ClassGroup[]            @relation("ClassReferent")
+  ownedClasses       ClassGroup[]            @relation("ClassOwner")
+  authoredCourses    Course[]                @relation("AuthoredCourses")
+  createdInvitations ClassInvitation[]       @relation("InvitationCreator")
+  auditLogs          AuditLog[]
+  coursePassages     CoursePassage[]
 
   @@index([email])
   @@index([role])
@@ -134,10 +146,10 @@ model ClassGroup {
 }
 
 model GroupMember {
-  id           String     @id @default(uuid()) @db.Uuid
-  classGroupId String     @map("class_group_id") @db.Uuid
-  userId       String     @map("user_id") @db.Uuid
-  joinedAt     DateTime   @default(now()) @map("joined_at") @db.Timestamptz
+  id           String   @id @default(uuid()) @db.Uuid
+  classGroupId String   @map("class_group_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  joinedAt     DateTime @default(now()) @map("joined_at") @db.Timestamptz
 
   classGroup ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -149,12 +161,12 @@ model GroupMember {
 }
 
 model TeacherAssignment {
-  id           String     @id @default(uuid()) @db.Uuid
-  classGroupId String     @map("class_group_id") @db.Uuid
-  teacherId    String     @map("teacher_id") @db.Uuid
+  id           String   @id @default(uuid()) @db.Uuid
+  classGroupId String   @map("class_group_id") @db.Uuid
+  teacherId    String   @map("teacher_id") @db.Uuid
   subject      String
-  weeklyHours  String?    @map("weekly_hours")
-  assignedAt   DateTime   @default(now()) @map("assigned_at") @db.Timestamptz
+  weeklyHours  String?  @map("weekly_hours")
+  assignedAt   DateTime @default(now()) @map("assigned_at") @db.Timestamptz
 
   classGroup ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
   teacher    User       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
@@ -195,6 +207,9 @@ model Course {
   title      String
   subject    String?
   content    String      @db.Text
+  /// Validated outline (plan) the teacher confirmed before section
+  /// generation. JSON: {title, targetAudience, prerequisites[], sections[]}.
+  outline    Json?
   level      String      @default("equilibre")
   difficulty String      @default("moyen")
   format     String      @default("resume")
@@ -205,10 +220,68 @@ model Course {
 
   author      User               @relation("AuthoredCourses", fields: [authorId], references: [id], onDelete: Cascade)
   classGroups CourseClassGroup[]
+  sections    CourseSection[]
+  passages    CoursePassage[]
 
   @@index([status])
   @@index([authorId])
   @@map("courses")
+}
+
+/// One chapter of a course, generated and validated one by one. Content
+/// is filled by the AI section stream, then frozen on VALIDATED (RG4:
+/// the teacher's validation gates publication of the whole course).
+model CourseSection {
+  id               String        @id @default(uuid()) @db.Uuid
+  courseId         String        @map("course_id") @db.Uuid
+  /// Outline section key (e.g. "sec-1"), stable across regeneration.
+  sectionKey       String        @map("section_key")
+  title            String
+  description      String        @default("")
+  /// Key topics from the validated outline (obligatory notions to cover).
+  keyTopics        String[]      @default([]) @map("key_topics")
+  content          String?       @db.Text
+  order            Int
+  estimatedMinutes Int?          @map("estimated_minutes")
+  status           SectionStatus @default(PENDING)
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  course   Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  passages CoursePassage[]
+
+  @@unique([courseId, sectionKey])
+  @@index([courseId])
+  @@index([status])
+  @@map("course_sections")
+}
+
+/// Vector memory of a teacher's validated content (pgvector, 768-dim
+/// EmbeddingGemma). Enables "remember the old course" context on section
+/// generation/refinement. Strictly scoped by authorId (no cross-teacher
+/// leakage). embedding is accessed ONLY via $queryRaw in the repository.
+model CoursePassage {
+  id        String                     @id @default(uuid()) @db.Uuid
+  authorId  String                     @map("author_id") @db.Uuid
+  courseId  String?                    @map("course_id") @db.Uuid
+  sectionId String?                    @map("section_id") @db.Uuid
+  subject   String?
+  title     String                     @default("")
+  content   String                     @db.Text
+  kind      PassageKind                @default(SECTION)
+  /// pgvector column — read/write exclusively via raw SQL in
+  /// PrismaSectionMemoryAdapter (Prisma cannot type Unsupported("vector")).
+  embedding Unsupported("vector(768)")
+  createdAt DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+
+  author  User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  course  Course?        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  section CourseSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+
+  @@index([authorId])
+  @@index([subject])
+  @@index([createdAt])
+  @@map("course_passages")
 }
 
 model CourseClassGroup {

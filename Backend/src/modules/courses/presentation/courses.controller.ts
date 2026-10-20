@@ -63,6 +63,7 @@ export class CoursesController {
         difficulty?: 'facile' | 'moyen' | 'difficile';
         format?: 'resume' | 'flashcards' | 'carte-mentale';
         classGroupIds?: string[];
+        outline?: Parameters<SaveCourseUseCase['execute']>[0]['outline'];
       };
       const result = await this.saveCourseUseCase.execute({
         requesterId: user.id,
@@ -74,6 +75,7 @@ export class CoursesController {
         difficulty: body.difficulty,
         format: body.format,
         classGroupIds: body.classGroupIds,
+        outline: body.outline ?? null,
       });
       res.status(201).json({ data: result });
     } catch (err) {

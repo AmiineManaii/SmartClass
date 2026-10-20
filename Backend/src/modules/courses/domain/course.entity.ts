@@ -26,4 +26,24 @@ export interface CourseSummary {
 /** Full course with the Markdown body (detail view / reader). */
 export interface CourseDetail extends CourseSummary {
   content: string;
+  /** Teacher-validated outline (plan) persisted for the section build. */
+  outline: CourseOutlineData | null;
 }
+
+/** One entry of the persisted, teacher-validated outline. */
+export type CourseOutlineSectionData = {
+  /** Stable key used as `course_sections.section_key` (`sec-1`, …). */
+  id?: string;
+  title: string;
+  description?: string;
+  keyTopics?: string[];
+  estimatedMinutes?: number;
+};
+
+export type CourseOutlineData = {
+  title: string;
+  targetAudience?: string;
+  prerequisites?: string[];
+  description?: string;
+  sections: CourseOutlineSectionData[];
+};

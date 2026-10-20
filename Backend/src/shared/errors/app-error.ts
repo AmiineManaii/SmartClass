@@ -85,6 +85,20 @@ export class ServiceUnavailableError extends AppError {
   }
 }
 
+/** Publishing a course while some sections are not yet teacher-validated. */
+export class SectionsNotValidatedError extends AppError {
+  constructor(message = 'All sections must be validated before publishing', details: unknown[] = []) {
+    super(message, 409, ErrorCodes.SECTIONS_NOT_VALIDATED, details);
+  }
+}
+
+/** Image generation backend (ComfyUI) is not wired up / reachable yet. */
+export class ImageServiceUnavailableError extends AppError {
+  constructor(message = 'Image generation service is not available yet', details: unknown[] = []) {
+    super(message, 503, ErrorCodes.IMAGE_SERVICE_UNAVAILABLE, details);
+  }
+}
+
 export class InternalError extends AppError {
   constructor(message = 'Internal server error', details: unknown[] = []) {
     super(message, 500, ErrorCodes.INTERNAL_ERROR, details, false);

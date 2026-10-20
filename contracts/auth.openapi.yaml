@@ -19,6 +19,7 @@ paths:
         Creates a new user profile with unverified email status.
         Dispatches a 6-digit OTP code to the provided email address (valid for 15 minutes).
       operationId: registerUser
+      security: []
       tags:
         - Authentication
       requestBody:
@@ -50,9 +51,10 @@ paths:
                   type: string
                   example: Benali
                 role:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   enum: [TEACHER, STUDENT, ADMIN]
-                  nullable: true
                   description: >
                     TEACHER or STUDENT only. ADMIN is rejected with 403 —
                     administrator accounts are provisioned by seed or by an
@@ -79,7 +81,7 @@ paths:
                       user:
                         $ref: '#/components/schemas/SafeUser'
         '400':
-          $ref: 'common.yaml#/components/responses/BadRequestError'
+          $ref: 'common.yaml#/components/responses/BadRequest'
         '409':
           description: Email already registered
           content:
@@ -114,6 +116,7 @@ paths:
         Validates the 6-digit verification code received by email.
         Upon success, activates the account and issues access + rotating refresh tokens.
       operationId: verifyEmail
+      security: []
       tags:
         - Authentication
       requestBody:
@@ -171,6 +174,7 @@ paths:
       summary: Resend verification code
       description: Dispatches a new 6-digit OTP code if the account is not yet verified.
       operationId: resendVerificationCode
+      security: []
       tags:
         - Authentication
       requestBody:
@@ -209,6 +213,7 @@ paths:
         Features 3-attempt account lockout: after 3 consecutive wrong passwords,
         the account is locked for 5 minutes and returns HTTP 423.
       operationId: loginUser
+      security: []
       tags:
         - Authentication
       requestBody:
@@ -299,6 +304,7 @@ paths:
         Rotates refresh token. Implements automatic reuse detection:
         if a revoked token is presented, all sessions in the token family are terminated.
       operationId: refreshSession
+      security: []
       tags:
         - Authentication
       requestBody:
@@ -343,6 +349,7 @@ paths:
       summary: Request password reset OTP
       description: Generates a 6-digit password reset code sent to the email address.
       operationId: forgotPassword
+      security: []
       tags:
         - Authentication
       requestBody:
@@ -386,6 +393,7 @@ paths:
         (no names, roles or states) and the route shares the auth rate
         limiter to throttle enumeration.
       operationId: checkEmailAvailability
+      security: []
       tags:
         - Authentication
       requestBody:
@@ -427,6 +435,7 @@ paths:
         Verifies the 6-digit reset code, updates password with Argon2id,
         and invalidates all existing active sessions.
       operationId: resetPassword
+      security: []
       tags:
         - Authentication
       requestBody:
@@ -479,6 +488,7 @@ paths:
       summary: Invalidate user session
       description: Revokes the specified refresh token.
       operationId: logoutUser
+      security: []
       tags:
         - Authentication
       requestBody:
@@ -528,7 +538,7 @@ paths:
                       user:
                         $ref: '#/components/schemas/SafeUser'
         '401':
-          $ref: 'common.yaml#/components/responses/UnauthorizedError'
+          $ref: 'common.yaml#/components/responses/Unauthorized'
 
   /auth/profile:
     get:
@@ -554,7 +564,7 @@ paths:
                       user:
                         $ref: '#/components/schemas/SafeUser'
         '401':
-          $ref: 'common.yaml#/components/responses/UnauthorizedError'
+          $ref: 'common.yaml#/components/responses/Unauthorized'
     patch:
       summary: Update account profile data
       description: Update user profile fields (firstName, lastName, birthDate, onboardingCompleted) from the mobile profile screen.
@@ -582,9 +592,10 @@ paths:
                   maxLength: 100
                   example: Benali
                 birthDate:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   format: date
-                  nullable: true
                   example: '2004-05-14'
                 onboardingCompleted:
                   type: boolean
@@ -606,13 +617,16 @@ paths:
                       user:
                         $ref: '#/components/schemas/SafeUser'
         '400':
-          $ref: 'common.yaml#/components/responses/BadRequestError'
+          $ref: 'common.yaml#/components/responses/BadRequest'
         '401':
-          $ref: 'common.yaml#/components/responses/UnauthorizedError'
+          $ref: 'common.yaml#/components/responses/Unauthorized'
         '422':
           $ref: 'common.yaml#/components/responses/ValidationError'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      $ref: './common.yaml#/components/securitySchemes/bearerAuth'
   schemas:
     SafeUser:
       type: object
@@ -642,14 +656,16 @@ components:
           type: string
           example: Benali
         role:
-          type: string
+          type:
+            - string
+            - 'null'
           enum: [TEACHER, STUDENT, ADMIN]
-          nullable: true
           example: STUDENT
         birthDate:
-          type: string
+          type:
+            - string
+            - 'null'
           format: date
-          nullable: true
           example: '2004-05-14'
         status:
           type: string

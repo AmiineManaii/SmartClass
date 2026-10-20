@@ -120,6 +120,9 @@ paths:
         '422':
           $ref: './common.yaml#/components/responses/ValidationError'
 components:
+  securitySchemes:
+    bearerAuth:
+      $ref: './common.yaml#/components/securitySchemes/bearerAuth'
   schemas:
     TimetableTeacher:
       type: object
@@ -163,14 +166,17 @@ components:
         title:
           type: string
         subtitle:
-          type: string
-          nullable: true
+          type:
+            - string
+            - 'null'
         teacher:
-          $ref: '#/components/schemas/TimetableTeacher'
-          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/TimetableTeacher'
+            - type: 'null'
         room:
-          type: string
-          nullable: true
+          type:
+            - string
+            - 'null'
         statusNotes:
           type: array
           maxItems: 5

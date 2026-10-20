@@ -318,6 +318,8 @@ export const buildRefineSectionPrompt = (input: {
   selectedText: string;
   instruction: string;
   fullContext?: string;
+  /** Teacher's validated past content recalled from vector memory. */
+  memory?: SectionMemoryContext[];
 }): CoursePrompt => {
   const system =
     `Tu es un assistant pédagogique universitaire de haut niveau.\n` +
@@ -325,15 +327,129 @@ export const buildRefineSectionPrompt = (input: {
     `Ta mission : appliquer STRICTEMENT la consigne demandée par l'enseignant sur le passage sélectionné, tout en maintenant un ton académique, clair et rigoureux.\n` +
     `- Format de sortie : uniquement le texte Markdown de remplacement (la nouvelle version du passage). N'ajoute aucune formule de politesse, ni introduction. Produis directement le contenu prêt à remplacer le passage sélectionné.`;
 
+  const memoryBlock =
+    input.memory && input.memory.length > 0
+      ? `--- CONTENUS DÉJÀ VALIDÉS PAR L'ENSEIGNANT (style et terminologie de référence) ---\n` +
+        input.memory
+          .map((m, idx) => `[${idx + 1}] ${m.title}\n${m.content.slice(0, 1200)}`)
+          .join('\n\n') +
+        `\n--- FIN ---\n\n`
+      : '';
+
   const user =
     (input.courseTitle ? `Titre du cours : ${input.courseTitle}\n\n` : '') +
     (input.fullContext ? `Contexte général du cours (pour cohérence) :\n${input.fullContext.slice(0, 3000)}\n\n` : '') +
+    memoryBlock +
     `--- PASSAGE ACTUEL SÉLECTIONNÉ PAR L'ENSEIGNANT ---\n` +
     `${input.selectedText}\n` +
     `--- FIN DU PASSAGE ACTUEL ---\n\n` +
     `CONSIGNE DE L'ENSEIGNANT POUR CE PASSAGE :\n` +
     `"${input.instruction}"\n\n` +
     `Rédige maintenant le nouveau texte de remplacement :`;
+
+  return { version: COURSE_PROMPT_VERSION, system, user };
+};
+
+/** A chunk of the teacher's own previously validated course content. */
+export interface SectionMemoryContext {
+  title: string;
+  content: string;
+  /** Cosine similarity — used to phrase the block honestly. */
+  similarity?: number;
+}
+
+export interface SectionPromptInput {
+  courseTitle: string;
+  targetAudience?: string;
+  /** Full outline titles, in order — keeps cross-section coherence. */
+  outlineTitles: string[];
+  level: GenerateLevel;
+  difficulty: GenerateDifficulty;
+  /** Current section spec (title/description/notions to cover). */
+  section: {
+    title: string;
+    description: string;
+    keyTopics: string[];
+    estimatedMinutes?: number;
+  };
+  /** Position in the plan (1-based) + total, for scoping depth. */
+  position: { index: number; total: number };
+  /** Titles of sections already written, so transitions stay natural. */
+  writtenTitles: string[];
+  /** Teacher's previously validated content recalled from vector memory. */
+  memory?: SectionMemoryContext[];
+  /** Which structural extras the section must carry. */
+  extras?: { examples?: boolean; mermaid?: boolean };
+}
+
+/**
+ * Builds the prompt for ONE section of the section-by-section build. The
+ * model receives the whole plan (titles only), the exact notions this
+ * section must cover, the sections already written (no repetition), and
+ * — when available — the teacher's own past validated content recalled by
+ * pgvector, so style and terminology match what they already use.
+ */
+export const buildSectionPrompt = (input: SectionPromptInput): CoursePrompt => {
+  const { index, total } = input.position;
+  const isLast = index === total;
+  const extras = { examples: true, mermaid: false, ...input.extras };
+
+  const system =
+    `Rôle : tu es un concepteur pédagogique expert de l'enseignement supérieur francophone (normes LMD).\n` +
+    `Tâche : rédiger UNIQUEMENT le contenu Markdown d'une section précise d'un cours universitaire, en t'inscrivant dans un plan déjà validé par l'enseignant.\n` +
+    `Contraintes :\n` +
+    `- Exactitude : aucun théorème, formule ou code inventé ; tout code doit être syntaxiquement valide.\n` +
+    `- Cohérence : tu écris la section ${index} sur ${total}. Ne répète pas le contenu des sections précédentes déjà rédigées ; fais une transition naturelle depuis la précédente.\n` +
+    `- Portée : traite EXCLUSIVEMENT les notions listées pour cette section (ni plus, ni moins). Les sections voisines sont hors périmètre.\n` +
+    (extras.examples
+      ? `- Exemples : au moins un exemple simple et concret, entièrement résolu.\n`
+      : `- Exemples : pas d'exemple résolu, va droit au concept.\n`) +
+    (extras.mermaid
+      ? `- Figures : si un schéma clarifie la notion, utilise un bloc de code mermaid de type \`graph TD\`, \`flowchart\`, \`sequenceDiagram\`, \`pie\`, \`gantt\` ou \`timeline\` (jamais \`mindmap\`, non supporté par le renderer).\n`
+      : '') +
+    `- Difficulté : ${DIFFICULTY_GUIDANCE[input.difficulty]}\n` +
+    `- Sortie : uniquement le corps Markdown de la section, sans préambule. ` +
+    `Commence directement par le titre de section en niveau \`##\` ou \`###\` (adapte au contexte du plan), ` +
+    `sans reproduire le titre du cours et sans rien écrire avant ce titre.`;
+
+  const planList = input.outlineTitles
+    .map((title, idx) => `${idx + 1}. ${title}${idx + 1 === index ? '  ← SECTION EN COURS' : ''}`)
+    .join('\n');
+
+  const memoryBlock =
+    input.memory && input.memory.length > 0
+      ? `\n--- CONTENUS DÉJÀ VALIDÉS PAR L'ENSEIGNANT (référence de style et de terminologie) ---\n` +
+        input.memory
+          .map((m, idx) => `[${idx + 1}] ${m.title}\n${m.content.slice(0, 1500)}`)
+          .join('\n\n') +
+        `\n--- FIN ---\n` +
+        `Inspire-toi de la terminologie, du niveau de langue et des conventions pédagogiques de ces contenus ` +
+        `(c'est l'enseignant qui les a validés), sans jamais en recopier la substance si elle porte sur un autre sujet.\n`
+      : '';
+
+  const user =
+    `Titre du cours : ${input.courseTitle}\n` +
+    (input.targetAudience ? `Public cible : ${input.targetAudience}\n` : '') +
+    `Niveau : ${input.level}\n\n` +
+    `Plan complet du cours (sections déjà rédigées ou non) :\n${planList}\n\n` +
+    (input.writtenTitles.length > 0
+      ? `Sections déjà rédigées (ne les répète pas) : ${input.writtenTitles.join(' → ')}\n\n`
+      : '') +
+    memoryBlock +
+    `--- SECTION À RÉDIGER (position ${index}/${total}) ---\n` +
+    `Titre : ${input.section.title}\n` +
+    (input.section.description ? `Description : ${input.section.description}\n` : '') +
+    (input.section.keyTopics.length > 0
+      ? `Notions obligatoires à couvrir : ${input.section.keyTopics.join(', ')}\n`
+      : '') +
+    (input.section.estimatedMinutes
+      ? `Durée estimée : ${input.section.estimatedMinutes} minutes\n`
+      : '') +
+    `--- FIN ---\n\n` +
+    (isLast
+      ? `Tu rédiges la DERNIÈRE section du cours : termine par une brève conclusion de la section (pas une conclusion de cours entier).\n`
+      : '') +
+    `Rédige maintenant cette section en Markdown :`;
 
   return { version: COURSE_PROMPT_VERSION, system, user };
 };

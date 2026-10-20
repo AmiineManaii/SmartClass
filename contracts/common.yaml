@@ -6,6 +6,10 @@ info:
     Shared schemas, parameters, security schemes, and error responses
     used across all SmartClass API modules.
 
+servers:
+  - url: /api/v1
+    description: SmartClass API v1 prefix
+
 paths: {}
 
 components:
@@ -101,9 +105,15 @@ components:
               enum:
                 - BAD_REQUEST
                 - AUTH_INVALID_CREDENTIALS
+                - AUTH_ACCOUNT_LOCKED
+                - AUTH_EMAIL_NOT_VERIFIED
+                - AUTH_CODE_INVALID
+                - AUTH_CODE_EXPIRED
+                - AUTH_CODE_MAX_ATTEMPTS
                 - AUTH_TOKEN_EXPIRED
                 - AUTH_TOKEN_INVALID
                 - AUTH_REFRESH_REUSED
+                - AUTH_USER_SUSPENDED
                 - FORBIDDEN
                 - ROLE_ALREADY_ASSIGNED
                 - NOT_FOUND
@@ -113,7 +123,9 @@ components:
                 - RATE_LIMITED
                 - INTERNAL_ERROR
                 - SERVICE_UNAVAILABLE
-              description: Stable error code (never renamed)
+                - SECTIONS_NOT_VALIDATED
+                - IMAGE_SERVICE_UNAVAILABLE
+              description: Stable error code (never renamed, mirrors Backend error-codes.ts)
             message:
               type: string
               description: Neutral English message (not for display; Flutter translates by code)

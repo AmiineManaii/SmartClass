@@ -9,15 +9,32 @@ import { createRateLimiter } from '../../shared/http/rate-limiter.js';
 import { ipKeyGenerator } from 'express-rate-limit';
 import type { AiGatewayPort } from './domain/ai-gateway.port.js';
 import type { UrlFetcherPort } from './domain/url-fetcher.port.js';
+import type { EmbeddingPort } from './domain/embedding.port.js';
+import type { SectionMemoryPort } from './domain/section-memory.port.js';
+import type { ImageGeneratorPort } from './domain/image-generator.port.js';
+import type { ImagePromptOptimizerPort } from './domain/image-prompt-optimizer.port.js';
 import type { PdfTextExtractorPort } from './infrastructure/pdf-text-extractor.adapter.js';
 import { OpenAICompatibleGateway } from './infrastructure/openai-compatible-gateway.adapter.js';
 import { NativeUrlFetcher } from './infrastructure/native-url-fetcher.adapter.js';
 import { UnpdfTextExtractor } from './infrastructure/pdf-text-extractor.adapter.js';
+import { OllamaEmbeddingAdapter } from './infrastructure/ollama-embedding.adapter.js';
+import { PrismaSectionMemoryAdapter } from './infrastructure/prisma-section-memory.adapter.js';
+import { ComfyUIImageAdapter } from './infrastructure/comfyui-image.adapter.js';
+import { LlmImagePromptOptimizer } from './infrastructure/llm-image-prompt-optimizer.adapter.js';
+import type { CourseRepositoryPort } from '../courses/domain/course-repository.port.js';
+import type { CourseSectionRepositoryPort } from '../courses/domain/course-section-repository.port.js';
+import { PrismaCourseRepositoryAdapter } from '../courses/infrastructure/prisma-course-repository.adapter.js';
+import { PrismaCourseSectionRepositoryAdapter } from '../courses/infrastructure/prisma-course-section-repository.adapter.js';
 import { GenerateCourseUseCase } from './application/generate-course.use-case.js';
 import { GenerateOutlineUseCase } from './application/generate-outline.use-case.js';
 import { RefineSectionUseCase } from './application/refine-section.use-case.js';
 import { ImprovePdfUseCase } from './application/improve-pdf.use-case.js';
 import { GetAiStatusUseCase } from './application/get-ai-status.use-case.js';
+import { GetCourseBuildUseCase } from './application/get-course-build.use-case.js';
+import { GenerateSectionUseCase } from './application/generate-section.use-case.js';
+import { ValidateSectionUseCase } from './application/validate-section.use-case.js';
+import { GenerateSectionImageUseCase } from './application/generate-section-image.use-case.js';
+import { SectionMemoryService } from './application/section-memory.service.js';
 import { AiController } from './presentation/ai.controller.js';
 import { createAiRouter } from './presentation/ai.routes.js';
 
@@ -25,6 +42,12 @@ export interface AiModuleOptions {
   gateway?: AiGatewayPort;
   urlFetcher?: UrlFetcherPort;
   pdfExtractor?: PdfTextExtractorPort;
+  courseRepository?: CourseRepositoryPort;
+  sectionRepository?: CourseSectionRepositoryPort;
+  embedding?: EmbeddingPort;
+  sectionMemory?: SectionMemoryPort;
+  imageGenerator?: ImageGeneratorPort;
+  imagePromptOptimizer?: ImagePromptOptimizerPort;
   tokenService?: TokenServicePort;
   authenticateMiddleware?: RequestHandler;
   requireTeacherMiddleware?: RequestHandler;
@@ -39,17 +62,51 @@ export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
   const gateway = options.gateway ?? new OpenAICompatibleGateway();
   const urlFetcher = options.urlFetcher ?? new NativeUrlFetcher();
   const pdfExtractor = options.pdfExtractor ?? new UnpdfTextExtractor();
+  const courseRepository = options.courseRepository ?? new PrismaCourseRepositoryAdapter();
+  const sectionRepository =
+    options.sectionRepository ?? new PrismaCourseSectionRepositoryAdapter();
+  const embedding = options.embedding ?? new OllamaEmbeddingAdapter();
+  const sectionMemory =
+    options.sectionMemory ??
+    new PrismaSectionMemoryAdapter(undefined, embedding);
+  const memoryService = new SectionMemoryService(sectionMemory, embedding);
+  const imageGenerator = options.imageGenerator ?? new ComfyUIImageAdapter();
+  const imagePromptOptimizer =
+    options.imagePromptOptimizer ?? new LlmImagePromptOptimizer(gateway);
+
   const generateCourseUseCase = new GenerateCourseUseCase(gateway, urlFetcher);
   const improvePdfUseCase = new ImprovePdfUseCase(pdfExtractor, gateway);
   const getAiStatusUseCase = new GetAiStatusUseCase(gateway);
   const generateOutlineUseCase = new GenerateOutlineUseCase(gateway);
-  const refineSectionUseCase = new RefineSectionUseCase(gateway);
+  const refineSectionUseCase = new RefineSectionUseCase(gateway, courseRepository, memoryService);
+  const getCourseBuildUseCase = new GetCourseBuildUseCase(courseRepository, sectionRepository);
+  const generateSectionUseCase = new GenerateSectionUseCase(
+    gateway,
+    courseRepository,
+    sectionRepository,
+    memoryService,
+  );
+  const validateSectionUseCase = new ValidateSectionUseCase(
+    courseRepository,
+    sectionRepository,
+    memoryService,
+  );
+  const generateSectionImageUseCase = new GenerateSectionImageUseCase(
+    courseRepository,
+    sectionRepository,
+    imageGenerator,
+    imagePromptOptimizer,
+  );
   const controller = new AiController(
     generateCourseUseCase,
     improvePdfUseCase,
     getAiStatusUseCase,
     generateOutlineUseCase,
     refineSectionUseCase,
+    getCourseBuildUseCase,
+    generateSectionUseCase,
+    validateSectionUseCase,
+    generateSectionImageUseCase,
   );
 
   let authenticateMiddleware = options.authenticateMiddleware;

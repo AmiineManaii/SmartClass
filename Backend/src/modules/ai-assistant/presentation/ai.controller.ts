@@ -7,15 +7,39 @@ import type { GenerateOutlineUseCase } from '../application/generate-outline.use
 import type { RefineSectionUseCase } from '../application/refine-section.use-case.js';
 import type { GetAiStatusUseCase } from '../application/get-ai-status.use-case.js';
 import type { ImprovePdfUseCase } from '../application/improve-pdf.use-case.js';
+import type { GetCourseBuildUseCase } from '../application/get-course-build.use-case.js';
+import type { GenerateSectionDTO, GenerateSectionUseCase } from '../application/generate-section.use-case.js';
+import type { ValidateSectionUseCase } from '../application/validate-section.use-case.js';
+import type { GenerateSectionImageUseCase } from '../application/generate-section-image.use-case.js';
 import type {
   GenerateDifficulty,
   GenerateFormat,
   GenerateLevel,
 } from '../domain/ai-gateway.port.js';
-import { AppError } from '../../../shared/errors/app-error.js';
+import { AppError, UnauthorizedError, ValidationError } from '../../../shared/errors/app-error.js';
 import { ErrorCodes } from '../../../shared/errors/error-codes.js';
-import { ValidationError } from '../../../shared/errors/app-error.js';
-import { improvePdfFieldsSchema } from './ai.validation.js';
+import {
+  courseBuildParamsSchema,
+  generateSectionBodySchema,
+  imageSectionBodySchema,
+  improvePdfFieldsSchema,
+  validateSectionBodySchema,
+} from './ai.validation.js';
+import type { Role } from '../../auth/index.js';
+
+const requireUser = (req: Request): { id: string; role: Role | null } => {
+  if (!req.user) {
+    throw new UnauthorizedError('Authentication required');
+  }
+  return { id: req.user.id, role: req.user.role };
+};
+
+/** Stable 422 from a Zod failure (ZodError is not mapped centrally). */
+const toValidationError = (error: { errors: { path: (string | number)[]; message: string }[] }): ValidationError =>
+  new ValidationError(
+    'Validation failed',
+    error.errors.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
+  );
 
 export class AiController {
   constructor(
@@ -24,6 +48,10 @@ export class AiController {
     private readonly getAiStatusUseCase: GetAiStatusUseCase,
     private readonly generateOutlineUseCase: GenerateOutlineUseCase,
     private readonly refineSectionUseCase: RefineSectionUseCase,
+    private readonly getCourseBuildUseCase: GetCourseBuildUseCase,
+    private readonly generateSectionUseCase: GenerateSectionUseCase,
+    private readonly validateSectionUseCase: ValidateSectionUseCase,
+    private readonly generateSectionImageUseCase: GenerateSectionImageUseCase,
   ) {}
 
   public generateOutline = async (
@@ -47,7 +75,12 @@ export class AiController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const result = await this.refineSectionUseCase.execute(req.body);
+      const user = requireUser(req);
+      const result = await this.refineSectionUseCase.execute({
+        ...req.body,
+        requesterId: user.id,
+        requesterRole: user.role,
+      });
       res.status(200).json({
         data: result,
       });
@@ -55,6 +88,128 @@ export class AiController {
       next(err);
     }
   };
+
+  /** GET /courses/:id/build — course metadata + ordered sections. */
+  public getCourseBuild = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const params = courseBuildParamsSchema.safeParse(req.params);
+      if (!params.success) throw toValidationError(params.error);
+      const user = requireUser(req);
+      const result = await this.getCourseBuildUseCase.execute({
+        requesterId: user.id,
+        requesterRole: user.role,
+        courseId: params.data.id,
+      });
+      res.status(200).json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /** POST /courses/sections/generate — SSE stream of one section. */
+  public streamGenerateSection = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    this.runSectionStream(req, res, next, false);
+  };
+
+  /** POST /courses/sections/regenerate — overwrites a VALIDATED section. */
+  public streamRegenerateSection = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    this.runSectionStream(req, res, next, true);
+  };
+
+  /** POST /courses/sections/validate — teacher approves one section. */
+  public validateSection = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const parsed = validateSectionBodySchema.safeParse(req.body);
+      if (!parsed.success) throw toValidationError(parsed.error);
+      const user = requireUser(req);
+      const result = await this.validateSectionUseCase.execute({
+        requesterId: user.id,
+        requesterRole: user.role,
+        courseId: parsed.data.courseId,
+        sectionKey: parsed.data.sectionKey,
+      });
+      res.status(200).json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /**
+   * POST /courses/sections/image — illustration for one section.
+   * ComfyUI is not wired yet: the adapter answers 503
+   * IMAGE_SERVICE_UNAVAILABLE, which the UI surfaces as "coming soon".
+   */
+  public generateSectionImage = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const parsed = imageSectionBodySchema.safeParse(req.body);
+      if (!parsed.success) throw toValidationError(parsed.error);
+      const user = requireUser(req);
+      const result = await this.generateSectionImageUseCase.execute({
+        requesterId: user.id,
+        requesterRole: user.role,
+        courseId: parsed.data.courseId,
+        sectionKey: parsed.data.sectionKey,
+        kind: parsed.data.kind,
+      });
+      res.status(200).json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  private runSectionStream(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+    regenerate: boolean,
+  ): void {
+    const parsed = generateSectionBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      next(toValidationError(parsed.error));
+      return;
+    }
+    let user: { id: string; role: Role | null };
+    try {
+      user = requireUser(req);
+    } catch (err) {
+      next(err);
+      return;
+    }
+    const dto: GenerateSectionDTO = {
+      requesterId: user.id,
+      requesterRole: user.role,
+      courseId: parsed.data.courseId,
+      sectionKey: parsed.data.sectionKey,
+      regenerate,
+      level: parsed.data.level,
+      difficulty: parsed.data.difficulty,
+      extras: parsed.data.extras,
+    };
+    this.streamCourse(req, res, next, (onDelta, onPhase) =>
+      this.generateSectionUseCase.stream(dto, onDelta, onPhase),
+      { initialPhase: 'memory' },
+    );
+  }
 
   public generateCourse = async (
     req: Request,

@@ -8,7 +8,17 @@ info:
     One endpoint per teacher-facing method: `from-topic` (from scratch),
     `from-url` (fetch a link, then improve), `improve-pdf` (upload an old
     PDF, then improve); the generic `generate` endpoint covers all modes.
-    The prompt is versioned (v5) and adapts to length — cours court
+    Section-by-section build: `generate-outline` proposes the plan, the
+    teacher confirms it (persisted as `course.outline`), then
+    `courses/{id}/build` materializes one `CourseSection` per chapter,
+    `sections/generate` (SSE) fills them one at a time, `sections/validate`
+    gates publication (RG27) and feeds the author's pgvector memory, and
+    `sections/image` requests a section illustration (local LLM rewrites
+    the SDXL prompt pair in English, then the local ComfyUI SDXL
+    workflow, 512×512 — 503 while `COMFYUI_BASE_URL` is empty or ComfyUI
+    is unreachable). `refine-section` revises a selection with the
+    same memory recall and returns `refinedText` AND `revisedText`.
+    The prompt is versioned (v6) and adapts to length — cours court
     (≤800 mots: objectifs, synthèse, points clés, quiz 5 QCM), cours
     normal (1200-2000 mots: plan, intro, parties avec exemples, étude de
     cas + correction, quiz 5 QCM + correction, conclusion), cours complet
@@ -61,8 +71,9 @@ paths:
                         type: string
                         example: Qwen3.5-4B-GGUF
                       latencyMs:
-                        type: integer
-                        nullable: true
+                        type:
+                          - integer
+                          - 'null'
               example:
                 data:
                   available: true
@@ -133,10 +144,6 @@ paths:
                       type: boolean
                       description: Figures/graphs as mermaid code blocks
                     webImages:
-                      type: boolean
-                    webSearch:
-                      type: boolean
-                    thinking:
                       type: boolean
                       description: Web illustrations (search-result URLs only, implies tools)
                     webSearch:
@@ -218,11 +225,13 @@ paths:
                           - completionTokens
                         properties:
                           promptTokens:
-                            type: integer
-                            nullable: true
+                            type:
+                              - integer
+                              - 'null'
                           completionTokens:
-                            type: integer
-                            nullable: true
+                            type:
+                              - integer
+                              - 'null'
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':
@@ -665,11 +674,13 @@ paths:
                           - completionTokens
                         properties:
                           promptTokens:
-                            type: integer
-                            nullable: true
+                            type:
+                              - integer
+                              - 'null'
                           completionTokens:
-                            type: integer
-                            nullable: true
+                            type:
+                              - integer
+                              - 'null'
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':
@@ -700,7 +711,724 @@ paths:
                   message: The local AI model is currently unreachable. Start it in Unsloth Desktop and retry.
                   details: []
                   requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+  /ai/courses/generate-outline:
+    post:
+      operationId: generateOutline
+      tags:
+        - ai
+      summary: Propose a course plan (outline)
+      description: >
+        Asks the local model for the chapter plan of a course as pure JSON
+        (title, targetAudience, prerequisites, 4-7 sections with id,
+        title, description, keyTopics, estimatedMinutes). The teacher
+        reviews and edits it in the UI, then confirms it: the validated
+        plan is persisted on the course (`outline`, see
+        `courses.openapi.yaml#saveCourse`) and drives the
+        section-by-section build. Fast settings: 2048 tokens, thinking
+        off. Falls back to a line-based parse when the model wraps JSON
+        in a fence. TEACHER/ADMIN only, 20/min.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                topic:
+                  type: string
+                  maxLength: 500
+                subject:
+                  type: string
+                  maxLength: 500
+                level:
+                  type: string
+                  enum: [concis, equilibre, detaille]
+                  default: equilibre
+                difficulty:
+                  type: string
+                  enum: [facile, moyen, difficile]
+                  default: moyen
+                mode:
+                  type: string
+                  enum: [topic, text, url]
+                sourceContext:
+                  type: string
+                  maxLength: 200000
+                sourceText:
+                  type: string
+                  maxLength: 200000
+                url:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '200':
+          description: Proposed outline (JSON)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - outline
+                      - model
+                    properties:
+                      outline:
+                        type: object
+                        required:
+                          - title
+                          - sections
+                        properties:
+                          title:
+                            type: string
+                          targetAudience:
+                            type: string
+                          prerequisites:
+                            type: array
+                            items:
+                              type: string
+                          description:
+                            type: string
+                          sections:
+                            type: array
+                            items:
+                              type: object
+                              required:
+                                - id
+                                - title
+                              properties:
+                                id:
+                                  type: string
+                                  description: Stable section key (e.g. sec-1)
+                                  example: sec-1
+                                title:
+                                  type: string
+                                description:
+                                  type: string
+                                keyTopics:
+                                  type: array
+                                  items:
+                                    type: string
+                                estimatedMinutes:
+                                  type: integer
+                                  example: 15
+                      model:
+                        type: string
+              example:
+                data:
+                  outline:
+                    title: Algorithmique avancée
+                    targetAudience: Licence 3 Informatique
+                    prerequisites: [Structures de données]
+                    sections:
+                      - id: sec-1
+                        title: Tris
+                        description: Algorithmes de tri et complexité
+                        keyTopics: [Quick sort, Merge sort]
+                        estimatedMinutes: 20
+                  model: Qwen3.5-4B-GGUF
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          $ref: './common.yaml#/components/responses/TooManyRequests'
+        '503':
+          $ref: './common.yaml#/components/responses/ServiceUnavailable'
+  /ai/courses/refine-section:
+    post:
+      operationId: refineSection
+      tags:
+        - ai
+      summary: Revise a selected passage per teacher instruction
+      description: >
+        Applies ONE teacher instruction to a selected passage and returns
+        the replacement Markdown. The prompt carries the course context
+        plus, when `courseId` + an authenticated author are provided, up
+        to 2 previously validated passages recalled from the author's
+        pgvector memory (embeddinggemma), so revisions keep the teacher's
+        terminology — memory failures degrade to a context-only prompt.
+        The replacement is returned under BOTH `refinedText` and
+        `revisedText` (the mobile client reads `revisedText`), plus a
+        one-sentence `explanation` of the change (null when the local
+        model could not produce it). IDOR: a foreign `courseId` answers
+        404. TEACHER/ADMIN only, 20/min.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - selectedText
+                - instruction
+              properties:
+                courseTitle:
+                  type: string
+                  maxLength: 200
+                courseId:
+                  type: string
+                  format: uuid
+                  description: Optional; scopes vector recall to this course
+                selectedText:
+                  type: string
+                  minLength: 1
+                  maxLength: 50000
+                instruction:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+                fullContext:
+                  type: string
+                  maxLength: 200000
+                courseContent:
+                  type: string
+                  maxLength: 200000
+      responses:
+        '200':
+          description: Replacement text (+ change summary)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - refinedText
+                      - revisedText
+                      - model
+                    properties:
+                      refinedText:
+                        type: string
+                        description: Replacement Markdown (historical key)
+                      revisedText:
+                        type: string
+                        description: Same content under the key the client reads
+                      explanation:
+                        type:
+                          - string
+                          - 'null'
+                        description: One-sentence summary of the change
+                      model:
+                        type: string
+              example:
+                data:
+                  refinedText: Le tri rapide est **instable** ; voir l'exemple ci-dessous.
+                  revisedText: Le tri rapide est **instable** ; voir l'exemple ci-dessous.
+                  explanation: Ajoute un exemple concret après la définition d'instabilité.
+                  model: Qwen3.5-4B-GGUF
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          $ref: './common.yaml#/components/responses/TooManyRequests'
+        '503':
+          $ref: './common.yaml#/components/responses/ServiceUnavailable'
+  /ai/courses/{id}/build:
+    get:
+      operationId: getCourseBuild
+      tags:
+        - ai
+      summary: Section-by-section build state of a course
+      description: >
+        Returns the course metadata and its ordered sections. On first
+        open, the sections are materialized from the teacher-validated
+        outline as PENDING (`initializedFromOutline: true`); the response
+        stays empty when the course has no outline so the client can fall
+        back to the monolithic generator. A revised outline re-initializes
+        the whole build. IDOR: missing and foreign courses both answer
+        404; ADMIN may open any build. No LLM call (no rate limit).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Build state (course + ordered sections)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - course
+                      - sections
+                      - initializedFromOutline
+                    properties:
+                      course:
+                        type: object
+                        required:
+                          - id
+                          - title
+                          - level
+                          - difficulty
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                          title:
+                            type: string
+                          subject:
+                            type:
+                              - string
+                              - 'null'
+                          level:
+                            type: string
+                            enum: [concis, equilibre, detaille]
+                          difficulty:
+                            type: string
+                            enum: [facile, moyen, difficile]
+                          format:
+                            type: string
+                            enum: [resume, flashcards, carte-mentale]
+                      sections:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - id
+                            - sectionKey
+                            - title
+                            - order
+                            - status
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            sectionKey:
+                              type: string
+                              example: sec-1
+                            title:
+                              type: string
+                            description:
+                              type: string
+                            keyTopics:
+                              type: array
+                              items:
+                                type: string
+                            content:
+                              type:
+                                - string
+                                - 'null'
+                              description: Markdown body (null until generated)
+                            order:
+                              type: integer
+                            estimatedMinutes:
+                              type: integer
+                            status:
+                              type: string
+                              enum: [PENDING, GENERATED, VALIDATED]
+                      initializedFromOutline:
+                        type: boolean
+              example:
+                data:
+                  course:
+                    id: 11111111-1111-1111-1111-111111111111
+                    title: Algorithmique avancée
+                    subject: Informatique
+                    level: equilibre
+                    difficulty: moyen
+                    format: resume
+                  sections:
+                    - id: 33333333-3333-3333-3333-333333333333
+                      sectionKey: sec-1
+                      title: Tris
+                      description: Algorithmes de tri
+                      keyTopics: [Quick sort]
+                      content: null
+                      order: 0
+                      estimatedMinutes: 20
+                      status: PENDING
+                  initializedFromOutline: true
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+  /ai/courses/sections/generate:
+    post:
+      operationId: generateCourseSection
+      tags:
+        - ai
+      summary: Generate one section with live progress (SSE)
+      description: >
+        Streams the Markdown of ONE section (`text/event-stream` framing,
+        same `delta` / `done` / `error` frames as `streamCourseGeneration`,
+        plus `phase` events: `memory` while the teacher's validated
+        passages are recalled from pgvector, then `generating`). The
+        prompt carries the full plan, the sections already written (no
+        repetition) and up to 3 memory hits scoped to the course author —
+        an unreachable embedding server degrades to a memory-free prompt
+        (never a failure). The body is persisted with status GENERATED; a
+        previously VALIDATED section refuses this endpoint with
+        409 CONFLICT (use `sections/regenerate` to overwrite it, which
+        demotes it back to GENERATED for re-validation). Rate limit
+        20/min per teacher.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+                - sectionKey
+              properties:
+                courseId:
+                  type: string
+                  format: uuid
+                sectionKey:
+                  type: string
+                  maxLength: 120
+                  example: sec-1
+                level:
+                  type: string
+                  enum: [concis, equilibre, detaille]
+                  description: Defaults to the course level
+                difficulty:
+                  type: string
+                  enum: [facile, moyen, difficile]
+                  description: Defaults to the course difficulty
+                extras:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    examples:
+                      type: boolean
+                    mermaid:
+                      type: boolean
+              additionalProperties: false
+      responses:
+        '200':
+          description: SSE stream of phases, deltas, done frame, or error event
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: |
+                  data: {"phase":"memory"}
+
+                  data: {"phase":"generating"}
+
+                  data: {"delta":"## Graphes"}
+
+                  data: {"done":true,"section":{"id":"33333333-3333-3333-3333-333333333333","sectionKey":"sec-2","status":"GENERATED"},"model":"Qwen3.5-4B-GGUF","promptVersion":"2026-10-18.v6","writtenBefore":1,"memoryHits":2,"regenerated":false,"usage":{"promptTokens":412,"completionTokens":733}}
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          $ref: './common.yaml#/components/responses/TooManyRequests'
+        '503':
+          $ref: './common.yaml#/components/responses/ServiceUnavailable'
+  /ai/courses/sections/regenerate:
+    post:
+      operationId: regenerateCourseSection
+      tags:
+        - ai
+      summary: Overwrite a section, even a validated one (SSE)
+      description: >
+        Same payload, framing and semantics as `generateCourseSection`,
+        except a VALIDATED section may be overwritten: it is demoted back
+        to GENERATED (`regenerated: true` in the done frame), so RG27
+        keeps the course unpublished until the teacher validates it
+        again. TEACHER/ADMIN only, 20/min.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+                - sectionKey
+              properties:
+                courseId:
+                  type: string
+                  format: uuid
+                sectionKey:
+                  type: string
+                  maxLength: 120
+                level:
+                  type: string
+                  enum: [concis, equilibre, detaille]
+                difficulty:
+                  type: string
+                  enum: [facile, moyen, difficile]
+                extras:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    examples:
+                      type: boolean
+                    mermaid:
+                      type: boolean
+              additionalProperties: false
+      responses:
+        '200':
+          description: SSE stream (same frames as generateCourseSection)
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          $ref: './common.yaml#/components/responses/TooManyRequests'
+        '503':
+          $ref: './common.yaml#/components/responses/ServiceUnavailable'
+  /ai/courses/sections/validate:
+    post:
+      operationId: validateCourseSection
+      tags:
+        - ai
+      summary: Teacher approves one generated section
+      description: >
+        Marks the section VALIDATED, stores its content in the author's
+        vector memory (so later generations recall it — store failures
+        only warn), reassembles the draft course body from all sections
+        that have content, and reports how many sections still await
+        validation. A course may be published only when
+        `remainingToValidate` is 0 (otherwise the publish endpoint answers
+        409 SECTIONS_NOT_VALIDATED). Empty/unvalidated content answers
+        409. IDOR: foreign courses answer 404. TEACHER/ADMIN only.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+                - sectionKey
+              properties:
+                courseId:
+                  type: string
+                  format: uuid
+                sectionKey:
+                  type: string
+                  maxLength: 120
+              additionalProperties: false
+      responses:
+        '200':
+          description: Validated section + reassembled course body
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - section
+                      - courseContent
+                      - remainingToValidate
+                    properties:
+                      section:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                          sectionKey:
+                            type: string
+                          status:
+                            type: string
+                            enum: [PENDING, GENERATED, VALIDATED]
+                      courseContent:
+                        type: string
+                        description: Reassembled draft Markdown of the whole course
+                      remainingToValidate:
+                        type: integer
+                        description: 0 → the course may be published
+              example:
+                data:
+                  section:
+                    id: 33333333-3333-3333-3333-333333333333
+                    sectionKey: sec-1
+                    status: VALIDATED
+                  courseContent: "# Algorithmique avancée\n\n## Tris\n..."
+                  remainingToValidate: 1
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          description: Section has no content to validate yet
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: CONFLICT
+                  message: This section has no generated content to validate yet
+                  details: []
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /ai/courses/sections/image:
+    post:
+      operationId: generateSectionImage
+      tags:
+        - ai
+      summary: Illustrate a section (LLM-optimized prompts + local ComfyUI SDXL, 512×512)
+      description: >
+        Requests an illustration (figure, architecture diagram, flowchart
+        or workflow) for one section through the local ComfyUI image
+        service. The image is strictly text-free (SDXL cannot render
+        readable words): before queueing, the local chat model
+        (Unsloth/Ollama — the same gateway as course generation, e.g.
+        Qwen) distills the section (course title/subject + description +
+        key points, possibly French) into ONE concrete visual scene with
+        an English `{"positive", "negative"}` pair for the
+        `sd_xl_base_1.0` checkpoint — no text, labels or typography in
+        the positive, and the negative leads with the whole text family
+        (text, words, letters, typography, captions, labels, watermark…);
+        on any LLM failure a deterministic wordless English template is
+        used instead. The SDXL workflow (`image_sdxl_simple.json`,
+        512×512) is then
+        queued on `COMFYUI_BASE_URL`, a fresh seed is drawn and the
+        produced image is served from ComfyUI's `/view` endpoint as
+        `{imageUrl, prompt, provider}` where `prompt` is the positive
+        prompt actually sent (the origin embedded in `imageUrl` follows
+        `COMFYUI_PUBLIC_URL` when set, so the client resolves its
+        own host). A generation can take several minutes on a modest GPU
+        (4-5 min observed): the backend allows 6 min and the app 7 min.
+        When ComfyUI is not configured,
+        unreachable or the workflow errors/times out, the adapter answers
+        503 IMAGE_SERVICE_UNAVAILABLE — the UI shows an honest "coming
+        soon" state instead of a fake image (RG27: images stay local too).
+        IDOR: foreign courses answer 404. TEACHER/ADMIN only, 20/min.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+                - sectionKey
+                - kind
+              properties:
+                courseId:
+                  type: string
+                  format: uuid
+                sectionKey:
+                  type: string
+                  maxLength: 120
+                kind:
+                  type: string
+                  enum: [FIGURE, ARCHITECTURE, FLOWCHART, WORKFLOW]
+              additionalProperties: false
+      responses:
+        '200':
+          description: Generated illustration
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - imageUrl
+                      - prompt
+                      - provider
+                    properties:
+                      imageUrl:
+                        type: string
+                        format: uri
+                      prompt:
+                        description: Positive SDXL prompt actually sent (LLM-optimized English text-free scene, or the wordless template fallback)
+                        type: string
+                      provider:
+                        type: string
+                        example: comfyui
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          $ref: './common.yaml#/components/responses/TooManyRequests'
+        '503':
+          description: Image service unavailable (COMFYUI_BASE_URL unset, ComfyUI unreachable, workflow error or timeout)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: IMAGE_SERVICE_UNAVAILABLE
+                  message: Image generation service is not available yet
+                  details: []
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
 components:
+  securitySchemes:
+    bearerAuth:
+      $ref: './common.yaml#/components/securitySchemes/bearerAuth'
   schemas:
     GeneratedCourse:
       type: object
@@ -750,8 +1478,10 @@ components:
             - completionTokens
           properties:
             promptTokens:
-              type: integer
-              nullable: true
+              type:
+                - integer
+                - 'null'
             completionTokens:
-              type: integer
-              nullable: true
+              type:
+                - integer
+                - 'null'

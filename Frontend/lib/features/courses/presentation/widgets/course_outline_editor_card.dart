@@ -11,6 +11,13 @@ class CourseOutlineEditorCard extends StatefulWidget {
   final VoidCallback onRegenerateOutline;
   final VoidCallback onCancel;
 
+  /// Opens the section-by-section builder (saves the draft with this plan
+  /// first). Null → button hidden.
+  final VoidCallback? onBuildSections;
+
+  /// Draft-save spinner of [onBuildSections].
+  final bool building;
+
   const CourseOutlineEditorCard({
     super.key,
     required this.outline,
@@ -19,6 +26,8 @@ class CourseOutlineEditorCard extends StatefulWidget {
     required this.onGenerateFullCourse,
     required this.onRegenerateOutline,
     required this.onCancel,
+    this.onBuildSections,
+    this.building = false,
   });
 
   @override
@@ -710,6 +719,38 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                   ),
                 ),
                 const SizedBox(height: 10),
+
+                // Section-by-section alternative: one chapter at a time,
+                // each validated before the draft can be published (RG27).
+                if (widget.onBuildSections != null) ...[
+                  OutlinedButton.icon(
+                    onPressed:
+                        widget.generating || widget.building || sections.isEmpty
+                            ? null
+                            : widget.onBuildSections,
+                    icon: widget.building
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_awesome_motion_rounded,
+                            size: 18),
+                    label: Text(
+                      widget.building
+                          ? context.tr('ai_build_save_building')
+                          : context.tr('ai_build_save_outline'),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
 
                 // Secondary Actions Row
                 Row(

@@ -21,6 +21,7 @@ import '../features/authentication/presentation/pages/role_selection_page.dart';
 import '../features/authentication/presentation/pages/verify_email_page.dart';
 import '../features/courses/presentation/pages/ai_course_creator_page.dart';
 import '../features/courses/presentation/pages/course_reader_page.dart';
+import '../features/courses/presentation/pages/course_section_builder_page.dart';
 import '../features/courses/presentation/pages/courses_page.dart';
 import '../features/groups/presentation/pages/groups_page.dart';
 import '../features/groups/presentation/pages/class_detail_page.dart';
@@ -175,6 +176,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/courses/ai-create',
         name: 'ai-create-course',
         builder: (context, state) => const AiCourseCreatorPage(),
+      ),
+      // Fullscreen (outside the shell): generate → validate every section
+      // of one draft before it can be published (RG4/RG27).
+      GoRoute(
+        path: '/courses/:courseId/build',
+        name: 'course-section-build',
+        builder: (context, state) => CourseSectionBuilderPage(
+          courseId: state.pathParameters['courseId'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/ai-revision',

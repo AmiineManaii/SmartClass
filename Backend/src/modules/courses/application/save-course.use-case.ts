@@ -5,6 +5,7 @@ import type {
   CourseDifficulty,
   CourseFormat,
   CourseLevel,
+  CourseOutlineData,
 } from '../domain/course.entity.js';
 import type { CourseRepositoryPort } from '../domain/course-repository.port.js';
 import type { GroupRepositoryPort } from '../../groups/domain/group-repository.port.js';
@@ -19,6 +20,8 @@ export interface SaveCourseDTO {
   difficulty?: CourseDifficulty;
   format?: CourseFormat;
   classGroupIds?: string[];
+  /** Teacher-validated plan: enables the section-by-section build. */
+  outline?: CourseOutlineData | null;
 }
 
 /** Saves a generated course as DRAFT (not visible to students yet). */
@@ -57,6 +60,7 @@ export class SaveCourseUseCase {
       format: dto.format ?? 'resume',
       authorId: dto.requesterId,
       classGroupIds: dto.classGroupIds,
+      outline: dto.outline ?? null,
     });
   }
 }

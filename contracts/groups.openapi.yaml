@@ -126,9 +126,10 @@ paths:
                   enum: [LICENCE, MASTER, DOCTORAT]
                   example: LICENCE
                 department:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   maxLength: 100
-                  nullable: true
                   example: Informatique
                 capacity:
                   type: integer
@@ -136,9 +137,10 @@ paths:
                   maximum: 500
                   example: 35
                 description:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   maxLength: 300
-                  nullable: true
                   example: Promotion Licence 3 Informatique 2024-2025
                 forumEnabled:
                   type: boolean
@@ -151,9 +153,10 @@ paths:
                   enum: [DRAFT, PUBLISHED]
                   default: PUBLISHED
                 referentId:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   format: uuid
-                  nullable: true
                   description: >
                     Designated referent teacher. Must belong to a TEACHER-role
                     account (422 otherwise, 404 when unknown). Omitted or null
@@ -363,17 +366,19 @@ paths:
                   type: string
                   enum: [LICENCE, MASTER, DOCTORAT]
                 department:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   maxLength: 100
-                  nullable: true
                 capacity:
                   type: integer
                   minimum: 1
                   maximum: 500
                 description:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   maxLength: 300
-                  nullable: true
                 forumEnabled:
                   type: boolean
                 entSyncEnabled:
@@ -382,9 +387,10 @@ paths:
                   type: string
                   enum: [DRAFT, PUBLISHED]
                 referentId:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   format: uuid
-                  nullable: true
                   description: Must belong to a TEACHER-role account
               additionalProperties: false
       responses:
@@ -753,9 +759,10 @@ paths:
                         maxLength: 100
                         example: Développement Mobile & Cross-Platform
                       weeklyHours:
-                        type: string
+                        type:
+                          - string
+                          - 'null'
                         maxLength: 50
-                        nullable: true
                         example: 4h/semaine
                     additionalProperties: false
                   example:
@@ -879,6 +886,9 @@ paths:
         '422':
           $ref: './common.yaml#/components/responses/ValidationError'
 components:
+  securitySchemes:
+    bearerAuth:
+      $ref: './common.yaml#/components/securitySchemes/bearerAuth'
   schemas:
     MyClassGroup:
       allOf:
@@ -893,9 +903,10 @@ components:
               enum: [STUDENT, TEACHER, REFERENT]
               description: Caller's relation to the class
             joinedAt:
-              type: string
+              type:
+                - string
+                - 'null'
               format: date-time
-              nullable: true
               description: Enrolment/assignment date, null for referent-only
             mySubjects:
               type: array
@@ -925,8 +936,9 @@ components:
         subject:
           type: string
         weeklyHours:
-          type: string
-          nullable: true
+          type:
+            - string
+            - 'null'
       additionalProperties: false
     ClassGroupReferent:
       type: object
@@ -965,8 +977,9 @@ components:
           type: string
           enum: [LICENCE, MASTER, DOCTORAT]
         department:
-          type: string
-          nullable: true
+          type:
+            - string
+            - 'null'
         capacity:
           type: integer
         status:
@@ -977,8 +990,9 @@ components:
         teacherCount:
           type: integer
         referent:
-          $ref: '#/components/schemas/ClassGroupReferent'
-          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/ClassGroupReferent'
+            - type: 'null'
         createdAt:
           type: string
           format: date-time
@@ -994,8 +1008,9 @@ components:
             - updatedAt
           properties:
             description:
-              type: string
-              nullable: true
+              type:
+                - string
+                - 'null'
             forumEnabled:
               type: boolean
             entSyncEnabled:

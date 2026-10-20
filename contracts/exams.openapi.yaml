@@ -177,9 +177,10 @@ paths:
                   type: string
                   enum: [IN_PROGRESS, CLOSED]
                 resolution:
-                  type: string
+                  type:
+                    - string
+                    - 'null'
                   maxLength: 2000
-                  nullable: true
                   example: Justificatif de panne Wi-Fi campus validé.
               additionalProperties: false
       responses:
@@ -215,6 +216,9 @@ paths:
         '422':
           $ref: './common.yaml#/components/responses/ValidationError'
 components:
+  securitySchemes:
+    bearerAuth:
+      $ref: './common.yaml#/components/securitySchemes/bearerAuth'
   schemas:
     FraudReportStudent:
       type: object
@@ -228,8 +232,9 @@ components:
         name:
           type: string
         code:
-          type: string
-          nullable: true
+          type:
+            - string
+            - 'null'
       additionalProperties: false
     FraudReportClass:
       type: object
@@ -260,8 +265,9 @@ components:
         title:
           type: string
         context:
-          type: string
-          nullable: true
+          type:
+            - string
+            - 'null'
         severity:
           type: string
           enum: [LOW, MEDIUM, HIGH]
@@ -269,21 +275,25 @@ components:
           type: string
           enum: [UNTREATED, IN_PROGRESS, CLOSED]
         student:
-          $ref: '#/components/schemas/FraudReportStudent'
-          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/FraudReportStudent'
+            - type: 'null'
         classGroup:
-          $ref: '#/components/schemas/FraudReportClass'
-          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/FraudReportClass'
+            - type: 'null'
         findings:
           type: array
           items:
             type: string
         reason:
-          type: string
-          nullable: true
+          type:
+            - string
+            - 'null'
         resolution:
-          type: string
-          nullable: true
+          type:
+            - string
+            - 'null'
         occurredAt:
           type: string
           format: date-time

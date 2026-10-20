@@ -106,6 +106,7 @@ export const generateOutlineBodySchema = z
 export const refineSectionBodySchema = z
   .object({
     courseTitle: z.string().trim().max(200).optional(),
+    courseId: z.string().uuid().optional(),
     selectedText: z.string().min(1).max(50000),
     instruction: z.string().trim().min(1).max(2000),
     fullContext: z.string().max(200000).optional(),
@@ -116,10 +117,46 @@ export const refineSectionBodySchema = z
   .passthrough()
   .transform((data) => ({
     courseTitle: data.courseTitle,
+    courseId: data.courseId,
     selectedText: data.selectedText,
     instruction: data.instruction,
     fullContext: data.fullContext || data.courseContent,
   }));
+
+/** `/ai/courses/:id/build` path params. */
+export const courseBuildParamsSchema = z
+  .object({ id: z.string().uuid() })
+  .strict();
+
+/** Identifies one section of a course build. */
+const sectionTargetFields = {
+  courseId: z.string().uuid(),
+  sectionKey: z.string().trim().min(1).max(120),
+};
+
+/** POST /ai/courses/sections/generate | /regenerate (SSE). */
+export const generateSectionBodySchema = z
+  .object({
+    ...sectionTargetFields,
+    level: levelSchema.optional(),
+    difficulty: difficultySchema.optional(),
+    extras: z
+      .object({ examples: z.boolean().optional(), mermaid: z.boolean().optional() })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+/** POST /ai/courses/sections/validate. */
+export const validateSectionBodySchema = z.object(sectionTargetFields).strict();
+
+/** POST /ai/courses/sections/image — illustration for one section. */
+export const imageSectionBodySchema = z
+  .object({
+    ...sectionTargetFields,
+    kind: z.enum(['FIGURE', 'ARCHITECTURE', 'FLOWCHART', 'WORKFLOW']),
+  })
+  .strict();
 
 export const generateCourseBodySchema = z
   .object({
@@ -165,4 +202,7 @@ export type FromUrlBodyInput = z.infer<typeof fromUrlBodySchema>;
 export type ImprovePdfFieldsInput = z.infer<typeof improvePdfFieldsSchema>;
 export type GenerateOutlineBodyInput = z.infer<typeof generateOutlineBodySchema>;
 export type RefineSectionBodyInput = z.infer<typeof refineSectionBodySchema>;
+export type GenerateSectionBodyInput = z.infer<typeof generateSectionBodySchema>;
+export type ValidateSectionBodyInput = z.infer<typeof validateSectionBodySchema>;
+export type ImageSectionBodyInput = z.infer<typeof imageSectionBodySchema>;
 

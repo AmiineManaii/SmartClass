@@ -1,6 +1,7 @@
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_config.dart';
 import '../../../../core/network/api_exception.dart';
+import '../../domain/entities/course_outline.dart';
 import '../../domain/entities/generated_course.dart';
 
 /// Teacher-generated course library (`contracts/courses.openapi.yaml`).
@@ -33,6 +34,10 @@ class GeneratedCoursesRemoteDataSource {
   }
 
   /// Saves a generation as DRAFT (TEACHER or ADMIN).
+  ///
+  /// [outline] attaches the teacher-validated plan (strict schema: the key
+  /// is omitted entirely when null) — the section-by-section builder
+  /// materializes its chapters from it on first open.
   Future<GeneratedCourse> saveDraft({
     required String title,
     String? subject,
@@ -40,6 +45,7 @@ class GeneratedCoursesRemoteDataSource {
     required String level,
     required String difficulty,
     required String format,
+    CourseOutline? outline,
   }) async {
     final res = await _client.post<dynamic>(
       '$_base/courses',
@@ -51,6 +57,7 @@ class GeneratedCoursesRemoteDataSource {
         'level': level,
         'difficulty': difficulty,
         'format': format,
+        if (outline != null) 'outline': outline.toJson(),
       },
     );
     return _toOne(res.data);

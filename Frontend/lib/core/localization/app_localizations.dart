@@ -557,6 +557,41 @@ const Map<String, String> _frTranslations = {
     'ai_refine_apply': 'Appliquer la modification',
     'ai_refine_discard': 'Annuler',
     'ai_refine_success': 'Section mise à jour avec succès !',
+    // Section-by-section build (RG4/RG27)
+    'ai_build_title': 'Construction du cours',
+    'ai_build_section_num': 'SECTION {n}',
+    'ai_build_all_validated':
+        'Toutes les sections sont validées — le cours peut être publié.',
+    'ai_build_remaining':
+        '{count} section(s) restante(s) à valider avant publication.',
+    'ai_build_status_pending': 'À générer',
+    'ai_build_status_generated': 'À valider',
+    'ai_build_status_validated': 'Validée',
+    'ai_build_generate': 'Générer',
+    'ai_build_validate': 'Valider',
+    'ai_build_regenerate': 'Régénérer',
+    'ai_build_regenerate_title': 'Régénérer la section',
+    'ai_build_regenerate_confirm':
+        'Remplacer le contenu de cette section par une nouvelle génération ?',
+    'ai_build_regenerate_confirm_validated':
+        'Le contenu actuel sera remplacé et la section repassera en attente de validation.',
+    'ai_build_validated_snack':
+        'Section validée ! Plus que {count} à valider.',
+    'ai_build_all_validated_snack':
+        'Toutes les sections sont validées : le cours est prêt à être publié.',
+    'ai_build_preview': 'Aperçu du contenu',
+    'ai_build_phase_memory': 'Rappel de vos cours antérieurs…',
+    'ai_build_phase_generating': 'Rédaction par le modèle local…',
+    'ai_build_error': 'Impossible de charger les sections du cours.',
+    'ai_build_no_sections':
+        'Ce cours n\u2019a pas de sections construisibles : générez d\u2019abord un plan puis enregistrez le brouillon avec « Construire section par section ».',
+    'ai_build_image': 'Illustration de la section',
+    'ai_build_image_title': 'Illustration IA',
+    'ai_build_image_soon':
+        'Illustration bientôt disponible : le service d\u2019images est en cours de déploiement.',
+    'ai_build_image_explanation': 'Explication de l\u2019image',
+    'ai_build_save_outline': 'Construire section par section',
+    'ai_build_save_building': 'Création du brouillon…',
     'course_sommaire': 'Sommaire',
     'course_reading_time': 'Temps de lecture',
     'course_export': 'Exporter',
@@ -1476,6 +1511,41 @@ const Map<String, String> _enTranslations = {
     'ai_refine_apply': 'Apply changes',
     'ai_refine_discard': 'Cancel',
     'ai_refine_success': 'Section updated successfully!',
+    // Section-by-section build (RG4/RG27)
+    'ai_build_title': 'Course builder',
+    'ai_build_section_num': 'SECTION {n}',
+    'ai_build_all_validated':
+        'All sections are validated — the course can be published.',
+    'ai_build_remaining':
+        '{count} section(s) left to validate before publication.',
+    'ai_build_status_pending': 'To generate',
+    'ai_build_status_generated': 'To review',
+    'ai_build_status_validated': 'Validated',
+    'ai_build_generate': 'Generate',
+    'ai_build_validate': 'Validate',
+    'ai_build_regenerate': 'Regenerate',
+    'ai_build_regenerate_title': 'Regenerate section',
+    'ai_build_regenerate_confirm':
+        'Replace this section content with a new generation?',
+    'ai_build_regenerate_confirm_validated':
+        'The current content will be replaced and the section will need revalidation.',
+    'ai_build_validated_snack':
+        'Section validated! Only {count} left to validate.',
+    'ai_build_all_validated_snack':
+        'All sections validated: the course is ready to be published.',
+    'ai_build_preview': 'Content preview',
+    'ai_build_phase_memory': 'Recalling your previous courses…',
+    'ai_build_phase_generating': 'Writing with the local model…',
+    'ai_build_error': 'Could not load the course sections.',
+    'ai_build_no_sections':
+        'This course has no buildable sections: generate an outline first, then save the draft with \u201cBuild section by section\u201d.',
+    'ai_build_image': 'Section illustration',
+    'ai_build_image_title': 'AI illustration',
+    'ai_build_image_soon':
+        'Illustration coming soon: the image service is being rolled out.',
+    'ai_build_image_explanation': 'About this image',
+    'ai_build_save_outline': 'Build section by section',
+    'ai_build_save_building': 'Creating draft…',
     'course_sommaire': 'Table of Contents',
     'course_reading_time': 'Reading time',
     'course_export': 'Export',
