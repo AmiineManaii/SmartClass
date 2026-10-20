@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_providers.dart';
 import '../../../../core/error/failure_localization.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../views/web_reset_password_view.dart';
 import '../widgets/auth_screen_scaffold.dart';
 import '../widgets/auth_top_bar.dart';
 import '../widgets/password_rule_checklist.dart';
@@ -117,6 +119,10 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (context.isDesktop) {
+      return const WebResetPasswordView();
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final password = _newController.text;

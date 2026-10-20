@@ -11,6 +11,7 @@ import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../views/web_forgot_password_view.dart';
 import '../widgets/auth_screen_scaffold.dart';
 import '../widgets/auth_top_bar.dart';
 import '../widgets/otp_boxes.dart';
@@ -73,6 +74,10 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (context.isDesktop) {
+      return const WebForgotPasswordView();
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 

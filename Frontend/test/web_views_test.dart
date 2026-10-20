@@ -6,6 +6,11 @@ import 'package:smartclass/core/localization/app_localizations.dart';
 import 'package:smartclass/core/responsive/responsive_layout.dart';
 import 'package:smartclass/features/authentication/presentation/views/web_login_view.dart';
 import 'package:smartclass/features/authentication/presentation/views/web_register_view.dart';
+import 'package:smartclass/features/authentication/presentation/views/web_verify_email_view.dart';
+import 'package:smartclass/features/authentication/presentation/views/web_role_selection_view.dart';
+import 'package:smartclass/features/authentication/presentation/views/web_profile_setup_view.dart';
+import 'package:smartclass/features/authentication/presentation/views/web_forgot_password_view.dart';
+import 'package:smartclass/features/authentication/presentation/views/web_reset_password_view.dart';
 import 'package:smartclass/features/admin/presentation/views/web_admin_dashboard_view.dart';
 import 'package:smartclass/features/admin/presentation/views/web_admin_users_view.dart';
 import 'package:smartclass/features/admin/presentation/views/web_admin_classes_view.dart';
@@ -172,6 +177,83 @@ void main() {
       // Tap on Administrateur
       await tester.tap(find.text('Administrateur'));
       await tester.pump(const Duration(milliseconds: 300));
+    });
+
+    testWidgets('WebVerifyEmailView renders on desktop viewport',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        _buildDesktopTestHarness(
+          const WebVerifyEmailView(email: 'test@universite.fr'),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(WebVerifyEmailView), findsOneWidget);
+      expect(find.text('test@universite.fr'), findsOneWidget);
+    });
+
+    testWidgets('WebRoleSelectionView renders on desktop viewport',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        _buildDesktopTestHarness(const WebRoleSelectionView()),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(WebRoleSelectionView), findsOneWidget);
+      expect(find.text('PERSONNALISATION DU RÔLE'), findsOneWidget);
+    });
+
+    testWidgets('WebProfileSetupView renders on desktop viewport',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        _buildDesktopTestHarness(const WebProfileSetupView()),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(WebProfileSetupView), findsOneWidget);
+      expect(find.text('FINALISATION DU PROFIL'), findsOneWidget);
+    });
+
+    testWidgets('WebForgotPasswordView renders on desktop viewport',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        _buildDesktopTestHarness(const WebForgotPasswordView()),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(WebForgotPasswordView), findsOneWidget);
+      expect(find.text('RÉCUPÉRATION'), findsOneWidget);
+    });
+
+    testWidgets('WebResetPasswordView renders on desktop viewport',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        _buildDesktopTestHarness(const WebResetPasswordView()),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(WebResetPasswordView), findsOneWidget);
+      expect(find.text('SÉCURITÉ'), findsOneWidget);
     });
   });
 }
