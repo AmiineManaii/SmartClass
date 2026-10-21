@@ -72,6 +72,121 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
     context.showErrorToast(context.tr(l10n.key, args: l10n.args));
   }
 
+  Future<void> _show2faChallengeModal(String tempToken) async {
+    final codeController = TextEditingController();
+    bool isSubmitting = false;
+    String? errorMessage;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          return AlertDialog(
+            backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.shield_rounded, color: Color(0xFF2563EB)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    context.tr('two_factor_auth_label'),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 380,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Entrez le code à 6 chiffres de votre application Authenticator ou un code de secours.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: codeController,
+                    keyboardType: TextInputType.text,
+                    maxLength: 8,
+                    textAlign: TextAlign.center,
+                    autofocus: true,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 6,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: '123456',
+                      counterText: '',
+                      errorText: errorMessage,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.of(ctx).pop(),
+                child: Text(context.tr('cancel')),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        final code = codeController.text.trim();
+                        if (code.isEmpty) return;
+                        setDlgState(() {
+                          isSubmitting = true;
+                          errorMessage = null;
+                        });
+                        try {
+                          await ref.read(authStateProvider.notifier).authenticate2fa(
+                                tempToken: tempToken,
+                                code: code,
+                                rememberMe: _rememberMe,
+                              );
+                          if (ctx.mounted) Navigator.of(ctx).pop();
+                        } on Failure catch (f) {
+                          setDlgState(() {
+                            isSubmitting = false;
+                            final l10n = failureL10n(f);
+                            errorMessage = context.tr(l10n.key, args: l10n.args);
+                          });
+                        } catch (e) {
+                          setDlgState(() {
+                            isSubmitting = false;
+                            errorMessage = e.toString();
+                          });
+                        }
+                      },
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Text(context.tr('two_factor_verify_btn')),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     final isFr = ref.read(localeProvider) == 'fr';
@@ -87,6 +202,19 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
             rememberMe: _rememberMe,
           );
 
+      if (mounted) {
+        final auth = ref.read(authStateProvider).valueOrNull;
+        if (auth != null && auth.isAuthenticated) {
+          if (auth.onboardingCompleted) {
+            context.go('/home');
+          } else {
+            context.go('/role-selection');
+          }
+        }
+      }
+    } on TwoFactorRequiredFailure catch (failure) {
+      if (!mounted) return;
+      await _show2faChallengeModal(failure.tempToken);
       if (mounted) {
         final auth = ref.read(authStateProvider).valueOrNull;
         if (auth != null && auth.isAuthenticated) {

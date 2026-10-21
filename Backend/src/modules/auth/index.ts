@@ -15,4 +15,10 @@ export type { AuthRepositoryPort } from './domain/auth-repository.port.js';
 export type { PasswordHasherPort } from './domain/password-hasher.port.js';
 export type { TokenServicePort } from './domain/token-service.port.js';
 export type { EmailPort } from './domain/email.port.js';
+export { TotpService } from './infrastructure/totp.service.js';
+export { Setup2FAUseCase, type Setup2FAResult } from './application/setup-2fa.use-case.js';
+export { Verify2FAUseCase, type Verify2FADTO } from './application/verify-2fa.use-case.js';
+export { Disable2FAUseCase, type Disable2FADTO } from './application/disable-2fa.use-case.js';
+export { Authenticate2FAUseCase, type Authenticate2FADTO, type Authenticate2FAResult } from './application/authenticate-2fa.use-case.js';
+export { GetAuditLogsUseCase, type AuditLogItem } from './application/get-audit-logs.use-case.js';
 

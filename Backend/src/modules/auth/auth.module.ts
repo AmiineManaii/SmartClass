@@ -8,6 +8,7 @@ import { PrismaAuthRepositoryAdapter } from './infrastructure/prisma-auth-reposi
 import { Argon2PasswordHasherAdapter } from './infrastructure/argon2-password-hasher.adapter.js';
 import { JoseTokenServiceAdapter } from './infrastructure/jose-token-service.adapter.js';
 import { NodemailerSmtpEmailAdapter } from './infrastructure/nodemailer-smtp-email.adapter.js';
+import { TotpService } from './infrastructure/totp.service.js';
 import { RegisterUseCase } from './application/register.use-case.js';
 import { VerifyEmailUseCase } from './application/verify-email.use-case.js';
 import { CheckEmailUseCase } from './application/check-email.use-case.js';
@@ -19,6 +20,11 @@ import { ResetPasswordUseCase } from './application/reset-password.use-case.js';
 import { LogoutUseCase } from './application/logout.use-case.js';
 import { GetMeUseCase } from './application/get-me.use-case.js';
 import { UpdateProfileUseCase } from './application/update-profile.use-case.js';
+import { Setup2FAUseCase } from './application/setup-2fa.use-case.js';
+import { Verify2FAUseCase } from './application/verify-2fa.use-case.js';
+import { Disable2FAUseCase } from './application/disable-2fa.use-case.js';
+import { Authenticate2FAUseCase } from './application/authenticate-2fa.use-case.js';
+import { GetAuditLogsUseCase } from './application/get-audit-logs.use-case.js';
 import { AuthController } from './presentation/auth.controller.js';
 import { createAuthRouter } from './presentation/auth.routes.js';
 import {
@@ -33,6 +39,7 @@ export interface AuthModuleOptions {
   passwordHasher?: PasswordHasherPort;
   tokenService?: TokenServicePort;
   emailService?: EmailPort;
+  totpService?: TotpService;
   authRateLimiter?: RequestHandler;
   maxAttempts?: number;
   lockoutDurationMinutes?: number;
@@ -62,6 +69,7 @@ export const createAuthModule = (options: AuthModuleOptions = {}): AuthModule =>
       accessExpiration: env.JWT_ACCESS_EXPIRATION,
     });
   const emailService = options.emailService ?? new NodemailerSmtpEmailAdapter(env);
+  const totpService = options.totpService ?? new TotpService();
 
   const maxAttempts = options.maxAttempts ?? env.LOCKOUT_MAX_ATTEMPTS;
   const lockoutDurationMinutes = options.lockoutDurationMinutes ?? env.LOCKOUT_DURATION_MINUTES;
@@ -106,8 +114,21 @@ export const createAuthModule = (options: AuthModuleOptions = {}): AuthModule =>
   const logoutUseCase = new LogoutUseCase(authRepository, tokenService);
   const getMeUseCase = new GetMeUseCase(authRepository);
   const updateProfileUseCase = new UpdateProfileUseCase(authRepository);
-
   const checkEmailUseCase = new CheckEmailUseCase(authRepository);
+
+  // 2FA Use cases
+  const setup2FAUseCase = new Setup2FAUseCase(authRepository, totpService);
+  const verify2FAUseCase = new Verify2FAUseCase(authRepository, totpService);
+  const disable2FAUseCase = new Disable2FAUseCase(authRepository, passwordHasher, totpService);
+  const authenticate2FAUseCase = new Authenticate2FAUseCase(
+    authRepository,
+    tokenService,
+    totpService,
+    maxAttempts,
+    lockoutDurationMinutes,
+    refreshExpirationDays,
+  );
+  const getAuditLogsUseCase = new GetAuditLogsUseCase(authRepository);
 
   const controller = new AuthController(
     registerUseCase,
@@ -121,6 +142,11 @@ export const createAuthModule = (options: AuthModuleOptions = {}): AuthModule =>
     logoutUseCase,
     getMeUseCase,
     updateProfileUseCase,
+    setup2FAUseCase,
+    verify2FAUseCase,
+    disable2FAUseCase,
+    authenticate2FAUseCase,
+    getAuditLogsUseCase,
   );
 
   const authenticateMiddleware = createAuthenticateMiddleware(tokenService);

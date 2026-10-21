@@ -18,6 +18,7 @@ interface RawUserRow {
   status: string;
   emailVerified: boolean;
   onboardingCompleted: boolean;
+  twoFactorEnabled?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +40,7 @@ export class PrismaUserDirectoryAdapter implements UserDirectoryPort {
       status: raw.status as SafeUser['status'],
       emailVerified: raw.emailVerified,
       onboardingCompleted: raw.onboardingCompleted,
+      twoFactorEnabled: raw.twoFactorEnabled ?? false,
       createdAt: raw.createdAt.toISOString(),
       updatedAt: raw.updatedAt.toISOString(),
     };

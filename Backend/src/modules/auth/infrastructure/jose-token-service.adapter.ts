@@ -73,4 +73,51 @@ export class JoseTokenServiceAdapter implements TokenServicePort {
   public hashRefreshToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
+
+  public async generateTwoFactorTempToken(userId: string, email: string): Promise<string> {
+    return await new jose.SignJWT({
+      email,
+      purpose: '2fa_challenge',
+    })
+      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+      .setSubject(userId)
+      .setIssuedAt()
+      .setExpirationTime('5m')
+      .sign(this.secretKey);
+  }
+
+  public async verifyTwoFactorTempToken(token: string): Promise<{ userId: string; email: string }> {
+    try {
+      const { payload } = await jose.jwtVerify(token, this.secretKey, {
+        algorithms: ['HS256'],
+      });
+
+      if (!payload.sub || typeof payload.email !== 'string' || payload.purpose !== '2fa_challenge') {
+        throw new UnauthorizedError(
+          'Invalid two-factor session token',
+          ErrorCodes.AUTH_TOKEN_INVALID,
+        );
+      }
+
+      return {
+        userId: payload.sub,
+        email: payload.email,
+      };
+    } catch (err: unknown) {
+      if (err instanceof jose.errors.JWTExpired) {
+        throw new UnauthorizedError(
+          'Two-factor session token has expired. Please log in again.',
+          ErrorCodes.AUTH_TOKEN_EXPIRED,
+        );
+      }
+      if (err instanceof UnauthorizedError) {
+        throw err;
+      }
+      throw new UnauthorizedError(
+        'Invalid two-factor session token',
+        ErrorCodes.AUTH_TOKEN_INVALID,
+      );
+    }
+  }
 }
+

@@ -11,6 +11,7 @@ class UserModel {
   final String status;
   final bool emailVerified;
   final bool onboardingCompleted;
+  final bool twoFactorEnabled;
 
   const UserModel({
     required this.id,
@@ -22,6 +23,7 @@ class UserModel {
     this.status = 'ACTIVE',
     this.emailVerified = false,
     this.onboardingCompleted = false,
+    this.twoFactorEnabled = false,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,7 @@ class UserModel {
       status: json['status'] as String? ?? 'ACTIVE',
       emailVerified: json['emailVerified'] as bool? ?? false,
       onboardingCompleted: json['onboardingCompleted'] as bool? ?? false,
+      twoFactorEnabled: json['twoFactorEnabled'] as bool? ?? false,
     );
   }
 
@@ -49,6 +52,7 @@ class UserModel {
       status: status,
       emailVerified: emailVerified,
       onboardingCompleted: onboardingCompleted,
+      twoFactorEnabled: twoFactorEnabled,
     );
   }
 

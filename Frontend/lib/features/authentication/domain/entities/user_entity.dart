@@ -11,6 +11,7 @@ class UserEntity {
   final String status;
   final bool emailVerified;
   final bool onboardingCompleted;
+  final bool twoFactorEnabled;
 
   const UserEntity({
     required this.id,
@@ -22,6 +23,7 @@ class UserEntity {
     this.status = 'ACTIVE',
     this.emailVerified = false,
     this.onboardingCompleted = false,
+    this.twoFactorEnabled = false,
   });
 
   String get displayName => '$firstName $lastName'.trim();
@@ -36,6 +38,7 @@ class UserEntity {
     String? status,
     bool? emailVerified,
     bool? onboardingCompleted,
+    bool? twoFactorEnabled,
   }) {
     return UserEntity(
       id: id ?? this.id,
@@ -47,6 +50,7 @@ class UserEntity {
       status: status ?? this.status,
       emailVerified: emailVerified ?? this.emailVerified,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
+      twoFactorEnabled: twoFactorEnabled ?? this.twoFactorEnabled,
     );
   }
 }

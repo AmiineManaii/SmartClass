@@ -161,4 +161,55 @@ class AuthRemoteDataSource {
     );
     return apiEnvelope(res);
   }
+
+  Future<Map<String, dynamic>> setup2fa() async {
+    final res = await _client.post<dynamic>('$_base/auth/2fa/setup');
+    return apiEnvelope(res);
+  }
+
+  Future<Map<String, dynamic>> verify2fa({required String code}) async {
+    final res = await _client.post<dynamic>(
+      '$_base/auth/2fa/verify',
+      data: {'code': code},
+    );
+    return apiEnvelope(res);
+  }
+
+  Future<Map<String, dynamic>> disable2fa({String? code, String? password}) async {
+    final res = await _client.post<dynamic>(
+      '$_base/auth/2fa/disable',
+      data: {
+        'code': ?code,
+        'password': ?password,
+      },
+    );
+    return apiEnvelope(res);
+  }
+
+  Future<Map<String, dynamic>> authenticate2fa({
+    required String tempToken,
+    required String code,
+    bool rememberMe = false,
+  }) async {
+    final res = await _client.post<dynamic>(
+      '$_base/auth/2fa/authenticate',
+      authenticated: false,
+      data: {
+        'tempToken': tempToken,
+        'code': code,
+        'rememberMe': rememberMe,
+      },
+    );
+    return apiEnvelope(res);
+  }
+
+  Future<List<Map<String, dynamic>>> getAuditLogs({int limit = 20}) async {
+    final res = await _client.get<dynamic>('$_base/auth/audit-logs?limit=$limit');
+    final data = apiEnvelope(res);
+    if (data is List) {
+      return data.cast<Map<String, dynamic>>();
+    }
+    return [];
+  }
 }
+

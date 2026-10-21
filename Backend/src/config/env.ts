@@ -25,7 +25,7 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRATION: z.string().default('15m'),
   JWT_REFRESH_EXPIRATION_DAYS: z.coerce.number().int().positive().default(7),
   LOCKOUT_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
-  LOCKOUT_DURATION_MINUTES: z.coerce.number().int().positive().default(5),
+  LOCKOUT_DURATION_MINUTES: z.coerce.number().int().positive().default(1),
   VERIFICATION_CODE_EXPIRATION_MINUTES: z.coerce.number().int().positive().default(15),
   PASSWORD_RESET_EXPIRATION_MINUTES: z.coerce.number().int().positive().default(15),
   // SMTP Email configuration
@@ -37,17 +37,13 @@ const envSchema = z.object({
   SMTP_USER: z.string().default('faroukmessay006@gmail.com'),
   SMTP_PASS: z.string().optional().default(''),
   SMTP_FROM: z.string().default('SmartClass <faroukmessay006@gmail.com>'),
-  // Local LLM gateway (Unsloth Desktop, OpenAI-compatible API).
-  // The API runs inside Docker: host.docker.internal reaches the desktop
-  // app on the host. AI_MAX_TOKENS is the generation budget: raised to 32K
-  // for detailed courses — the model context in Unsloth Desktop must be
-  // set accordingly (context window >= prompt + AI_MAX_TOKENS, ~34K).
-  AI_BASE_URL: z.string().default('http://host.docker.internal:8888'),
-  AI_MODEL: z.string().default('unsloth/gemma-4-E4B-it-GGUF'),
-  // Fallback model served by Ollama (HF GGUF tag) when the primary
-  // Unsloth model is unreachable or errors out.
+  // Local LLM gateway (Ollama, OpenAI-compatible API).
+  AI_BASE_URL: z.string().default('http://host.docker.internal:11434'),
+  AI_MODEL: z.string().default('gemma4:e4b'),
+  // Fallback model served by Ollama (HF GGUF tag) when the primary model
+  // is unreachable or errors out.
   AI_FALLBACK_MODEL: z.string().default('hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1'),
-  AI_API_KEY: z.string().optional().default('sk-unsloth-f4212eed452c85fc015d7a8d9aff7a50'),
+  AI_API_KEY: z.string().optional().default(''),
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(300000),
   AI_STATUS_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
   AI_MAX_TOKENS: z.coerce.number().int().positive().default(32768),

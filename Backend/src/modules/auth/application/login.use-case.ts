@@ -14,14 +14,27 @@ export interface LoginDTO {
   email: string;
   password: string;
   rememberMe?: boolean;
+  ipAddress?: string;
 }
 
-export interface LoginResult {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-  user: SafeUser;
-}
+export type LoginResult =
+  | {
+      twoFactorRequired: false;
+      accessToken: string;
+      refreshToken: string;
+      expiresIn: number;
+      user: SafeUser;
+    }
+  | {
+      twoFactorRequired: true;
+      tempToken: string;
+      message: string;
+      user: {
+        id: string;
+        email: string;
+        twoFactorEnabled: true;
+      };
+    };
 
 export class LoginUseCase {
   constructor(
@@ -29,7 +42,7 @@ export class LoginUseCase {
     private readonly passwordHasher: PasswordHasherPort,
     private readonly tokenService: TokenServicePort,
     private readonly maxAttempts = 3,
-    private readonly lockoutDurationMinutes = 5,
+    private readonly lockoutDurationMinutes = 1,
     private readonly refreshExpirationDays = 7,
   ) {}
 
@@ -71,10 +84,38 @@ export class LoginUseCase {
           this.lockoutDurationMinutes,
         );
 
+      if (typeof this.authRepository.saveAuditLog === 'function') {
+        await this.authRepository.saveAuditLog({
+          userId: user.id,
+          action: 'AUTH_LOGIN_FAILED',
+          targetType: 'User',
+          targetId: user.id,
+          details: {
+            ipAddress: dto.ipAddress ?? 'unknown',
+            failedAttempts,
+            reason: 'INVALID_PASSWORD',
+          },
+        });
+      }
+
       if (isLocked) {
         const remainingSeconds = this.lockoutDurationMinutes * 60;
+        if (typeof this.authRepository.saveAuditLog === 'function') {
+        await this.authRepository.saveAuditLog({
+          userId: user.id,
+          action: 'AUTH_ACCOUNT_LOCKED',
+          targetType: 'User',
+          targetId: user.id,
+          details: {
+            ipAddress: dto.ipAddress ?? 'unknown',
+            lockoutDurationMinutes: this.lockoutDurationMinutes,
+            consecutiveFailures: failedAttempts,
+          },
+        });
+        }
+
         throw new AccountLockedError(
-          `Account temporarily locked for ${this.lockoutDurationMinutes} minutes due to 3 consecutive failed login attempts.`,
+          `Account temporarily locked for ${this.lockoutDurationMinutes} minute(s) due to 3 consecutive failed login attempts.`,
           [
             {
               remainingSeconds,
@@ -108,12 +149,51 @@ export class LoginUseCase {
       );
     }
 
-    // 4. Successful login: reset failed attempts
+    // 4. Check if Two-Factor Authentication is enabled on this account
+    if (user.twoFactorEnabled) {
+      const tempToken = await this.tokenService.generateTwoFactorTempToken(user.id, user.email);
+
+      if (typeof this.authRepository.saveAuditLog === 'function') {
+        await this.authRepository.saveAuditLog({
+          userId: user.id,
+          action: 'AUTH_LOGIN_2FA_CHALLENGE',
+          targetType: 'User',
+          targetId: user.id,
+          details: { ipAddress: dto.ipAddress ?? 'unknown' },
+        });
+      }
+
+      return {
+        twoFactorRequired: true,
+        tempToken,
+        message: 'Two-factor authentication code required',
+        user: {
+          id: user.id,
+          email: user.email,
+          twoFactorEnabled: true,
+        },
+      };
+    }
+
+    // 5. Successful password login without 2FA: reset failed attempts
     if (user.failedLoginAttempts > 0 || user.lockedUntil !== null) {
       await this.authRepository.resetFailedAttempts(user.id);
     }
 
-    // 5. Generate session tokens (short-lived access + rotating refresh token)
+    if (typeof this.authRepository.saveAuditLog === 'function') {
+      await this.authRepository.saveAuditLog({
+        userId: user.id,
+        action: 'AUTH_LOGIN_SUCCESS',
+        targetType: 'User',
+        targetId: user.id,
+        details: {
+          ipAddress: dto.ipAddress ?? 'unknown',
+          method: 'PASSWORD',
+        },
+      });
+    }
+
+    // 6. Generate session tokens (short-lived access + rotating refresh token)
     const { token: accessToken, expiresIn } = await this.tokenService.generateAccessToken({
       sub: user.id,
       email: user.email,
@@ -131,6 +211,7 @@ export class LoginUseCase {
     await this.authRepository.saveRefreshToken(user.id, tokenHash, familyId, refreshExpiresAt);
 
     return {
+      twoFactorRequired: false,
       accessToken,
       refreshToken: rawRefreshToken,
       expiresIn,

@@ -12,6 +12,9 @@ import {
   resetPasswordSchema,
   logoutSchema,
   updateProfileSchema,
+  verify2faSchema,
+  disable2faSchema,
+  authenticate2faSchema,
 } from './auth.validation.js';
 
 export interface AuthRouterOptions {
@@ -58,6 +61,42 @@ export const createAuthRouter = (options: AuthRouterOptions): Router => {
     ...rateLimitMw,
     validate({ body: loginSchema }),
     controller.login,
+  );
+
+  // 2FA login completion endpoint (after password check returns twoFactorRequired: true)
+  router.post(
+    '/2fa/authenticate',
+    ...rateLimitMw,
+    validate({ body: authenticate2faSchema }),
+    controller.authenticate2fa,
+  );
+
+  // 2FA Setup, Verify, Disable (requires authenticated session)
+  router.post(
+    '/2fa/setup',
+    authenticateMiddleware,
+    controller.setup2fa,
+  );
+
+  router.post(
+    '/2fa/verify',
+    authenticateMiddleware,
+    validate({ body: verify2faSchema }),
+    controller.verify2fa,
+  );
+
+  router.post(
+    '/2fa/disable',
+    authenticateMiddleware,
+    validate({ body: disable2faSchema }),
+    controller.disable2fa,
+  );
+
+  // Security audit logs for the authenticated user
+  router.get(
+    '/audit-logs',
+    authenticateMiddleware,
+    controller.getAuditLogs,
   );
 
   router.post(

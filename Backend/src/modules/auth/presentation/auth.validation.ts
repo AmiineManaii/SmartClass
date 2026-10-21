@@ -116,6 +116,34 @@ export const updateProfileSchema = z
   })
   .strict();
 
+export const verify2faSchema = z
+  .object({
+    code: z
+      .string()
+      .trim()
+      .length(6, '2FA code must be exactly 6 digits')
+      .regex(/^\d{6}$/, '2FA code must contain only digits'),
+  })
+  .strict();
+
+export const disable2faSchema = z
+  .object({
+    code: z.string().trim().optional(),
+    password: z.string().optional(),
+  })
+  .strict()
+  .refine((data) => !!(data.code || data.password), {
+    message: 'Either 2FA code or account password must be provided',
+  });
+
+export const authenticate2faSchema = z
+  .object({
+    tempToken: z.string().trim().min(1, 'Temporary token is required'),
+    code: z.string().trim().min(6, 'Verification code must be at least 6 characters').max(20),
+    rememberMe: z.boolean().optional(),
+  })
+  .strict();
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
@@ -126,3 +154,7 @@ export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type LogoutInput = z.infer<typeof logoutSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+export type Verify2faInput = z.infer<typeof verify2faSchema>;
+export type Disable2faInput = z.infer<typeof disable2faSchema>;
+export type Authenticate2faInput = z.infer<typeof authenticate2faSchema>;
+

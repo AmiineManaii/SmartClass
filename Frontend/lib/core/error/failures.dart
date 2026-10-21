@@ -46,3 +46,14 @@ class PermissionFailure extends Failure {
 class UnknownFailure extends Failure {
   const UnknownFailure(super.message, {super.code});
 }
+
+class TwoFactorRequiredFailure extends Failure {
+  final String tempToken;
+  final dynamic user;
+
+  const TwoFactorRequiredFailure(this.tempToken, {this.user})
+      : super('Two-factor authentication required', code: 'TWO_FACTOR_REQUIRED');
+
+  @override
+  List<Object?> get props => [message, code, tempToken, user];
+}

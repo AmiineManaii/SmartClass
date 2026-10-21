@@ -54,7 +54,33 @@ export interface AuthRepositoryPort {
     onboardingCompleted?: boolean;
     failedLoginAttempts?: number;
     lockedUntil?: Date | null;
+    twoFactorEnabled?: boolean;
+    twoFactorSecret?: string | null;
+    twoFactorRecoveryCodes?: string[];
   }): Promise<UserEntity>;
+
+  getTwoFactorSecret(userId: string): Promise<{
+    twoFactorSecret: string | null;
+    twoFactorEnabled: boolean;
+    twoFactorRecoveryCodes: string[];
+  } | null>;
+
+  saveAuditLog(params: {
+    userId?: string;
+    action: string;
+    targetType: string;
+    targetId?: string;
+    details?: Record<string, unknown>;
+  }): Promise<void>;
+
+  getUserAuditLogs(userId: string, limit?: number): Promise<Array<{
+    id: string;
+    action: string;
+    targetType: string;
+    targetId: string | null;
+    details: unknown;
+    createdAt: Date;
+  }>>;
 
   incrementFailedAttempts(
     userId: string,

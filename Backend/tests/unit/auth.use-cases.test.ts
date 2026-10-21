@@ -61,6 +61,7 @@ class MockAuthRepository implements AuthRepositoryPort {
       onboardingCompleted: false,
       failedLoginAttempts: 0,
       lockedUntil: null,
+      twoFactorEnabled: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -99,6 +100,7 @@ class MockAuthRepository implements AuthRepositoryPort {
       onboardingCompleted: params.onboardingCompleted ?? current.onboardingCompleted,
       failedLoginAttempts: params.failedLoginAttempts ?? current.failedLoginAttempts,
       lockedUntil: params.lockedUntil !== undefined ? params.lockedUntil : current.lockedUntil,
+      twoFactorEnabled: params.twoFactorEnabled !== undefined ? params.twoFactorEnabled : current.twoFactorEnabled,
       createdAt: current.createdAt,
       updatedAt: new Date(),
     });
@@ -235,6 +237,32 @@ class MockAuthRepository implements AuthRepositoryPort {
         this.refreshTokens.set(hash, token);
       }
     }
+  }
+
+  public auditLogs: Array<{ id: string; action: string; targetType: string; targetId: string | null; details: unknown; createdAt: Date }> = [];
+  public twoFactorSecrets: Map<string, { twoFactorSecret: string | null; twoFactorEnabled: boolean; twoFactorRecoveryCodes: string[] }> = new Map();
+
+  public async getTwoFactorSecret(userId: string) {
+    return this.twoFactorSecrets.get(userId) ?? {
+      twoFactorSecret: null,
+      twoFactorEnabled: false,
+      twoFactorRecoveryCodes: [],
+    };
+  }
+
+  public async saveAuditLog(params: { userId?: string; action: string; targetType: string; targetId?: string; details?: Record<string, unknown> }) {
+    this.auditLogs.push({
+      id: crypto.randomUUID(),
+      action: params.action,
+      targetType: params.targetType,
+      targetId: params.targetId ?? null,
+      details: params.details,
+      createdAt: new Date(),
+    });
+  }
+
+  public async getUserAuditLogs(userId: string, limit: number = 20) {
+    return this.auditLogs.slice(-limit);
   }
 }
 

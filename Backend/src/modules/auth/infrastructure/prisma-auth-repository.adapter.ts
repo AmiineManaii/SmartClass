@@ -31,6 +31,7 @@ export class PrismaAuthRepositoryAdapter implements AuthRepositoryPort {
     onboardingCompleted: boolean;
     failedLoginAttempts: number;
     lockedUntil: Date | null;
+    twoFactorEnabled?: boolean;
     createdAt: Date;
     updatedAt: Date;
   }): UserEntity {
@@ -48,6 +49,7 @@ export class PrismaAuthRepositoryAdapter implements AuthRepositoryPort {
       onboardingCompleted: raw.onboardingCompleted,
       failedLoginAttempts: raw.failedLoginAttempts,
       lockedUntil: raw.lockedUntil,
+      twoFactorEnabled: raw.twoFactorEnabled ?? false,
       createdAt: raw.createdAt,
       updatedAt: raw.updatedAt,
     });
@@ -97,6 +99,9 @@ export class PrismaAuthRepositoryAdapter implements AuthRepositoryPort {
       onboardingCompleted?: boolean;
       failedLoginAttempts?: number;
       lockedUntil?: Date | null;
+      twoFactorEnabled?: boolean;
+      twoFactorSecret?: string | null;
+      twoFactorRecoveryCodes?: string[];
     },
   ): Promise<UserEntity> {
     const raw = await this.prisma.user.update({
@@ -104,6 +109,71 @@ export class PrismaAuthRepositoryAdapter implements AuthRepositoryPort {
       data: params,
     });
     return this.toDomain(raw);
+  }
+
+  public async getTwoFactorSecret(userId: string): Promise<{
+    twoFactorSecret: string | null;
+    twoFactorEnabled: boolean;
+    twoFactorRecoveryCodes: string[];
+  } | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        twoFactorSecret: true,
+        twoFactorEnabled: true,
+        twoFactorRecoveryCodes: true,
+      },
+    });
+    if (!user) return null;
+    return {
+      twoFactorSecret: user.twoFactorSecret,
+      twoFactorEnabled: user.twoFactorEnabled,
+      twoFactorRecoveryCodes: user.twoFactorRecoveryCodes,
+    };
+  }
+
+  public async saveAuditLog(params: {
+    userId?: string;
+    action: string;
+    targetType: string;
+    targetId?: string;
+    details?: Record<string, unknown>;
+  }): Promise<void> {
+    await this.prisma.auditLog.create({
+      data: {
+        userId: params.userId ?? null,
+        action: params.action,
+        targetType: params.targetType,
+        targetId: params.targetId ?? null,
+        details: (params.details ?? {}) as any,
+      },
+    });
+  }
+
+  public async getUserAuditLogs(
+    userId: string,
+    limit: number = 20,
+  ): Promise<Array<{
+    id: string;
+    action: string;
+    targetType: string;
+    targetId: string | null;
+    details: unknown;
+    createdAt: Date;
+  }>> {
+    return this.prisma.auditLog.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        action: true,
+        targetType: true,
+        targetId: true,
+        details: true,
+        createdAt: true,
+      },
+    });
   }
 
   public async incrementFailedAttempts(

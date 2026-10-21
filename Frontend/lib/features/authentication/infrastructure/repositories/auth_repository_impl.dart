@@ -103,6 +103,14 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
         rememberMe: rememberMe,
       );
+      if (data['twoFactorRequired'] == true) {
+        final tempToken = data['tempToken'] as String? ?? '';
+        final userJson = data['user'];
+        final user = userJson is Map<String, dynamic>
+            ? UserModel.fromJson(userJson).toEntity()
+            : null;
+        throw TwoFactorRequiredFailure(tempToken, user: user);
+      }
       final session = AuthSessionModel.fromJson(data).toAuthenticatedSession();
       return _persist(session, rememberMe: rememberMe, email: email);
     } on ApiException catch (e) {
@@ -216,4 +224,52 @@ class AuthRepositoryImpl implements AuthRepository {
       return _persist(session);
     });
   }
+
+  @override
+  Future<Map<String, dynamic>> setup2fa() {
+    return _guard(() async {
+      return await _remote.setup2fa();
+    });
+  }
+
+  @override
+  Future<bool> verify2fa({required String code}) {
+    return _guard(() async {
+      final data = await _remote.verify2fa(code: code);
+      return data['success'] as bool? ?? true;
+    });
+  }
+
+  @override
+  Future<bool> disable2fa({String? code, String? password}) {
+    return _guard(() async {
+      final data = await _remote.disable2fa(code: code, password: password);
+      return data['success'] as bool? ?? true;
+    });
+  }
+
+  @override
+  Future<AuthenticatedSession> authenticate2fa({
+    required String tempToken,
+    required String code,
+    bool rememberMe = false,
+  }) {
+    return _guard(() async {
+      final data = await _remote.authenticate2fa(
+        tempToken: tempToken,
+        code: code,
+        rememberMe: rememberMe,
+      );
+      final session = AuthSessionModel.fromJson(data).toAuthenticatedSession();
+      return _persist(session, rememberMe: rememberMe, email: session.user.email);
+    });
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAuditLogs({int limit = 20}) {
+    return _guard(() async {
+      return await _remote.getAuditLogs(limit: limit);
+    });
+  }
 }
+

@@ -16,6 +16,7 @@ export interface UserEntityProps {
   onboardingCompleted: boolean;
   failedLoginAttempts: number;
   lockedUntil: Date | null;
+  twoFactorEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,12 +32,17 @@ export interface SafeUser {
   status: UserStatus;
   emailVerified: boolean;
   onboardingCompleted: boolean;
+  twoFactorEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export class UserEntity {
   constructor(private readonly props: UserEntityProps) {}
+
+  public get twoFactorEnabled(): boolean {
+    return this.props.twoFactorEnabled;
+  }
 
   public get id(): string {
     return this.props.id;
@@ -120,6 +126,7 @@ export class UserEntity {
       status: this.props.status,
       emailVerified: this.props.emailVerified,
       onboardingCompleted: this.props.onboardingCompleted,
+      twoFactorEnabled: this.props.twoFactorEnabled,
       createdAt: this.props.createdAt.toISOString(),
       updatedAt: this.props.updatedAt.toISOString(),
     };

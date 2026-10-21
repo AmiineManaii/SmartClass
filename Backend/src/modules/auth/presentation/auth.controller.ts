@@ -10,6 +10,11 @@ import type { ResetPasswordUseCase } from '../application/reset-password.use-cas
 import type { LogoutUseCase } from '../application/logout.use-case.js';
 import type { GetMeUseCase } from '../application/get-me.use-case.js';
 import type { UpdateProfileUseCase } from '../application/update-profile.use-case.js';
+import type { Setup2FAUseCase } from '../application/setup-2fa.use-case.js';
+import type { Verify2FAUseCase } from '../application/verify-2fa.use-case.js';
+import type { Disable2FAUseCase } from '../application/disable-2fa.use-case.js';
+import type { Authenticate2FAUseCase } from '../application/authenticate-2fa.use-case.js';
+import type { GetAuditLogsUseCase } from '../application/get-audit-logs.use-case.js';
 import { UnauthorizedError } from '../../../shared/errors/app-error.js';
 import { ErrorCodes } from '../../../shared/errors/error-codes.js';
 
@@ -26,6 +31,11 @@ export class AuthController {
     private readonly logoutUseCase: LogoutUseCase,
     private readonly getMeUseCase: GetMeUseCase,
     private readonly updateProfileUseCase: UpdateProfileUseCase,
+    private readonly setup2FAUseCase: Setup2FAUseCase,
+    private readonly verify2FAUseCase: Verify2FAUseCase,
+    private readonly disable2FAUseCase: Disable2FAUseCase,
+    private readonly authenticate2FAUseCase: Authenticate2FAUseCase,
+    private readonly getAuditLogsUseCase: GetAuditLogsUseCase,
   ) {}
 
   public register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -74,7 +84,19 @@ export class AuthController {
 
   public login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const result = await this.loginUseCase.execute(req.body);
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress;
+      const result = await this.loginUseCase.execute({
+        ...req.body,
+        ipAddress: clientIp,
+      });
+
+      // If 2FA is required, return challenge token without setting refresh cookie
+      if (result.twoFactorRequired) {
+        res.status(200).json({
+          data: result,
+        });
+        return;
+      }
 
       const isRememberMe = req.body?.rememberMe === true;
       const maxAgeMs = (isRememberMe ? 30 : 7) * 24 * 60 * 60 * 1000;
@@ -96,6 +118,101 @@ export class AuthController {
     }
   };
 
+  public authenticate2fa = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress;
+      const result = await this.authenticate2FAUseCase.execute({
+        ...req.body,
+        ipAddress: clientIp,
+      });
+
+      const isRememberMe = req.body?.rememberMe === true;
+      const maxAgeMs = (isRememberMe ? 30 : 7) * 24 * 60 * 60 * 1000;
+
+      res.cookie('smartclass_refresh_token', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/api/v1/auth',
+        maxAge: maxAgeMs,
+      });
+
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public setup2fa = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const result = await this.setup2FAUseCase.execute(req.user.id);
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public verify2fa = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress;
+      const result = await this.verify2FAUseCase.execute({
+        userId: req.user.id,
+        code: req.body.code,
+        ipAddress: clientIp,
+      });
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public disable2fa = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress;
+      const result = await this.disable2FAUseCase.execute({
+        userId: req.user.id,
+        code: req.body.code,
+        password: req.body.password,
+        ipAddress: clientIp,
+      });
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public getAuditLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+      const result = await this.getAuditLogsUseCase.execute(req.user.id, limit);
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   public refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       // 1. Try body refreshToken
@@ -104,7 +221,7 @@ export class AuthController {
       // 2. Fallback to httpOnly cookie if body is omitted or empty
       if (!refreshToken && req.headers.cookie) {
         const match = req.headers.cookie.match(/smartclass_refresh_token=([^;]+)/);
-        if (match) {
+        if (match && match[1]) {
           refreshToken = decodeURIComponent(match[1].trim());
         }
       }
@@ -158,7 +275,7 @@ export class AuthController {
       let refreshToken = req.body?.refreshToken;
       if (!refreshToken && req.headers.cookie) {
         const match = req.headers.cookie.match(/smartclass_refresh_token=([^;]+)/);
-        if (match) {
+        if (match && match[1]) {
           refreshToken = decodeURIComponent(match[1].trim());
         }
       }

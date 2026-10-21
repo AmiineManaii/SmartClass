@@ -75,8 +75,20 @@ abstract class AuthRepository {
     bool? onboardingCompleted,
   });
 
-  /// Persists the onboarding role via `PATCH /users/me/role`
-  /// (TEACHER/STUDENT only — ADMIN is never self-assignable).
-  /// Rotates tokens server-side; implementations must persist them.
   Future<AuthenticatedSession> setMyRole({required String role});
+
+  Future<Map<String, dynamic>> setup2fa();
+
+  Future<bool> verify2fa({required String code});
+
+  Future<bool> disable2fa({String? code, String? password});
+
+  Future<AuthenticatedSession> authenticate2fa({
+    required String tempToken,
+    required String code,
+    bool rememberMe = false,
+  });
+
+  Future<List<Map<String, dynamic>>> getAuditLogs({int limit = 20});
 }
+

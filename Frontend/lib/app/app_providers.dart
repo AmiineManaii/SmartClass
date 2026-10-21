@@ -637,6 +637,7 @@ class AuthState {
   final String? major;
   final String? studentId;
   final String? bio;
+  final bool twoFactorEnabled;
 
   const AuthState({
     this.isAuthenticated = false,
@@ -651,6 +652,7 @@ class AuthState {
     this.major,
     this.studentId,
     this.bio,
+    this.twoFactorEnabled = false,
   });
 
   AuthState copyWith({
@@ -666,6 +668,7 @@ class AuthState {
     String? major,
     String? studentId,
     String? bio,
+    bool? twoFactorEnabled,
   }) {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
@@ -680,6 +683,7 @@ class AuthState {
       major: major ?? this.major,
       studentId: studentId ?? this.studentId,
       bio: bio ?? this.bio,
+      twoFactorEnabled: twoFactorEnabled ?? this.twoFactorEnabled,
     );
   }
 }
@@ -740,6 +744,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       major: currentMajor,
       studentId: currentStudentId,
       bio: currentBio,
+      twoFactorEnabled: user.twoFactorEnabled,
     );
   }
 
@@ -1039,4 +1044,63 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       bio: bio ?? current.bio,
     )));
   }
-}
+
+  Future<Map<String, dynamic>> setup2fa() {
+    return _repo.setup2fa();
+  }
+
+  Future<void> verify2fa(String code) async {
+    final success = await _repo.verify2fa(code: code);
+    if (success) {
+      final current = state.valueOrNull;
+      if (current != null) {
+        _emit(AsyncValue.data(current.copyWith(twoFactorEnabled: true)));
+      }
+    }
+  }
+
+  Future<void> disable2fa({String? code, String? password}) async {
+    final success = await _repo.disable2fa(code: code, password: password);
+    if (success) {
+      final current = state.valueOrNull;
+      if (current != null) {
+        _emit(AsyncValue.data(current.copyWith(twoFactorEnabled: false)));
+      }
+    }
+  }
+
+  Future<void> authenticate2fa({
+    required String tempToken,
+    required String code,
+    bool rememberMe = true,
+  }) async {
+    _emit(const AsyncValue.loading());
+    try {
+      final session = await _repo.authenticate2fa(
+        tempToken: tempToken,
+        code: code,
+        rememberMe: rememberMe,
+      );
+      final tokens = _ref.read(tokenStorageProvider);
+      final profile = await tokens.readAcademicProfile(
+        session.user.id.isNotEmpty ? session.user.id : session.user.email,
+      );
+      _emit(AsyncValue.data(_fromUser(
+        session.user,
+        authenticated: true,
+        institution: profile['institution'],
+        faculty: profile['faculty'],
+        major: profile['major'],
+        studentId: profile['studentId'],
+        bio: profile['bio'],
+      )));
+    } catch (e) {
+      _emit(AsyncValue.error(e, StackTrace.current));
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAuditLogs({int limit = 20}) {
+    return _repo.getAuditLogs(limit: limit);
+  }
+}

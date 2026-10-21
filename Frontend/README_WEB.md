@@ -314,20 +314,21 @@ This document provides a thorough audit of the **SmartClass Web / Desktop versio
 1. **Forum & Collaboration:** Connect threads and messages to real database endpoints.
 2. **AI Quiz & Flashcards:** Store student quiz results and flashcard decks in PostgreSQL.
 3. **Live Exam Proctoring:** Connect fraud violation events to the backend audit log.
-4. **🔐 Two-Factor Authentication (2FA / TOTP) — Currently UI-Only:**
-   - **Status:** The 2FA feature in **Profile & Settings** (`profile_page.dart`) is **100% UI mock**. No backend work exists.
-   - **What exists (Frontend only):**
-     - A toggle switch (`_twoFactorEnabled`) that is a local `setState` boolean — not persisted anywhere.
-     - A TOTP setup modal showing a **hardcoded fake TOTP key** (`JBSWY3DPEHPK3PXP`) and a static icon (not a real QR code).
-     - Pressing "Verify & Enable 2FA" just flips the local boolean and shows a snackbar — **no API call is made**.
-     - Security audit log entries (`security_log_2fa_success`, etc.) are **static mock data**.
-   - **What is needed (Backend TODO):**
-     - [ ] Add `twoFactorEnabled`, `twoFactorSecret` columns to the `User` model in Prisma schema.
-     - [ ] `POST /api/v1/auth/2fa/setup` — Generate a real TOTP secret (e.g., via `speakeasy` or `otplib`), return a QR code URI (`otpauth://...`).
-     - [ ] `POST /api/v1/auth/2fa/verify` — Validate the 6-digit code against the stored secret to confirm setup.
-     - [ ] `POST /api/v1/auth/2fa/disable` — Disable 2FA for the user.
-     - [ ] Update `POST /api/v1/auth/login` — After password validation, if 2FA is enabled, require a second step with TOTP code verification before issuing JWT.
-     - [ ] Frontend: Replace hardcoded key/icon with real QR code from backend, wire toggle & modal to actual API calls, persist state via provider.
+4. **🔐 Two-Factor Authentication (2FA / TOTP) — Fully Operational (Backend & Frontend):**
+   - **Status:** Complete & Working end-to-end with RFC 6238 TOTP, QR codes, recovery codes, security audit logging, and account lockout after 3 failed attempts (1 minute).
+   - **Backend Implementation:**
+     - [x] Added `twoFactorEnabled`, `twoFactorSecret`, and `twoFactorRecoveryCodes` columns to `User` in Prisma.
+     - [x] RFC 6238 TOTP engine (`totp.service.ts`) with QR code Data URL generation, base32 codecs, ±30s drift tolerance, and 8 secure recovery backup codes.
+     - [x] `POST /api/v1/auth/2fa/setup` — Returns secret, QR data URL, and recovery codes.
+     - [x] `POST /api/v1/auth/2fa/verify` — Validates 6-digit code against secret, activates 2FA, logs security audit event.
+     - [x] `POST /api/v1/auth/2fa/disable` — Disables 2FA and purges secrets upon password or code confirmation.
+     - [x] `POST /api/v1/auth/2fa/authenticate` — Validates temporary 2FA session token and TOTP code or recovery code.
+     - [x] `GET /api/v1/auth/audit-logs` — Retrieves security events (`AUTH_LOGIN_SUCCESS`, `AUTH_2FA_ENABLED`, `AUTH_ACCOUNT_LOCKED`, etc.).
+     - [x] Enhanced security: 3 failed attempts trigger a 1-minute lockout (`LOCKOUT_MAX_ATTEMPTS=3`, `LOCKOUT_DURATION_MINUTES=1`).
+   - **Frontend Integration:**
+     - [x] Wired `setup2fa()`, `verify2fa()`, `disable2fa()`, and `authenticate2fa()` into Riverpod `AuthNotifier`.
+     - [x] Profile & Settings (`profile_page.dart`): Real QR code rendering from base64, secret copy button, recovery code list, live TOTP code verification, disable confirmation, and real audit log feed.
+     - [x] Login flow (`login_page.dart` & `web_login_view.dart`): Intercepts `TwoFactorRequiredFailure` to prompt for 6-digit TOTP / backup code before granting session tokens.
 
 ---
 
