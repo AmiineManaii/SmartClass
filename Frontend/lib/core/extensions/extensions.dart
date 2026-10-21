@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../widgets/smart_toast.dart';
+export '../widgets/smart_toast.dart';
+
 extension BuildContextExtensions on BuildContext {
   ThemeData get theme => Theme.of(this);
   TextTheme get textTheme => Theme.of(this).textTheme;
@@ -16,6 +19,93 @@ extension BuildContextExtensions on BuildContext {
   bool get isMobile => screenWidth < 600;
   bool get isTablet => screenWidth >= 600 && screenWidth < 1024;
   bool get isDesktop => screenWidth >= 1024;
+
+  void showToast(
+    String message, {
+    String? title,
+    ToastType type = ToastType.info,
+    Duration duration = const Duration(milliseconds: 3500),
+    VoidCallback? onAction,
+    String? actionLabel,
+  }) {
+    SmartToast.show(
+      this,
+      message: message,
+      title: title,
+      type: type,
+      duration: duration,
+      onAction: onAction,
+      actionLabel: actionLabel,
+    );
+  }
+
+  void showSuccessToast(
+    String message, {
+    String? title,
+    Duration duration = const Duration(milliseconds: 3500),
+    VoidCallback? onAction,
+    String? actionLabel,
+  }) {
+    SmartToast.success(
+      this,
+      message,
+      title: title,
+      duration: duration,
+      onAction: onAction,
+      actionLabel: actionLabel,
+    );
+  }
+
+  void showErrorToast(
+    String message, {
+    String? title,
+    Duration duration = const Duration(milliseconds: 4000),
+    VoidCallback? onAction,
+    String? actionLabel,
+  }) {
+    SmartToast.error(
+      this,
+      message,
+      title: title,
+      duration: duration,
+      onAction: onAction,
+      actionLabel: actionLabel,
+    );
+  }
+
+  void showWarningToast(
+    String message, {
+    String? title,
+    Duration duration = const Duration(milliseconds: 3500),
+    VoidCallback? onAction,
+    String? actionLabel,
+  }) {
+    SmartToast.warning(
+      this,
+      message,
+      title: title,
+      duration: duration,
+      onAction: onAction,
+      actionLabel: actionLabel,
+    );
+  }
+
+  void showInfoToast(
+    String message, {
+    String? title,
+    Duration duration = const Duration(milliseconds: 3500),
+    VoidCallback? onAction,
+    String? actionLabel,
+  }) {
+    SmartToast.info(
+      this,
+      message,
+      title: title,
+      duration: duration,
+      onAction: onAction,
+      actionLabel: actionLabel,
+    );
+  }
 }
 
 extension WidgetRefExtensions on WidgetRef {

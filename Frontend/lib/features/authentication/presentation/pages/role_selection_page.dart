@@ -43,9 +43,7 @@ class _RoleSelectionPageState extends ConsumerState<RoleSelectionPage> {
     } on Failure catch (failure) {
       if (!mounted) return;
       final l10n = failureL10n(failure);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
-      );
+      context.showErrorToast(context.tr(l10n.key, args: l10n.args));
       setState(() => _saving = false);
       return;
     }

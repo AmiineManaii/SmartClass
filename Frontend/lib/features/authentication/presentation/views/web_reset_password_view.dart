@@ -5,9 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_providers.dart';
 import '../../../../core/error/failure_localization.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/web_controls_bar.dart';
+import '../../../../core/widgets/smart_loader.dart';
 import '../widgets/web_auth_hero_section.dart';
 
 enum _WebResetState { idle, updating, success }
@@ -102,19 +103,7 @@ class _WebResetPasswordViewState extends ConsumerState<WebResetPasswordView>
     final message =
         (translated == l10n.key || translated.isEmpty) ? failure.message : translated;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppTheme.error,
-        behavior: SnackBarBehavior.floating,
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message)),
-          ],
-        ),
-      ),
-    );
+    context.showErrorToast(message);
   }
 
   Future<void> _handleSubmit() async {
@@ -122,24 +111,12 @@ class _WebResetPasswordViewState extends ConsumerState<WebResetPasswordView>
     final password = _newController.text;
 
     if (_calculateScore(password) < 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          content: Text(context.tr('required_field')),
-        ),
-      );
+      context.showWarningToast(context.tr('required_field'));
       return;
     }
 
     if (!_matches) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          content: Text(context.tr('passwords_dont_match')),
-        ),
-      );
+      context.showWarningToast(context.tr('passwords_dont_match'));
       return;
     }
 
@@ -148,13 +125,7 @@ class _WebResetPasswordViewState extends ConsumerState<WebResetPasswordView>
     final code = reset['code'] ?? '';
 
     if (email.isEmpty || code.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          content: Text(context.tr('session_expired')),
-        ),
-      );
+      context.showErrorToast(context.tr('session_expired'));
       context.go('/forgot-password');
       return;
     }
@@ -182,13 +153,7 @@ class _WebResetPasswordViewState extends ConsumerState<WebResetPasswordView>
     } catch (_) {
       if (mounted) {
         setState(() => _state = _WebResetState.idle);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppTheme.error,
-            behavior: SnackBarBehavior.floating,
-            content: Text(context.tr('error_unexpected')),
-          ),
-        );
+        context.showErrorToast(context.tr('error_unexpected'));
       }
     }
   }
@@ -635,13 +600,8 @@ class _WebResetPasswordViewState extends ConsumerState<WebResetPasswordView>
                                       elevation: 0,
                                     ),
                                     child: _state == _WebResetState.updating
-                                        ? const SizedBox(
-                                            width: 22,
-                                            height: 22,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.2,
-                                              color: Colors.white,
-                                            ),
+                                        ? const SmartLoader.small(
+                                            color: Colors.white,
                                           )
                                         : (_state == _WebResetState.success
                                             ? Row(

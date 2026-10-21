@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../widgets/web_admin_scaffold.dart';
 
@@ -213,11 +214,7 @@ class _WebAdminClassesPageState extends ConsumerState<WebAdminClassesPage> {
                   children: [
                     OutlinedButton.icon(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Import CSV de structure prêt.'),
-                          ),
-                        );
+                        context.showSuccessToast('Import CSV de structure prêt.');
                       },
                       icon: const Icon(Icons.upload_file_rounded, size: 18),
                       label: const Text('Importer une structure (CSV)'),

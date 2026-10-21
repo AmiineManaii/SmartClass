@@ -119,7 +119,7 @@ class WebSplashView extends StatelessWidget {
                         ),
                         const SizedBox(width: 7),
                         Text(
-                          'SmartClass 4.0 • IA Pédagogique',
+                          context.tr('splash_badge'),
                           style: TextStyle(
                             color: primaryTextColor.withValues(alpha: 0.8),
                             fontSize: 11.5,
@@ -226,10 +226,10 @@ class WebSplashView extends StatelessWidget {
                           child: Image.asset(
                             'assets/images/logo_emblem.png',
                             fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => const Icon(
+                            errorBuilder: (context, error, stackTrace) => Icon(
                               Icons.school_rounded,
                               size: 90,
-                              color: AppTheme.primary,
+                              color: isDark ? const Color(0xFF38BDF8) : AppTheme.primary,
                             ),
                           ),
                         ),
@@ -354,14 +354,19 @@ class WebSplashView extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              currentStatus,
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: secondaryTextColor,
-                                fontWeight: FontWeight.w500,
+                            Expanded(
+                              child: Text(
+                                currentStatus,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: secondaryTextColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            const SizedBox(width: 8),
                             Text(
                               '$percent%',
                               style: TextStyle(
@@ -386,7 +391,7 @@ class WebSplashView extends StatelessWidget {
               right: 0,
               child: Center(
                 child: Text(
-                  'SmartClass v4.2 • Protocole TLS 1.3 • Conforme RGPD & CNIL',
+                  context.tr('splash_footer'),
                   style: TextStyle(
                     fontSize: 11,
                     color: secondaryTextColor.withValues(alpha: 0.7),

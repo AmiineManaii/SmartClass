@@ -11,6 +11,7 @@ import 'admin_nav_row.dart';
 import 'admin_section_header.dart';
 import 'admin_stat_card.dart';
 import '../views/web_admin_dashboard_view.dart';
+import '../../../../core/widgets/smart_loader.dart';
 
 /// Locally dismissed alert ids (no backend status endpoint yet).
 final dismissedAdminAlertsProvider = StateProvider<Set<String>>((ref) => {});
@@ -95,7 +96,11 @@ class AdminDashboardView extends ConsumerWidget {
                     overview.when(
                       loading: () => const Padding(
                         padding: EdgeInsets.symmetric(vertical: 32),
-                        child: Center(child: CircularProgressIndicator()),
+                        child: Center(
+                          child: SmartLoader.medium(
+                            message: 'Chargement des statistiques administrateur...',
+                          ),
+                        ),
                       ),
                       error: (e, _) => _OverviewError(
                         onRetry: () => ref.invalidate(adminOverviewProvider),

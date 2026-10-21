@@ -54,6 +54,8 @@ class ApiClient {
     RequestInterceptorHandler handler,
   ) async {
     options.headers['X-Request-Id'] = const Uuid().v4();
+    // Enable browser cookie transmission and CORS credentials on Web platform
+    options.extra['withCredentials'] = true;
     if (options.extra['authenticated'] != false) {
       final accessToken = await tokens.readAccessToken();
       if (accessToken != null && accessToken.isNotEmpty) {
@@ -97,7 +99,7 @@ class ApiClient {
     final res = await _dio.post<dynamic>(
       '${ApiConfig.apiPrefix}/auth/refresh',
       data: {'refreshToken': refreshToken},
-      options: Options(extra: const {'authenticated': false}),
+      options: Options(extra: const {'authenticated': false, 'withCredentials': true}),
     );
     final data = apiEnvelope(res);
     final access = data['accessToken'] as String?;
@@ -105,7 +107,14 @@ class ApiClient {
     if (access == null || access.isEmpty || refresh == null || refresh.isEmpty) {
       throw const ApiException(message: 'Invalid refresh response');
     }
-    await tokens.saveSession(accessToken: access, refreshToken: refresh);
+    final isRemember = await tokens.isRememberMe();
+    final savedEmail = await tokens.getSavedEmail();
+    await tokens.saveSession(
+      accessToken: access,
+      refreshToken: refresh,
+      rememberMe: isRemember,
+      email: savedEmail,
+    );
     return access;
   }
 

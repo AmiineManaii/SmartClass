@@ -57,9 +57,14 @@ export class RefreshTokenUseCase {
     // Rotate token: revoke old token and create new one in the same family
     await this.authRepository.revokeRefreshToken(storedToken.id);
 
+    // If the original token was created as a 30-day persistent session, maintain that longevity
+    const originalLifetimeMs = storedToken.expiresAt.getTime() - storedToken.createdAt.getTime();
+    const is30Days = originalLifetimeMs > 14 * 24 * 60 * 60 * 1000;
+    const days = is30Days ? 30 : this.refreshExpirationDays;
+
     const newRawRefreshToken = this.tokenService.generateRefreshToken();
     const newTokenHash = this.tokenService.hashRefreshToken(newRawRefreshToken);
-    const refreshExpiresAt = new Date(Date.now() + this.refreshExpirationDays * 24 * 60 * 60 * 1000);
+    const refreshExpiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
     await this.authRepository.saveRefreshToken(
       user.id,

@@ -14,6 +14,7 @@ import '../../domain/repositories/admin_repository.dart';
 import '../widgets/admin_person_avatar.dart';
 import '../widgets/admin_search_field.dart';
 import '../views/web_admin_users_view.dart';
+import '../../../../core/widgets/smart_loader.dart';
 
 /// Global teacher directory (GET /api/v1/users?role=TEACHER) with
 /// assignment to a class (class picker + subject dialog → real POST).
@@ -39,9 +40,7 @@ class _AdminTeachersPageState extends ConsumerState<AdminTeachersPage> {
     final message = error is Failure
         ? context.tr(failureL10n(error).key)
         : context.tr('something_went_wrong');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
+    context.showErrorToast(message);
   }
 
   Future<void> _assign(AdminTeacher teacher) async {
@@ -56,12 +55,7 @@ class _AdminTeachersPageState extends ConsumerState<AdminTeachersPage> {
           .teachers(classId: classId);
       if (current.any((t) => t.id == teacher.id && t.initiallyAssigned)) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.tr('admin_already_assigned')),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        context.showWarningToast(context.tr('admin_already_assigned'));
         return;
       }
     } catch (e) {
@@ -94,12 +88,7 @@ class _AdminTeachersPageState extends ConsumerState<AdminTeachersPage> {
     ref.invalidate(adminClassesProvider);
     if (!mounted) return;
     setState(() => _assigning = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr('success')),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    context.showSuccessToast(context.tr('success'));
   }
 
   Future<String?> _pickClass() async {
@@ -109,16 +98,12 @@ class _AdminTeachersPageState extends ConsumerState<AdminTeachersPage> {
     } on Failure catch (failure) {
       if (!mounted) return null;
       final l10n = failureL10n(failure);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
-      );
+      context.showErrorToast(context.tr(l10n.key, args: l10n.args));
       return null;
     }
     if (!mounted) return null;
     if (classes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('admin_no_classes'))),
-      );
+      context.showInfoToast(context.tr('admin_no_classes'));
       return null;
     }
     return showModalBottomSheet<String>(
@@ -232,12 +217,11 @@ class _AdminTeachersPageState extends ConsumerState<AdminTeachersPage> {
       await ref.read(adminRepositoryProvider).updateTeacherApproval(teacher.id, status);
       ref.invalidate(adminTeachersProvider(null));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(status == 'APPROVED' ? 'Compte enseignant validé avec succès' : 'Compte enseignant refusé'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      if (status == 'APPROVED') {
+        context.showSuccessToast('Compte enseignant validé avec succès');
+      } else {
+        context.showInfoToast('Compte enseignant refusé');
+      }
     } catch (e) {
       if (!mounted) return;
       _showFailure(e);
@@ -314,7 +298,11 @@ class _AdminTeachersPageState extends ConsumerState<AdminTeachersPage> {
                     teachersAsync.when(
                       loading: () => const Padding(
                         padding: EdgeInsets.symmetric(vertical: 32),
-                        child: Center(child: CircularProgressIndicator()),
+                        child: Center(
+                          child: SmartLoader.medium(
+                            message: 'Chargement des enseignants...',
+                          ),
+                        ),
                       ),
                       error: (_, _) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 24),

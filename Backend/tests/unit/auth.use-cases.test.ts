@@ -391,6 +391,31 @@ describe('Auth Module — Unit Tests', () => {
       expect(result.user.email).toBe('amine@test.com');
     });
 
+    it('issues 30-day persistent session when rememberMe is true', async () => {
+      const user = await authRepo.createUser({
+        email: 'remember30@test.com',
+        passwordHash: 'hashed_Password123!',
+        firstName: 'Remember',
+        lastName: 'User',
+        emailVerified: true,
+      });
+
+      const loginUseCase = new LoginUseCase(authRepo, hasher, tokenService);
+      const result = await loginUseCase.execute({
+        email: user.email,
+        password: 'Password123!',
+        rememberMe: true,
+      });
+
+      expect(result.accessToken).toBeDefined();
+      const tokenHash = tokenService.hashRefreshToken(result.refreshToken);
+      const stored = await authRepo.findRefreshToken(tokenHash);
+      expect(stored).toBeDefined();
+      const lifetimeDays = (stored!.expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000);
+      expect(lifetimeDays).toBeGreaterThan(28); // 30 days
+      expect(lifetimeDays).toBeLessThanOrEqual(30.1);
+    });
+
     it('blocks unverified accounts with AUTH_EMAIL_NOT_VERIFIED', async () => {
       const user = await authRepo.createUser({
         email: 'unverified@test.com',

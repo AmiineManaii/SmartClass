@@ -130,12 +130,7 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
       if (!mounted) return;
       setState(() => _saving = false);
       final l10n = failureL10n(failure);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr(l10n.key, args: l10n.args)),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      context.showErrorToast(context.tr(l10n.key, args: l10n.args));
       return;
     } finally {
       if (mounted && _saving) setState(() => _saving = false);
@@ -147,12 +142,7 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
       ref.invalidate(adminClassDetailProvider(widget.editClassId!));
     }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr(draft ? 'drafts' : 'success')),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    context.showSuccessToast(context.tr(draft ? 'drafts' : 'success'));
     context.pop();
   }
 
@@ -606,9 +596,7 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
     } on Failure catch (failure) {
       if (!mounted) return;
       final l10n = failureL10n(failure);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
-      );
+      context.showErrorToast(context.tr(l10n.key, args: l10n.args));
       return;
     }
     if (!mounted) return;

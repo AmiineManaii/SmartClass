@@ -25,9 +25,9 @@ class ForgotPasswordPage extends ConsumerStatefulWidget {
 }
 
 class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
-  final _emailController = TextEditingController(text: 'thomas.laurent@universite.fr');
+  final _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  String _otp = '482';
+  String _otp = '';
   int _secondsLeft = 42;
   Timer? _timer;
 
@@ -170,16 +170,11 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                     } on Failure catch (failure) {
                       if (!context.mounted) return;
                       final l10n = failureL10n(failure);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text(context.tr(l10n.key, args: l10n.args))),
-                      );
+                      context.showErrorToast(context.tr(l10n.key, args: l10n.args));
                       return;
                     }
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(context.tr('reset_email_sent'))),
-                    );
+                    context.showSuccessToast(context.tr('reset_email_sent'));
                     _startCountdown();
                   },
                 ),
@@ -226,7 +221,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                 ),
                 const SizedBox(height: 16),
                 OtpBoxes(
-                  initialValue: const ['4', '8', '2', ''],
+                  length: 6,
                   onChanged: (value) => _otp = value,
                 ),
                 const SizedBox(height: 16),
@@ -259,19 +254,13 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                               } on Failure catch (failure) {
                                 if (!context.mounted) return;
                                 final l10n = failureL10n(failure);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text(
-                                          context.tr(l10n.key, args: l10n.args))),
+                                context.showErrorToast(
+                                  context.tr(l10n.key, args: l10n.args),
                                 );
                                 return;
                               }
                               if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content:
-                                        Text(context.tr('reset_email_sent'))),
-                              );
+                              context.showSuccessToast(context.tr('reset_email_sent'));
                               _startCountdown();
                             }
                           : null,
@@ -284,10 +273,8 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                   text: context.tr('verify_code'),
                   trailingIcon: Icons.arrow_forward,
                   onPressed: () {
-                    if (_otp.trim().length < 4) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(context.tr('required_field'))),
-                      );
+                    if (_otp.trim().length < 6) {
+                      context.showWarningToast(context.tr('required_field'));
                       return;
                     }
                     // The code itself is verified by POST /auth/reset-password.

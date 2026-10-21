@@ -54,9 +54,7 @@ class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
     final message = error is Failure
         ? context.tr(failureL10n(error).key)
         : context.tr('something_went_wrong');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
+    context.showErrorToast(message);
   }
 
   Future<void> _confirm() async {
@@ -83,14 +81,9 @@ class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
     ref.invalidate(adminClassDetailProvider(widget.classId));
     ref.invalidate(adminOverviewProvider);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          context.tr('admin_teachers_selected',
-              args: {'count': '${_selected.length}'}),
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
+    context.showSuccessToast(
+      context.tr('admin_teachers_selected',
+          args: {'count': '${_selected.length}'}),
     );
     context.pop();
   }

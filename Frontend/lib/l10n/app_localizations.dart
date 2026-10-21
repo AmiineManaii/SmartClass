@@ -104,6 +104,12 @@ abstract class AppLocalizations {
   /// **'SmartClass'**
   String get app_name;
 
+  /// No description provided for @home.
+  ///
+  /// In fr, this message translates to:
+  /// **'Accueil'**
+  String get home;
+
   /// No description provided for @loading.
   ///
   /// In fr, this message translates to:
@@ -217,6 +223,42 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Ignorer'**
   String get skip;
+
+  /// No description provided for @splash_tagline.
+  ///
+  /// In fr, this message translates to:
+  /// **'Écosystème Éducatif Augmenté par l\'IA'**
+  String get splash_tagline;
+
+  /// No description provided for @splash_loading_1.
+  ///
+  /// In fr, this message translates to:
+  /// **'Initialisation de l\'espace académique...'**
+  String get splash_loading_1;
+
+  /// No description provided for @splash_loading_2.
+  ///
+  /// In fr, this message translates to:
+  /// **'Synchronisation du moteur IA...'**
+  String get splash_loading_2;
+
+  /// No description provided for @splash_loading_3.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prêt pour l\'excellence académique'**
+  String get splash_loading_3;
+
+  /// No description provided for @splash_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'SmartClass 4.0 • IA Pédagogique'**
+  String get splash_badge;
+
+  /// No description provided for @splash_footer.
+  ///
+  /// In fr, this message translates to:
+  /// **'SmartClass Platform • v1.0 • Protocole TLS 1.3 • Conforme RGPD & CNIL'**
+  String get splash_footer;
 
   /// No description provided for @continue_action.
   ///
@@ -419,7 +461,7 @@ abstract class AppLocalizations {
   /// No description provided for @passwords_dont_match.
   ///
   /// In fr, this message translates to:
-  /// **'Les mots de passe ne correspondent pas'**
+  /// **'Les nouveaux mots de passe ne correspondent pas.'**
   String get passwords_dont_match;
 
   /// No description provided for @login_failed.
@@ -853,12 +895,6 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Gérer la plateforme, superviser les utilisateurs'**
   String get admin_description;
-
-  /// No description provided for @home.
-  ///
-  /// In fr, this message translates to:
-  /// **'Accueil'**
-  String get home;
 
   /// No description provided for @courses.
   ///
@@ -3152,30 +3188,6 @@ abstract class AppLocalizations {
   /// **'Brouillons'**
   String get drafts;
 
-  /// No description provided for @splash_tagline.
-  ///
-  /// In fr, this message translates to:
-  /// **'Écosystème Éducatif Augmenté par l\'IA'**
-  String get splash_tagline;
-
-  /// No description provided for @splash_loading_1.
-  ///
-  /// In fr, this message translates to:
-  /// **'Initialisation de l\'espace académique...'**
-  String get splash_loading_1;
-
-  /// No description provided for @splash_loading_2.
-  ///
-  /// In fr, this message translates to:
-  /// **'Synchronisation du moteur IA...'**
-  String get splash_loading_2;
-
-  /// No description provided for @splash_loading_3.
-  ///
-  /// In fr, this message translates to:
-  /// **'Prêt pour l\'excellence académique'**
-  String get splash_loading_3;
-
   /// No description provided for @admin_greeting.
   ///
   /// In fr, this message translates to:
@@ -4201,6 +4213,1014 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Résolution :'**
   String get admin_resolution;
+
+  /// No description provided for @collapse_sidebar.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réduire le menu'**
+  String get collapse_sidebar;
+
+  /// No description provided for @expand_sidebar.
+  ///
+  /// In fr, this message translates to:
+  /// **'Agrandir le menu'**
+  String get expand_sidebar;
+
+  /// No description provided for @student_portal.
+  ///
+  /// In fr, this message translates to:
+  /// **'Portail Étudiant'**
+  String get student_portal;
+
+  /// No description provided for @teacher_portal.
+  ///
+  /// In fr, this message translates to:
+  /// **'Espace Enseignant'**
+  String get teacher_portal;
+
+  /// No description provided for @nav_dashboard.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tableau de bord'**
+  String get nav_dashboard;
+
+  /// No description provided for @nav_ai_studio.
+  ///
+  /// In fr, this message translates to:
+  /// **'Studio IA & Tuteur'**
+  String get nav_ai_studio;
+
+  /// No description provided for @nav_community.
+  ///
+  /// In fr, this message translates to:
+  /// **'Communauté'**
+  String get nav_community;
+
+  /// No description provided for @nav_exams_assignments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Examens & Devoirs'**
+  String get nav_exams_assignments;
+
+  /// No description provided for @nav_videoconference.
+  ///
+  /// In fr, this message translates to:
+  /// **'Visioconférence'**
+  String get nav_videoconference;
+
+  /// No description provided for @nav_my_profile.
+  ///
+  /// In fr, this message translates to:
+  /// **'Paramètres & Profil'**
+  String get nav_my_profile;
+
+  /// No description provided for @nav_my_classes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes Classes'**
+  String get nav_my_classes;
+
+  /// No description provided for @nav_courses_resources.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cours & Ressources'**
+  String get nav_courses_resources;
+
+  /// No description provided for @nav_ai_creator.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créateur IA'**
+  String get nav_ai_creator;
+
+  /// No description provided for @nav_live_meetings.
+  ///
+  /// In fr, this message translates to:
+  /// **'Directs & Réunions'**
+  String get nav_live_meetings;
+
+  /// No description provided for @nav_exams_grades.
+  ///
+  /// In fr, this message translates to:
+  /// **'Examens & Notes'**
+  String get nav_exams_grades;
+
+  /// No description provided for @institution_tag.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lycée Descartes • Casablanca'**
+  String get institution_tag;
+
+  /// No description provided for @account_settings_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Paramètres du compte'**
+  String get account_settings_title;
+
+  /// No description provided for @active_student_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Étudiant Actif'**
+  String get active_student_badge;
+
+  /// No description provided for @account_settings_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gérez votre identité académique, vos accès de sécurité et configurez vos flux de notifications pour votre portail étudiant.'**
+  String get account_settings_desc;
+
+  /// No description provided for @ent_sync_status.
+  ///
+  /// In fr, this message translates to:
+  /// **'Statut Académique : Synchronisé ENT'**
+  String get ent_sync_status;
+
+  /// No description provided for @config_menu_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'MENU DE CONFIGURATION'**
+  String get config_menu_title;
+
+  /// No description provided for @menu_personal_info.
+  ///
+  /// In fr, this message translates to:
+  /// **'Profil personnel'**
+  String get menu_personal_info;
+
+  /// No description provided for @menu_security_auth.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sécurité & Authentification'**
+  String get menu_security_auth;
+
+  /// No description provided for @menu_notifications.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications & Alertes'**
+  String get menu_notifications;
+
+  /// No description provided for @menu_appearance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Apparence & Thème'**
+  String get menu_appearance;
+
+  /// No description provided for @menu_privacy_gdpr.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confidentialité & RGPD'**
+  String get menu_privacy_gdpr;
+
+  /// No description provided for @menu_sessions_devices.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sessions & Appareils'**
+  String get menu_sessions_devices;
+
+  /// No description provided for @cloud_storage_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Stockage Devoirs Cloud'**
+  String get cloud_storage_title;
+
+  /// No description provided for @ent_cloud_synced.
+  ///
+  /// In fr, this message translates to:
+  /// **'Synchronisé avec ENT Cloud'**
+  String get ent_cloud_synced;
+
+  /// No description provided for @official_id.
+  ///
+  /// In fr, this message translates to:
+  /// **'Identifiant officiel'**
+  String get official_id;
+
+  /// No description provided for @certified_academic_data.
+  ///
+  /// In fr, this message translates to:
+  /// **'Données académiques certifiées par le secrétariat pédagogique.'**
+  String get certified_academic_data;
+
+  /// No description provided for @student_photo_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Photo de profil étudiante'**
+  String get student_photo_title;
+
+  /// No description provided for @validated_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Validé'**
+  String get validated_badge;
+
+  /// No description provided for @student_photo_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Format PNG ou JPG, max 5 Mo. Cette photo figure sur votre carte étudiante dématérialisée et vos attestations officielles.'**
+  String get student_photo_desc;
+
+  /// No description provided for @change_image.
+  ///
+  /// In fr, this message translates to:
+  /// **'Changer l\'image'**
+  String get change_image;
+
+  /// No description provided for @delete_image.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer'**
+  String get delete_image;
+
+  /// No description provided for @academic_email_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Adresse email universitaire'**
+  String get academic_email_label;
+
+  /// No description provided for @verified_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vérifié'**
+  String get verified_label;
+
+  /// No description provided for @student_number_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Numéro d\'étudiant (CNE / MASSAR)'**
+  String get student_number_label;
+
+  /// No description provided for @university_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Université / Établissement'**
+  String get university_label;
+
+  /// No description provided for @major_promotion_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Promotion / Filière d\'excellence'**
+  String get major_promotion_label;
+
+  /// No description provided for @security_auth_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Paramétrez la protection de votre session et vos clés d\'accès.'**
+  String get security_auth_desc;
+
+  /// No description provided for @main_password_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mot de passe principal'**
+  String get main_password_label;
+
+  /// No description provided for @password_last_modified.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifié il y a 3 mois'**
+  String get password_last_modified;
+
+  /// No description provided for @change_password_btn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Changer le mot de passe'**
+  String get change_password_btn;
+
+  /// No description provided for @new_password_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouveau mot de passe'**
+  String get new_password_label;
+
+  /// No description provided for @confirm_password_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer le nouveau mot de passe'**
+  String get confirm_password_label;
+
+  /// No description provided for @password_updated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mot de passe mis à jour avec succès !'**
+  String get password_updated;
+
+  /// No description provided for @two_factor_auth_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Authentification à deux facteurs (2FA)'**
+  String get two_factor_auth_label;
+
+  /// No description provided for @active_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actif'**
+  String get active_badge;
+
+  /// No description provided for @inactive_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inactif'**
+  String get inactive_badge;
+
+  /// No description provided for @two_factor_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Application d\'authentification (Google Authenticator / iCloud Keychain) connectée.'**
+  String get two_factor_desc;
+
+  /// No description provided for @two_factor_modal_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Configuration Authentificateur TOTP'**
+  String get two_factor_modal_title;
+
+  /// No description provided for @two_factor_modal_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Scannez ce QR Code avec Google Authenticator ou Microsoft Authenticator pour sécuriser votre compte étudiant.'**
+  String get two_factor_modal_desc;
+
+  /// No description provided for @two_factor_code_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Code de vérification à 6 chiffres'**
+  String get two_factor_code_label;
+
+  /// No description provided for @two_factor_verify_btn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Valider et activer 2FA'**
+  String get two_factor_verify_btn;
+
+  /// No description provided for @passkeys_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Clés de sécurité physiques & Passkeys'**
+  String get passkeys_label;
+
+  /// No description provided for @passkeys_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Connectez-vous instantanément via Touch ID, Windows Hello ou clé FIDO2 / YubiKey.'**
+  String get passkeys_desc;
+
+  /// No description provided for @add_passkey_btn.
+  ///
+  /// In fr, this message translates to:
+  /// **'+ Ajouter une passkey'**
+  String get add_passkey_btn;
+
+  /// No description provided for @security_audit_log_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Journal d\'activité de sécurité récente'**
+  String get security_audit_log_title;
+
+  /// No description provided for @security_log_login_success.
+  ///
+  /// In fr, this message translates to:
+  /// **'Connexion réussie - Microsoft Edge (Windows 11)'**
+  String get security_log_login_success;
+
+  /// No description provided for @security_log_location.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rabat, Maroc • Adresse IP : 196.200.185.42'**
+  String get security_log_location;
+
+  /// No description provided for @security_log_time_now.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aujourd\'hui à 10:14'**
+  String get security_log_time_now;
+
+  /// No description provided for @security_log_2fa_success.
+  ///
+  /// In fr, this message translates to:
+  /// **'Validation 2FA TOTP réussie'**
+  String get security_log_2fa_success;
+
+  /// No description provided for @security_log_2fa_time.
+  ///
+  /// In fr, this message translates to:
+  /// **'Hier à 16:45'**
+  String get security_log_2fa_time;
+
+  /// No description provided for @notifications_settings_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Personnalisez la fréquence et les canaux de vos alertes académiques.'**
+  String get notifications_settings_desc;
+
+  /// No description provided for @notif_push_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications push du navigateur'**
+  String get notif_push_title;
+
+  /// No description provided for @notif_push_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rappels en direct des cours magistraux, modifications de salle et dates limites d\'examens.'**
+  String get notif_push_desc;
+
+  /// No description provided for @notif_email_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications par email universitaire'**
+  String get notif_email_title;
+
+  /// No description provided for @notif_email_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Synthèses hebdomadaires générées par l\'IA et alertes dès publication des résultats d\'épreuves.'**
+  String get notif_email_desc;
+
+  /// No description provided for @notif_sms_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Alertes SMS d\'urgence académique'**
+  String get notif_sms_title;
+
+  /// No description provided for @notif_sms_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Transmises uniquement en cas de suspension de cours ou fermeture météorologique exceptionnelle.'**
+  String get notif_sms_desc;
+
+  /// No description provided for @notif_ai_mentor_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recommandations de révision IA personnalisées'**
+  String get notif_ai_mentor_title;
+
+  /// No description provided for @notif_ai_mentor_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Algorithme d\'espacement de répétition basé sur vos résultats récents en algorithmique et IA.'**
+  String get notif_ai_mentor_desc;
+
+  /// No description provided for @notif_deadlines_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rappels des échéances de devoirs & examens'**
+  String get notif_deadlines_title;
+
+  /// No description provided for @notif_deadlines_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Alertes programmées 24 heures et 2 heures avant chaque remise obligatoire.'**
+  String get notif_deadlines_desc;
+
+  /// No description provided for @notif_quiet_hours_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Heures de silence (Ne pas déranger)'**
+  String get notif_quiet_hours_title;
+
+  /// No description provided for @notif_quiet_hours_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suspendre toutes les alertes non urgentes entre 22h00 et 07h00.'**
+  String get notif_quiet_hours_desc;
+
+  /// No description provided for @appearance_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajustez l\'ambiance lumineuse et l\'ergonomie visuelle pour vos sessions d\'étude.'**
+  String get appearance_desc;
+
+  /// No description provided for @theme_light_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Clair (Défaut)'**
+  String get theme_light_title;
+
+  /// No description provided for @theme_light_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Luminosité standard'**
+  String get theme_light_desc;
+
+  /// No description provided for @theme_dark_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sombre'**
+  String get theme_dark_title;
+
+  /// No description provided for @theme_dark_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Idéal pour le travail nocturne'**
+  String get theme_dark_desc;
+
+  /// No description provided for @theme_system_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Système (Auto)'**
+  String get theme_system_title;
+
+  /// No description provided for @theme_system_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Selon l\'OS de l\'appareil'**
+  String get theme_system_desc;
+
+  /// No description provided for @language_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Langue de l\'interface'**
+  String get language_title;
+
+  /// No description provided for @language_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Choisissez la langue de travail pour votre espace d\'apprentissage.'**
+  String get language_desc;
+
+  /// No description provided for @lang_french.
+  ///
+  /// In fr, this message translates to:
+  /// **'Français (FR)'**
+  String get lang_french;
+
+  /// No description provided for @lang_english.
+  ///
+  /// In fr, this message translates to:
+  /// **'English (US)'**
+  String get lang_english;
+
+  /// No description provided for @font_comfort_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Taille de police & Confort visuel'**
+  String get font_comfort_title;
+
+  /// No description provided for @font_comfort_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajuster pour les lectures prolongées d\'articles scientifiques.'**
+  String get font_comfort_desc;
+
+  /// No description provided for @font_compact.
+  ///
+  /// In fr, this message translates to:
+  /// **'Compact (-10%)'**
+  String get font_compact;
+
+  /// No description provided for @font_standard.
+  ///
+  /// In fr, this message translates to:
+  /// **'Standard (100%)'**
+  String get font_standard;
+
+  /// No description provided for @font_large.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confort (+15%)'**
+  String get font_large;
+
+  /// No description provided for @high_contrast_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mode Contraste Élevé'**
+  String get high_contrast_title;
+
+  /// No description provided for @high_contrast_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Renforce les bordures et les contrastes pour une meilleure lisibilité.'**
+  String get high_contrast_desc;
+
+  /// No description provided for @reduce_animations_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réduire les animations'**
+  String get reduce_animations_title;
+
+  /// No description provided for @reduce_animations_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Diminue les effets de mouvement et transitions dynamiques.'**
+  String get reduce_animations_desc;
+
+  /// No description provided for @privacy_gdpr_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confidentialité & Protection des données (RGPD)'**
+  String get privacy_gdpr_title;
+
+  /// No description provided for @privacy_gdpr_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Contrôlez vos données personnelles et vos préférences de partage académique selon la loi marocaine 09-08 et le RGPD.'**
+  String get privacy_gdpr_desc;
+
+  /// No description provided for @gdpr_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Conforme RGPD • Hébergement Souverain'**
+  String get gdpr_badge;
+
+  /// No description provided for @data_export_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Exportation de vos données académiques'**
+  String get data_export_title;
+
+  /// No description provided for @data_export_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Téléchargez une copie intégrale de vos informations personnelles, notes, devoirs et historique d\'activités.'**
+  String get data_export_desc;
+
+  /// No description provided for @download_json_btn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Télécharger l\'archive JSON'**
+  String get download_json_btn;
+
+  /// No description provided for @download_pdf_btn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Relevé officiel PDF'**
+  String get download_pdf_btn;
+
+  /// No description provided for @privacy_visibility_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Visibilité et partage dans la classe'**
+  String get privacy_visibility_title;
+
+  /// No description provided for @privacy_visibility_profile.
+  ///
+  /// In fr, this message translates to:
+  /// **'Profil visible par les camarades de promotion'**
+  String get privacy_visibility_profile;
+
+  /// No description provided for @privacy_visibility_profile_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Permet aux étudiants de votre groupe de voir votre prénom et photo dans les projets d\'équipe.'**
+  String get privacy_visibility_profile_desc;
+
+  /// No description provided for @privacy_visibility_ranking.
+  ///
+  /// In fr, this message translates to:
+  /// **'Afficher mon rang et classement dans les cours'**
+  String get privacy_visibility_ranking;
+
+  /// No description provided for @privacy_visibility_ranking_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Participer aux classements anonymisés d\'exercices et défis de code.'**
+  String get privacy_visibility_ranking_desc;
+
+  /// No description provided for @privacy_share_notes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Partager mes synthèses de cours générées par IA'**
+  String get privacy_share_notes;
+
+  /// No description provided for @privacy_share_notes_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Permet de mutualiser vos notes de révision avec votre groupe de TD.'**
+  String get privacy_share_notes_desc;
+
+  /// No description provided for @danger_zone_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Zone de gestion critique du compte'**
+  String get danger_zone_title;
+
+  /// No description provided for @danger_freeze_account.
+  ///
+  /// In fr, this message translates to:
+  /// **'Geler temporairement mon compte'**
+  String get danger_freeze_account;
+
+  /// No description provided for @danger_freeze_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Désactive temporairement votre accès sans supprimer vos devoirs ni vos notes.'**
+  String get danger_freeze_desc;
+
+  /// No description provided for @danger_delete_account.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer définitivement mon compte'**
+  String get danger_delete_account;
+
+  /// No description provided for @danger_delete_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprime irréversiblement toutes vos données de la plateforme SmartClass (Droit à l\'oubli).'**
+  String get danger_delete_desc;
+
+  /// No description provided for @freeze_confirm_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer la mise en veille'**
+  String get freeze_confirm_title;
+
+  /// No description provided for @freeze_confirm_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre session sera immédiatement déconnectée. Vous pourrez réactiver votre compte en vous reconnectant.'**
+  String get freeze_confirm_desc;
+
+  /// No description provided for @delete_confirm_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suppression définitive du compte'**
+  String get delete_confirm_title;
+
+  /// No description provided for @delete_confirm_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette action est irréversible. Toutes vos fiches de cours, résultats de quiz et échanges de projet seront effacés.'**
+  String get delete_confirm_desc;
+
+  /// No description provided for @sessions_devices_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sessions & Appareils connectés'**
+  String get sessions_devices_title;
+
+  /// No description provided for @sessions_devices_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Consultez et révoquez les appareils actuellement connectés à votre compte étudiant.'**
+  String get sessions_devices_desc;
+
+  /// No description provided for @active_sessions_count.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} sessions actives'**
+  String active_sessions_count(Object count);
+
+  /// No description provided for @current_session_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Session active (Cet appareil)'**
+  String get current_session_badge;
+
+  /// No description provided for @current_session_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Microsoft Edge sur Windows 11 • Rabat, Maroc'**
+  String get current_session_desc;
+
+  /// No description provided for @last_active_now.
+  ///
+  /// In fr, this message translates to:
+  /// **'En ligne actuellement'**
+  String get last_active_now;
+
+  /// No description provided for @device_mobile_name.
+  ///
+  /// In fr, this message translates to:
+  /// **'SmartClass Mobile (Samsung Galaxy S23)'**
+  String get device_mobile_name;
+
+  /// No description provided for @device_mobile_details.
+  ///
+  /// In fr, this message translates to:
+  /// **'Application Android 14 • Rabat, Maroc'**
+  String get device_mobile_details;
+
+  /// No description provided for @device_mobile_time.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actif il y a 2 heures'**
+  String get device_mobile_time;
+
+  /// No description provided for @device_safari_name.
+  ///
+  /// In fr, this message translates to:
+  /// **'Safari sur macOS Sequoia'**
+  String get device_safari_name;
+
+  /// No description provided for @device_safari_details.
+  ///
+  /// In fr, this message translates to:
+  /// **'Navigateur Web • MacBook Pro • Casablanca, Maroc'**
+  String get device_safari_details;
+
+  /// No description provided for @device_safari_time.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actif il y a 3 jours'**
+  String get device_safari_time;
+
+  /// No description provided for @revoke_session_btn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Révoquer'**
+  String get revoke_session_btn;
+
+  /// No description provided for @revoke_all_sessions_btn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Déconnecter toutes les autres sessions'**
+  String get revoke_all_sessions_btn;
+
+  /// No description provided for @revoke_all_confirm_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Déconnecter tous les autres appareils ?'**
+  String get revoke_all_confirm_title;
+
+  /// No description provided for @revoke_all_confirm_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Toutes les sessions distantes sur vos téléphones, tablettes ou ordinateurs seront immédiatement closes.'**
+  String get revoke_all_confirm_desc;
+
+  /// No description provided for @all_sessions_revoked.
+  ///
+  /// In fr, this message translates to:
+  /// **'Toutes les autres sessions ont été révoquées avec succès !'**
+  String get all_sessions_revoked;
+
+  /// No description provided for @last_ent_sync.
+  ///
+  /// In fr, this message translates to:
+  /// **'Dernière synchronisation ENT : Aujourd\'hui à 14:32'**
+  String get last_ent_sync;
+
+  /// No description provided for @discard_changes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Annuler les modifications'**
+  String get discard_changes;
+
+  /// No description provided for @save_changes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Enregistrer les modifications'**
+  String get save_changes;
+
+  /// No description provided for @changes_saved_success.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifications enregistrées avec succès !'**
+  String get changes_saved_success;
+
+  /// No description provided for @two_factor_active_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'2FA Actif'**
+  String get two_factor_active_badge;
+
+  /// No description provided for @two_factor_inactive_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'2FA Inactif'**
+  String get two_factor_inactive_badge;
+
+  /// No description provided for @ai_revision_studio.
+  ///
+  /// In fr, this message translates to:
+  /// **'Studio de Révision IA'**
+  String get ai_revision_studio;
+
+  /// No description provided for @generate_quiz_action.
+  ///
+  /// In fr, this message translates to:
+  /// **'Générer un QCM d\'entraînement'**
+  String get generate_quiz_action;
+
+  /// No description provided for @smart_summaries_action.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fiches de synthèse intelligentes'**
+  String get smart_summaries_action;
+
+  /// No description provided for @ai_tutor_247.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tuteur interactif 24/7'**
+  String get ai_tutor_247;
+
+  /// No description provided for @open_catalog_courses.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modules en libre accès & Cours recommandés'**
+  String get open_catalog_courses;
+
+  /// No description provided for @start_learning.
+  ///
+  /// In fr, this message translates to:
+  /// **'Découvrir le cours'**
+  String get start_learning;
+
+  /// No description provided for @explore_catalog.
+  ///
+  /// In fr, this message translates to:
+  /// **'Explorer le catalogue'**
+  String get explore_catalog;
+
+  /// No description provided for @scan_qr_code.
+  ///
+  /// In fr, this message translates to:
+  /// **'Scanner un QR code'**
+  String get scan_qr_code;
+
+  /// No description provided for @academic_timetable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Emploi du temps académique'**
+  String get academic_timetable;
+
+  /// No description provided for @homework_due.
+  ///
+  /// In fr, this message translates to:
+  /// **'Devoirs à rendre'**
+  String get homework_due;
+
+  /// No description provided for @code_resent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Un nouveau code a été envoyé !'**
+  String get code_resent;
+
+  /// No description provided for @error_unexpected.
+  ///
+  /// In fr, this message translates to:
+  /// **'Une erreur inattendue est survenue'**
+  String get error_unexpected;
+
+  /// No description provided for @validate_action.
+  ///
+  /// In fr, this message translates to:
+  /// **'Valider'**
+  String get validate_action;
+
+  /// No description provided for @other_connected_devices.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autres appareils connectés'**
+  String get other_connected_devices;
+
+  /// No description provided for @current_session_location.
+  ///
+  /// In fr, this message translates to:
+  /// **'IP : 196.200.185.42 • Rabat, Maroc'**
+  String get current_session_location;
+
+  /// No description provided for @device_windows_edge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Microsoft Edge sur Windows 11'**
+  String get device_windows_edge;
+
+  /// No description provided for @security_log_2fa_subtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Validation par clé temporaire 6 chiffres'**
+  String get security_log_2fa_subtitle;
+
+  /// No description provided for @registered_on.
+  ///
+  /// In fr, this message translates to:
+  /// **'Enregistré le {date}'**
+  String registered_on(Object date);
+
+  /// No description provided for @danger_freeze_btn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Geler mon compte'**
+  String get danger_freeze_btn;
+
+  /// No description provided for @freeze_confirm_btn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer la mise en veille'**
+  String get freeze_confirm_btn;
+
+  /// No description provided for @password_strength_weak.
+  ///
+  /// In fr, this message translates to:
+  /// **'Force : Faible (minimum 8 caractères)'**
+  String get password_strength_weak;
+
+  /// No description provided for @password_strength_medium.
+  ///
+  /// In fr, this message translates to:
+  /// **'Force : Moyenne'**
+  String get password_strength_medium;
+
+  /// No description provided for @password_strength_good.
+  ///
+  /// In fr, this message translates to:
+  /// **'Force : Bonne'**
+  String get password_strength_good;
+
+  /// No description provided for @password_strength_excellent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Force : Excellente'**
+  String get password_strength_excellent;
 }
 
 class _AppLocalizationsDelegate

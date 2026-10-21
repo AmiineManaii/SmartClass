@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../application/providers/admin_providers.dart';
 import '../widgets/web_admin_scaffold.dart';
@@ -137,12 +138,8 @@ class WebAdminDashboardPage extends ConsumerWidget {
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Génération du rapport d\'audit PDF en cours...',
-                            ),
-                          ),
+                        context.showInfoToast(
+                          'Génération du rapport d\'audit PDF en cours...',
                         );
                       },
                       icon: const Icon(Icons.file_download_outlined, size: 18),
@@ -803,11 +800,7 @@ class WebAdminDashboardPage extends ConsumerWidget {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Import CSV activé.'),
-                              ),
-                            );
+                            context.showSuccessToast('Import CSV activé.');
                           },
                           icon: const Icon(Icons.upload_file_rounded, size: 18),
                           label: const Text('Importer des comptes CSV'),
@@ -846,11 +839,7 @@ class WebAdminDashboardPage extends ConsumerWidget {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Audit de sécurité initialisé.'),
-                              ),
-                            );
+                            context.showInfoToast('Audit de sécurité initialisé.');
                           },
                           icon: const Icon(Icons.shield_outlined,
                               color: AppTheme.error, size: 18),

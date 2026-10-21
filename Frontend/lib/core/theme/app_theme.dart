@@ -486,14 +486,23 @@ class AppTheme {
       ),
       
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: colorScheme.inverseSurface,
-        contentTextStyle: textStyles.bodyMedium.copyWith(color: colorScheme.onInverseSurface),
+        backgroundColor: isDark ? const Color(0xFF1E2638) : Colors.white,
+        contentTextStyle: textStyles.bodyMedium.copyWith(
+          color: isDark ? Colors.white : const Color(0xFF1E293B),
+          fontWeight: FontWeight.w500,
+        ),
         actionTextColor: colorScheme.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.12)
+                : const Color(0xFFE2E8F0),
+            width: 1.2,
+          ),
         ),
-        elevation: 4,
+        elevation: 8,
       ),
       
       extensions: <ThemeExtension<dynamic>>[

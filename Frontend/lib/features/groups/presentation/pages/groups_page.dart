@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_providers.dart';
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/smart_loader.dart';
 import '../../../home/application/providers/student_dashboard_provider.dart';
 import '../widgets/class_invitation_sheet.dart';
 
@@ -50,7 +52,7 @@ class GroupsPage extends ConsumerWidget {
       },
       child: groupsAsync.when(
         loading: () => const Center(
-          child: CircularProgressIndicator(),
+          child: SmartLoader.medium(message: 'Chargement des groupes...'),
         ),
         error: (error, _) => Center(
           child: Padding(
@@ -277,13 +279,7 @@ class GroupsPage extends ConsumerWidget {
                         ref.invalidate(myGroupsProvider);
                         ref.invalidate(studentClassMembershipProvider);
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(context.tr('join_group_success')),
-                              backgroundColor: Colors.green,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
+                          context.showSuccessToast(context.tr('join_group_success'));
                         }
                       } catch (e) {
                         setState(() {
@@ -294,13 +290,9 @@ class GroupsPage extends ConsumerWidget {
                       }
                     },
               child: isLoading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
+                  ? const SmartLoader.small(
+                      color: Colors.white,
+                      customSize: 18,
                     )
                   : Text(context.tr('join_group')),
             ),
@@ -344,23 +336,12 @@ class GroupsPage extends ConsumerWidget {
                 ref.invalidate(myGroupsProvider);
                 ref.invalidate(studentClassMembershipProvider);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Vous avez quitté la classe.'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                  context.showInfoToast('Vous avez quitté la classe.');
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        e.toString().replaceFirst('ApiException: ', ''),
-                      ),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                    ),
+                  context.showErrorToast(
+                    e.toString().replaceFirst('ApiException: ', ''),
                   );
                 }
               }
@@ -420,13 +401,7 @@ class _CreateGroupSheetState extends ConsumerState<_CreateGroupSheet> {
       if (mounted) {
         Navigator.pop(context);
         widget.ref.invalidate(myGroupsProvider);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Classe virtuelle créée avec succès !'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        context.showSuccessToast('Classe virtuelle créée avec succès !');
       }
     } catch (e) {
       setState(() {

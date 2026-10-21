@@ -68,11 +68,16 @@ class AuthRemoteDataSource {
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
+    bool rememberMe = false,
   }) async {
     final res = await _client.post<dynamic>(
       '$_base/auth/login',
       authenticated: false,
-      data: {'email': email, 'password': password},
+      data: {
+        'email': email,
+        'password': password,
+        'rememberMe': rememberMe,
+      },
     );
     return apiEnvelope(res);
   }

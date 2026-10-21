@@ -118,16 +118,37 @@ La charte visuelle est détaillée dans [`DESIGN.md`](./DESIGN.md) et synchronis
 - Bannière instantanée de génération de contenu de cours assistée par IA.
 - Gestion des classes assignées avec taux de complétion moyen.
 
-### 3. Créateur de Cours Assisté par IA
-- Saisie guidée de prompt pédagogique avec suggestions intelligentes.
-- Sélecteur de matière et de niveau d'études (ex. *Licence 3 Informatique*).
-- Options pédagogiques (génération de quiz, adaptation du ton pédagogique).
-- Découpage automatique en chapitres et unités d'enseignement conformes au système LMD.
+### 3. Créateur de Cours Assisté par IA (`AiCourseCreatorPage`)
+*Fidèle aux écrans Stitch `61f7de5c97d74ddc94669bb659f068bf` et `bfcc2ec5274b4c5ab96fa9f7267ba62c`*
+- **Studio Bureau Widescreen en 2 Colonnes** : Colonne gauche (`flex: 48`) dédiée aux formulaires de configuration et prompts ; Colonne droite (`flex: 52`) dédiée au canevas de prévisualisation interactive ou modèles.
+- **Bannière Moteur Pédagogique IA v3.2** : Présentation du modèle d'ingénierie pédagogique et badge *Concepteur Intelligent*.
+- **Puces de Suggestions Intelligentes** : Insertion en 1 clic (*"Plan détaillé"*, *"Quiz interactif inclus"*, *"Exercices pratiques"*, *"Études de cas"*, *"Schémas Mermaid"*).
+- **Modèles Académiques Préconfigurés** : Démarrage rapide (*Bases de données SQL*, *Algèbre linéaire*, *Théorie des graphes*) avec badges de niveau et difficulté.
+- **Barre d'Actions Flottante Assistant IA** : Actions rapides de raffinement en direct (*"Reformuler"*, *"Ajouter des exemples"*, *"Simplifier"*, *"Générer un QCM"*).
 
-### 4. Authentification & Sécurité
-- Connexion sécurisée avec validation des formats d'email institutionnels.
-- Réinitialisation de mot de passe avec code de vérification OTP.
-- Onboarding guidé avec sélection de rôle et configuration initiale du profil.
+### 4. Tuteur IA & Lecteur de Cours Interactif
+*Fidèle aux écrans Stitch `07906fe145374de184b839701ca0862a` et `5ce9abc104ce46afa036366ee3263d9b`*
+- **Tuteur IA Interactif (`AiAssistantPage`)** : Espace conversationnel 2 colonnes (`flex: 7` discussion, `flex: 5` rail d'aide-mémoire), formules LaTeX (`\dim(E) = \dim(\text{Ker}(f)) + \text{rg}(f)`), sélecteur de module et lecture vocale.
+- **Lecteur de Cours (`CourseReaderPage`)** : Bannière vidéo tableau noir avec avatar PIP, défilement synchronisé, et **marqueurs temporels IA cliquables** (`04:12`, `12:45`, `28:30`, `39:15`).
+- **Rail Compagnon IA** : Onglets *Résumé IA* (garantie 98% de fidélité, règles d'or), *Fiches Mémo* (cartes retournables animées) et *Notes Personnelles*.
+
+### 5. Mode Examen Sécurisé Anti-fraude & Score IA
+*Fidèle aux écrans Stitch `1e0b7d1544bc443bad5edaff7e55cca7` et `eca77ba08857492694bd1dca917a9d66`*
+- **Salle d'Examen Sécurisée (`SecureExamPage`)** :
+  - Télémétrie en temps réel : Webcam active, microphone en écoute, verrouillage du focus onglet et plein écran obligatoire.
+  - Compte à rebours dynamique avec alertes d'urgence (< 15 min).
+  - Rail de progression segmenté (questions répondues vs en attente).
+  - Cartes de questions avec radios et puce d'indice pédagogique.
+- **Synthèse & Correction IA (`ExamAiScorePage`)** :
+  - Anneau de score radial personnalisé affichant la note sur 20 avec mention (*Mention Très Bien*).
+  - Comparateur de cohorte dynamique (*+3.2 pts vs moyenne promo*).
+  - Cartes KPI : Taux de réussite (80%), Erreur (20%), Rang (4e).
+  - Diagnostic pédagogique de synthèse identifiant forces et modules de remédiation.
+  - Filtrage interactif des questions (*Toutes*, *Erreurs*, *Réussies*).
+
+### 6. Suite d'Onboarding & Navigation Bureau Widescreen
+- **Barre Latérale Persistante (`WebMainScaffold`)** : Sidebar bleu nuit 260px (`#2D3E8C`), commutation rapide de rôle, capsules actives et carte de session.
+- **Vues Dédiées Bureau** : Split-screen Connexion & Inscription, validation OTP à 6 cases avec collage auto (Ctrl+V), cartes de rôle interactives avec élévation et halo lumineux, réinitialisation de mot de passe avec jauge de sécurité dynamique.
 
 ---
 
@@ -186,45 +207,51 @@ Pour faciliter la revue et les tests sans devoir créer un compte :
 Le projet est configuré avec des règles de lint strictes ([`analysis_options.yaml`](./analysis_options.yaml)) garantissant un code propre et sans avertissements :
 
 ```bash
-# Vérifier la conformité du code (0 erreurs)
-flutter analyze
+# Vérifier la conformité statique du code (0 avertissement, 0 erreur)
+flutter analyze lib/
 
-# Lancer la suite complète de tests unitaires et widgets
-flutter test
-
-# Régénérer le code si les modèles ou providers sont modifiés
-flutter pub run build_runner build --delete-conflicting-outputs
+# Lancer la suite complète de 26 tests unitaires et de mise en page réactive
+flutter test test/smart_loader_test.dart test/web_views_test.dart
 ```
+
+- **26/26 tests automatisés réussis** : Validation du responsive layout (`>= 1024px`), des flux d'authentification bureau, de la barre latérale persistante, du studio IA de cours, de la salle d'examen anti-fraude et de la synthèse de score IA.
 
 ---
 
 ## 📁 Structure Complète du Répertoire
 
 ```
-SmartClass/
+Frontend/
 ├── assets/images/                              # Assets graphiques (avatars, logos...)
 ├── lib/
 │   ├── app/
 │   │   ├── app.dart                            # Point d'entrée MaterialApp.router & thèmes
-│   │   └── app_providers.dart                  # Router GoRouter, AuthNotifier & providers
+│   │   └── app_providers.dart                  # Router GoRouter (routes web & mobile) & AuthNotifier
 │   ├── core/
-│   │   ├── constants/                          # Constantes applicatives
+│   │   ├── layout/                             # Breakpoint & ResponsiveLayout
 │   │   ├── localization/app_localizations.dart # Système de traduction FR/EN (context.tr)
 │   │   ├── theme/app_theme.dart                # Thème Material 3 Academic Precision
 │   │   ├── typography/                         # Gestionnaire typographique dynamique
-│   │   └── widgets/                            # Boutons, cartes, champs de saisie
+│   │   └── widgets/                            # WebMainScaffold, SmartLoader, AppButton
 │   └── features/
-│       ├── authentication/                     # Login, register, sélection de rôle, OTP
-│       │   └── presentation/pages/login_page.dart
-│       └── home/
-│           ├── application/providers/          # student_dashboard_provider.dart
-│           ├── infrastructure/datasources/     # mock_student_dashboard_datasource.dart
-│           └── presentation/
-│               ├── pages/home_page.dart        # Routeur de dashboard selon rôle
-│               └── widgets/                    # Composants modulaires du dashboard étudiant
-├── test/                                       # Tests unitaires et tests de widgets
+│       ├── authentication/                     # Login, register, sélection de rôle, OTP, reset pwd
+│       │   ├── presentation/pages/
+│       │   └── presentation/views/             # Vues bureau (WebLoginPage, WebRegisterView...)
+│       ├── courses/                            # Créateur de cours IA & Lecteur de cours interactif
+│       │   └── presentation/pages/             # AiCourseCreatorPage, CourseReaderPage
+│       ├── ai_assistant/                       # Tuteur conversationnel avec rail d'aide-mémoire
+│       │   └── presentation/pages/             # AiAssistantPage
+│       ├── exams/                              # Examens sécurisés & Score IA
+│       │   └── presentation/pages/             # SecureExamPage, ExamAiScorePage, ExamsPage
+│       ├── groups/                             # Classes & Communauté
+│       └── home/                               # Tableaux de bord étudiant & enseignant
+│           └── presentation/widgets/           # StudentDashboardView, TeacherDashboardView
+├── test/                                       # Tests unitaires et tests de widgets web
+│   ├── web_views_test.dart                     # 22 tests réactifs web
+│   └── smart_loader_test.dart                  # 4 tests de composants
 ├── DESIGN.md                                   # Spécifications du design system Stitch UI
-└── PROJECT_CONTEXT.md                          # Cahier des charges et personas du projet
+├── PROJECT_CONTEXT.md                          # Cahier des charges et personas du projet
+└── README_WEB.md                               # Matrice d'audit de conformité Web & Roadmap
 ```
 
 ---

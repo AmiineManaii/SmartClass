@@ -478,9 +478,7 @@ class _CreateCollaborationSheetState extends ConsumerState<_CreateCollaborationS
             text: l10n.translate('share'),
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l10n.translate('resource_shared'))),
-              );
+              context.showSuccessToast(l10n.translate('resource_shared'));
             },
           ),
         ],
@@ -572,9 +570,7 @@ class _CreateCollaborationSheetState extends ConsumerState<_CreateCollaborationS
             text: l10n.translate('create'),
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l10n.translate('session_created'))),
-              );
+              context.showSuccessToast(l10n.translate('session_created'));
             },
           ),
         ],

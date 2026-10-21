@@ -7,9 +7,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_providers.dart';
 import '../../../../core/error/failure_localization.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/web_controls_bar.dart';
+import '../../../../core/widgets/smart_loader.dart';
 import '../widgets/web_auth_hero_section.dart';
 
 /// Desktop split-screen view for Email Verification with OTP.
@@ -167,19 +168,7 @@ class _WebVerifyEmailViewState extends ConsumerState<WebVerifyEmailView>
     final message =
         (translated == l10n.key || translated.isEmpty) ? failure.message : translated;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppTheme.error,
-        behavior: SnackBarBehavior.floating,
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message)),
-          ],
-        ),
-      ),
-    );
+    context.showErrorToast(message);
   }
 
   Future<void> _handleVerify() async {
@@ -200,13 +189,7 @@ class _WebVerifyEmailViewState extends ConsumerState<WebVerifyEmailView>
       if (mounted) _showFailure(failure);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppTheme.error,
-            behavior: SnackBarBehavior.floating,
-            content: Text(context.tr('error_unexpected')),
-          ),
-        );
+        context.showErrorToast(context.tr('error_unexpected'));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -222,30 +205,11 @@ class _WebVerifyEmailViewState extends ConsumerState<WebVerifyEmailView>
       await ref.read(authStateProvider.notifier).resendVerification(email: email);
       if (mounted) {
         _startCountdown();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: const Color(0xFF0F9D78),
-            behavior: SnackBarBehavior.floating,
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_outline_rounded,
-                    color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                Text(context.tr('code_resent')),
-              ],
-            ),
-          ),
-        );
+        context.showSuccessToast(context.tr('code_resent'));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppTheme.error,
-            behavior: SnackBarBehavior.floating,
-            content: Text(e.toString()),
-          ),
-        );
+        context.showErrorToast(e.toString());
       }
     } finally {
       if (mounted) setState(() => _isResending = false);
@@ -578,13 +542,8 @@ class _WebVerifyEmailViewState extends ConsumerState<WebVerifyEmailView>
                                       elevation: 0,
                                     ),
                                     child: _isLoading
-                                        ? const SizedBox(
-                                            width: 22,
-                                            height: 22,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.2,
-                                              color: Colors.white,
-                                            ),
+                                        ? const SmartLoader.small(
+                                            color: Colors.white,
                                           )
                                         : Row(
                                             mainAxisAlignment: MainAxisAlignment.center,

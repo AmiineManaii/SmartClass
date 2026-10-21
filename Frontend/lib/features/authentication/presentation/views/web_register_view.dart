@@ -5,10 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_providers.dart';
 import '../../../../core/error/failure_localization.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../widgets/web_auth_hero_section.dart';
 import '../../../../core/widgets/web_controls_bar.dart';
+import '../../../../core/widgets/smart_loader.dart';
 
 typedef WebRegisterView = WebRegisterPage;
 
@@ -65,27 +67,17 @@ class _WebRegisterPageState extends ConsumerState<WebRegisterPage>
 
   void _showFailure(Failure failure) {
     final l10n = failureL10n(failure);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppTheme.error,
-        content: Text(context.tr(l10n.key, args: l10n.args)),
-      ),
-    );
+    context.showErrorToast(context.tr(l10n.key, args: l10n.args));
   }
 
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
     final isFr = ref.read(localeProvider) == 'fr';
     if (!_acceptTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppTheme.error,
-          content: Text(
-            isFr
-                ? 'Veuillez accepter les conditions d\'utilisation.'
-                : 'Please accept the terms of service.',
-          ),
-        ),
+      context.showWarningToast(
+        isFr
+            ? 'Veuillez accepter les conditions d\'utilisation.'
+            : 'Please accept the terms of service.',
       );
       return;
     }
@@ -116,15 +108,10 @@ class _WebRegisterPageState extends ConsumerState<WebRegisterPage>
       _showFailure(failure);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppTheme.error,
-          content: Text(
-            isFr
-                ? 'Une erreur est survenue lors de l\'inscription.'
-                : 'An error occurred during registration.',
-          ),
-        ),
+      context.showErrorToast(
+        isFr
+            ? 'Une erreur est survenue lors de l\'inscription.'
+            : 'An error occurred during registration.',
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -652,13 +639,8 @@ class _WebRegisterPageState extends ConsumerState<WebRegisterPage>
                                     ),
                                   ),
                                   child: _isLoading
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
+                                      ? const SmartLoader.small(
+                                          color: Colors.white,
                                         )
                                       : Row(
                                           mainAxisAlignment:
@@ -900,14 +882,10 @@ class _WebRegisterPageState extends ConsumerState<WebRegisterPage>
       height: 38,
       child: OutlinedButton(
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                isFr
-                    ? 'Connexion SSO institutionnelle en cours d\'intégration.'
-                    : 'Institutional SSO login integration in progress.',
-              ),
-            ),
+          context.showInfoToast(
+            isFr
+                ? 'Connexion SSO institutionnelle en cours d\'intégration.'
+                : 'Institutional SSO login integration in progress.',
           );
         },
         style: OutlinedButton.styleFrom(

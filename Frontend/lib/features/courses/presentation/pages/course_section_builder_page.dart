@@ -4,22 +4,19 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/error/failure_localization.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../application/providers/course_section_build_provider.dart';
 import '../../domain/entities/course_section.dart';
 import '../widgets/markdown_course_view.dart';
+import '../../../../core/widgets/smart_loader.dart';
 
 void _showBuildFailure(BuildContext context, Object error) {
   // ComfyUI is not wired yet: honest "coming soon" instead of a raw 503.
   if (error is ApiException &&
       error.code == 'IMAGE_SERVICE_UNAVAILABLE') {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr('ai_build_image_soon')),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    context.showInfoToast(context.tr('ai_build_image_soon'));
     return;
   }
   final String key;
@@ -36,12 +33,7 @@ void _showBuildFailure(BuildContext context, Object error) {
     key = 'something_went_wrong';
     args = const {};
   }
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(context.tr(key, args: args)),
-      behavior: SnackBarBehavior.floating,
-    ),
-  );
+  context.showErrorToast(context.tr(key, args: args));
 }
 
 /// Per-section build page (`/courses/:courseId/build`): generate → review →
@@ -75,12 +67,7 @@ class _CourseSectionBuilderPageState
   }
 
   void _showSnack(String key, {Map<String, String>? args}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr(key, args: args)),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    context.showSuccessToast(context.tr(key, args: args));
   }
 
   Future<void> _confirmRegenerate(CourseSectionEntry section) async {
@@ -298,7 +285,9 @@ class _CourseSectionBuilderPageState
     if (state.loading &&
         state.sections.isEmpty &&
         state.error == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: SmartLoader.large(message: 'Chargement des sections du cours...'),
+      );
     }
     if (state.error != null && state.sections.isEmpty) {
       return Center(
@@ -696,11 +685,8 @@ class _SectionCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2),
+                        const SmartLoader.small(
+                          customSize: 16,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -826,11 +812,8 @@ class _SectionCard extends StatelessWidget {
                         ? null
                         : () => onImage(),
                     icon: imageLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2),
+                        ? const SmartLoader.small(
+                            customSize: 18,
                           )
                         : const Icon(Icons.image_outlined, size: 20),
                   ),

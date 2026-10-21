@@ -234,9 +234,19 @@ paths:
                   type: string
                   format: password
                   example: SecurePass123!
+                rememberMe:
+                  type: boolean
+                  description: When true, issues a 30-day persistent session and sets an httpOnly refresh token cookie.
+                  default: false
+                  example: true
       responses:
         '200':
-          description: Login successful. Returns access token (15m) and refresh token (7d).
+          description: Login successful. Returns access token (15m) and refresh token (30d with rememberMe, 7d otherwise). Also sets httpOnly cookie.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                description: HttpOnly, Secure, SameSite=Lax cookie containing the rotating refresh token.
           content:
             application/json:
               schema:

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
+import 'exam_ai_score_page.dart';
+import 'secure_exam_page.dart';
 
 class ExamsPage extends ConsumerWidget {
   const ExamsPage({super.key});
@@ -78,7 +81,20 @@ class ExamsPage extends ConsumerWidget {
           statusColor: exam['isSimulation'] == true ? colorScheme.tertiary : colorScheme.primary,
           score: exam['score'] as int?,
           isSimulation: exam['isSimulation'] == true,
-          onTap: () {},
+          onTap: () {
+            if (filter == 'completed') {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ExamAiScorePage(
+                    examTitle: exam['title'] as String,
+                    courseContext: 'Licence 3 Informatique • Algorithmique Avancée',
+                  ),
+                ),
+              );
+            } else {
+              _startExam(context, exam['title'] as String);
+            }
+          },
           onStart: filter == 'upcoming' || filter == 'in_progress'
               ? () => _startExam(context, exam['title'] as String)
               : null,
@@ -149,21 +165,29 @@ class ExamsPage extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Démarrer l\'examen'),
-        content: Text('Voulez-vous commencer "$title" ?\n\nLe mode anti-fraude sera activé (plein écran, verrouillage du focus, blocage copier-coller).'),
+        title: const Text('Démarrer l\'examen sécurisé'),
+        content: Text(
+          'Voulez-vous commencer "$title" ?\n\n'
+          'Le mode anti-fraude sera activé (surveillance de focus, détection d\'onglet et verrouillage de session).',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Annuler'),
+            child: const Text('Annuler'),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Examen démarré: $title')),
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => SecureExamPage(
+                    examTitle: title,
+                    courseContext: 'Licence 3 Informatique • Algorithmique Avancée',
+                  ),
+                ),
               );
             },
-            child: Text('Commencer'),
+            child: const Text('Commencer en Mode Sécurisé'),
           ),
         ],
       ),
@@ -286,8 +310,8 @@ class _CreateExamSheetState extends ConsumerState<_CreateExamSheet> {
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
                             Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(context.tr(_isSimulation ? 'exam_generated' : 'exam_created'))),
+                            context.showSuccessToast(
+                              context.tr(_isSimulation ? 'exam_generated' : 'exam_created'),
                             );
                           }
                         },

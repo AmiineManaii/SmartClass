@@ -5,10 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_providers.dart';
 import '../../../../core/error/failure_localization.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../widgets/web_auth_hero_section.dart';
 import '../../../../core/widgets/web_controls_bar.dart';
+import '../../../../core/widgets/smart_loader.dart';
+import '../../../../core/network/network_providers.dart';
 
 typedef WebLoginView = WebLoginPage;
 
@@ -39,6 +42,21 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final tokens = ref.read(tokenStorageProvider);
+    final savedEmail = await tokens.getSavedEmail();
+    final isRemember = await tokens.isRememberMe();
+    if (mounted) {
+      setState(() {
+        _rememberMe = isRemember;
+        if (savedEmail != null && savedEmail.isNotEmpty) {
+          _emailController.text = savedEmail;
+        }
+      });
+    }
   }
 
   @override
@@ -51,12 +69,7 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
 
   void _showFailure(Failure failure) {
     final l10n = failureL10n(failure);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppTheme.error,
-        content: Text(context.tr(l10n.key, args: l10n.args)),
-      ),
-    );
+    context.showErrorToast(context.tr(l10n.key, args: l10n.args));
   }
 
   Future<void> _handleLogin() async {
@@ -71,6 +84,7 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
       await ref.read(authStateProvider.notifier).login(
             email,
             password,
+            rememberMe: _rememberMe,
           );
 
       if (mounted) {
@@ -88,15 +102,10 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
       _showFailure(failure);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppTheme.error,
-          content: Text(
-            isFr
-                ? 'Une erreur inattendue est survenue.'
-                : 'An unexpected error occurred.',
-          ),
-        ),
+      context.showErrorToast(
+        isFr
+            ? 'Une erreur inattendue est survenue.'
+            : 'An unexpected error occurred.',
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -398,37 +407,43 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
                               const SizedBox(height: 10),
 
                               // Remember Me Checkbox
-                              Row(
-                                children: [
-                                  SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: Checkbox(
-                                      value: _rememberMe,
-                                      activeColor:
-                                          AppTheme.primaryContainer,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(4),
+                              InkWell(
+                                onTap: () => setState(() => _rememberMe = !_rememberMe),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: Checkbox(
+                                          value: _rememberMe,
+                                          activeColor: AppTheme.primaryContainer,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          onChanged: (v) => setState(
+                                            () => _rememberMe = v ?? true,
+                                          ),
+                                        ),
                                       ),
-                                      onChanged: (v) => setState(
-                                        () => _rememberMe = v ?? true,
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        isFr
+                                            ? 'Se souvenir de moi pendant 30 jours'
+                                            : 'Remember me for 30 days',
+                                        style: TextStyle(
+                                          color: isDark
+                                              ? const Color(0xFF94A3B8)
+                                              : AppTheme.onSurfaceVariant,
+                                          fontSize: 11.5,
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    isFr
-                                        ? 'Se souvenir de moi pendant 30 jours'
-                                        : 'Remember me for 30 days',
-                                    style: TextStyle(
-                                      color: isDark
-                                          ? const Color(0xFF94A3B8)
-                                          : AppTheme.onSurfaceVariant,
-                                      fontSize: 11.5,
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
 
                               const SizedBox(height: 14),
@@ -451,13 +466,8 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
                                     ),
                                   ),
                                   child: _isLoading
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
+                                      ? const SmartLoader.small(
+                                          color: Colors.white,
                                         )
                                       : Row(
                                           mainAxisAlignment:
@@ -699,14 +709,10 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
       height: 38,
       child: OutlinedButton(
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                isFr
-                    ? 'Authentification fédérée SSO en cours d\'intégration.'
-                    : 'Federated SSO authentication in progress.',
-              ),
-            ),
+          context.showInfoToast(
+            isFr
+                ? 'Authentification fédérée SSO en cours d\'intégration.'
+                : 'Federated SSO authentication in progress.',
           );
         },
         style: OutlinedButton.styleFrom(

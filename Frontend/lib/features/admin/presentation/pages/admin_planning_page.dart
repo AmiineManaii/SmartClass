@@ -23,13 +23,7 @@ class _AdminPlanningPageState extends ConsumerState<AdminPlanningPage> {
   bool _classDefaulted = false;
 
   void _comingSoon() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr('feature_coming_soon')),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    context.showInfoToast(context.tr('feature_coming_soon'));
   }
 
   String _localeTag(BuildContext context) =>

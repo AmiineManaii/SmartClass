@@ -76,27 +76,25 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
     final needsStudyInfo = user?.role == 'student';
 
     if (_institutionController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('required_field'))),
-      );
+      context.showWarningToast(context.tr('required_field'));
       return;
     }
 
     if (needsStudyInfo &&
         ((_level ?? '').isEmpty || _specialtyController.text.trim().isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('required_field'))),
-      );
+      context.showWarningToast(context.tr('required_field'));
       return;
     }
     try {
-      await ref.read(authStateProvider.notifier).completeProfile();
+      await ref.read(authStateProvider.notifier).completeProfile(
+            institution: _institutionController.text.trim(),
+            faculty: _level,
+            major: _specialtyController.text.trim(),
+          );
     } on Failure catch (failure) {
       if (!mounted) return;
       final l10n = failureL10n(failure);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
-      );
+      context.showErrorToast(context.tr(l10n.key, args: l10n.args));
       return;
     }
     if (mounted) context.go('/home');

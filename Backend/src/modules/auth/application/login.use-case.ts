@@ -13,6 +13,7 @@ import { ErrorCodes } from '../../../shared/errors/error-codes.js';
 export interface LoginDTO {
   email: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface LoginResult {
@@ -124,7 +125,8 @@ export class LoginUseCase {
     const rawRefreshToken = this.tokenService.generateRefreshToken();
     const tokenHash = this.tokenService.hashRefreshToken(rawRefreshToken);
     const familyId = crypto.randomUUID();
-    const refreshExpiresAt = new Date(Date.now() + this.refreshExpirationDays * 24 * 60 * 60 * 1000);
+    const days = dto.rememberMe ? 30 : this.refreshExpirationDays;
+    const refreshExpiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
     await this.authRepository.saveRefreshToken(user.id, tokenHash, familyId, refreshExpiresAt);
 

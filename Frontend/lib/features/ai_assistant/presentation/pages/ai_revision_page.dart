@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 
 /// ──────────────────────────────────────────────────────
@@ -1115,21 +1116,7 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
     setState(() {
       _importedDocumentName = 'TD3_Arbres_AVL_Enonce_Corrige.pdf (1.4 Mo)';
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Text(context.tr('ai_import_doc_success')),
-          ],
-        ),
-        backgroundColor: const Color(0xFF0F9D78),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    context.showSuccessToast(context.tr('ai_import_doc_success'));
   }
 
   void _showModuleSelector(BuildContext context, ThemeData theme, ColorScheme cs) {
@@ -1587,15 +1574,7 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.tr('ai_share_link_copied')),
-              duration: const Duration(seconds: 1),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          );
+          context.showSuccessToast(context.tr('ai_share_link_copied'));
         },
         borderRadius: BorderRadius.circular(20),
         child: Container(

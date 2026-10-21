@@ -9,8 +9,8 @@ import '../../../../core/error/failure_localization.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/web_controls_bar.dart';
+import '../../../../core/widgets/smart_loader.dart';
 import '../widgets/web_auth_hero_section.dart';
 
 /// Desktop split-screen view for Password Recovery (Forgot Password).
@@ -28,7 +28,7 @@ class _WebForgotPasswordViewState extends ConsumerState<WebForgotPasswordView>
   final _emailFormKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
-  static const int _otpLength = 4;
+  static const int _otpLength = 6;
   late final List<TextEditingController> _otpControllers;
   late final List<FocusNode> _otpFocusNodes;
 
@@ -112,19 +112,7 @@ class _WebForgotPasswordViewState extends ConsumerState<WebForgotPasswordView>
     final message =
         (translated == l10n.key || translated.isEmpty) ? failure.message : translated;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppTheme.error,
-        behavior: SnackBarBehavior.floating,
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message)),
-          ],
-        ),
-      ),
-    );
+    context.showErrorToast(message);
   }
 
   Future<void> _handleSendEmail() async {
@@ -138,20 +126,7 @@ class _WebForgotPasswordViewState extends ConsumerState<WebForgotPasswordView>
       if (mounted) {
         setState(() => _emailSent = true);
         _startCountdown();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: const Color(0xFF0F9D78),
-            behavior: SnackBarBehavior.floating,
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_outline_rounded,
-                    color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                Text(context.tr('reset_email_sent')),
-              ],
-            ),
-          ),
-        );
+        context.showSuccessToast(context.tr('reset_email_sent'));
         // Focus first OTP field
         if (_otpFocusNodes.isNotEmpty) {
           _otpFocusNodes[0].requestFocus();
@@ -161,13 +136,7 @@ class _WebForgotPasswordViewState extends ConsumerState<WebForgotPasswordView>
       if (mounted) _showFailure(failure);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppTheme.error,
-            behavior: SnackBarBehavior.floating,
-            content: Text(context.tr('error_unexpected')),
-          ),
-        );
+        context.showErrorToast(context.tr('error_unexpected'));
       }
     } finally {
       if (mounted) setState(() => _isSendingEmail = false);
@@ -176,13 +145,7 @@ class _WebForgotPasswordViewState extends ConsumerState<WebForgotPasswordView>
 
   void _handleVerifyOtp() {
     if (!_isOtpComplete) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          content: Text(context.tr('required_field')),
-        ),
-      );
+      context.showWarningToast(context.tr('required_field'));
       return;
     }
 
@@ -493,13 +456,9 @@ class _WebForgotPasswordViewState extends ConsumerState<WebForgotPasswordView>
                                                 ? null
                                                 : _handleSendEmail,
                                             icon: _isSendingEmail
-                                                ? const SizedBox(
-                                                    width: 16,
-                                                    height: 16,
-                                                    child: CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      color: Colors.white,
-                                                    ),
+                                                ? const SmartLoader.small(
+                                                    color: Colors.white,
+                                                    customSize: 16,
                                                   )
                                                 : Icon(
                                                     _emailSent
@@ -566,7 +525,7 @@ class _WebForgotPasswordViewState extends ConsumerState<WebForgotPasswordView>
                                     children: [
                                       Text(
                                         _emailSent
-                                            ? 'Un code à 4 chiffres a été envoyé à ${_emailController.text.trim()}'
+                                            ? 'Un code à 6 chiffres a été envoyé à ${_emailController.text.trim()}'
                                             : 'Envoyez d\'abord l\'email à l\'étape 1 pour déverrouiller cette étape.',
                                         style: TextStyle(
                                           fontFamily: 'Inter',
@@ -577,14 +536,14 @@ class _WebForgotPasswordViewState extends ConsumerState<WebForgotPasswordView>
                                       ),
                                       const SizedBox(height: 16),
 
-                                      // 4 OTP Boxes
+                                      // 6 OTP Boxes
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceEvenly,
                                         children: List.generate(_otpLength, (i) {
                                           return SizedBox(
-                                            width: 58,
-                                            height: 60,
+                                            width: 50,
+                                            height: 56,
                                             child: KeyboardListener(
                                               focusNode: FocusNode(),
                                               onKeyEvent: (event) {

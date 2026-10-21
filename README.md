@@ -7,11 +7,12 @@
 [![Node.js](https://img.shields.io/badge/Node.js-24_LTS-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![Express](https://img.shields.io/badge/Express-5.x-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x_Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
+[![Flutter](https://img.shields.io/badge/Flutter-3.x_Web_&_Mobile-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
+[![Riverpod](https://img.shields.io/badge/Riverpod-2.6-blueviolet?style=for-the-badge&logo=dart&logoColor=white)](https://riverpod.dev)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17_pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![Prisma](https://img.shields.io/badge/Prisma-7.x-2D3748?style=for-the-badge&logo=prisma&logoColor=white)](https://www.prisma.io)
-[![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com)
-[![OpenAPI](https://img.shields.io/badge/OpenAPI-3.1_Contracts-6BA539?style=for-the-badge&logo=openapiinitiative&logoColor=white)](contracts/)
+[![Design System](https://img.shields.io/badge/Stitch_UI-Academic_Precision-122675?style=for-the-badge)](Frontend/DESIGN.md)
+[![Tests](https://img.shields.io/badge/Flutter_Tests-26%2F26_Passing-0F9D78?style=for-the-badge)](Frontend/test/)
 
 <p align="center">
   <a href="#-key-features">Features</a> •
@@ -28,46 +29,50 @@
 
 ## 📖 Overview
 
-**SmartClass** is a unified, privacy-first virtual classroom ecosystem engineered to transform digital education. By combining **interactive videoconferencing**, **real-time student collaboration**, and **local, self-hosted Artificial Intelligence (RAG)**, SmartClass empowers teachers to automate content generation while providing students with individualized tutoring and secure exam simulations.
+**SmartClass** is a unified, privacy-first virtual classroom ecosystem engineered to transform digital education across **Mobile**, **Tablet**, and **Widescreen Web/Desktop**. Combining **interactive videoconferencing**, **real-time student collaboration**, and **local, self-hosted Artificial Intelligence (RAG)**, SmartClass empowers teachers to automate curriculum and course creation while providing students with individualized tutoring, smart lecture summaries, and secure anti-fraud exam simulations.
 
 > **Privacy-First Promise (RG27)**: All pedagogical AI features run on self-hosted models (7B–8B parameter open weights) using `pgvector` for Retrieval-Augmented Generation (RAG). Student and course data never leave your infrastructure.
 
 ---
 
-## ✨ Key Features
+## ✨ Key Features & Widescreen Web Experience
 
 <table>
   <tr>
     <td width="50%">
-      <h3>🤖 AI Pedagogical Studio</h3>
+      <h3>🤖 AI Course Creator & Pedagogical Studio</h3>
       <ul>
-        <li><b>Course Creation Assistant (UC1):</b> Extracts and structures legacy PDFs/documents into interactive modules with teacher validation.</li>
-        <li><b>Adaptive Tutoring & Quizzes (UC2):</b> Instant individualized quizzes with progressive hints and grounded explanations.</li>
-        <li><b>Audio & Replay Intelligence (UC4):</b> Automated lecture transcription (Whisper) and synthesized key-takeaway summaries.</li>
+        <li><b>Widescreen Course Creator Studio (UC1):</b> Responsive 2-column workspace (Left: configuration studio `flex: 48`; Right: live canvas `flex: 52`) with the <i>Moteur Pédagogique IA v3.2</i>.</li>
+        <li><b>Prompt Recommendation Chips:</b> One-click insertion for <i>"Plan détaillé"</i>, <i>"Quiz interactif inclus"</i>, <i>"Exercices pratiques"</i>, <i>"Études de cas"</i>, and <i>"Schémas Mermaid"</i>.</li>
+        <li><b>Academic Quick-Start Templates:</b> Pre-configured templates for <i>Bases de données SQL</i>, <i>Algèbre linéaire</i>, and <i>Théorie des graphes</i> with difficulty tags.</li>
+        <li><b>Floating AI Assistant Action Bar:</b> Quick refinement actions (<i>"Reformuler"</i>, <i>"Ajouter des exemples"</i>, <i>"Simplifier"</i>, <i>"Générer un QCM"</i>).</li>
       </ul>
     </td>
     <td width="50%">
-      <h3>🎥 Real-Time Interactive Classroom</h3>
+      <h3>💡 Interactive AI Tutor & Course Reader</h3>
       <ul>
-        <li><b>Videoconference Hub (UC3):</b> Integrated HD classroom sessions with host management, screen sharing, and live breakout rooms.</li>
-        <li><b>Collaborative Whiteboard & Code (UC5):</b> Multi-cursor shared canvases and live code execution environments for group assignments.</li>
-        <li><b>Class Groups & Permissions (UC6):</b> Granular role-based governance for schools, courses, and student cohorts.</li>
+        <li><b>Conversational AI Tutor (UC2):</b> 2-column chat workspace (`flex: 7` conversation, `flex: 5` reference rail) with mathematical formula blocks (`\dim(E) = \dim(\text{Ker}(f)) + \text{rg}(f)`), step titles, voice playback, and quick prompt chips.</li>
+        <li><b>Interactive Course Reader (UC4):</b> Chalkboard video banner with lecturer PIP avatar, scrubber, and <b>clickable AI timestamp markers</b> (`04:12`, `12:45`, `28:30`, `39:15`) that jump directly to sections.</li>
+        <li><b>AI Companion Side-Rail:</b> Segmented workspace tabs for <i>Résumé IA</i> (98% fidelity guarantee, golden rules), <i>Fiches Mémo</i> (animated flip cards), and <i>Notes Personnelles</i>.</li>
       </ul>
     </td>
   </tr>
   <tr>
     <td width="50%">
-      <h3>🛡️ Secure Exam Proctoring</h3>
+      <h3>🛡️ Secure Anti-Fraud Exam Room & AI Scoring</h3>
       <ul>
-        <li><b>Multi-Chapter Exam Simulation (UC9):</b> Automated timed assessments with randomized question banks.</li>
-        <li><b>AI Integrity Shield:</b> Edge-based webcam presence detection, browser lockdown, tab-switch monitoring, and post-exam audit reports.</li>
+        <li><b>Proctoring Telemetry Lock (UC9):</b> Real-time hardware telemetry bar monitoring active webcam, microphone input, browser tab focus, and full-screen enforcement.</li>
+        <li><b>Urgent Countdown & Progress Rail:</b> Dynamic countdown timer with urgency alerts (< 15 mins) and segmented question tracker.</li>
+        <li><b>AI Pedagogical Score Diagnostic:</b> Custom radial score ring (`16 / 20`), honors mention (<i>Très Bien</i>), cohort benchmark (`+3.2 pts vs promo`), and automated review recommendations.</li>
+        <li><b>Interactive Question Breakdown:</b> Category filters (<i>Toutes</i>, <i>Erreurs</i>, <i>Réussies</i>) with detailed explanations.</li>
       </ul>
     </td>
     <td width="50%">
-      <h3>📊 Analytics & Performance Tracking</h3>
+      <h3>🖥️ Desktop Shell & Onboarding Suite</h3>
       <ul>
-        <li><b>Teacher Insights (UC7):</b> Cohort heatmaps, knowledge retention matrices, and struggle-point identification.</li>
-        <li><b>Student Learning Journey:</b> Gamified progress tracker, revision recommendations, and personalized mastery dashboards.</li>
+        <li><b>Persistent Navigation Shell:</b> 260px navy sidebar (`#2D3E8C`), quick role switcher, active capsule states, and user session card.</li>
+        <li><b>Role Dashboards:</b> Widescreen layouts for Student (Salma) and Teacher (Amine) with motivation cards, timetable rails, and live class alerts.</li>
+        <li><b>Complete Onboarding Views:</b> Split-screen login, register, 6-box OTP verification with auto-paste (Ctrl+V), interactive role cards with hover lift & glow ring, and 2-step password recovery with live entropy meter.</li>
       </ul>
     </td>
   </tr>
@@ -79,8 +84,8 @@
 
 | Persona | Role | Core Objectives & Value Proposition |
 |---|---|---|
-| **👨‍🏫 Amine** | **Teacher** | Streamlines syllabus prep, generates exercises from PDFs in seconds, animates distance lectures, and tracks class mastery without tool fragmentation. |
-| **🎓 Salma** | **Student** | Accesses centralized coursework, replays recorded classes with AI smart summaries, trains on adaptive practice exams, and collaborates in real-time. |
+| **👨‍🏫 Amine** | **Teacher** | Streamlines syllabus prep in the 2-column AI Course Studio, generates exercises in seconds, plans virtual classes, and tracks cohort progress. |
+| **🎓 Salma** | **Student** | Accesses centralized coursework, navigates lectures via AI video timestamps, consults the interactive 2-column AI Tutor, and takes secure proctored exams. |
 | **🛡️ Karim** | **Admin** | Manages institutions and classes, monitors exam proctoring audit trails, enforces GDPR compliance, and oversees infrastructure reliability. |
 
 ---
@@ -95,19 +100,20 @@ SmartClass/
 │   ├── prisma/              # PostgreSQL 17 + pgvector schema & migrations
 │   ├── src/
 │   │   ├── config/          # Fail-fast Zod environment validation
-│   │   ├── modules/         # Bounded Contexts (Health, Auth, Courses, etc.)
-│   │   │   └── health/      # Reference module (Domain, Application, Infra, Presentation)
+│   │   ├── modules/         # Bounded Contexts (Auth, Users, Courses, Groups, Admin...)
 │   │   ├── shared/          # Shared Kernel (AppError, logger, middlewares, pagination)
 │   │   ├── app.ts           # Express 5 application factory
 │   │   └── main.ts          # Server bootstrap with graceful shutdown & banner
 │   ├── tests/               # In-memory Vitest unit tests & Supertest integration tests
 │   └── Dockerfile           # Multi-stage container (dev, build, production)
 │
-├── Frontend/                # Flutter Cross-Platform Application (Mobile, Tablet, Web)
+├── Frontend/                # Flutter Cross-Platform Client (Web, Desktop, Mobile, Tablet)
 │   ├── lib/
-│   │   ├── core/            # Design system, theme, network, typography, widgets
-│   │   └── features/        # Feature modules (Auth, Home, AI Studio, Exams, Groups...)
-│   └── assets/              # SVG vectors, typography, illustration packs
+│   │   ├── app/             # App entrypoint, GoRouter configuration & Riverpod providers
+│   │   ├── core/            # Design system, theme, typography, WebMainScaffold, ResponsiveLayout
+│   │   └── features/        # Feature modules (auth, home, courses, ai_assistant, exams, groups, admin)
+│   ├── assets/              # SVG vectors, typography, illustration packs
+│   └── test/                # Unit & Widget test suite (web_views_test.dart, smart_loader_test.dart)
 │
 ├── contracts/               # Hand-written OpenAPI 3.1 specifications (Contract-First)
 │   ├── common.yaml          # Shared schemas (errors, pagination, security)
@@ -201,19 +207,26 @@ Upon boot, the server tests database latency and displays our signature Spring B
 
 ---
 
-### Option 3 — Running the Flutter Frontend
+### Option 3 — Running the Flutter Client
 
 ```bash
 cd Frontend
 flutter pub get
-flutter run -d chrome     # Or connect an Android / iOS device
+
+# Run on Google Chrome (Recommended for testing widescreen Web views)
+flutter run -d chrome
+
+# Or run on Windows Desktop
+flutter run -d windows
 ```
+
+> **Demo 1-Click Access**: On the login screen, use the quick demo box to sign in directly as **🎓 Étudiant (Salma)** or **👨‍🏫 Enseignant (Amine)** without credentials.
 
 ---
 
 ## 📡 API Contracts & Documentation
 
-SmartClass adheres to a **Contract-First API design pattern**. The Flutter client integrates directly against versioned OpenAPI specifications rather than inspecting backend source code:
+SmartClass adheres to a **Contract-First API design pattern**. The Flutter client integrates directly against versioned OpenAPI specifications:
 
 | Contract | Path | Description |
 |---|---|---|
@@ -225,29 +238,49 @@ SmartClass adheres to a **Contract-First API design pattern**. The Flutter clien
 
 ## 🧪 Testing & Quality Assurance
 
-Our codebase enforces strict type safety and quality standards before every commit:
+Our monorepo enforces strict type safety and quality standards across both frontend and backend:
 
+### Backend Testing (TypeScript / Vitest / Supertest)
 ```bash
-# In Backend/ directory:
+cd Backend
 npm run lint          # ESLint flat config with TypeScript rules
 npm run typecheck     # Strict TypeScript compiler verification (tsc --noEmit)
 npm test              # Full Vitest unit & Supertest integration suite
 ```
 
-- **Unit Tests**: Pure in-memory tests verifying Domain Ports, Use Cases, Pagination, and Error Mappers.
-- **Integration Tests**: End-to-end Supertest suites asserting HTTP envelopes, Request ID propagation, rate limiting, and database failover recovery.
+### Frontend Testing (Flutter / Dart)
+```bash
+cd Frontend
+flutter analyze lib/  # Verified with 0 issues found
+flutter test          # Verified with 26/26 tests passing
+```
+
+The frontend automated suite covers:
+- **Responsive Layouts**: Breakpoint adaptation between mobile, tablet, and desktop (`>= 1024px`).
+- **Widescreen Views**: Authentication, Onboarding, Role Selection, Profile Setup, Password Recovery, Web Scaffolds, Dashboards.
+- **AI Pedagogical Views**: 2-column AI Course Creator Studio, AI Assistant Chat Rail, Course Reader with video timestamps.
+- **Secure Assessments**: Anti-fraud proctoring telemetry banner, countdown timer, question tracker, and AI score diagnostics.
 
 ---
 
 ## 🗺️ Project Roadmap
 
-- [x] **Sprint 0 — Foundation & Infrastructure**: Monorepo layout, Docker orchestration, PostgreSQL 17 + `pgvector`, Clean Architecture health module, OpenAPI contracts, test suites.
-- [ ] **Sprint 1 — Auth & Cohorts**: Multi-role JWT authentication (Argon2id, rotating refresh tokens), onboarding flow, class-group management (UC8, UC6).
-- [ ] **Sprint 2 — Course Studio**: PDF extraction, teacher curriculum builder, local LLM course structuring (UC1).
-- [ ] **Sprint 3 — Videoconference & Replay**: WebRTC/LiveKit live sessions, Whisper transcription, automatic lecture summaries (UC3, UC4).
-- [ ] **Sprint 4 — Personalized RAG Studio**: Vector similarity retrieval over course notes, individualized practice exams (UC2, UC10).
-- [ ] **Sprint 5 — Collaborative Workspaces & Assessments**: Live shared whiteboard, shared code runner, proctored exam engine v1 (UC5, UC9).
-- [ ] **Sprint 6 — Anti-Fraud Proctoring & Analytics**: Edge vision proctoring, integrity anomaly reporting, institutional analytics (UC7, UC9 v2).
+- [x] **Sprint 0 — Foundation & Infrastructure**: Monorepo layout, Docker orchestration, PostgreSQL 17 + `pgvector`, Clean Architecture health module, OpenAPI contracts, baseline test suites.
+- [x] **Sprint 1 — Auth & Onboarding Web Suite**: Multi-role JWT authentication, split-screen desktop login/register, 6-box OTP with auto-paste, interactive role selection with hover elevation, profile setup with live avatar preview, and 2-step password recovery with live entropy meter.
+- [x] **Sprint 2 — Course Studio & Interactive Reader**:
+  - Widescreen 2-column AI Course Creator Studio (`AiCourseCreatorPage`) with prompt recommendation chips, quick templates canvas, and floating AI refinement bar.
+  - Interactive Course Reader (`CourseReaderPage`) with chalkboard video banner, lecturer PIP, clickable AI timestamp navigation, and 3-tab AI companion rail (*Résumé IA*, *Fiches*, *Notes*).
+- [x] **Sprint 3 — AI Assistant & Tutor**:
+  - Desktop 2-column AI Assistant (`AiAssistantPage`) with connected course selector, mathematical LaTeX formula blocks, precision indicator, and contextual cheat-sheet rail.
+- [x] **Sprint 4 — Secure Anti-Fraud Proctoring & AI Score Diagnostics**:
+  - Secure Exam Room (`SecureExamPage`) with real-time proctoring telemetry (webcam, audio, tab focus lock, fullscreen enforcement), countdown timer, and segmented tracker.
+  - AI Pedagogical Score & Correction View (`ExamAiScorePage`) with custom radial score ring (`16 / 20`), cohort benchmark (`+3.2 pts`), mini KPI cards, diagnostic synthesis, and interactive category filters.
+- [ ] **Sprint 5 — Collaborative Spaces & Live Videoconference**:
+  - Student & Class Community Forum (Stitch screen `3526cad0bee44bdd8064db2b96f544d4`) with channels, pinned announcements, upvoting, and interactive polls.
+  - Virtual Classroom Live Planner (Stitch screen `cbd433ad530b4ebc9674dcbc3be8a2b5`) with WebRTC/LiveKit room integration and participant roster.
+- [ ] **Sprint 6 — Academic Analytics & Advanced RAG**:
+  - Class tracking and retention analytics (Stitch screen `b799fb41a59946b2b442a7c59f2fa5d0`).
+  - Persistent quiz attempt tracking and vector-indexed student knowledge graphs.
 
 ---
 
@@ -258,3 +291,4 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 <div align="center">
   <sub>Built with ❤️ for the future of intelligent education.</sub>
 </div>
+

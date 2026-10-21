@@ -27,10 +27,16 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  Future<AuthenticatedSession> _persist(AuthenticatedSession session) async {
+  Future<AuthenticatedSession> _persist(
+    AuthenticatedSession session, {
+    bool rememberMe = true,
+    String? email,
+  }) async {
     await _tokens.saveSession(
       accessToken: session.accessToken,
       refreshToken: session.refreshToken,
+      rememberMe: rememberMe,
+      email: email,
     );
     return session;
   }
@@ -63,7 +69,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final data = await _remote.verifyEmail(email: email, code: code);
       final session = AuthSessionModel.fromJson(data).toAuthenticatedSession();
-      return _persist(session);
+      return _persist(session, email: email);
     } on ApiException catch (e) {
       if (e.statusCode == 400) {
         throw const AuthFailure('Invalid or expired code', code: 'INVALID_CODE');
@@ -89,11 +95,16 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<AuthenticatedSession> login({
     required String email,
     required String password,
+    bool rememberMe = false,
   }) async {
     try {
-      final data = await _remote.login(email: email, password: password);
+      final data = await _remote.login(
+        email: email,
+        password: password,
+        rememberMe: rememberMe,
+      );
       final session = AuthSessionModel.fromJson(data).toAuthenticatedSession();
-      return _persist(session);
+      return _persist(session, rememberMe: rememberMe, email: email);
     } on ApiException catch (e) {
       throw apiExceptionToFailure(e);
     }

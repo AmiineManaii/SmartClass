@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../home/application/providers/student_dashboard_provider.dart';
 
@@ -218,13 +219,7 @@ class _ClassInvitationSheetState extends ConsumerState<ClassInvitationSheet> {
 
   void _copyToClipboard(String code) {
     Clipboard.setData(ClipboardData(text: code));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Code d\'invitation copié dans le presse-papier !'),
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
-      ),
-    );
+    context.showSuccessToast('Code d\'invitation copié dans le presse-papier !');
   }
 
   @override

@@ -10,6 +10,7 @@ import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/widgets/app_picker_row.dart';
+import '../../../../core/widgets/smart_loader.dart';
 import '../../application/providers/ai_course_options_provider.dart';
 import '../../application/providers/course_generation_job_provider.dart';
 import '../../domain/entities/course_outline.dart';
@@ -98,12 +99,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
     final Failure failure =
         error is ApiException ? apiExceptionToFailure(error) : error as Failure;
     final l10n = failureL10n(failure);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr(l10n.key, args: l10n.args)),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    context.showErrorToast(context.tr(l10n.key, args: l10n.args));
   }
 
   Future<void> _pickPdf() async {
@@ -115,12 +111,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('something_went_wrong')),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      context.showErrorToast(context.tr('something_went_wrong'));
       return;
     }
     if (files.isEmpty || !mounted) return;
@@ -129,12 +120,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
       final size = await file.length();
       if (size != null && size > _maxPdfBytes) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.tr('ai_pdf_too_big')),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        context.showWarningToast(context.tr('ai_pdf_too_big'));
         return;
       }
       final bytes = await file.readAsBytes();
@@ -145,12 +131,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
       });
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('something_went_wrong')),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      context.showErrorToast(context.tr('something_went_wrong'));
     }
   }
 
@@ -161,30 +142,15 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
     final topic = _topicController.text.trim();
     final url = _urlController.text.trim();
     if (_mode == 'topic' && topic.length < 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('ai_topic_too_short')),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      context.showWarningToast(context.tr('ai_topic_too_short'));
       return false;
     }
     if (_mode == 'pdf' && (_pdfBytes == null || _pdfName == null)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('ai_pdf_missing')),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      context.showWarningToast(context.tr('ai_pdf_missing'));
       return false;
     }
     if (_mode == 'url' && url.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('required_field')),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      context.showWarningToast(context.tr('required_field'));
       return false;
     }
     return true;
@@ -223,11 +189,8 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
         _outline = outline;
         _generatingOutline = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Plan proposé en ~3s ! Vous pouvez réordonner ou modifier les chapitres avant la rédaction.'),
-          behavior: SnackBarBehavior.floating,
-        ),
+      context.showSuccessToast(
+        'Plan proposé en ~3s ! Vous pouvez réordonner ou modifier les chapitres avant la rédaction.',
       );
     } catch (e) {
       if (!mounted) return;
@@ -322,12 +285,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
       _validated = true;
       _editedContent = edited;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr('ai_validated')),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    context.showSuccessToast(context.tr('ai_validated'));
   }
 
   Future<void> _pickOption({
@@ -384,14 +342,63 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
     }
   }
 
+  void _applySuggestionChip(String chipText) {
+    final current = _topicController.text.trim();
+    String addition;
+    switch (chipText) {
+      case 'Plan détaillé':
+        addition = 'avec un plan détaillé en 4 chapitres structurés';
+        break;
+      case 'Quiz interactif inclus':
+        setState(() => _exExamples = true);
+        addition = 'incluant un quiz interactif d\'évaluation avec barème et corrigés';
+        break;
+      case 'Exercices pratiques':
+        addition = 'avec des exercices pratiques d\'application et corrections';
+        break;
+      case 'Études de cas':
+        addition = 'illustré d\'études de cas réelles et contextualisations d\'ingénierie';
+        break;
+      case 'Schémas Mermaid':
+        setState(() => _exMermaid = true);
+        addition = 'enrichi de schémas conceptuels et diagrammes Mermaid';
+        break;
+      default:
+        addition = chipText;
+    }
+    if (current.isEmpty) {
+      _topicController.text = addition;
+    } else if (!current.contains(addition)) {
+      _topicController.text = '$current, $addition';
+    }
+    setState(() {});
+  }
+
+  void _applyQuickTemplate({
+    required String subject,
+    required String level,
+    required String difficulty,
+    required bool mermaid,
+    required bool examples,
+  }) {
+    setState(() {
+      _mode = 'topic';
+      _topicController.text = subject;
+      _level = level;
+      _difficulty = difficulty;
+      _exMermaid = mermaid;
+      _exExamples = examples;
+    });
+    context.showInfoToast('Modèle "$subject" appliqué au studio IA');
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final statusAsync = ref.watch(aiModelStatusProvider);
     final job = ref.watch(courseGenerationJobProvider);
-    final running = job.status == GenerationJobStatus.running;
     final displayed = _displayedContent(job);
+    final isDesktop = context.screenWidth >= 1024;
 
     // Stream failure or manual-save failure surfaces here (the job has no
     // BuildContext of its own). Cancellation goes silently back to idle.
@@ -423,23 +430,14 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
     );
     // A draft id appearing means the course just landed in "Mes cours"
     // (auto-save on completion, or manual save) — offer a shortcut there.
-    // No-op when returning to an already-saved result (same id).
     ref.listen<String?>(
       courseGenerationJobProvider.select((s) => s.courseId),
       (previous, next) {
         if (next != null && next != previous) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.tr('course_ready')),
-              behavior: SnackBarBehavior.floating,
-              action: SnackBarAction(
-                label: context.tr('view_drafts'),
-                // go, not push: ai-create sits outside the ShellRoute —
-                // pushing '/courses' would stack a second ShellRoute page
-                // with the same key and trip the Navigator assertion.
-                onPressed: () => context.go('/courses'),
-              ),
-            ),
+          context.showSuccessToast(
+            context.tr('course_ready'),
+            actionLabel: context.tr('view_drafts'),
+            onAction: () => context.go('/courses'),
           );
         }
       },
@@ -495,469 +493,777 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
         child: SingleChildScrollView(
           controller: _scrollController,
           padding: EdgeInsets.symmetric(
-            horizontal: context.screenWidth >= 600 ? 32 : 20,
-            vertical: 16,
+            horizontal: isDesktop ? 32 : (context.screenWidth >= 600 ? 24 : 16),
+            vertical: 20,
           ),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 640),
+              constraints: BoxConstraints(maxWidth: isDesktop ? 1600 : 640),
+              child: isDesktop
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left Column (flex: 48): Config Studio Form
+                        Expanded(
+                          flex: 48,
+                          child: _buildConfigForm(context, isDesktop: true, job: job),
+                        ),
+                        const SizedBox(width: 32),
+                        // Right Column (flex: 52): Live Canvas / Editor / Inspiration
+                        Expanded(
+                          flex: 52,
+                          child: _buildStudioCanvas(
+                            context,
+                            isDesktop: true,
+                            job: job,
+                            displayed: displayed,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildConfigForm(context, isDesktop: false, job: job),
+                        const SizedBox(height: 20),
+                        _buildStudioCanvas(
+                          context,
+                          isDesktop: false,
+                          job: job,
+                          displayed: displayed,
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConfigForm(
+    BuildContext context, {
+    required bool isDesktop,
+    required GenerationJobState job,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final statusAsync = ref.watch(aiModelStatusProvider);
+    final running = job.status == GenerationJobStatus.running;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Engine Sparks Banner
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: colorScheme.secondaryFixed,
+              borderRadius: BorderRadius.circular(9999),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.04),
+                  offset: const Offset(0, 1),
+                  blurRadius: 3,
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.auto_awesome, size: 14, color: colorScheme.onSecondaryFixed),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    'Moteur Pédagogique IA v3.2'.toUpperCase(),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSecondaryFixed,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.06,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        statusAsync.when(
+          data: (status) => _ModelStatusRow(status: status),
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
+        ),
+        const SizedBox(height: 12),
+        Text(context.tr('ai_create_title'), style: theme.textTheme.headlineLarge),
+        const SizedBox(height: 4),
+        Text(
+          context.tr('ai_create_desc'),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Visual Inspiration Card / Educational Assistant Prompt
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainer,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [colorScheme.primary, colorScheme.secondary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.school_rounded, color: Colors.white, size: 28),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Concepteur intelligent',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Structurez vos unités d\'enseignement conformément aux normes LMD et référentiels européens.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        Text(context.tr('ai_mode_label'), style: theme.textTheme.labelLarge),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final mode in const ['topic', 'pdf', 'url'])
+              _ModeChip(
+                label: context.tr('ai_mode_$mode'),
+                selected: _mode == mode,
+                onTap: () => setState(() => _mode = mode),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        if (_mode == 'pdf') ...[
+          InkWell(
+            onTap: _pickPdf,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.shadow.withValues(alpha: 0.04),
+                    offset: const Offset(0, 1),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    width: 56,
+                    height: 56,
                     decoration: BoxDecoration(
-                      color: colorScheme.secondaryFixed,
-                      borderRadius: BorderRadius.circular(9999),
+                      color: colorScheme.surfaceContainer,
+                      shape: BoxShape.circle,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.auto_awesome, size: 14, color: colorScheme.onSecondaryFixed),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            context.tr('ai_engine_banner').toUpperCase(),
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: colorScheme.onSecondaryFixed,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.06,
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: Icon(
+                      Icons.cloud_upload_outlined,
+                      size: 28,
+                      color: colorScheme.primary,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  statusAsync.when(
-                    data: (status) => _ModelStatusRow(status: status),
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, _) => const SizedBox.shrink(),
-                  ),
-                  if (displayed != null) ...[
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: colorScheme.primary.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_circle_rounded,
-                              color: colorScheme.primary, size: 22),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '🎉 Cours généré avec succès !',
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: colorScheme.onPrimaryContainer,
-                                  ),
-                                ),
-                                Text(
-                                  'Faites défiler vers le bas ou appuyez sur Voir.',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          FilledButton.tonal(
-                            onPressed: () {
-                              if (_scrollController.hasClients) {
-                                _scrollController.animateTo(
-                                  _scrollController.position.maxScrollExtent,
-                                  duration: const Duration(milliseconds: 500),
-                                  curve: Curves.easeOutCubic,
-                                );
-                              }
-                            },
-                            child: const Text('Voir'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 12),
-                  Text(context.tr('ai_create_title'), style: theme.textTheme.headlineLarge),
+                  Text(
+                    context.tr('drop_pdf_title'),
+                    style: theme.textTheme.labelLarge,
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 4),
                   Text(
-                    context.tr('ai_create_desc'),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(context.tr('ai_mode_label'), style: theme.textTheme.labelLarge),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final mode in const ['topic', 'pdf', 'url'])
-                        _ModeChip(
-                          label: context.tr('ai_mode_$mode'),
-                          selected: _mode == mode,
-                          onTap: () => setState(() => _mode = mode),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (_mode == 'pdf') ...[
-                    InkWell(
-                      onTap: _pickPdf,
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerLowest,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorScheme.shadow.withValues(alpha: 0.04),
-                            offset: const Offset(0, 1),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: colorScheme.surfaceContainer,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.cloud_upload_outlined,
-                              size: 28,
-                              color: colorScheme.primary,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            context.tr('drop_pdf_title'),
-                            style: theme.textTheme.labelLarge,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            context.tr('ai_pdf_note'),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  ],
-                  const SizedBox(height: 16),
-                  if (_mode == 'topic') ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(context.tr('topic_label'), style: theme.textTheme.labelLarge),
-                        Text(
-                          context.tr('recommended'),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.secondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerLowest,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorScheme.shadow.withValues(alpha: 0.04),
-                            offset: const Offset(0, 1),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: TextField(
-                        controller: _topicController,
-                        maxLines: 4,
-                        minLines: 4,
-                        style: theme.textTheme.bodyMedium,
-                        decoration: InputDecoration(
-                          hintText: context.tr('topic_hint'),
-                          hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.outline,
-                          ),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.all(8),
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (_mode == 'pdf' && _pdfName != null) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: colorScheme.secondaryFixed
-                              .withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.picture_as_pdf_outlined,
-                                size: 18,
-                                color: colorScheme.onSecondaryFixed),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _pdfName!,
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: colorScheme.onSecondaryFixed,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close_rounded, size: 18),
-                              tooltip: context.tr('cancel'),
-                              onPressed: () => setState(() {
-                                _pdfName = null;
-                                _pdfBytes = null;
-                              }),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  if (_mode == 'url') ...[
-                    Text(context.tr('ai_url_label'), style: theme.textTheme.labelLarge),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerLowest,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorScheme.shadow.withValues(alpha: 0.04),
-                            offset: const Offset(0, 1),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: TextField(
-                        controller: _urlController,
-                        keyboardType: TextInputType.url,
-                        style: theme.textTheme.bodyMedium,
-                        decoration: InputDecoration(
-                          hintText: context.tr('ai_url_hint'),
-                          hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.outline,
-                          ),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.all(8),
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  Text(context.tr('academic_level_label'), style: theme.textTheme.labelLarge),
-                  const SizedBox(height: 8),
-                  AppPickerRow(
-                    icon: Icons.school_outlined,
-                    value: _levelLabel(_level),
-                    onTap: () => _pickOption(
-                      titleKey: 'academic_level_label',
-                      options: _genLevels,
-                      labels: _genLevels.map(_levelLabel).toList(),
-                      current: _level,
-                      onSelected: (v) => setState(() => _level = v),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    context.tr('ai_level_hint'),
+                    'Formats acceptés : PDF, Word (.docx), PPTX ou Markdown (max 25 Mo)',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
-                  Text(context.tr('ai_difficulty_label'), style: theme.textTheme.labelLarge),
-                  const SizedBox(height: 8),
-                  AppPickerRow(
-                    icon: Icons.speed_outlined,
-                    value: _difficultyLabel(_difficulty),
-                    onTap: () => _pickOption(
-                      titleKey: 'ai_difficulty_label',
-                      options: const ['facile', 'moyen', 'difficile'],
-                      labels: const ['Facile', 'Moyenne', 'Difficile'],
-                      current: _difficulty,
-                      onSelected: (v) => setState(() => _difficulty = v),
-                    ),
+                  const SizedBox(height: 12),
+                  FilledButton.tonalIcon(
+                    onPressed: _pickPdf,
+                    icon: const Icon(Icons.folder_open_rounded, size: 18),
+                    label: const Text('Parcourir les fichiers'),
                   ),
-                  const SizedBox(height: 16),
-                  Text(context.tr('ai_extras_label'), style: theme.textTheme.labelLarge),
-                  const SizedBox(height: 8),
-                  _ExtrasBox(
-                    examples: _exExamples,
-                    mermaid: _exMermaid,
-                    webImages: _exWebImages,
-                    webSearch: _exWebSearch,
-                    thinking: _exThinking,
-                    onChanged: (examples, mermaid, webImages, webSearch,
-                            thinking) =>
-                        setState(() {
-                      _exExamples = examples;
-                      _exMermaid = mermaid;
-                      _exWebImages = webImages;
-                      _exWebSearch = webSearch;
-                      _exThinking = thinking;
-                    }),
-                  ),
-                  const SizedBox(height: 16),
-                  if (_outline != null) ...[
-                    CourseOutlineEditorCard(
-                      outline: _outline!,
-                      generating: running,
-                      onOutlineChanged: (o) => setState(() => _outline = o),
-                      onGenerateFullCourse: () => _generate(useOutline: true),
-                      onRegenerateOutline: _generateOutline,
-                      onCancel: () => setState(() => _outline = null),
-                    ),
-                  ] else ...[
-                    // Primary Outline Validation Button (Recommended: 3s outline preview)
-                    FilledButton.icon(
-                      onPressed: running || _generatingOutline
-                          ? null
-                          : _generateOutline,
-                      icon: _generatingOutline
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.schema_rounded, size: 20),
-                      label: Text(
-                        _generatingOutline
-                            ? context.tr('ai_outline_generating')
-                            : '💡 Proposer le plan en 3s (Recommandé)',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                        foregroundColor: colorScheme.onPrimary,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Direct generation button (without outline)
-                    OutlinedButton.icon(
-                      onPressed: running || _generatingOutline
-                          ? null
-                          : () => _generate(useOutline: false),
-                      icon: const Icon(Icons.bolt_rounded, size: 18),
-                      label: Text(context.tr('ai_outline_generate_direct')),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 44),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.timer_outlined, size: 15, color: colorScheme.secondary),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          context.tr('estimate_rgpd'),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (displayed != null) ...[
-                    const SizedBox(height: 16),
-                    if (_editing)
-                      _EditorCard(
-                        controller: _editController,
-                        onValidate: _validateEdit,
-                        onCancel: () => setState(() => _editing = false),
-                      )
-                    else
-                      _ResultCard(
-                        result: {...job.meta, 'content': displayed},
-                        validated: _validated,
-                        saving: job.saving,
-                        saved: job.courseId != null &&
-                            displayed == job.savedContent,
-                        showDraftsLink: job.courseId != null,
-                        onReset: _resetResult,
-                        onEdit: () => _startEdit(displayed),
-                        onRefineWithAi: () {
-                          AiSectionRefineDialog.show(
-                            context: context,
-                            fullCourseContent: displayed,
-                            level: _level,
-                            difficulty: _difficulty,
-                            onApply: _onApplyRefinedSection,
-                          );
-                        },
-                        onSave: () => ref
-                            .read(courseGenerationJobProvider.notifier)
-                            .saveCurrentEdits(displayed),
-                        onViewDrafts: () => context.go('/courses'),
-                      ),
-                  ],
-                  if (running) ...[
-                    const SizedBox(height: 16),
-                    _LiveProgressCard(
-                      elapsedSec: job.elapsedSec,
-                      liveChars: job.chars,
-                      preview: job.preview,
-                      phase: job.phase,
-                      onCancel: () => ref
-                          .read(courseGenerationJobProvider.notifier)
-                          .cancel(),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
+          if (_pdfName != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: colorScheme.secondaryFixed.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.picture_as_pdf_outlined,
+                      size: 18, color: colorScheme.onSecondaryFixed),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _pdfName!,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSecondaryFixed,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    tooltip: context.tr('cancel'),
+                    onPressed: () => setState(() {
+                      _pdfName = null;
+                      _pdfBytes = null;
+                    }),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+
+        if (_mode == 'topic') ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(context.tr('topic_label'), style: theme.textTheme.labelLarge),
+              Text(
+                context.tr('recommended'),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.secondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.04),
+                  offset: const Offset(0, 1),
+                  blurRadius: 4,
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: _topicController,
+              maxLines: 4,
+              minLines: 4,
+              style: theme.textTheme.bodyMedium,
+              decoration: InputDecoration(
+                hintText: context.tr('topic_hint'),
+                hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.outline,
+                ),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: const EdgeInsets.all(8),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Stitch Quick Suggestion Chips
+          Text(
+            'Suggestions de modules pédagogiques'.toUpperCase(),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              letterSpacing: 0.05,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _SuggestionChip(
+                icon: Icons.format_list_numbered_rounded,
+                label: 'Plan détaillé',
+                onTap: () => _applySuggestionChip('Plan détaillé'),
+              ),
+              _SuggestionChip(
+                icon: Icons.quiz_outlined,
+                label: 'Quiz interactif inclus',
+                onTap: () => _applySuggestionChip('Quiz interactif inclus'),
+              ),
+              _SuggestionChip(
+                icon: Icons.code_rounded,
+                label: 'Exercices pratiques',
+                onTap: () => _applySuggestionChip('Exercices pratiques'),
+              ),
+              _SuggestionChip(
+                icon: Icons.cases_outlined,
+                label: 'Études de cas',
+                onTap: () => _applySuggestionChip('Études de cas'),
+              ),
+              _SuggestionChip(
+                icon: Icons.account_tree_outlined,
+                label: 'Schémas Mermaid',
+                onTap: () => _applySuggestionChip('Schémas Mermaid'),
+              ),
+            ],
+          ),
+        ],
+
+        if (_mode == 'url') ...[
+          Text(context.tr('ai_url_label'), style: theme.textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.04),
+                  offset: const Offset(0, 1),
+                  blurRadius: 4,
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: _urlController,
+              keyboardType: TextInputType.url,
+              style: theme.textTheme.bodyMedium,
+              decoration: InputDecoration(
+                hintText: context.tr('ai_url_hint'),
+                hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.outline,
+                ),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: const EdgeInsets.all(8),
+              ),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 16),
+        Text(context.tr('academic_level_label'), style: theme.textTheme.labelLarge),
+        const SizedBox(height: 8),
+        AppPickerRow(
+          icon: Icons.school_outlined,
+          value: _levelLabel(_level),
+          onTap: () => _pickOption(
+            titleKey: 'academic_level_label',
+            options: _genLevels,
+            labels: _genLevels.map(_levelLabel).toList(),
+            current: _level,
+            onSelected: (v) => setState(() => _level = v),
+          ),
         ),
+        const SizedBox(height: 8),
+        Text(
+          context.tr('ai_level_hint'),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+
+        const SizedBox(height: 16),
+        Text(context.tr('ai_difficulty_label'), style: theme.textTheme.labelLarge),
+        const SizedBox(height: 8),
+        AppPickerRow(
+          icon: Icons.speed_outlined,
+          value: _difficultyLabel(_difficulty),
+          onTap: () => _pickOption(
+            titleKey: 'ai_difficulty_label',
+            options: const ['facile', 'moyen', 'difficile'],
+            labels: const ['Facile', 'Moyenne', 'Difficile'],
+            current: _difficulty,
+            onSelected: (v) => setState(() => _difficulty = v),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+        Text(context.tr('ai_extras_label'), style: theme.textTheme.labelLarge),
+        const SizedBox(height: 8),
+        _ExtrasBox(
+          examples: _exExamples,
+          mermaid: _exMermaid,
+          webImages: _exWebImages,
+          webSearch: _exWebSearch,
+          thinking: _exThinking,
+          onChanged: (examples, mermaid, webImages, webSearch, thinking) => setState(() {
+            _exExamples = examples;
+            _exMermaid = mermaid;
+            _exWebImages = webImages;
+            _exWebSearch = webSearch;
+            _exThinking = thinking;
+          }),
+        ),
+
+        const SizedBox(height: 20),
+
+        if (_outline != null && isDesktop) ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colorScheme.tertiaryContainer.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: colorScheme.tertiary.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.schema_rounded, color: colorScheme.tertiary, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Plan proposé interactif actif dans le canevas de droite.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _outline = null),
+                  child: const Text('Modifier les options'),
+                ),
+              ],
+            ),
+          ),
+        ] else if (_outline == null || !isDesktop) ...[
+          // Primary Outline Validation Button (Recommended: 3s outline preview)
+          FilledButton.icon(
+            onPressed: running || _generatingOutline ? null : _generateOutline,
+            icon: _generatingOutline
+                ? const SmartLoader.small(
+                    customSize: 18,
+                    color: Colors.white,
+                  )
+                : const Icon(Icons.schema_rounded, size: 20),
+            label: Text(
+              _generatingOutline
+                  ? context.tr('ai_outline_generating')
+                  : '💡 Proposer le plan en 3s (Recommandé)',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
+              minimumSize: const Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Direct generation button (without outline)
+          OutlinedButton.icon(
+            onPressed: running || _generatingOutline ? null : () => _generate(useOutline: false),
+            icon: const Icon(Icons.bolt_rounded, size: 18),
+            label: Text(context.tr('ai_outline_generate_direct')),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.timer_outlined, size: 15, color: colorScheme.secondary),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'Estimation : ~20 secondes • Modèle certifié RGPD Pédagogie Sup',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStudioCanvas(
+    BuildContext context, {
+    required bool isDesktop,
+    required GenerationJobState job,
+    required String? displayed,
+  }) {
+    final running = job.status == GenerationJobStatus.running;
+
+    // 1. Proposed Outline state
+    if (_outline != null) {
+      return CourseOutlineEditorCard(
+        outline: _outline!,
+        generating: running,
+        onOutlineChanged: (o) => setState(() => _outline = o),
+        onGenerateFullCourse: () => _generate(useOutline: true),
+        onRegenerateOutline: _generateOutline,
+        onCancel: () => setState(() => _outline = null),
+      );
+    }
+
+    // 2. Running progress state
+    if (running) {
+      return _LiveProgressCard(
+        elapsedSec: job.elapsedSec,
+        liveChars: job.chars,
+        preview: job.preview,
+        phase: job.phase,
+        onCancel: () => ref.read(courseGenerationJobProvider.notifier).cancel(),
+      );
+    }
+
+    // 3. Finished result state
+    if (displayed != null) {
+      if (_editing) {
+        return _EditorCard(
+          controller: _editController,
+          onValidate: _validateEdit,
+          onCancel: () => setState(() => _editing = false),
+        );
+      }
+      return _ResultCard(
+        result: {...job.meta, 'content': displayed},
+        validated: _validated,
+        saving: job.saving,
+        saved: job.courseId != null && displayed == job.savedContent,
+        showDraftsLink: job.courseId != null,
+        onReset: _resetResult,
+        onEdit: () => _startEdit(displayed),
+        onRefineWithAi: () {
+          AiSectionRefineDialog.show(
+            context: context,
+            fullCourseContent: displayed,
+            level: _level,
+            difficulty: _difficulty,
+            onApply: _onApplyRefinedSection,
+          );
+        },
+        onSave: () => ref
+            .read(courseGenerationJobProvider.notifier)
+            .saveCurrentEdits(displayed),
+        onViewDrafts: () => context.go('/courses'),
+      );
+    }
+
+    // 4. Idle state: Studio Inspiration Canvas with 3 quick-start templates
+    return _buildStudioInspirationCanvas(context);
+  }
+
+  Widget _buildStudioInspirationCanvas(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: colorScheme.secondaryFixed,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.auto_stories_rounded,
+                  color: colorScheme.onSecondaryFixed,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Canevas de Prévisualisation & Modèles Clés-en-Main',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Choisissez un modèle académique ci-dessous ou générez votre cours personnalisé à gauche.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Divider(height: 1),
+          const SizedBox(height: 20),
+
+          // Template 1: Bases de Données & SQL
+          _QuickTemplateCard(
+            title: 'Bases de Données Relationnelles & Requêtes SQL Avancées',
+            description:
+                'Modélisation relationnelle, formes normales, transactions ACID et optimisation d\'index pour L3 Informatique.',
+            badge: 'Licence 3 • Informatique',
+            levelLabel: 'Cours complet',
+            difficultyLabel: 'Moyenne',
+            icon: Icons.storage_rounded,
+            iconColor: colorScheme.primary,
+            onApply: () => _applyQuickTemplate(
+              subject:
+                  'Introduction aux bases de données relationnelles et requêtes SQL avancées pour Licence 3 Informatique avec 4 chapitres, schémas relationnels et exercices corrigés',
+              level: 'detaille',
+              difficulty: 'moyen',
+              mermaid: true,
+              examples: true,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Template 2: Algèbre Linéaire
+          _QuickTemplateCard(
+            title: 'Algèbre Linéaire & Diagonalisation d\'Endomorphismes',
+            description:
+                'Espaces vectoriels, polynôme caractéristique, sous-espaces propres et applications concrètes.',
+            badge: 'Licence 2 • Mathématiques',
+            levelLabel: 'Cours normal',
+            difficultyLabel: 'Moyenne',
+            icon: Icons.functions_rounded,
+            iconColor: colorScheme.secondary,
+            onApply: () => _applyQuickTemplate(
+              subject:
+                  'Cours complet d\'algèbre linéaire sur la réduction des endomorphismes et la diagonalisation de matrices pour Licence 2',
+              level: 'equilibre',
+              difficulty: 'moyen',
+              mermaid: true,
+              examples: true,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Template 3: Théorie des Graphes
+          _QuickTemplateCard(
+            title: 'Théorie des Graphes & Algorithmes de Routage',
+            description:
+                'Parcours BFS/DFS, algorithmes de Dijkstra et Floyd-Warshall, coloration et flot maximal.',
+            badge: 'Master 1 • Algorithmique',
+            levelLabel: 'Cours complet',
+            difficultyLabel: 'Difficile',
+            icon: Icons.hub_rounded,
+            iconColor: colorScheme.tertiary,
+            onApply: () => _applyQuickTemplate(
+              subject:
+                  'Théorie des graphes et algorithmes de routage avancés (Dijkstra, A*, Floyd-Warshall) avec diagrammes Mermaid et exercices pour Master 1',
+              level: 'detaille',
+              difficulty: 'difficile',
+              mermaid: true,
+              examples: true,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Pedagogical Tip Card
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.lightbulb_outline_rounded,
+                    size: 20, color: colorScheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Astuce : Lancez d\'abord "Proposer le plan en 3s" pour ajuster et réordonner les chapitres avant la génération complète.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1080,12 +1386,7 @@ class _ResultCard extends StatelessWidget {
       ClipboardData(text: '${result['content'] ?? ''}'),
     );
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr('ai_copied')),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    context.showSuccessToast(context.tr('ai_copied'));
   }
 
   @override
@@ -1119,6 +1420,111 @@ class _ResultCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Stitch Floating AI Assistant Bar matching Stitch screen bfcc2ec5274b4c5ab96fa9f7267ba62c
+          Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: LinearGradient(
+                colors: [
+                  colorScheme.primary,
+                  colorScheme.primaryContainer,
+                  colorScheme.secondary,
+                ],
+              ),
+            ),
+            padding: const EdgeInsets.all(1.5),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(12.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.auto_awesome, size: 16, color: colorScheme.primary),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Assistant Rédaction IA',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: colorScheme.tertiaryContainer.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          'Actif',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colorScheme.tertiary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'Sélection contextuelle',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _AiActionChip(
+                          icon: Icons.auto_fix_high,
+                          label: 'Reformuler',
+                          iconColor: colorScheme.primary,
+                          onTap: onRefineWithAi,
+                        ),
+                        const SizedBox(width: 8),
+                        _AiActionChip(
+                          icon: Icons.add_circle_outline,
+                          label: 'Ajouter des exemples',
+                          iconColor: colorScheme.secondary,
+                          onTap: onRefineWithAi,
+                        ),
+                        const SizedBox(width: 8),
+                        _AiActionChip(
+                          icon: Icons.psychology_outlined,
+                          label: 'Simplifier',
+                          iconColor: colorScheme.tertiary,
+                          onTap: onRefineWithAi,
+                        ),
+                        const SizedBox(width: 8),
+                        _AiActionChip(
+                          icon: Icons.quiz_outlined,
+                          label: 'Générer un QCM',
+                          iconColor: colorScheme.primary,
+                          filled: true,
+                          onTap: onRefineWithAi,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           Row(
             children: [
               Icon(Icons.check_circle_outline,
@@ -1275,10 +1681,9 @@ class _ResultCard extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: saving ? null : onSave,
                 icon: saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                    ? SmartLoader.small(
+                        customSize: 18,
+                        color: colorScheme.onPrimary,
                       )
                     : const Icon(Icons.save_outlined, size: 18),
                 label: Text(context.tr('save_course')),
@@ -1484,15 +1889,9 @@ class _LiveProgressCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    colorScheme.secondary,
-                  ),
-                ),
+              SmartLoader.small(
+                customSize: 20,
+                color: colorScheme.secondary,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -1624,4 +2023,256 @@ class _ExtrasBox extends StatelessWidget {
     );
   }
 }
+
+class _SuggestionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _SuggestionChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Material(
+      color: colorScheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: colorScheme.secondary),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AiActionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color iconColor;
+  final bool filled;
+  final VoidCallback onTap;
+
+  const _AiActionChip({
+    required this.icon,
+    required this.label,
+    required this.iconColor,
+    this.filled = false,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Material(
+      color: filled
+          ? colorScheme.primaryFixed
+          : colorScheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: iconColor),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: filled
+                      ? colorScheme.onPrimaryFixed
+                      : colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickTemplateCard extends StatelessWidget {
+  final String title;
+  final String description;
+  final String badge;
+  final String levelLabel;
+  final String difficultyLabel;
+  final IconData icon;
+  final Color iconColor;
+  final VoidCallback onApply;
+
+  const _QuickTemplateCard({
+    required this.title,
+    required this.description,
+    required this.badge,
+    required this.levelLabel,
+    required this.difficultyLabel,
+    required this.icon,
+    required this.iconColor,
+    required this.onApply,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        badge,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            description,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      levelLabel,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Difficulté : $difficultyLabel',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              FilledButton.tonalIcon(
+                onPressed: onApply,
+                icon: const Icon(Icons.arrow_forward_rounded, size: 14),
+                label: const Text('Utiliser ce modèle'),
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  textStyle: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 

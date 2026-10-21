@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_providers.dart';
+import '../../../../core/extensions/extensions.dart';
 import '../../../courses/application/providers/courses_provider.dart';
 import '../../../home/application/providers/student_dashboard_provider.dart';
 import '../../../home/application/providers/teacher_dashboard_provider.dart';
 import '../widgets/class_invitation_sheet.dart';
+import '../../../../core/widgets/smart_loader.dart';
 
 class ClassDetailPage extends ConsumerStatefulWidget {
   final String groupId;
@@ -124,24 +126,15 @@ class _ClassDetailPageState extends ConsumerState<ClassDetailPage>
             .read(groupsRemoteDataSourceProvider)
             .removeMembers(widget.groupId, [studentId]);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('$studentName a été retiré de la classe.'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          context.showInfoToast('$studentName a été retiré de la classe.');
           _loadAll();
           ref.invalidate(teacherDashboardProvider);
           ref.invalidate(myGroupsProvider);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(e.toString().replaceFirst('ApiException: ', '')),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
+          context.showErrorToast(
+            e.toString().replaceFirst('ApiException: ', ''),
           );
         }
       }
@@ -221,7 +214,9 @@ class _ClassDetailPageState extends ConsumerState<ClassDetailPage>
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: SmartLoader.large(message: 'Chargement de la classe...'),
+            )
           : _errorMessage != null
               ? Center(
                   child: Padding(
@@ -1081,7 +1076,9 @@ class _CoursesTab extends ConsumerWidget {
     final publishedAsync = ref.watch(publishedCoursesProvider);
 
     return publishedAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(
+        child: SmartLoader.medium(message: 'Chargement des cours...'),
+      ),
       error: (e, _) => Center(
         child: Text('Erreur de chargement des cours : $e'),
       ),

@@ -12,6 +12,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get app_name => 'SmartClass';
 
   @override
+  String get home => 'Accueil';
+
+  @override
   String get loading => 'Chargement...';
 
   @override
@@ -67,6 +70,25 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get skip => 'Ignorer';
+
+  @override
+  String get splash_tagline => 'Écosystème Éducatif Augmenté par l\'IA';
+
+  @override
+  String get splash_loading_1 => 'Initialisation de l\'espace académique...';
+
+  @override
+  String get splash_loading_2 => 'Synchronisation du moteur IA...';
+
+  @override
+  String get splash_loading_3 => 'Prêt pour l\'excellence académique';
+
+  @override
+  String get splash_badge => 'SmartClass 4.0 • IA Pédagogique';
+
+  @override
+  String get splash_footer =>
+      'SmartClass Platform • v1.0 • Protocole TLS 1.3 • Conforme RGPD & CNIL';
 
   @override
   String get continue_action => 'Continuer';
@@ -169,7 +191,8 @@ class AppLocalizationsFr extends AppLocalizations {
       'Le mot de passe doit contenir au moins 8 caractères';
 
   @override
-  String get passwords_dont_match => 'Les mots de passe ne correspondent pas';
+  String get passwords_dont_match =>
+      'Les nouveaux mots de passe ne correspondent pas.';
 
   @override
   String get login_failed => 'Échec de la connexion';
@@ -403,9 +426,6 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get admin_description =>
       'Gérer la plateforme, superviser les utilisateurs';
-
-  @override
-  String get home => 'Accueil';
 
   @override
   String get courses => 'Cours';
@@ -1624,18 +1644,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get drafts => 'Brouillons';
 
   @override
-  String get splash_tagline => 'Écosystème Éducatif Augmenté par l\'IA';
-
-  @override
-  String get splash_loading_1 => 'Initialisation de l\'espace académique...';
-
-  @override
-  String get splash_loading_2 => 'Synchronisation du moteur IA...';
-
-  @override
-  String get splash_loading_3 => 'Prêt pour l\'excellence académique';
-
-  @override
   String admin_greeting(Object name) {
     return 'Bonjour $name';
   }
@@ -2238,4 +2246,560 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get admin_resolution => 'Résolution :';
+
+  @override
+  String get collapse_sidebar => 'Réduire le menu';
+
+  @override
+  String get expand_sidebar => 'Agrandir le menu';
+
+  @override
+  String get student_portal => 'Portail Étudiant';
+
+  @override
+  String get teacher_portal => 'Espace Enseignant';
+
+  @override
+  String get nav_dashboard => 'Tableau de bord';
+
+  @override
+  String get nav_ai_studio => 'Studio IA & Tuteur';
+
+  @override
+  String get nav_community => 'Communauté';
+
+  @override
+  String get nav_exams_assignments => 'Examens & Devoirs';
+
+  @override
+  String get nav_videoconference => 'Visioconférence';
+
+  @override
+  String get nav_my_profile => 'Paramètres & Profil';
+
+  @override
+  String get nav_my_classes => 'Mes Classes';
+
+  @override
+  String get nav_courses_resources => 'Cours & Ressources';
+
+  @override
+  String get nav_ai_creator => 'Créateur IA';
+
+  @override
+  String get nav_live_meetings => 'Directs & Réunions';
+
+  @override
+  String get nav_exams_grades => 'Examens & Notes';
+
+  @override
+  String get institution_tag => 'Lycée Descartes • Casablanca';
+
+  @override
+  String get account_settings_title => 'Paramètres du compte';
+
+  @override
+  String get active_student_badge => 'Étudiant Actif';
+
+  @override
+  String get account_settings_desc =>
+      'Gérez votre identité académique, vos accès de sécurité et configurez vos flux de notifications pour votre portail étudiant.';
+
+  @override
+  String get ent_sync_status => 'Statut Académique : Synchronisé ENT';
+
+  @override
+  String get config_menu_title => 'MENU DE CONFIGURATION';
+
+  @override
+  String get menu_personal_info => 'Profil personnel';
+
+  @override
+  String get menu_security_auth => 'Sécurité & Authentification';
+
+  @override
+  String get menu_notifications => 'Notifications & Alertes';
+
+  @override
+  String get menu_appearance => 'Apparence & Thème';
+
+  @override
+  String get menu_privacy_gdpr => 'Confidentialité & RGPD';
+
+  @override
+  String get menu_sessions_devices => 'Sessions & Appareils';
+
+  @override
+  String get cloud_storage_title => 'Stockage Devoirs Cloud';
+
+  @override
+  String get ent_cloud_synced => 'Synchronisé avec ENT Cloud';
+
+  @override
+  String get official_id => 'Identifiant officiel';
+
+  @override
+  String get certified_academic_data =>
+      'Données académiques certifiées par le secrétariat pédagogique.';
+
+  @override
+  String get student_photo_title => 'Photo de profil étudiante';
+
+  @override
+  String get validated_badge => 'Validé';
+
+  @override
+  String get student_photo_desc =>
+      'Format PNG ou JPG, max 5 Mo. Cette photo figure sur votre carte étudiante dématérialisée et vos attestations officielles.';
+
+  @override
+  String get change_image => 'Changer l\'image';
+
+  @override
+  String get delete_image => 'Supprimer';
+
+  @override
+  String get academic_email_label => 'Adresse email universitaire';
+
+  @override
+  String get verified_label => 'Vérifié';
+
+  @override
+  String get student_number_label => 'Numéro d\'étudiant (CNE / MASSAR)';
+
+  @override
+  String get university_label => 'Université / Établissement';
+
+  @override
+  String get major_promotion_label => 'Promotion / Filière d\'excellence';
+
+  @override
+  String get security_auth_desc =>
+      'Paramétrez la protection de votre session et vos clés d\'accès.';
+
+  @override
+  String get main_password_label => 'Mot de passe principal';
+
+  @override
+  String get password_last_modified => 'Modifié il y a 3 mois';
+
+  @override
+  String get change_password_btn => 'Changer le mot de passe';
+
+  @override
+  String get new_password_label => 'Nouveau mot de passe';
+
+  @override
+  String get confirm_password_label => 'Confirmer le nouveau mot de passe';
+
+  @override
+  String get password_updated => 'Mot de passe mis à jour avec succès !';
+
+  @override
+  String get two_factor_auth_label => 'Authentification à deux facteurs (2FA)';
+
+  @override
+  String get active_badge => 'Actif';
+
+  @override
+  String get inactive_badge => 'Inactif';
+
+  @override
+  String get two_factor_desc =>
+      'Application d\'authentification (Google Authenticator / iCloud Keychain) connectée.';
+
+  @override
+  String get two_factor_modal_title => 'Configuration Authentificateur TOTP';
+
+  @override
+  String get two_factor_modal_desc =>
+      'Scannez ce QR Code avec Google Authenticator ou Microsoft Authenticator pour sécuriser votre compte étudiant.';
+
+  @override
+  String get two_factor_code_label => 'Code de vérification à 6 chiffres';
+
+  @override
+  String get two_factor_verify_btn => 'Valider et activer 2FA';
+
+  @override
+  String get passkeys_label => 'Clés de sécurité physiques & Passkeys';
+
+  @override
+  String get passkeys_desc =>
+      'Connectez-vous instantanément via Touch ID, Windows Hello ou clé FIDO2 / YubiKey.';
+
+  @override
+  String get add_passkey_btn => '+ Ajouter une passkey';
+
+  @override
+  String get security_audit_log_title =>
+      'Journal d\'activité de sécurité récente';
+
+  @override
+  String get security_log_login_success =>
+      'Connexion réussie - Microsoft Edge (Windows 11)';
+
+  @override
+  String get security_log_location =>
+      'Rabat, Maroc • Adresse IP : 196.200.185.42';
+
+  @override
+  String get security_log_time_now => 'Aujourd\'hui à 10:14';
+
+  @override
+  String get security_log_2fa_success => 'Validation 2FA TOTP réussie';
+
+  @override
+  String get security_log_2fa_time => 'Hier à 16:45';
+
+  @override
+  String get notifications_settings_desc =>
+      'Personnalisez la fréquence et les canaux de vos alertes académiques.';
+
+  @override
+  String get notif_push_title => 'Notifications push du navigateur';
+
+  @override
+  String get notif_push_desc =>
+      'Rappels en direct des cours magistraux, modifications de salle et dates limites d\'examens.';
+
+  @override
+  String get notif_email_title => 'Notifications par email universitaire';
+
+  @override
+  String get notif_email_desc =>
+      'Synthèses hebdomadaires générées par l\'IA et alertes dès publication des résultats d\'épreuves.';
+
+  @override
+  String get notif_sms_title => 'Alertes SMS d\'urgence académique';
+
+  @override
+  String get notif_sms_desc =>
+      'Transmises uniquement en cas de suspension de cours ou fermeture météorologique exceptionnelle.';
+
+  @override
+  String get notif_ai_mentor_title =>
+      'Recommandations de révision IA personnalisées';
+
+  @override
+  String get notif_ai_mentor_desc =>
+      'Algorithme d\'espacement de répétition basé sur vos résultats récents en algorithmique et IA.';
+
+  @override
+  String get notif_deadlines_title =>
+      'Rappels des échéances de devoirs & examens';
+
+  @override
+  String get notif_deadlines_desc =>
+      'Alertes programmées 24 heures et 2 heures avant chaque remise obligatoire.';
+
+  @override
+  String get notif_quiet_hours_title => 'Heures de silence (Ne pas déranger)';
+
+  @override
+  String get notif_quiet_hours_desc =>
+      'Suspendre toutes les alertes non urgentes entre 22h00 et 07h00.';
+
+  @override
+  String get appearance_desc =>
+      'Ajustez l\'ambiance lumineuse et l\'ergonomie visuelle pour vos sessions d\'étude.';
+
+  @override
+  String get theme_light_title => 'Clair (Défaut)';
+
+  @override
+  String get theme_light_desc => 'Luminosité standard';
+
+  @override
+  String get theme_dark_title => 'Sombre';
+
+  @override
+  String get theme_dark_desc => 'Idéal pour le travail nocturne';
+
+  @override
+  String get theme_system_title => 'Système (Auto)';
+
+  @override
+  String get theme_system_desc => 'Selon l\'OS de l\'appareil';
+
+  @override
+  String get language_title => 'Langue de l\'interface';
+
+  @override
+  String get language_desc =>
+      'Choisissez la langue de travail pour votre espace d\'apprentissage.';
+
+  @override
+  String get lang_french => 'Français (FR)';
+
+  @override
+  String get lang_english => 'English (US)';
+
+  @override
+  String get font_comfort_title => 'Taille de police & Confort visuel';
+
+  @override
+  String get font_comfort_desc =>
+      'Ajuster pour les lectures prolongées d\'articles scientifiques.';
+
+  @override
+  String get font_compact => 'Compact (-10%)';
+
+  @override
+  String get font_standard => 'Standard (100%)';
+
+  @override
+  String get font_large => 'Confort (+15%)';
+
+  @override
+  String get high_contrast_title => 'Mode Contraste Élevé';
+
+  @override
+  String get high_contrast_desc =>
+      'Renforce les bordures et les contrastes pour une meilleure lisibilité.';
+
+  @override
+  String get reduce_animations_title => 'Réduire les animations';
+
+  @override
+  String get reduce_animations_desc =>
+      'Diminue les effets de mouvement et transitions dynamiques.';
+
+  @override
+  String get privacy_gdpr_title =>
+      'Confidentialité & Protection des données (RGPD)';
+
+  @override
+  String get privacy_gdpr_desc =>
+      'Contrôlez vos données personnelles et vos préférences de partage académique selon la loi marocaine 09-08 et le RGPD.';
+
+  @override
+  String get gdpr_badge => 'Conforme RGPD • Hébergement Souverain';
+
+  @override
+  String get data_export_title => 'Exportation de vos données académiques';
+
+  @override
+  String get data_export_desc =>
+      'Téléchargez une copie intégrale de vos informations personnelles, notes, devoirs et historique d\'activités.';
+
+  @override
+  String get download_json_btn => 'Télécharger l\'archive JSON';
+
+  @override
+  String get download_pdf_btn => 'Relevé officiel PDF';
+
+  @override
+  String get privacy_visibility_title => 'Visibilité et partage dans la classe';
+
+  @override
+  String get privacy_visibility_profile =>
+      'Profil visible par les camarades de promotion';
+
+  @override
+  String get privacy_visibility_profile_desc =>
+      'Permet aux étudiants de votre groupe de voir votre prénom et photo dans les projets d\'équipe.';
+
+  @override
+  String get privacy_visibility_ranking =>
+      'Afficher mon rang et classement dans les cours';
+
+  @override
+  String get privacy_visibility_ranking_desc =>
+      'Participer aux classements anonymisés d\'exercices et défis de code.';
+
+  @override
+  String get privacy_share_notes =>
+      'Partager mes synthèses de cours générées par IA';
+
+  @override
+  String get privacy_share_notes_desc =>
+      'Permet de mutualiser vos notes de révision avec votre groupe de TD.';
+
+  @override
+  String get danger_zone_title => 'Zone de gestion critique du compte';
+
+  @override
+  String get danger_freeze_account => 'Geler temporairement mon compte';
+
+  @override
+  String get danger_freeze_desc =>
+      'Désactive temporairement votre accès sans supprimer vos devoirs ni vos notes.';
+
+  @override
+  String get danger_delete_account => 'Supprimer définitivement mon compte';
+
+  @override
+  String get danger_delete_desc =>
+      'Supprime irréversiblement toutes vos données de la plateforme SmartClass (Droit à l\'oubli).';
+
+  @override
+  String get freeze_confirm_title => 'Confirmer la mise en veille';
+
+  @override
+  String get freeze_confirm_desc =>
+      'Votre session sera immédiatement déconnectée. Vous pourrez réactiver votre compte en vous reconnectant.';
+
+  @override
+  String get delete_confirm_title => 'Suppression définitive du compte';
+
+  @override
+  String get delete_confirm_desc =>
+      'Cette action est irréversible. Toutes vos fiches de cours, résultats de quiz et échanges de projet seront effacés.';
+
+  @override
+  String get sessions_devices_title => 'Sessions & Appareils connectés';
+
+  @override
+  String get sessions_devices_desc =>
+      'Consultez et révoquez les appareils actuellement connectés à votre compte étudiant.';
+
+  @override
+  String active_sessions_count(Object count) {
+    return '$count sessions actives';
+  }
+
+  @override
+  String get current_session_badge => 'Session active (Cet appareil)';
+
+  @override
+  String get current_session_desc =>
+      'Microsoft Edge sur Windows 11 • Rabat, Maroc';
+
+  @override
+  String get last_active_now => 'En ligne actuellement';
+
+  @override
+  String get device_mobile_name => 'SmartClass Mobile (Samsung Galaxy S23)';
+
+  @override
+  String get device_mobile_details => 'Application Android 14 • Rabat, Maroc';
+
+  @override
+  String get device_mobile_time => 'Actif il y a 2 heures';
+
+  @override
+  String get device_safari_name => 'Safari sur macOS Sequoia';
+
+  @override
+  String get device_safari_details =>
+      'Navigateur Web • MacBook Pro • Casablanca, Maroc';
+
+  @override
+  String get device_safari_time => 'Actif il y a 3 jours';
+
+  @override
+  String get revoke_session_btn => 'Révoquer';
+
+  @override
+  String get revoke_all_sessions_btn =>
+      'Déconnecter toutes les autres sessions';
+
+  @override
+  String get revoke_all_confirm_title =>
+      'Déconnecter tous les autres appareils ?';
+
+  @override
+  String get revoke_all_confirm_desc =>
+      'Toutes les sessions distantes sur vos téléphones, tablettes ou ordinateurs seront immédiatement closes.';
+
+  @override
+  String get all_sessions_revoked =>
+      'Toutes les autres sessions ont été révoquées avec succès !';
+
+  @override
+  String get last_ent_sync =>
+      'Dernière synchronisation ENT : Aujourd\'hui à 14:32';
+
+  @override
+  String get discard_changes => 'Annuler les modifications';
+
+  @override
+  String get save_changes => 'Enregistrer les modifications';
+
+  @override
+  String get changes_saved_success =>
+      'Modifications enregistrées avec succès !';
+
+  @override
+  String get two_factor_active_badge => '2FA Actif';
+
+  @override
+  String get two_factor_inactive_badge => '2FA Inactif';
+
+  @override
+  String get ai_revision_studio => 'Studio de Révision IA';
+
+  @override
+  String get generate_quiz_action => 'Générer un QCM d\'entraînement';
+
+  @override
+  String get smart_summaries_action => 'Fiches de synthèse intelligentes';
+
+  @override
+  String get ai_tutor_247 => 'Tuteur interactif 24/7';
+
+  @override
+  String get open_catalog_courses =>
+      'Modules en libre accès & Cours recommandés';
+
+  @override
+  String get start_learning => 'Découvrir le cours';
+
+  @override
+  String get explore_catalog => 'Explorer le catalogue';
+
+  @override
+  String get scan_qr_code => 'Scanner un QR code';
+
+  @override
+  String get academic_timetable => 'Emploi du temps académique';
+
+  @override
+  String get homework_due => 'Devoirs à rendre';
+
+  @override
+  String get code_resent => 'Un nouveau code a été envoyé !';
+
+  @override
+  String get error_unexpected => 'Une erreur inattendue est survenue';
+
+  @override
+  String get validate_action => 'Valider';
+
+  @override
+  String get other_connected_devices => 'Autres appareils connectés';
+
+  @override
+  String get current_session_location => 'IP : 196.200.185.42 • Rabat, Maroc';
+
+  @override
+  String get device_windows_edge => 'Microsoft Edge sur Windows 11';
+
+  @override
+  String get security_log_2fa_subtitle =>
+      'Validation par clé temporaire 6 chiffres';
+
+  @override
+  String registered_on(Object date) {
+    return 'Enregistré le $date';
+  }
+
+  @override
+  String get danger_freeze_btn => 'Geler mon compte';
+
+  @override
+  String get freeze_confirm_btn => 'Confirmer la mise en veille';
+
+  @override
+  String get password_strength_weak => 'Force : Faible (minimum 8 caractères)';
+
+  @override
+  String get password_strength_medium => 'Force : Moyenne';
+
+  @override
+  String get password_strength_good => 'Force : Bonne';
+
+  @override
+  String get password_strength_excellent => 'Force : Excellente';
 }

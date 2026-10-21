@@ -13,6 +13,7 @@ import '../../domain/entities/managed_class.dart';
 import '../widgets/admin_filter_chips.dart';
 import '../widgets/admin_search_field.dart';
 import '../views/web_admin_classes_view.dart';
+import '../../../../core/widgets/smart_loader.dart';
 
 class AdminClassesPage extends ConsumerStatefulWidget {
   const AdminClassesPage({super.key});
@@ -42,25 +43,14 @@ class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
   }
 
   void _showComingSoon() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr('feature_coming_soon')),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    context.showInfoToast(context.tr('feature_coming_soon'));
   }
 
   void _showFailure(Object error) {
     final message = error is Failure
         ? context.tr(failureL10n(error).key)
         : context.tr('something_went_wrong');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    context.showErrorToast(message);
   }
 
   Future<void> _confirmArchive(AdminClassSummary cls) async {
@@ -94,12 +84,7 @@ class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
     ref.invalidate(adminClassesProvider);
     ref.invalidate(adminOverviewProvider);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr('admin_archive_done')),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    context.showSuccessToast(context.tr('admin_archive_done'));
   }
 
   void _openClassMenu(AdminClassSummary cls) {
@@ -278,7 +263,11 @@ class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
                     classesAsync.when(
                       loading: () => const Padding(
                         padding: EdgeInsets.symmetric(vertical: 32),
-                        child: Center(child: CircularProgressIndicator()),
+                        child: Center(
+                          child: SmartLoader.medium(
+                            message: 'Chargement des classes...',
+                          ),
+                        ),
                       ),
                       error: (_, _) => _ListError(
                         onRetry: () => ref.invalidate(adminClassesProvider),

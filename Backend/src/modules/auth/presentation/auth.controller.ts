@@ -75,6 +75,19 @@ export class AuthController {
   public login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const result = await this.loginUseCase.execute(req.body);
+
+      const isRememberMe = req.body?.rememberMe === true;
+      const maxAgeMs = (isRememberMe ? 30 : 7) * 24 * 60 * 60 * 1000;
+
+      // Set hardened httpOnly cookie for web browser sessions
+      res.cookie('smartclass_refresh_token', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/api/v1/auth',
+        maxAge: maxAgeMs,
+      });
+
       res.status(200).json({
         data: result,
       });
@@ -85,7 +98,31 @@ export class AuthController {
 
   public refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const result = await this.refreshTokenUseCase.execute(req.body);
+      // 1. Try body refreshToken
+      let refreshToken = req.body?.refreshToken;
+
+      // 2. Fallback to httpOnly cookie if body is omitted or empty
+      if (!refreshToken && req.headers.cookie) {
+        const match = req.headers.cookie.match(/smartclass_refresh_token=([^;]+)/);
+        if (match) {
+          refreshToken = decodeURIComponent(match[1].trim());
+        }
+      }
+
+      if (!refreshToken) {
+        throw new UnauthorizedError('Refresh token is required', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+
+      const result = await this.refreshTokenUseCase.execute({ refreshToken });
+
+      // Rotate the cookie
+      res.cookie('smartclass_refresh_token', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/api/v1/auth',
+      });
+
       res.status(200).json({
         data: result,
       });
@@ -118,9 +155,24 @@ export class AuthController {
 
   public logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const result = await this.logoutUseCase.execute(req.body);
+      let refreshToken = req.body?.refreshToken;
+      if (!refreshToken && req.headers.cookie) {
+        const match = req.headers.cookie.match(/smartclass_refresh_token=([^;]+)/);
+        if (match) {
+          refreshToken = decodeURIComponent(match[1].trim());
+        }
+      }
+
+      if (refreshToken) {
+        await this.logoutUseCase.execute({ refreshToken });
+      }
+
+      res.clearCookie('smartclass_refresh_token', {
+        path: '/api/v1/auth',
+      });
+
       res.status(200).json({
-        data: result,
+        data: { message: 'Logged out successfully.' },
       });
     } catch (err) {
       next(err);

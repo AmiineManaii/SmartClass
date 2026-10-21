@@ -26,6 +26,8 @@ import '../features/courses/presentation/pages/courses_page.dart';
 import '../features/groups/presentation/pages/groups_page.dart';
 import '../features/groups/presentation/pages/class_detail_page.dart';
 import '../features/exams/presentation/pages/exams_page.dart';
+import '../features/exams/presentation/pages/secure_exam_page.dart';
+import '../features/exams/presentation/pages/exam_ai_score_page.dart';
 import '../features/videoconference/presentation/pages/videoconference_page.dart';
 import '../features/collaboration/presentation/pages/collaboration_page.dart'
     as collaboration_page;
@@ -44,6 +46,7 @@ import '../features/admin/presentation/pages/admin_planning_page.dart';
 import '../features/admin/presentation/pages/class_create_page.dart';
 import '../features/admin/presentation/pages/class_students_page.dart';
 import '../features/admin/presentation/pages/class_teachers_page.dart';
+import '../core/widgets/web_main_scaffold.dart';
 
 /// Notifier stable qui force GoRouter à réévaluer `redirect`
 /// sans recréer l'instance (sinon la navigation est réinitialisée).
@@ -63,13 +66,13 @@ final routerProvider = Provider<GoRouter>((ref) {
   final hasSeenSplash = ref.watch(hasSeenSplashProvider);
 
   return GoRouter(
-    initialLocation: '/splash',
+    initialLocation: hasSeenSplash ? '/home' : '/splash',
     debugLogDiagnostics: true,
     refreshListenable: refresh,
     redirect: (context, state) {
       final location = state.matchedLocation;
 
-      // 1. Splash screen obligatoire au premier chargement (cold start ou reload)
+      // 1. Splash screen obligatoire UNIQUEMENT au tout premier lancement de l'application (cold start)
       if (!hasSeenSplash) {
         if (location == '/splash' || location == '/') return null;
         return '/splash';
@@ -195,6 +198,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/ai-quiz',
         name: 'ai-quiz',
         builder: (context, state) => const AiQuizPage(),
+      ),
+      GoRoute(
+        path: '/exams/secure-session',
+        name: 'secure-exam-session',
+        builder: (context, state) => const SecureExamPage(),
+      ),
+      GoRoute(
+        path: '/exams/ai-score',
+        name: 'exam-ai-score',
+        builder: (context, state) => const ExamAiScorePage(),
       ),
       ShellRoute(
         builder: (context, state, child) => MainScaffold(child: child),
@@ -344,9 +357,18 @@ class MainScaffold extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
+    final role = ref.watch(authStateProvider).valueOrNull?.role;
+
+    if (isDesktop && role != 'admin') {
+      return WebMainScaffold(
+        body: child,
+        role: role,
+      );
+    }
+
     return Scaffold(
       body: child,
-      bottomNavigationBar: isDesktop ? null : _BottomNavBar(),
+      bottomNavigationBar: isDesktop ? null : const _BottomNavBar(),
     );
   }
 }
@@ -610,6 +632,11 @@ class AuthState {
   final String? displayName;
   final bool emailVerified;
   final bool onboardingCompleted;
+  final String? institution;
+  final String? faculty;
+  final String? major;
+  final String? studentId;
+  final String? bio;
 
   const AuthState({
     this.isAuthenticated = false,
@@ -619,6 +646,11 @@ class AuthState {
     this.displayName,
     this.emailVerified = false,
     this.onboardingCompleted = false,
+    this.institution,
+    this.faculty,
+    this.major,
+    this.studentId,
+    this.bio,
   });
 
   AuthState copyWith({
@@ -629,6 +661,11 @@ class AuthState {
     String? displayName,
     bool? emailVerified,
     bool? onboardingCompleted,
+    String? institution,
+    String? faculty,
+    String? major,
+    String? studentId,
+    String? bio,
   }) {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
@@ -638,6 +675,11 @@ class AuthState {
       displayName: displayName ?? this.displayName,
       emailVerified: emailVerified ?? this.emailVerified,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
+      institution: institution ?? this.institution,
+      faculty: faculty ?? this.faculty,
+      major: major ?? this.major,
+      studentId: studentId ?? this.studentId,
+      bio: bio ?? this.bio,
     );
   }
 }
@@ -669,8 +711,22 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     onChanged();
   }
 
-  AuthState _fromUser(UserEntity user, {required bool authenticated}) {
+  AuthState _fromUser(
+    UserEntity user, {
+    required bool authenticated,
+    String? institution,
+    String? faculty,
+    String? major,
+    String? studentId,
+    String? bio,
+  }) {
     final currentRole = state.valueOrNull?.role;
+    final currentInst = institution ?? state.valueOrNull?.institution;
+    final currentFaculty = faculty ?? state.valueOrNull?.faculty;
+    final currentMajor = major ?? state.valueOrNull?.major;
+    final currentStudentId = studentId ?? state.valueOrNull?.studentId;
+    final currentBio = bio ?? state.valueOrNull?.bio;
+
     return AuthState(
       isAuthenticated: authenticated,
       userId: user.id.isEmpty ? null : user.id,
@@ -679,20 +735,66 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       displayName: user.displayName.isEmpty ? null : user.displayName,
       emailVerified: user.emailVerified,
       onboardingCompleted: user.onboardingCompleted,
+      institution: currentInst,
+      faculty: currentFaculty,
+      major: currentMajor,
+      studentId: currentStudentId,
+      bio: currentBio,
     );
   }
 
   Future<void> _restoreSession() async {
     final tokens = _ref.read(tokenStorageProvider);
     final refreshToken = await tokens.readRefreshToken();
-    if (refreshToken == null || refreshToken.isEmpty) return;
+    if (refreshToken == null || refreshToken.isEmpty) {
+      // In web environments, the refresh token might be held in a hardened httpOnly cookie.
+      try {
+        final user = await _repo.getMe();
+        final profile = await tokens.readAcademicProfile(user.id.isNotEmpty ? user.id : user.email);
+        _emit(AsyncValue.data(_fromUser(
+          user,
+          authenticated: true,
+          institution: profile['institution'],
+          faculty: profile['faculty'],
+          major: profile['major'],
+          studentId: profile['studentId'],
+          bio: profile['bio'],
+        )));
+      } catch (_) {
+        // No active session cookie
+      }
+      return;
+    }
     try {
       await _repo.refreshSession(refreshToken: refreshToken);
       final user = await _repo.getMe();
-      _emit(AsyncValue.data(_fromUser(user, authenticated: true)));
+      final profile = await tokens.readAcademicProfile(user.id.isNotEmpty ? user.id : user.email);
+      _emit(AsyncValue.data(_fromUser(
+        user,
+        authenticated: true,
+        institution: profile['institution'],
+        faculty: profile['faculty'],
+        major: profile['major'],
+        studentId: profile['studentId'],
+        bio: profile['bio'],
+      )));
     } catch (_) {
-      await tokens.clear();
-      _emit(const AsyncValue.data(AuthState()));
+      try {
+        final user = await _repo.getMe();
+        final profile = await tokens.readAcademicProfile(user.id.isNotEmpty ? user.id : user.email);
+        _emit(AsyncValue.data(_fromUser(
+          user,
+          authenticated: true,
+          institution: profile['institution'],
+          faculty: profile['faculty'],
+          major: profile['major'],
+          studentId: profile['studentId'],
+          bio: profile['bio'],
+        )));
+      } catch (_) {
+        await tokens.clear(keepSavedEmail: true);
+        _emit(const AsyncValue.data(AuthState()));
+      }
     }
   }
 
@@ -701,12 +803,28 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     _emit(const AsyncValue.data(AuthState()));
   }
 
-  Future<void> login(String email, String password) async {
+  Future<void> login(String email, String password, {bool rememberMe = true}) async {
     _ref.read(pendingEmailProvider.notifier).state = email;
     _emit(const AsyncValue.loading());
     try {
-      final session = await _repo.login(email: email, password: password);
-      _emit(AsyncValue.data(_fromUser(session.user, authenticated: true)));
+      final session = await _repo.login(
+        email: email,
+        password: password,
+        rememberMe: rememberMe,
+      );
+      final tokens = _ref.read(tokenStorageProvider);
+      final profile = await tokens.readAcademicProfile(
+        session.user.id.isNotEmpty ? session.user.id : email,
+      );
+      _emit(AsyncValue.data(_fromUser(
+        session.user,
+        authenticated: true,
+        institution: profile['institution'],
+        faculty: profile['faculty'],
+        major: profile['major'],
+        studentId: profile['studentId'],
+        bio: profile['bio'],
+      )));
     } catch (e) {
       _emit(AsyncValue.error(e, StackTrace.current));
       rethrow;
@@ -779,9 +897,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   }
 
   Future<void> logout() async {
+    final tokens = _ref.read(tokenStorageProvider);
+    final refresh = await tokens.readRefreshToken();
     try {
-      await _repo.logout();
+      await _repo.logout(refreshToken: refresh);
     } finally {
+      await tokens.clear(keepSavedEmail: true);
       _emit(const AsyncValue.data(AuthState()));
     }
   }
@@ -844,15 +965,78 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     }
   }
 
-  Future<void> completeProfile() async {
+  Future<void> completeProfile({
+    String? institution,
+    String? faculty,
+    String? major,
+    String? studentId,
+    String? bio,
+  }) async {
     final current = state.value;
     if (current == null || !current.isAuthenticated) return;
+
+    final tokens = _ref.read(tokenStorageProvider);
+    final userKey = current.userId ?? current.email;
+    await tokens.saveAcademicProfile(
+      userIdOrEmail: userKey,
+      institution: institution,
+      faculty: faculty,
+      major: major,
+      studentId: studentId,
+      bio: bio,
+    );
+
     try {
       final user = await _repo.updateProfile(onboardingCompleted: true);
-      _emit(AsyncValue.data(_fromUser(user, authenticated: true)));
+      _emit(AsyncValue.data(_fromUser(
+        user,
+        authenticated: true,
+        institution: institution ?? current.institution,
+        faculty: faculty ?? current.faculty,
+        major: major ?? current.major,
+        studentId: studentId ?? current.studentId,
+        bio: bio ?? current.bio,
+      )));
     } catch (_) {
       // Offline-tolerant onboarding: validated locally, synced later.
-      _emit(AsyncValue.data(current.copyWith(onboardingCompleted: true)));
+      _emit(AsyncValue.data(current.copyWith(
+        onboardingCompleted: true,
+        institution: institution ?? current.institution,
+        faculty: faculty ?? current.faculty,
+        major: major ?? current.major,
+        studentId: studentId ?? current.studentId,
+        bio: bio ?? current.bio,
+      )));
     }
+  }
+
+  Future<void> updateAcademicProfile({
+    String? institution,
+    String? faculty,
+    String? major,
+    String? studentId,
+    String? bio,
+  }) async {
+    final current = state.value;
+    if (current == null) return;
+
+    final tokens = _ref.read(tokenStorageProvider);
+    final userKey = current.userId ?? current.email;
+    await tokens.saveAcademicProfile(
+      userIdOrEmail: userKey,
+      institution: institution,
+      faculty: faculty,
+      major: major,
+      studentId: studentId,
+      bio: bio,
+    );
+
+    _emit(AsyncValue.data(current.copyWith(
+      institution: institution ?? current.institution,
+      faculty: faculty ?? current.faculty,
+      major: major ?? current.major,
+      studentId: studentId ?? current.studentId,
+      bio: bio ?? current.bio,
+    )));
   }
 }

@@ -546,9 +546,7 @@ class _CreateSessionSheetState extends ConsumerState<_CreateSessionSheet> {
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
                             Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Session programmée')),
-                            );
+                            context.showSuccessToast('Session programmée');
                           }
                         },
                       ),

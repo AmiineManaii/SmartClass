@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:smartclass/app/app.dart';
+import 'package:smartclass/app/app_providers.dart';
 import 'package:smartclass/core/localization/app_localizations.dart';
 import 'package:smartclass/features/home/presentation/widgets/student_dashboard_view.dart';
 import 'package:smartclass/features/ai_assistant/presentation/pages/ai_revision_page.dart';
@@ -47,6 +48,7 @@ void main() {
     tester.view.physicalSize = const Size(320, 640);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
       const ProviderScope(
@@ -66,6 +68,11 @@ void main() {
   });
 
   testWidgets('StudentDashboardView renders top bar, logo, and sections cleanly', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(375, 812);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(
@@ -86,6 +93,11 @@ void main() {
   });
 
   testWidgets('StudentDashboardView renders cleanly in English (en)', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(375, 812);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(
@@ -271,5 +283,144 @@ void main() {
     expect(find.byType(SplashPage), findsOneWidget);
     expect(find.text('Smart'), findsOneWidget);
     expect(find.text('Class'), findsOneWidget);
+  });
+
+  testWidgets('SplashPage renders cleanly in English (en) with Light and Dark mode', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    // Light mode test
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: Locale('en'),
+          themeMode: ThemeMode.light,
+          home: SplashPage(),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byType(SplashPage), findsOneWidget);
+    expect(find.text('Smart'), findsOneWidget);
+    expect(find.text('Class'), findsOneWidget);
+    expect(find.text('Skip'), findsOneWidget);
+    expect(find.text('AI-Powered Academic Ecosystem'), findsOneWidget);
+
+    // Dark mode test
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          theme: ThemeData.dark(),
+          themeMode: ThemeMode.dark,
+          home: const SplashPage(),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byType(SplashPage), findsOneWidget);
+    expect(find.text('Smart'), findsOneWidget);
+    expect(find.text('Skip'), findsOneWidget);
+  });
+
+  testWidgets('SplashPage renders cleanly on desktop viewport in both French and English', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    // French Desktop
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: Locale('fr'),
+          home: SplashPage(),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byType(SplashPage), findsOneWidget);
+    expect(find.text('SmartClass 4.0 • IA Pédagogique'), findsOneWidget);
+    expect(find.text('Ignorer'), findsOneWidget);
+    expect(find.text("Écosystème Éducatif Augmenté par l'IA"), findsOneWidget);
+
+    // English Desktop
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: Locale('en'),
+          home: SplashPage(),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byType(SplashPage), findsOneWidget);
+    expect(find.text('SmartClass 4.0 • Pedagogical AI'), findsOneWidget);
+    expect(find.text('Skip'), findsOneWidget);
+    expect(find.text('AI-Powered Academic Ecosystem'), findsOneWidget);
+  });
+
+  testWidgets('SplashPage dynamically switches language and theme via controls', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: Consumer(
+          builder: (context, ref, child) {
+            final locale = ref.watch(localeProvider);
+            final themeMode = ref.watch(themeModeProvider);
+            return MaterialApp(
+              key: ValueKey(themeMode),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              locale: Locale(locale),
+              theme: ThemeData.light(),
+              darkTheme: ThemeData.dark(),
+              themeMode: themeMode,
+              home: const SplashPage(),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // Initially in French (default)
+    expect(find.text('SmartClass 4.0 • IA Pédagogique'), findsOneWidget);
+    expect(find.text("Écosystème Éducatif Augmenté par l'IA"), findsOneWidget);
+
+    // Tap EN in WebLanguageSwitcher
+    final enButton = find.text('EN');
+    expect(enButton, findsOneWidget);
+    await tester.tap(enButton);
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // Now in English
+    expect(find.text('SmartClass 4.0 • Pedagogical AI'), findsOneWidget);
+    expect(find.text('AI-Powered Academic Ecosystem'), findsOneWidget);
+
+    // Tap Dark mode toggle
+    final darkModeIcon = find.byIcon(Icons.dark_mode_rounded);
+    expect(darkModeIcon, findsOneWidget);
+    await tester.tap(darkModeIcon);
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // Verify dark theme applied
+    final elementContext = tester.element(find.byType(SplashPage));
+    expect(Theme.of(elementContext).brightness, Brightness.dark);
   });
 }

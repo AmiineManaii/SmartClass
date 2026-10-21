@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../widgets/web_admin_scaffold.dart';
 
@@ -1101,13 +1102,8 @@ class _WebAdminReportsPageState extends ConsumerState<WebAdminReportsPage> {
                         // Sanction Button
                         ElevatedButton.icon(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                backgroundColor: AppTheme.error,
-                                content: Text(
-                                  'Sanction appliquée : Note 0/20 & Épreuve annulée.',
-                                ),
-                              ),
+                            context.showErrorToast(
+                              'Sanction appliquée : Note 0/20 & Épreuve annulée.',
                             );
                           },
                           icon: const Icon(Icons.cancel_outlined,

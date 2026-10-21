@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'smart_loader.dart';
 
 enum AppButtonVariant {
   primary,
@@ -40,15 +41,9 @@ class AppButton extends StatelessWidget {
     );
     
     Widget child = isLoading
-        ? SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                _getForegroundColor(colorScheme),
-              ),
-            ),
+        ? SmartLoader.small(
+            color: _getForegroundColor(colorScheme),
+            customSize: 22,
           )
         : Row(
             mainAxisSize: MainAxisSize.min,

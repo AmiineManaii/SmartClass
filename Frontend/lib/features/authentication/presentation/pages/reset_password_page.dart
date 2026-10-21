@@ -72,15 +72,11 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
     if (_state != _ResetState.idle) return;
     final password = _newController.text;
     if (scoreOf(password) < 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('required_field'))),
-      );
+      context.showWarningToast(context.tr('required_field'));
       return;
     }
     if (!_matches) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('passwords_dont_match'))),
-      );
+      context.showWarningToast(context.tr('passwords_dont_match'));
       return;
     }
     final reset = _resetContext();
@@ -88,9 +84,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
     final code = reset['code'] ?? '';
     if (email.isEmpty || code.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('session_expired'))),
-      );
+      context.showErrorToast(context.tr('session_expired'));
       context.go('/forgot-password');
       return;
     }
@@ -105,9 +99,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
       if (!mounted) return;
       setState(() => _state = _ResetState.idle);
       final l10n = failureL10n(failure);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
-      );
+      context.showErrorToast(context.tr(l10n.key, args: l10n.args));
       return;
     }
     if (!mounted) return;

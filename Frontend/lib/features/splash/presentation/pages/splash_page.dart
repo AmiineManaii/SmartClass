@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../../app/app_providers.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/web_controls_bar.dart';
 
 import '../widgets/web_splash_view.dart';
 
@@ -143,9 +146,14 @@ class _SplashPageState extends ConsumerState<SplashPage>
     if (_isNavigatingAway || !mounted) return;
     _isNavigatingAway = true;
 
-    _exitController.forward().then((_) {
+    _exitController.forward().then((_) async {
       if (!mounted) return;
       ref.read(hasSeenSplashProvider.notifier).state = true;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('has_seen_splash', true);
+      } catch (_) {}
+      if (!mounted) return;
       final auth = ref.read(authStateProvider).valueOrNull;
       final isLoggedIn = auth?.isAuthenticated ?? false;
       final completed = auth?.onboardingCompleted ?? false;
@@ -251,49 +259,56 @@ class _SplashPageState extends ConsumerState<SplashPage>
                       ),
                     ),
 
-                    // 2. Bouton "Passer" sobre
+                    // 2. Barre supérieure sobre (Contrôles Thème / Langue + Bouton Passer)
                     Positioned(
-                      top: MediaQuery.paddingOf(context).top + 16,
-                      right: 20,
+                      top: MediaQuery.paddingOf(context).top + 12,
+                      left: 16,
+                      right: 16,
                       child: FadeTransition(
                         opacity: _taglineFade,
-                        child: TextButton(
-                          onPressed: _completeAndNavigate,
-                          style: TextButton.styleFrom(
-                            foregroundColor: primaryTextColor.withValues(alpha: 0.6),
-                            backgroundColor: isDark
-                                ? Colors.white.withValues(alpha: 0.06)
-                                : Colors.black.withValues(alpha: 0.04),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              side: BorderSide(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.1)
-                                    : Colors.black.withValues(alpha: 0.08),
-                              ),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                context.tr('skip'),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: primaryTextColor.withValues(alpha: 0.65),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const WebControlsBar(),
+                            TextButton(
+                              onPressed: _completeAndNavigate,
+                              style: TextButton.styleFrom(
+                                foregroundColor: primaryTextColor.withValues(alpha: 0.6),
+                                backgroundColor: isDark
+                                    ? Colors.white.withValues(alpha: 0.06)
+                                    : Colors.black.withValues(alpha: 0.04),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 6),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                  side: BorderSide(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.1)
+                                        : Colors.black.withValues(alpha: 0.08),
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                size: 10,
-                                color: primaryTextColor.withValues(alpha: 0.65),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    context.tr('skip'),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryTextColor.withValues(alpha: 0.65),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.arrow_forward_ios_rounded,
+                                    size: 10,
+                                    color: primaryTextColor.withValues(alpha: 0.65),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -350,7 +365,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
                                             errorBuilder: (context, error, stackTrace) => Icon(
                                               Icons.school_rounded,
                                               size: 72,
-                                              color: navyDeep,
+                                              color: isDark ? accentTeal : navyDeep,
                                             ),
                                           ),
                                         ),
@@ -519,12 +534,13 @@ class _SplashPageState extends ConsumerState<SplashPage>
                         opacity: _taglineFade,
                         child: Center(
                           child: Text(
-                            "SmartClass Platform • v1.0",
+                            context.tr('splash_footer'),
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                               letterSpacing: 0.3,
-                              color: primaryTextColor.withValues(alpha: 0.35),
+                              color: primaryTextColor.withValues(alpha: 0.5),
                             ),
                           ),
                         ),

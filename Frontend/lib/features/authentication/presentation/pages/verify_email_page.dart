@@ -108,23 +108,17 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
     final l10n = failureL10n(failure);
     final translated = context.tr(l10n.key, args: l10n.args);
     final message = (translated == l10n.key || translated.isEmpty) ? failure.message : translated;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    context.showErrorToast(message);
   }
 
   Future<void> _verify() async {
     if (!_isComplete) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('required_field'))),
-      );
+      context.showWarningToast(context.tr('required_field'));
       return;
     }
     final email = _getResolvedEmail(false);
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('invalid_email'))),
-      );
+      context.showErrorToast(context.tr('invalid_email'));
       return;
     }
     try {
@@ -142,9 +136,7 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
   Future<void> _resend() async {
     final email = _getResolvedEmail(false);
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('invalid_email'))),
-      );
+      context.showErrorToast(context.tr('invalid_email'));
       return;
     }
     try {
@@ -154,9 +146,7 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
       return;
     }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.tr('verification_sent'))),
-    );
+    context.showSuccessToast(context.tr('verification_sent'));
     _startCountdown();
   }
 

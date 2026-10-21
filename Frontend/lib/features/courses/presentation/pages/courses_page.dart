@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_providers.dart';
 import '../../../../core/error/failure_localization.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/smart_loader.dart';
 import '../../application/providers/courses_provider.dart';
 import '../../application/providers/course_generation_job_provider.dart';
 import '../../domain/entities/course_entry.dart';
@@ -37,12 +39,7 @@ class CoursesPage extends ConsumerWidget {
             onPressed: () {
               // Server-side course search needs the courses module
               // (📋 planned): honest "coming soon" until then.
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(context.tr('feature_coming_soon')),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              context.showInfoToast(context.tr('feature_coming_soon'));
             },
             tooltip: context.tr('search'),
           ),
@@ -125,7 +122,7 @@ class CoursesPage extends ConsumerWidget {
         loading: () => const Center(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
-            child: CircularProgressIndicator(),
+            child: SmartLoader.medium(message: 'Chargement des cours...'),
           ),
         ),
         error: (_, _) => jobBanner,
@@ -149,7 +146,7 @@ class CoursesPage extends ConsumerWidget {
       loading: () => const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 24),
-          child: CircularProgressIndicator(),
+          child: SmartLoader.medium(message: 'Chargement des cours publiés...'),
         ),
       ),
       error: (_, _) => const SizedBox.shrink(),
@@ -190,7 +187,9 @@ class CoursesPage extends ConsumerWidget {
     return coursesAsync.when(
       loading: () => const Padding(
         padding: EdgeInsets.symmetric(vertical: 48),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(
+          child: SmartLoader.medium(message: 'Chargement de vos cours...'),
+        ),
       ),
       error: (error, _) => _ErrorState(
         onRetry: () => ref.invalidate(myCoursesProvider),
@@ -467,12 +466,7 @@ class _GeneratedCourseCard extends ConsumerWidget {
         ? apiExceptionToFailure(error)
         : error as Failure;
     final l10n = failureL10n(failure);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr(l10n.key, args: l10n.args)),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    context.showErrorToast(context.tr(l10n.key, args: l10n.args));
   }
 
   Future<void> _validate(BuildContext context, WidgetRef ref) async {
@@ -482,12 +476,7 @@ class _GeneratedCourseCard extends ConsumerWidget {
         ..invalidate(myGeneratedCoursesProvider)
         ..invalidate(publishedCoursesProvider);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('published')),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      context.showSuccessToast(context.tr('published'));
     } catch (e) {
       if (!context.mounted) return;
       _showFailure(context, e);
@@ -519,12 +508,7 @@ class _GeneratedCourseCard extends ConsumerWidget {
         ..invalidate(myGeneratedCoursesProvider)
         ..invalidate(publishedCoursesProvider);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('course_deleted')),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      context.showInfoToast(context.tr('course_deleted'));
     } catch (e) {
       if (!context.mounted) return;
       _showFailure(context, e);
@@ -649,15 +633,9 @@ class _RunningJobBanner extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                colorScheme.onSecondaryContainer,
-              ),
-            ),
+          SmartLoader.small(
+            customSize: 18,
+            color: colorScheme.onSecondaryContainer,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -837,9 +815,7 @@ class _CreateCourseSheetState extends ConsumerState<_CreateCourseSheet> {
   void _createCourse() {
     if (_formKey.currentState!.validate()) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('course_created'))),
-      );
+      context.showSuccessToast(context.tr('course_created'));
     }
   }
 }

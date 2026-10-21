@@ -46,6 +46,7 @@ export const loginSchema = z
   .object({
     email: z.string().trim().email('Invalid email address'),
     password: z.string().min(1, 'Password is required'),
+    rememberMe: z.boolean().optional().default(false),
   })
   .strict();
 
@@ -74,7 +75,7 @@ export const checkEmailSchema = z
 
 export const refreshTokenSchema = z
   .object({
-    refreshToken: z.string().trim().min(10, 'Invalid refresh token format'),
+    refreshToken: z.string().trim().min(10, 'Invalid refresh token format').optional(),
   })
   .strict();
 

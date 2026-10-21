@@ -12,6 +12,7 @@ import '../../domain/entities/managed_class.dart';
 import '../widgets/admin_person_avatar.dart';
 import '../widgets/admin_search_field.dart';
 import '../views/web_admin_users_view.dart';
+import '../../../../core/widgets/smart_loader.dart';
 
 /// Global student directory (GET /api/v1/users?role=STUDENT) with
 /// enrolment into a class (class picker → real POST).
@@ -37,9 +38,7 @@ class _AdminStudentsPageState extends ConsumerState<AdminStudentsPage> {
     final message = error is Failure
         ? context.tr(failureL10n(error).key)
         : context.tr('something_went_wrong');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
+    context.showErrorToast(message);
   }
 
   Future<void> _assign(AdminStudent student) async {
@@ -54,12 +53,7 @@ class _AdminStudentsPageState extends ConsumerState<AdminStudentsPage> {
           .classMemberIds(classId);
       if (memberIds.contains(student.id)) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.tr('admin_already_in_class')),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        context.showWarningToast(context.tr('admin_already_in_class'));
         return;
       }
     } catch (e) {
@@ -84,12 +78,7 @@ class _AdminStudentsPageState extends ConsumerState<AdminStudentsPage> {
     ref.invalidate(adminOverviewProvider);
     if (!mounted) return;
     setState(() => _assigning = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr('success')),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    context.showSuccessToast(context.tr('success'));
   }
 
   Future<String?> _pickClass() async {
@@ -99,16 +88,12 @@ class _AdminStudentsPageState extends ConsumerState<AdminStudentsPage> {
     } on Failure catch (failure) {
       if (!mounted) return null;
       final l10n = failureL10n(failure);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
-      );
+      context.showErrorToast(context.tr(l10n.key, args: l10n.args));
       return null;
     }
     if (!mounted) return null;
     if (classes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('admin_no_classes'))),
-      );
+      context.showInfoToast(context.tr('admin_no_classes'));
       return null;
     }
     return showModalBottomSheet<String>(
@@ -230,7 +215,11 @@ class _AdminStudentsPageState extends ConsumerState<AdminStudentsPage> {
                     studentsAsync.when(
                       loading: () => const Padding(
                         padding: EdgeInsets.symmetric(vertical: 32),
-                        child: Center(child: CircularProgressIndicator()),
+                        child: Center(
+                          child: SmartLoader.medium(
+                            message: 'Chargement des étudiants...',
+                          ),
+                        ),
                       ),
                       error: (_, _) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 24),

@@ -37,16 +37,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   void _showFailure(Failure failure) {
     final l10n = failureL10n(failure);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.tr(l10n.key, args: l10n.args))),
-    );
+    context.showErrorToast(context.tr(l10n.key, args: l10n.args));
   }
 
   /// No OAuth endpoint exists yet (`contracts/README.md` → planned).
   void _showOAuthUnavailable() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.tr('feature_coming_soon'))),
-    );
+    context.showInfoToast(context.tr('feature_coming_soon'));
   }
 
   Future<void> _handleLogin() async {
@@ -65,9 +61,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           await ref.read(authStateProvider.notifier).resendVerification(email: email);
         } catch (_) {}
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('verification_sent'))),
-        );
+        context.showSuccessToast(context.tr('verification_sent'));
         context.go('/verify-email?email=${Uri.encodeComponent(email)}');
         return;
       }

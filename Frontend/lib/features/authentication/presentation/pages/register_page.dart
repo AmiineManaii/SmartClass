@@ -81,9 +81,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     if (!_formKey.currentState!.validate()) return;
     if (!_acceptTerms) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('required_field'))),
-        );
+        context.showWarningToast(context.tr('required_field'));
       }
       return;
     }
@@ -112,9 +110,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         try {
           await ref.read(authStateProvider.notifier).resendVerification(email: email);
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(context.tr('verification_sent'))),
-            );
+            context.showSuccessToast(context.tr('verification_sent'));
             context.go('/verify-email?email=${Uri.encodeComponent(email)}');
             return;
           }
@@ -133,9 +129,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             ? failure.message
             : translated;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      context.showErrorToast(message);
       return;
     }
 

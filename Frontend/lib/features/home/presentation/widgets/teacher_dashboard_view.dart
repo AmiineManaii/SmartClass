@@ -11,6 +11,7 @@ import '../../domain/entities/teacher_dashboard.dart';
 import '../../../groups/presentation/widgets/class_invitation_sheet.dart';
 import 'ai_create_banner.dart';
 import 'teacher_greeting_header.dart';
+import '../../../../core/widgets/smart_loader.dart';
 
 /// Teacher home, fed only by the real API ([teacherDashboardProvider]:
 /// own classes from `GET /groups/mine`, next session from their
@@ -26,6 +27,8 @@ class TeacherDashboardView extends ConsumerWidget {
     final user = ref.watch(authStateProvider).valueOrNull;
     final dashboardAsync = ref.watch(teacherDashboardProvider);
 
+    final isDesktop = context.screenWidth >= 1024;
+
     return Scaffold(
       backgroundColor: colorScheme.surface,
       body: SafeArea(
@@ -35,23 +38,29 @@ class TeacherDashboardView extends ConsumerWidget {
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.symmetric(
-              horizontal: context.screenWidth >= 600 ? 32 : 20,
-              vertical: 8,
+              horizontal: isDesktop ? 36 : (context.screenWidth >= 600 ? 32 : 20),
+              vertical: isDesktop ? 24 : 8,
             ),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
+                constraints: BoxConstraints(maxWidth: isDesktop ? 1400 : 640),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _TopTitleRow(),
-                    const SizedBox(height: 16),
+                    if (!isDesktop) ...[
+                      _TopTitleRow(),
+                      const SizedBox(height: 16),
+                    ],
                     TeacherGreetingHeader(user: user),
                     const SizedBox(height: 16),
                     dashboardAsync.when(
                       loading: () => const Padding(
                         padding: EdgeInsets.symmetric(vertical: 48),
-                        child: Center(child: CircularProgressIndicator()),
+                        child: Center(
+                          child: SmartLoader.medium(
+                            message: 'Chargement de votre tableau de bord...',
+                          ),
+                        ),
                       ),
                       error: (_, _) => _DashboardError(
                         onRetry: () =>
@@ -210,20 +219,10 @@ class _DashboardBody extends ConsumerWidget {
                 );
                 ref.invalidate(teacherDashboardProvider);
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Classe virtuelle créée avec succès !'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                context.showSuccessToast('Classe virtuelle créée avec succès !');
               } catch (e) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(e.toString()),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                context.showErrorToast(e.toString());
               }
             },
             child: const Text('Créer'),

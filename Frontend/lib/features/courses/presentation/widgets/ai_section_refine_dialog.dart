@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../application/providers/ai_course_options_provider.dart';
@@ -172,12 +173,7 @@ class _AiSectionRefineDialogState extends ConsumerState<AiSectionRefineDialog> {
       await widget.onApply(original, revised);
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('ai_refine_success')),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      context.showSuccessToast(context.tr('ai_refine_success'));
     } catch (e) {
       if (!mounted) return;
       setState(() {

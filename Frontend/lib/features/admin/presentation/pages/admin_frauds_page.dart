@@ -11,6 +11,7 @@ import '../../application/providers/admin_providers.dart';
 import '../../domain/entities/fraud_report.dart';
 import '../widgets/admin_filter_chips.dart';
 import '../views/web_admin_reports_view.dart';
+import '../../../../core/widgets/smart_loader.dart';
 
 class AdminFraudsPage extends ConsumerStatefulWidget {
   const AdminFraudsPage({super.key});
@@ -23,22 +24,14 @@ class _AdminFraudsPageState extends ConsumerState<AdminFraudsPage> {
   String _filter = 'all';
 
   void _comingSoon() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr('feature_coming_soon')),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    context.showInfoToast(context.tr('feature_coming_soon'));
   }
 
   void _showFailure(Object error) {
     final message = error is Failure
         ? context.tr(failureL10n(error).key)
         : context.tr('something_went_wrong');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
+    context.showErrorToast(message);
   }
 
   String? _apiStatus(String filter) {
@@ -196,7 +189,11 @@ class _AdminFraudsPageState extends ConsumerState<AdminFraudsPage> {
                     reportsAsync.when(
                       loading: () => const Padding(
                         padding: EdgeInsets.symmetric(vertical: 48),
-                        child: Center(child: CircularProgressIndicator()),
+                        child: Center(
+                          child: SmartLoader.medium(
+                            message: 'Chargement des rapports...',
+                          ),
+                        ),
                       ),
                       error: (_, _) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 32),
@@ -471,10 +468,8 @@ class _ReportsBody extends StatelessWidget {
           OutlinedButton(
             onPressed: loadingMore ? null : onLoadMore,
             child: loadingMore
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                ? const SmartLoader.small(
+                    customSize: 20,
                   )
                 : Text(context.tr('admin_load_more')),
           ),
