@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/app_providers.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -11,11 +12,14 @@ class VideoconferencePage extends ConsumerWidget {
   
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final role = ref.watch(authStateProvider).valueOrNull?.role?.toLowerCase();
+    final isTeacher = role == 'teacher' || role == 'admin';
+
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(context.tr('videoconference')),
+          title: Text(isTeacher ? context.tr('nav_live_meetings') : context.tr('videoconference')),
           bottom: TabBar(
             tabs: [
               Tab(text: context.tr('live_sessions')),
@@ -24,25 +28,26 @@ class VideoconferencePage extends ConsumerWidget {
             ],
           ),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.add_rounded),
-              onPressed: () => _showCreateSessionDialog(context),
-              tooltip: context.tr('start_session'),
-            ),
+            if (isTeacher)
+              IconButton(
+                icon: const Icon(Icons.add_rounded),
+                onPressed: () => _showCreateSessionDialog(context),
+                tooltip: context.tr('start_session'),
+              ),
           ],
         ),
         body: TabBarView(
           children: [
-            _buildSessionList(context, 'live'),
-            _buildSessionList(context, 'scheduled'),
-            _buildSessionList(context, 'past'),
+            _buildSessionList(context, 'live', isTeacher),
+            _buildSessionList(context, 'scheduled', isTeacher),
+            _buildSessionList(context, 'past', isTeacher),
           ],
         ),
       ),
     );
   }
   
-  Widget _buildSessionList(BuildContext context, String filter) {
+  Widget _buildSessionList(BuildContext context, String filter, bool isTeacher) {
     final sessions = filter == 'live'
         ? [
             {'title': 'Introduction à la POO', 'teacher': 'Prof. Martin', 'participants': 24, 'isLive': true, 'group': 'L3 Info - Groupe A'},
@@ -58,7 +63,7 @@ class VideoconferencePage extends ConsumerWidget {
           ];
     
     if (sessions.isEmpty) {
-      return _buildEmptyState(context, filter);
+      return _buildEmptyState(context, filter, isTeacher);
     }
     
     return ListView.separated(
@@ -343,7 +348,7 @@ class VideoconferencePage extends ConsumerWidget {
     );
   }
   
-  Widget _buildEmptyState(BuildContext context, String filter) {
+  Widget _buildEmptyState(BuildContext context, String filter, bool isTeacher) {
     String message;
     IconData icon;
     
@@ -379,12 +384,26 @@ class VideoconferencePage extends ConsumerWidget {
               ),
             ),
             if (filter != 'past') ...[
-              const SizedBox(height: 24),
-              AppButton(
-                text: filter == 'live' ? 'Démarrer une session' : 'Programmer une session',
-                onPressed: () => _showCreateSessionDialog(context),
-                isFullWidth: false,
-              ),
+              const SizedBox(height: 16),
+              if (isTeacher)
+                AppButton(
+                  text: filter == 'live' ? 'Démarrer une session' : 'Programmer une session',
+                  onPressed: () => _showCreateSessionDialog(context),
+                  isFullWidth: false,
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    filter == 'live'
+                        ? 'Aucun cours en direct pour vos classes actuellement.'
+                        : 'Les prochaines visioconférences planifiées par vos enseignants apparaîtront ici.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
             ],
           ],
         ),

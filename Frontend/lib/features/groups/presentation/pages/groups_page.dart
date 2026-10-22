@@ -17,12 +17,15 @@ class GroupsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateProvider).valueOrNull;
-    final isTeacherOrAdmin = user?.role == 'TEACHER' || user?.role == 'ADMIN';
-    final isStudent = user?.role == 'STUDENT';
+    final role = user?.role?.toLowerCase() ?? 'student';
+    final isTeacher = role == 'teacher';
+    final isAdmin = role == 'admin';
+    final isStudent = role == 'student';
+    final isTeacherOrAdmin = isTeacher || isAdmin;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.tr('my_groups')),
+        title: Text(isTeacher ? context.tr('nav_my_classes') : context.tr('my_groups')),
         actions: [
           if (isTeacherOrAdmin)
             IconButton(
@@ -30,19 +33,25 @@ class GroupsPage extends ConsumerWidget {
               onPressed: () => _showCreateGroupDialog(context, ref),
               tooltip: context.tr('create_group'),
             ),
-          if (isStudent || isTeacherOrAdmin)
-            IconButton(
-              icon: const Icon(Icons.login_rounded),
-              onPressed: () => _showJoinGroupDialog(context, ref),
-              tooltip: context.tr('join_group'),
-            ),
+          IconButton(
+            icon: const Icon(Icons.login_rounded),
+            onPressed: () => _showJoinGroupDialog(context, ref),
+            tooltip: context.tr('join_group'),
+          ),
         ],
       ),
-      body: _buildBody(context, ref, user),
+      body: _buildBody(context, ref, user, isTeacherOrAdmin, isStudent, isAdmin),
     );
   }
 
-  Widget _buildBody(BuildContext context, WidgetRef ref, dynamic user) {
+  Widget _buildBody(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic user,
+    bool isTeacherOrAdmin,
+    bool isStudent,
+    bool isAdmin,
+  ) {
     final groupsAsync = ref.watch(myGroupsProvider);
 
     return RefreshIndicator(
@@ -89,8 +98,6 @@ class GroupsPage extends ConsumerWidget {
         ),
         data: (groups) {
           if (groups.isEmpty) {
-            final isTeacherOrAdmin =
-                user?.role == 'TEACHER' || user?.role == 'ADMIN';
             return _buildEmptyState(context, ref, isTeacherOrAdmin);
           }
 
@@ -111,8 +118,8 @@ class GroupsPage extends ConsumerWidget {
                   : 'Étudiant';
               final canInvite = myRole == 'TEACHER' ||
                   myRole == 'REFERENT' ||
-                  user?.role == 'ADMIN';
-              final canLeave = myRole == 'STUDENT';
+                  isAdmin;
+              final canLeave = myRole == 'STUDENT' || isStudent;
 
               return AppGroupCard(
                 name: groupName,

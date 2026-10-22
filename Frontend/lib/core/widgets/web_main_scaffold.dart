@@ -30,10 +30,12 @@ class WebMainScaffold extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateProvider).valueOrNull;
-    final currentRole = role ?? user?.role ?? 'student';
+    final currentRole = (role ?? user?.role ?? 'student').toLowerCase();
+    final isTeacher = currentRole == 'teacher';
+    final isAdmin = currentRole == 'admin';
     final displayName = user?.displayName?.trim().isNotEmpty == true
         ? user!.displayName!.trim()
-        : (currentRole == 'teacher' ? 'Professeur' : 'Étudiant');
+        : (isAdmin ? 'Administrateur' : (isTeacher ? 'Professeur' : 'Étudiant'));
     final email = user?.email?.trim() ?? '';
     final institution = user?.institution?.trim() ?? '';
 
@@ -47,7 +49,6 @@ class WebMainScaffold extends ConsumerWidget {
       }
     }
 
-    final isTeacher = currentRole == 'teacher';
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isCollapsed = ref.watch(webSidebarCollapsedProvider);
 
@@ -261,22 +262,40 @@ class WebMainScaffold extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            isTeacher
-                                ? Icons.co_present_rounded
-                                : Icons.school_rounded,
+                            isAdmin
+                                ? Icons.admin_panel_settings_rounded
+                                : (isTeacher
+                                    ? Icons.co_present_rounded
+                                    : Icons.school_rounded),
                             color: isDark
-                                ? const Color(0xFF83F8CD)
-                                : const Color(0xFF2563EB),
+                                ? (isAdmin
+                                    ? const Color(0xFFFBBF24)
+                                    : (isTeacher
+                                        ? const Color(0xFF83F8CD)
+                                        : const Color(0xFF93C5FD)))
+                                : (isAdmin
+                                    ? const Color(0xFFD97706)
+                                    : (isTeacher
+                                        ? const Color(0xFF7C3AED)
+                                        : const Color(0xFF2563EB))),
                             size: 14,
                           ),
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              isTeacher ? 'ESPACE ENSEIGNANT' : 'PORTAIL ÉTUDIANT',
+                              isAdmin
+                                  ? 'CONSOLE D\'ADMINISTRATION'
+                                  : (isTeacher
+                                      ? 'ESPACE ENSEIGNANT'
+                                      : 'PORTAIL ÉTUDIANT'),
                               style: TextStyle(
                                 color: isDark
                                     ? Colors.white
-                                    : const Color(0xFF1E40AF),
+                                    : (isAdmin
+                                        ? const Color(0xFF92400E)
+                                        : (isTeacher
+                                            ? const Color(0xFF6D28D9)
+                                            : const Color(0xFF1E40AF))),
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.8,
@@ -292,7 +311,9 @@ class WebMainScaffold extends ConsumerWidget {
                   Center(
                     child: Tooltip(
                       message: context.tr(
-                        isTeacher ? 'teacher_portal' : 'student_portal',
+                        isAdmin
+                            ? 'role_admin'
+                            : (isTeacher ? 'teacher_portal' : 'student_portal'),
                       ),
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 8),
@@ -300,16 +321,28 @@ class WebMainScaffold extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: isDark
                               ? Colors.white.withValues(alpha: 0.06)
-                              : const Color(0xFFEEF2FF),
+                              : (isAdmin
+                                  ? const Color(0xFFFEF3C7)
+                                  : const Color(0xFFEEF2FF)),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          isTeacher
-                              ? Icons.co_present_rounded
-                              : Icons.school_rounded,
+                          isAdmin
+                              ? Icons.admin_panel_settings_rounded
+                              : (isTeacher
+                                  ? Icons.co_present_rounded
+                                  : Icons.school_rounded),
                           color: isDark
-                              ? const Color(0xFF83F8CD)
-                              : const Color(0xFF2563EB),
+                              ? (isAdmin
+                                  ? const Color(0xFFFBBF24)
+                                  : (isTeacher
+                                      ? const Color(0xFF83F8CD)
+                                      : const Color(0xFF93C5FD)))
+                              : (isAdmin
+                                  ? const Color(0xFFD97706)
+                                  : (isTeacher
+                                      ? const Color(0xFF7C3AED)
+                                      : const Color(0xFF2563EB))),
                           size: 16,
                         ),
                       ),
@@ -325,19 +358,26 @@ class WebMainScaffold extends ConsumerWidget {
                       horizontal: isCollapsed ? 10 : 12,
                       vertical: 4,
                     ),
-                    children: isTeacher
-                        ? _buildTeacherNavItems(
+                    children: isAdmin
+                        ? _buildAdminNavItems(
                             context,
                             currentRoute,
                             isCollapsed,
                             isDark,
                           )
-                        : _buildStudentNavItems(
-                            context,
-                            currentRoute,
-                            isCollapsed,
-                            isDark,
-                          ),
+                        : (isTeacher
+                            ? _buildTeacherNavItems(
+                                context,
+                                currentRoute,
+                                isCollapsed,
+                                isDark,
+                              )
+                            : _buildStudentNavItems(
+                                context,
+                                currentRoute,
+                                isCollapsed,
+                                isDark,
+                              )),
                   ),
                 ),
 
@@ -430,9 +470,11 @@ class WebMainScaffold extends ConsumerWidget {
                                               ? institution
                                               : (email.isNotEmpty
                                                   ? email
-                                                  : (isTeacher
-                                                      ? 'Professeur'
-                                                      : 'L3 Informatique')),
+                                                  : (isAdmin
+                                                      ? 'Administrateur ENT'
+                                                      : (isTeacher
+                                                          ? 'Professeur'
+                                                          : 'L3 Informatique'))),
                                           style: TextStyle(
                                             color: isDark
                                                 ? const Color(0xFF94A3B8)
@@ -902,7 +944,8 @@ class WebMainScaffold extends ConsumerWidget {
         label: context.tr('nav_courses_resources'),
         isCollapsed: isCollapsed,
         isDark: isDark,
-        isSelected: currentRoute.startsWith('/courses'),
+        isSelected: currentRoute == '/courses' ||
+            (currentRoute.startsWith('/courses') && !currentRoute.startsWith('/courses/ai-create')),
         onTap: () => context.go('/courses'),
       ),
       _WebNavItem(
@@ -911,8 +954,8 @@ class WebMainScaffold extends ConsumerWidget {
         isAiPill: true,
         isCollapsed: isCollapsed,
         isDark: isDark,
-        isSelected: currentRoute.startsWith('/ai-assistant'),
-        onTap: () => context.go('/ai-assistant'),
+        isSelected: currentRoute.startsWith('/courses/ai-create'),
+        onTap: () => context.go('/courses/ai-create'),
       ),
       _WebNavItem(
         icon: Icons.videocam_rounded,
@@ -929,6 +972,73 @@ class WebMainScaffold extends ConsumerWidget {
         isDark: isDark,
         isSelected: currentRoute.startsWith('/exams'),
         onTap: () => context.go('/exams'),
+      ),
+      _WebNavItem(
+        icon: Icons.person_rounded,
+        label: context.tr('nav_my_profile'),
+        isCollapsed: isCollapsed,
+        isDark: isDark,
+        isSelected: currentRoute.startsWith('/profile'),
+        onTap: () => context.go('/profile'),
+      ),
+    ];
+  }
+
+  List<Widget> _buildAdminNavItems(
+    BuildContext context,
+    String currentRoute,
+    bool isCollapsed,
+    bool isDark,
+  ) {
+    return [
+      _WebNavItem(
+        icon: Icons.dashboard_rounded,
+        label: context.tr('nav_dashboard'),
+        isCollapsed: isCollapsed,
+        isDark: isDark,
+        isSelected: currentRoute == '/home' || currentRoute == '/',
+        onTap: () => context.go('/home'),
+      ),
+      _WebNavItem(
+        icon: Icons.school_rounded,
+        label: context.tr('admin_nav_classes'),
+        isCollapsed: isCollapsed,
+        isDark: isDark,
+        isSelected: currentRoute.startsWith('/admin/classes'),
+        onTap: () => context.go('/admin/classes'),
+      ),
+      _WebNavItem(
+        icon: Icons.co_present_rounded,
+        label: context.tr('admin_nav_teachers'),
+        isCollapsed: isCollapsed,
+        isDark: isDark,
+        isSelected: currentRoute.startsWith('/admin/teachers'),
+        onTap: () => context.go('/admin/teachers'),
+      ),
+      _WebNavItem(
+        icon: Icons.people_alt_rounded,
+        label: context.tr('admin_nav_students'),
+        isCollapsed: isCollapsed,
+        isDark: isDark,
+        isSelected: currentRoute.startsWith('/admin/students') ||
+            currentRoute.startsWith('/admin/users'),
+        onTap: () => context.go('/admin/students'),
+      ),
+      _WebNavItem(
+        icon: Icons.shield_rounded,
+        label: context.tr('admin_tab_frauds'),
+        isCollapsed: isCollapsed,
+        isDark: isDark,
+        isSelected: currentRoute.startsWith('/admin/frauds'),
+        onTap: () => context.go('/admin/frauds'),
+      ),
+      _WebNavItem(
+        icon: Icons.calendar_month_rounded,
+        label: context.tr('admin_nav_planning'),
+        isCollapsed: isCollapsed,
+        isDark: isDark,
+        isSelected: currentRoute.startsWith('/admin/planning'),
+        onTap: () => context.go('/admin/planning'),
       ),
       _WebNavItem(
         icon: Icons.person_rounded,

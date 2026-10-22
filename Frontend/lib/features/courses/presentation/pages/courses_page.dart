@@ -25,15 +25,19 @@ class CoursesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final role = ref.watch(authStateProvider).valueOrNull?.role?.toLowerCase();
+    final isTeacher = role == 'teacher' || role == 'admin';
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.tr('my_courses')),
+        title: Text(isTeacher ? context.tr('nav_courses_resources') : context.tr('my_courses')),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            onPressed: () => _showCreateCourseDialog(context),
-            tooltip: context.tr('create_course'),
-          ),
+          if (isTeacher)
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              onPressed: () => _showCreateCourseDialog(context),
+              tooltip: context.tr('create_course'),
+            ),
           IconButton(
             icon: const Icon(Icons.search_rounded),
             onPressed: () {
@@ -45,13 +49,14 @@ class CoursesPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: _buildBody(context, ref),
+      body: _buildBody(context, ref, isTeacher),
     );
   }
 
-  Widget _buildBody(BuildContext context, WidgetRef ref) {
+  Widget _buildBody(BuildContext context, WidgetRef ref, bool isTeacher) {
     final selectedFilter = ref.watch(courseFilterProvider);
     final theme = Theme.of(context);
+    final activeFilters = isTeacher ? _filters : const ['all', 'in_progress'];
 
     return CustomScrollView(
       slivers: [
@@ -65,10 +70,10 @@ class CoursesPage extends ConsumerWidget {
                   height: 40,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: _filters.length,
+                    itemCount: activeFilters.length,
                     separatorBuilder: (_, _) => const SizedBox(width: 8),
                     itemBuilder: (context, index) {
-                      final filter = _filters[index];
+                      final filter = activeFilters[index];
                       final isSelected = filter == selectedFilter;
                       return FilterChip(
                         label: Text(context.tr(filter)),

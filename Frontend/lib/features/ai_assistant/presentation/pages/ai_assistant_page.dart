@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/app_providers.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/theme/app_theme.dart';
 
@@ -33,45 +34,85 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
   @override
   void initState() {
     super.initState();
-    // Message d'introduction pédagogique inspiré de la maquette Stitch
-    _messages.add(
-      _ChatMessage(
-        text:
-            'Bonjour ! Je suis votre Tuteur IA personnel SmartClass, synchronisé avec vos cours de L3 Informatique. Vous étudiez actuellement **$_selectedChapter** avec le Pr. Amine.\n\nPosez-moi vos questions, demandez des éclaircissements, ou générez des exercices d\'entraînement !',
-        isUser: false,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-        stepTitle: 'Tuteur Connecté',
-        hasFormula: false,
-      ),
-    );
+    final auth = ref.read(authStateProvider).valueOrNull;
+    final role = auth?.role?.toLowerCase() ?? 'student';
+    final isTeacher = role == 'teacher';
+    final name = (auth?.displayName?.trim().isNotEmpty == true)
+        ? auth!.displayName!.trim()
+        : (isTeacher ? 'Professeur' : 'Salma');
 
-    // Exemple de question/réponse initiale comme dans Stitch
-    _messages.add(
-      _ChatMessage(
-        text:
-            'Peux-tu m\'expliquer simplement la différence entre le Noyau Ker(f) et l\'Image Im(f) d\'une application linéaire ? Et le lien avec le Théorème du Rang ?',
-        isUser: true,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 3)),
-      ),
-    );
-
-    _messages.add(
-      _ChatMessage(
-        text:
-            'Bonjour Salma ! Voici une explication claire et intuitive :\n\n'
-            '• **Le Noyau (Ker(f))** : C\'est l\'ensemble de tous les vecteurs x envoyés sur le vecteur nul 0. En clair : tout ce que f « écrase » à zéro. Si Ker(f) = {0}, la fonction est injective.\n\n'
-            '• **L\'Image (Im(f))** : C\'est l\'ensemble des vecteurs réellement atteints par f. Elle mesure l\'étendue effective de la transformation.\n\n'
-            '• **Le Théorème du Rang (Rank-Nullity Theorem)** :\n'
-            'C\'est un principe fondamental de conservation de la dimension :',
-        isUser: false,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 2)),
-        stepTitle: 'Explication pas-à-pas',
-        hasFormula: true,
-        formulaText: 'dim(E) = dim(Ker(f)) + rg(f)',
-        ruleHighlight:
-            'Toute dimension perdue dans le noyau est soustraite de l\'image finale ! rg(f) = dim(Im(f)).',
-      ),
-    );
+    if (isTeacher) {
+      _messages.add(
+        _ChatMessage(
+          text:
+              'Bonjour Pr. $name ! Je suis votre Assistant Pédagogique IA SmartClass, prêt pour concevoir vos syllabus et supports.\n\nPosez-moi vos questions, demandez des idées de plans de cours, des exercices pratiques avec corrigés, ou lancez la génération complète dans le Studio Créateur IA !',
+          isUser: false,
+          timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
+          stepTitle: 'Assistant Pédagogique Connecté',
+          hasFormula: false,
+        ),
+      );
+      _messages.add(
+        _ChatMessage(
+          text:
+              'Peux-tu me proposer une série d\'exercices d\'application avec corrigés détaillés et barème sur le Théorème du Rang ?',
+          isUser: true,
+          timestamp: DateTime.now().subtract(const Duration(minutes: 3)),
+        ),
+      );
+      _messages.add(
+        _ChatMessage(
+          text:
+              'Voici une fiche d\'évaluation prête pour vos étudiants :\n\n'
+              '• **Exercice 1 (6 pts)** : Soit f: R³ -> R² définie par f(x,y,z) = (x+y, y-z). Déterminer une base et la dimension de Ker(f), puis en déduire le rang de f.\n\n'
+              '• **Exercice 2 (8 pts)** : Soit E un espace de dimension finie n et f un endomorphisme tel que f² = 0. Démontrer que rg(f) <= n/2 à l\'aide du Théorème du Rang.\n\n'
+              '• **Question bonus (6 pts)** : Que dire de f si Ker(f) = Im(f) ?\n\n'
+              '*Barème indicatif : Rigueur (4 pts) + Justifications théoriques (10 pts) + Calculs (6 pts).*',
+          isUser: false,
+          timestamp: DateTime.now().subtract(const Duration(minutes: 2)),
+          stepTitle: 'Fiche d\'Exercices & Corrigés',
+          hasFormula: true,
+          formulaText: 'dim(E) = dim(Ker(f)) + rg(f)  <=>  3 = 1 + 2',
+          ruleHighlight: 'Idéal pour vos séances de travaux dirigés ou devoirs surveillés.',
+        ),
+      );
+    } else {
+      _messages.add(
+        _ChatMessage(
+          text:
+              'Bonjour $name ! Je suis votre Tuteur IA personnel SmartClass, synchronisé avec vos cours. Vous étudiez actuellement **$_selectedChapter**.\n\nPosez-moi vos questions, demandez des explications étape par étape, ou générez des exercices d\'entraînement !',
+          isUser: false,
+          timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
+          stepTitle: 'Tuteur Connecté',
+          hasFormula: false,
+        ),
+      );
+      _messages.add(
+        _ChatMessage(
+          text:
+              'Peux-tu m\'expliquer simplement la différence entre le Noyau Ker(f) et l\'Image Im(f) d\'une application linéaire ? Et le lien avec le Théorème du Rang ?',
+          isUser: true,
+          timestamp: DateTime.now().subtract(const Duration(minutes: 3)),
+        ),
+      );
+      _messages.add(
+        _ChatMessage(
+          text:
+              'Bonjour $name ! Voici une explication claire et intuitive :\n\n'
+              '• **Le Noyau (Ker(f))** : C\'est l\'ensemble de tous les vecteurs x envoyés sur le vecteur nul 0. En clair : tout ce que f « écrase » à zéro. Si Ker(f) = {0}, la fonction est injective.\n\n'
+              '• **L\'Image (Im(f))** : C\'est l\'ensemble des vecteurs réellement atteints par f. Elle mesure l\'étendue effective de la transformation.\n\n'
+              '• **Le Théorème du Rang (Rank-Nullity Theorem)** :\n'
+              'C\'est un principe fondamental de conservation de la dimension :',
+          isUser: false,
+          timestamp: DateTime.now().subtract(const Duration(minutes: 2)),
+          stepTitle: 'Explication pas-à-pas',
+          hasFormula: true,
+          formulaText: 'dim(E) = dim(Ker(f)) + rg(f)',
+          ruleHighlight:
+              'Toute dimension perdue dans le noyau est soustraite de l\'image finale ! rg(f) = dim(Im(f)).',
+        ),
+      );
+    }
   }
 
   @override
@@ -118,22 +159,74 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
   _ChatMessage _generateTutorResponse(String query) {
     final lower = query.toLowerCase();
 
-    if (lower.contains('exemple')) {
+    final auth = ref.read(authStateProvider).valueOrNull;
+    final isTeacher = auth?.role?.toLowerCase() == 'teacher';
+    final displayName = auth?.displayName?.trim().isNotEmpty == true
+        ? auth!.displayName!.trim()
+        : (isTeacher ? 'Professeur' : 'Étudiant');
+
+    if (lower.contains('plan') || lower.contains('syllabus')) {
       return _ChatMessage(
         text:
-            'Considérons la projection orthogonale f sur le plan (Oxy) dans R³ :\n\n'
-            '• Tout vecteur (0, 0, z) est projeté sur (0, 0, 0), donc **Ker(f) est la droite (Oz)** (dimension 1).\n'
-            '• Les images couvrent exactement le plan (Oxy), donc **rg(f) = 2**.\n'
-            '• Vérification du Théorème du Rang : dim(R³) = 3 = 1 + 2. L\'égalité est parfaitement vérifiée !',
+            'Voici une proposition de structure de cours pour **$_selectedChapter** :\n\n'
+            '1. **Séance 1 (2h CM)** : Définitions rigoureuses du Noyau (Ker) et de l\'Image (Im). Propriétés de sous-espaces vectoriels.\n'
+            '2. **Séance 2 (2h CM)** : Énoncé et démonstration complète du Théorème du Rang en dimension finie.\n'
+            '3. **Séance 3 (2h TD)** : Exercices de calculs matriciels, détermination de bases de Ker(f) et Im(f).\n'
+            '4. **Séance 4 (1h TP/Éval)** : Mini-contrôle de 30 mins sur table et débriefing.\n\n'
+            '💡 *Conseil : Vous pouvez utiliser le Studio Créateur IA pour générer l\'intégralité des chapitres textuels avec diagrammes Mermaid !*',
         isUser: false,
         timestamp: DateTime.now(),
-        stepTitle: 'Exemple Visuel 3D',
+        stepTitle: 'Proposition de Syllabus Pédagogique',
         hasFormula: true,
-        formulaText: 'dim(R³) = dim(Ker(f)) + rg(f)  <=>  3 = 1 + 2',
+        formulaText: 'Volume : 7h (4h CM + 2h TD + 1h Contrôle)',
+        ruleHighlight: 'Aligné sur le référentiel d\'ingénierie et de mathématiques appliquées.',
+      );
+    }
+
+    if (lower.contains('exercice') || lower.contains('partiel') || lower.contains('cas')) {
+      return _ChatMessage(
+        text:
+            'Voici un énoncé de devoir universitaire avec éléments de correction :\n\n'
+            '**Énoncé :**\n'
+            'Soit E un R-espace vectoriel de dimension finie n >= 1. Soit f un endomorphisme de E tel que f² = 0.\n'
+            '1. Démontrer l\'inclusion Im(f) ⊂ Ker(f).\n'
+            '2. En déduire une inégalité reliant rg(f) et dim(Ker(f)).\n'
+            '3. À l\'aide du Théorème du Rang, établir que rg(f) <= n/2.\n\n'
+            '**Éléments de correction & Barème :**\n'
+            '• **Q1 (3 pts)** : Pour tout y ∈ Im(f), ∃x ∈ E t.q. y = f(x). Donc f(y) = f²(x) = 0, d\'où y ∈ Ker(f).\n'
+            '• **Q2 (3 pts)** : L\'inclusion entraîne dim(Im(f)) <= dim(Ker(f)), soit rg(f) <= dim(Ker(f)).\n'
+            '• **Q3 (4 pts)** : Par le théorème du rang, n = dim(Ker(f)) + rg(f) >= rg(f) + rg(f) = 2rg(f), donc rg(f) <= n/2.',
+        isUser: false,
+        timestamp: DateTime.now(),
+        stepTitle: 'Énoncé de Devoir & Solution',
+        hasFormula: true,
+        formulaText: 'f² = 0  =>  Im(f) ⊂ Ker(f)  =>  rg(f) <= n/2',
+        ruleHighlight: 'Total : 10 points. Idéal pour un contrôle continu.',
       );
     }
 
     if (lower.contains('qcm') || lower.contains('quiz')) {
+      if (isTeacher) {
+        return _ChatMessage(
+          text:
+              'Voici une série de 3 questions QCM calibrées pour une évaluation de vos étudiants :\n\n'
+              '**Question 1 :** Soit f: R⁴ -> R³ une application linéaire. Si dim(Ker(f)) = 1, quel est le rang de f ?\n'
+              'A) rg(f) = 1    B) rg(f) = 2    C) rg(f) = 3 (Surjective)    D) rg(f) = 4\n'
+              '*Réponse correcte : C (dim(R⁴) = dim(Ker(f)) + rg(f) => 4 = 1 + 3)*\n\n'
+              '**Question 2 :** Une application linéaire de R³ dans R⁵ peut-elle être surjective ?\n'
+              'A) Oui    B) Non, car rg(f) <= dim(départ) = 3 < 5\n'
+              '*Réponse correcte : B*\n\n'
+              '**Question 3 :** Si f est un endomorphisme d\'un espace de dimension 5 tel que rg(f) = 5, que vaut Ker(f) ?\n'
+              'A) {0} (f injective)    B) R    C) Non déterminé\n'
+              '*Réponse correcte : A*',
+          isUser: false,
+          timestamp: DateTime.now(),
+          stepTitle: 'QCM d\'Évaluation & Corrigés',
+          hasFormula: true,
+          formulaText: 'dim(E) = dim(Ker(f)) + rg(f)',
+          ruleHighlight: 'Barème conseillé : 2 points par question (Total : 6 pts).',
+        );
+      }
       return _ChatMessage(
         text:
             'Voici un QCM express pour valider votre compréhension :\n\n'
@@ -148,6 +241,21 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
         hasFormula: true,
         formulaText: 'dim(E) = 4  =>  rg(f) = 4 - 1 = 3',
         ruleHighlight: 'Réponse C ! f est donc surjective car rg(f) = dim(R³) = 3.',
+      );
+    }
+
+    if (lower.contains('exemple')) {
+      return _ChatMessage(
+        text:
+            'Considérons la projection orthogonale f sur le plan (Oxy) dans R³ :\n\n'
+            '• Tout vecteur (0, 0, z) est projeté sur (0, 0, 0), donc **Ker(f) est la droite (Oz)** (dimension 1).\n'
+            '• Les images couvrent exactement le plan (Oxy), donc **rg(f) = 2**.\n'
+            '• Vérification du Théorème du Rang : dim(R³) = 3 = 1 + 2. L\'égalité est parfaitement vérifiée !',
+        isUser: false,
+        timestamp: DateTime.now(),
+        stepTitle: 'Exemple Visuel 3D',
+        hasFormula: true,
+        formulaText: 'dim(R³) = dim(Ker(f)) + rg(f)  <=>  3 = 1 + 2',
       );
     }
 
@@ -181,11 +289,15 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
     }
 
     return _ChatMessage(
-      text:
-          'Excellente réflexion ! Pour approfondir ce point sur **$_selectedChapter**, souhaitez-vous :\n'
-          '1. Un exemple géométrique appliqué ?\n'
-          '2. Un exercice de type partiel universitaire ?\n'
-          '3. Une fiche récapitulative des pièges à éviter ?',
+      text: isTeacher
+          ? 'Excellente démarche pédagogique Pr. $displayName ! Pour enrichir votre cours sur **$_selectedChapter**, souhaitez-vous :\n'
+            '1. Une étude de cas pratique avec modélisation matricielle ?\n'
+            '2. Un barème détaillé avec compétences visées ?\n'
+            '3. Lancer la génération d\'un chapitre complet dans le Studio Créateur IA ?'
+          : 'Excellente réflexion ! Pour approfondir ce point sur **$_selectedChapter**, souhaitez-vous :\n'
+            '1. Un exemple géométrique appliqué ?\n'
+            '2. Un exercice de type partiel universitaire ?\n'
+            '3. Une fiche récapitulative des pièges à éviter ?',
       isUser: false,
       timestamp: DateTime.now(),
       stepTitle: 'Assistance Personnalisée',
@@ -268,6 +380,8 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDesktop = context.screenWidth >= 1024;
+    final auth = ref.watch(authStateProvider).valueOrNull;
+    final isTeacher = auth?.role?.toLowerCase() == 'teacher';
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -306,15 +420,17 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Tuteur IA Interactif',
-                  style: TextStyle(
+                Text(
+                  isTeacher ? 'Assistant Pédagogique IA' : 'Tuteur IA Interactif',
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  'SmartClass Pedagogical AI • Aligné Université',
+                  isTeacher
+                      ? 'SmartClass Pedagogical AI • Préparation & Conception de cours'
+                      : 'SmartClass Pedagogical AI • Aligné Université',
                   style: TextStyle(
                     fontSize: 11,
                     color: colorScheme.onSurfaceVariant,
@@ -396,6 +512,9 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
   }
 
   Widget _buildCourseContextBar(BuildContext context) {
+    final auth = ref.watch(authStateProvider).valueOrNull;
+    final isTeacher = auth?.role?.toLowerCase() == 'teacher';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -453,9 +572,9 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
                         color: AppTheme.secondaryFixed,
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Text(
-                        'Aligné L3',
-                        style: TextStyle(
+                      child: Text(
+                        isTeacher ? 'Espace Enseignant' : 'Aligné L3',
+                        style: const TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.onSecondaryFixed,
@@ -465,7 +584,7 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
                   ],
                 ),
                 Text(
-                  _selectedChapter,
+                  isTeacher ? 'Supports pédagogiques & exercices pour vos classes' : _selectedChapter,
                   style: TextStyle(
                     fontSize: 11,
                     color: AppTheme.onSurfaceVariant.withValues(alpha: 0.8),
@@ -476,6 +595,15 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
               ],
             ),
           ),
+          if (isTeacher) ...[
+            FilledButton.tonalIcon(
+              icon: const Icon(Icons.draw_rounded, size: 16),
+              label: const Text('Studio Créateur IA'),
+              style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+              onPressed: () => context.go('/courses/ai-create'),
+            ),
+            const SizedBox(width: 8),
+          ],
           OutlinedButton.icon(
             onPressed: () => _showChangeCourseDialog(context),
             icon: const Icon(Icons.swap_horiz_rounded, size: 16),
@@ -495,6 +623,17 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
   }
 
   Widget _buildChatColumn(BuildContext context) {
+    final auth = ref.watch(authStateProvider).valueOrNull;
+    final isTeacher = auth?.role?.toLowerCase() == 'teacher';
+    final activePrompts = isTeacher
+        ? const [
+            'Générer un QCM d\'évaluation (10 questions) ⚡',
+            'Plan de cours complet & syllabus 📚',
+            'Exercices pratiques avec corrigés 📝',
+            'Étude de cas pour partiel 🎯',
+          ]
+        : _quickPrompts;
+
     return Column(
       children: [
         // Message timeline
@@ -519,7 +658,7 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
-            itemCount: _quickPrompts.length,
+            itemCount: activePrompts.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, i) {
               return ActionChip(
@@ -531,13 +670,13 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 label: Text(
-                  _quickPrompts[i],
+                  activePrompts[i],
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                onPressed: () => _sendMessage(_quickPrompts[i]),
+                onPressed: () => _sendMessage(activePrompts[i]),
               );
             },
           ),

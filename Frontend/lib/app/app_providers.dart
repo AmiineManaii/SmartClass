@@ -125,8 +125,15 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (isOnboardingRoute) return '/home';
 
-      if (location.startsWith('/admin') && auth?.role != 'admin') {
+      final normalizedRole = auth?.role?.toLowerCase();
+      if (location.startsWith('/admin') && normalizedRole != 'admin') {
         return '/home';
+      }
+
+      if ((location.startsWith('/courses/ai-create') || location.endsWith('/build')) &&
+          normalizedRole != 'teacher' &&
+          normalizedRole != 'admin') {
+        return '/courses';
       }
 
       return null;

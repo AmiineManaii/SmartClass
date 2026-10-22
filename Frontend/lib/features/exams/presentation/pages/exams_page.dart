@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/app_providers.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -13,11 +14,14 @@ class ExamsPage extends ConsumerWidget {
   
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final role = ref.watch(authStateProvider).valueOrNull?.role?.toLowerCase();
+    final isTeacher = role == 'teacher' || role == 'admin';
+
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(context.tr('my_exams')),
+          title: Text(isTeacher ? context.tr('nav_exams_grades') : context.tr('my_exams')),
           bottom: TabBar(
             tabs: [
               Tab(text: context.tr('upcoming')),
@@ -26,25 +30,26 @@ class ExamsPage extends ConsumerWidget {
             ],
           ),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.add_rounded),
-              onPressed: () => _showCreateExamDialog(context),
-              tooltip: context.tr('create_exam'),
-            ),
+            if (isTeacher)
+              IconButton(
+                icon: const Icon(Icons.add_rounded),
+                onPressed: () => _showCreateExamDialog(context),
+                tooltip: context.tr('create_exam'),
+              ),
           ],
         ),
         body: TabBarView(
           children: [
-            _buildExamList(context, 'upcoming'),
-            _buildExamList(context, 'in_progress'),
-            _buildExamList(context, 'completed'),
+            _buildExamList(context, 'upcoming', isTeacher),
+            _buildExamList(context, 'in_progress', isTeacher),
+            _buildExamList(context, 'completed', isTeacher),
           ],
         ),
       ),
     );
   }
   
-  Widget _buildExamList(BuildContext context, String filter) {
+  Widget _buildExamList(BuildContext context, String filter, bool isTeacher) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
@@ -63,7 +68,7 @@ class ExamsPage extends ConsumerWidget {
           ];
     
     if (exams.isEmpty) {
-      return _buildEmptyState(context, filter);
+      return _buildEmptyState(context, filter, isTeacher);
     }
     
     return ListView.separated(
@@ -103,7 +108,7 @@ class ExamsPage extends ConsumerWidget {
     );
   }
   
-  Widget _buildEmptyState(BuildContext context, String filter) {
+  Widget _buildEmptyState(BuildContext context, String filter, bool isTeacher) {
     String message;
     IconData icon;
     
@@ -140,11 +145,23 @@ class ExamsPage extends ConsumerWidget {
             ),
             if (filter == 'upcoming') ...[
               const SizedBox(height: 24),
-              AppButton(
-                text: context.tr('create_exam'),
-                onPressed: () => _showCreateExamDialog(context),
-                isFullWidth: false,
-              ),
+              if (isTeacher)
+                AppButton(
+                  text: context.tr('create_exam'),
+                  onPressed: () => _showCreateExamDialog(context),
+                  isFullWidth: false,
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    'Vos évaluations et épreuves programmées s\'afficheront ici dès leur mise en ligne par vos enseignants.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
             ],
           ],
         ),
