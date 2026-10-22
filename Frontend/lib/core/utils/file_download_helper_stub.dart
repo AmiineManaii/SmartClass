@@ -10,6 +10,7 @@ void printOfficialTranscriptImpl({
   required String email,
   required String status,
   required String date,
+  bool isTeacher = false,
 }) {
   // Stub for non-web platforms
 }

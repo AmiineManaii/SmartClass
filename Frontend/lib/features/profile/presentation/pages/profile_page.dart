@@ -87,10 +87,31 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final authState = ref.read(authStateProvider).valueOrNull;
     _twoFactorEnabled = authState?.twoFactorEnabled ?? false;
 
+    final isTeacher = authState?.role?.toLowerCase() == 'teacher';
+
+    final defaultId = isTeacher ? 'PPR-2026-89421' : 'CNE-2026-984210';
+    final initialId = (authState?.studentId != null && authState!.studentId!.isNotEmpty)
+        ? (isTeacher && authState.studentId!.startsWith('CNE-') ? defaultId : authState.studentId!)
+        : defaultId;
+
+    final defaultMajor = isTeacher
+        ? 'Département Informatique & Technologies Numériques'
+        : 'Cycle Ingénieur • Génie Informatique';
+    final initialMajor = (authState?.major != null && authState!.major!.isNotEmpty)
+        ? (isTeacher && (authState.major!.startsWith('Cycle') || authState.major!.startsWith('Master')) ? defaultMajor : authState.major!)
+        : defaultMajor;
+
+    final defaultBio = isTeacher
+        ? 'Enseignant en Informatique & Systèmes Numériques • Spécialisé en Génie Logiciel, IA et Systèmes Distribués.'
+        : 'Étudiant en Cycle d\'Ingénieur • Passionné par l\'intelligence artificielle et le génie logiciel.';
+    final initialBio = (authState?.bio != null && authState!.bio!.isNotEmpty)
+        ? (isTeacher && authState.bio!.contains('Étudiant') ? defaultBio : authState.bio!)
+        : defaultBio;
+
     _fullNameController = TextEditingController(
       text: (authState?.displayName != null && authState!.displayName!.isNotEmpty)
           ? authState.displayName!
-          : 'Ahmed Mohsen',
+          : (isTeacher ? 'Professeur' : 'Ahmed Mohsen'),
     );
     _emailController = TextEditingController(
       text: (authState?.email != null && authState!.email!.isNotEmpty)
@@ -98,24 +119,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           : 'faroukmessay006@gmail.com',
     );
     _studentIdController = TextEditingController(
-      text: (authState?.studentId != null && authState!.studentId!.isNotEmpty)
-          ? authState.studentId!
-          : 'CNE-2026-984210',
+      text: initialId,
     );
     _universityController = TextEditingController(
       text: (authState?.institution != null && authState!.institution!.isNotEmpty)
           ? authState.institution!
-          : 'Université Mohammed V de Rabat',
+          : (isTeacher ? 'Institut Supérieur / Université' : 'Université Mohammed V de Rabat'),
     );
     _majorController = TextEditingController(
-      text: (authState?.major != null && authState!.major!.isNotEmpty)
-          ? authState.major!
-          : 'Cycle Ingénieur • Génie Informatique',
+      text: initialMajor,
     );
     _bioController = TextEditingController(
-      text: (authState?.bio != null && authState!.bio!.isNotEmpty)
-          ? authState.bio!
-          : 'Étudiant en Cycle d\'Ingénieur • Passionné par l\'intelligence artificielle et le génie logiciel.',
+      text: initialBio,
     );
 
     _loadInitialData();
@@ -132,6 +147,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     try {
       final tokens = ref.read(tokenStorageProvider);
       final authState = ref.read(authStateProvider).valueOrNull;
+      final isTeacher = authState?.role?.toLowerCase() == 'teacher';
       final userKey = authState?.userId ?? authState?.email;
       final profile = await tokens.readAcademicProfile(userKey);
 
@@ -141,18 +157,33 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       var sId = profile['studentId'] ?? authState?.studentId ?? '';
       var bio = profile['bio'] ?? authState?.bio ?? '';
 
-      // Default university & academic values if unconfigured
-      if (inst.isEmpty) {
-        inst = 'Université Mohammed V de Rabat';
-      }
-      if (maj.isEmpty) {
-        maj = 'Cycle Ingénieur • Génie Informatique';
-      }
-      if (sId.isEmpty) {
-        sId = 'CNE-2026-984210';
-      }
-      if (bio.isEmpty) {
-        bio = 'Étudiant en Cycle d\'Ingénieur • Passionné par l\'intelligence artificielle et le génie logiciel.';
+      // Default university & academic values according to role
+      if (isTeacher) {
+        if (inst.isEmpty) {
+          inst = 'Institut Supérieur / Université';
+        }
+        if (maj.isEmpty || maj.startsWith('Cycle Ingénieur') || maj.startsWith('Master')) {
+          maj = 'Département Informatique & Technologies Numériques';
+        }
+        if (sId.isEmpty || sId.startsWith('CNE-')) {
+          sId = 'PPR-2026-89421';
+        }
+        if (bio.isEmpty || bio.contains('Étudiant')) {
+          bio = 'Enseignant en Informatique & Systèmes Numériques • Spécialisé en Génie Logiciel, IA et Systèmes Distribués.';
+        }
+      } else {
+        if (inst.isEmpty) {
+          inst = 'Université Mohammed V de Rabat';
+        }
+        if (maj.isEmpty) {
+          maj = 'Cycle Ingénieur • Génie Informatique';
+        }
+        if (sId.isEmpty) {
+          sId = 'CNE-2026-984210';
+        }
+        if (bio.isEmpty) {
+          bio = 'Étudiant en Cycle d\'Ingénieur • Passionné par l\'intelligence artificielle et le génie logiciel.';
+        }
       }
 
       if (mounted) {
@@ -160,13 +191,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           if (_universityController.text.trim().isEmpty) {
             _universityController.text = inst;
           }
-          if (_majorController.text.trim().isEmpty) {
+          if (_majorController.text.trim().isEmpty || (isTeacher && (_majorController.text.startsWith('Cycle') || _majorController.text.startsWith('Master')))) {
             _majorController.text = maj;
           }
-          if (_studentIdController.text.trim().isEmpty) {
+          if (_studentIdController.text.trim().isEmpty || (isTeacher && _studentIdController.text.startsWith('CNE-'))) {
             _studentIdController.text = sId;
           }
-          if (_bioController.text.trim().isEmpty) {
+          if (_bioController.text.trim().isEmpty || (isTeacher && _bioController.text.contains('Étudiant'))) {
             _bioController.text = bio;
           }
         });
@@ -714,6 +745,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget _buildHeaderSection(bool isDark) {
     final authState = ref.watch(authStateProvider).valueOrNull;
     final role = authState?.role?.toLowerCase() ?? 'student';
+    final isTeacher = role == 'teacher';
     final roleLabel = role == 'admin'
         ? 'Administrateur'
         : (role == 'teacher'
@@ -771,7 +803,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ),
               const SizedBox(height: 6),
               Text(
-                context.tr('account_settings_desc'),
+                isTeacher
+                    ? 'Gérez votre identité académique, vos accès de sécurité et configurez vos flux de notifications pour votre espace enseignant.'
+                    : context.tr('account_settings_desc'),
                 style: TextStyle(
                   fontSize: 13,
                   color: isDark
@@ -830,12 +864,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget _buildLeftMenuColumn(Color cardBg, Color borderColor, bool isDark) {
     final authState = ref.watch(authStateProvider).valueOrNull;
     final role = authState?.role?.toLowerCase() ?? 'student';
+    final isTeacher = role == 'teacher';
     final quotaText = role == 'admin'
         ? '45.2 / 250 Go'
-        : (role == 'teacher' ? '18.6 / 100 Go' : '2.4 / 20 Go');
+        : (isTeacher ? '18.6 / 100 Go' : '2.4 / 20 Go');
     final quotaProgress = role == 'admin'
         ? 0.181
-        : (role == 'teacher' ? 0.186 : 0.120);
+        : (isTeacher ? 0.186 : 0.120);
 
     final menuItems = [
       (Icons.person_outline_rounded, context.tr('menu_personal_info'), null, false),
@@ -1000,7 +1035,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      context.tr('cloud_storage_title'),
+                      isTeacher
+                          ? 'Stockage Cours & Médias Cloud'
+                          : context.tr('cloud_storage_title'),
                       style: TextStyle(
                         fontSize: 11,
                         color: isDark
@@ -1063,6 +1100,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   // ===========================================================================
 
   Widget _buildPersonalInfoCard(Color cardBg, Color borderColor, bool isDark) {
+    final authState = ref.watch(authStateProvider).valueOrNull;
+    final role = authState?.role?.toLowerCase() ?? 'student';
+    final isTeacher = role == 'teacher';
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -1150,7 +1191,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      context.tr('official_id'),
+                      isTeacher ? 'Matricule officiel certifié' : context.tr('official_id'),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -1164,7 +1205,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ),
           const SizedBox(height: 20),
 
-          // Student Photo Box
+          // Photo Box
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1195,7 +1236,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           errorBuilder: (context, error, stackTrace) => Text(
                             _fullNameController.text.isNotEmpty
                                 ? _fullNameController.text[0].toUpperCase()
-                                : 'A',
+                                : (isTeacher ? 'P' : 'A'),
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -1233,7 +1274,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       Row(
                         children: [
                           Text(
-                            context.tr('student_photo_title'),
+                            isTeacher
+                                ? 'Photo de profil enseignant'
+                                : context.tr('student_photo_title'),
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
@@ -1265,7 +1308,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        context.tr('student_photo_desc'),
+                        isTeacher
+                            ? 'Format PNG ou JPG, max 5 Mo. Cette photo figure sur votre badge officiel, vos fiches de cours et votre profil académique.'
+                            : context.tr('student_photo_desc'),
                         style: TextStyle(
                           fontSize: 11.5,
                           color: isDark
@@ -1384,10 +1429,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       children: [
                         Expanded(
                           child: _buildInputField(
-                            label: context.tr('student_number_label'),
+                            label: isTeacher
+                                ? 'Matricule Enseignant (PPR / Somme)'
+                                : context.tr('student_number_label'),
                             controller: _studentIdController,
-                            icon: Icons.badge_outlined,
-                            trailingIcon: Icons.badge_rounded,
+                            icon: isTeacher ? Icons.assignment_ind_outlined : Icons.badge_outlined,
+                            trailingIcon: isTeacher ? Icons.verified_user_outlined : Icons.badge_rounded,
                             isDark: isDark,
                             readOnly: false,
                           ),
@@ -1395,7 +1442,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         const SizedBox(width: 16),
                         Expanded(
                           child: _buildInputField(
-                            label: context.tr('university_label'),
+                            label: isTeacher
+                                ? 'Établissement d\'affectation / Université'
+                                : context.tr('university_label'),
                             controller: _universityController,
                             icon: Icons.account_balance_outlined,
                             trailingIcon: Icons.check_circle_outline_rounded,
@@ -1407,16 +1456,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     )
                   else ...[
                     _buildInputField(
-                      label: context.tr('student_number_label'),
+                      label: isTeacher
+                          ? 'Matricule Enseignant (PPR / Somme)'
+                          : context.tr('student_number_label'),
                       controller: _studentIdController,
-                      icon: Icons.badge_outlined,
-                      trailingIcon: Icons.badge_rounded,
+                      icon: isTeacher ? Icons.assignment_ind_outlined : Icons.badge_outlined,
+                      trailingIcon: isTeacher ? Icons.verified_user_outlined : Icons.badge_rounded,
                       isDark: isDark,
                       readOnly: false,
                     ),
                     const SizedBox(height: 14),
                     _buildInputField(
-                      label: context.tr('university_label'),
+                      label: isTeacher
+                          ? 'Établissement d\'affectation / Université'
+                          : context.tr('university_label'),
                       controller: _universityController,
                       icon: Icons.account_balance_outlined,
                       trailingIcon: Icons.check_circle_outline_rounded,
@@ -1426,17 +1479,21 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   ],
                   const SizedBox(height: 14),
                   _buildInputField(
-                    label: context.tr('major_promotion_label'),
+                    label: isTeacher
+                        ? 'Département & Discipline d\'enseignement'
+                        : context.tr('major_promotion_label'),
                     controller: _majorController,
-                    icon: Icons.school_outlined,
+                    icon: isTeacher ? Icons.domain_rounded : Icons.school_outlined,
                     isDark: isDark,
                     readOnly: false,
                   ),
                   const SizedBox(height: 14),
                   _buildInputField(
-                    label: 'Biographie / Présentation académique',
+                    label: isTeacher
+                        ? 'Biographie & Domaines d\'expertise / Recherche'
+                        : 'Biographie / Présentation académique',
                     controller: _bioController,
-                    icon: Icons.edit_note_rounded,
+                    icon: isTeacher ? Icons.psychology_outlined : Icons.edit_note_rounded,
                     isDark: isDark,
                     readOnly: false,
                   ),
@@ -2631,6 +2688,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   // ===========================================================================
 
   Widget _buildPrivacyGdprCard(Color cardBg, Color borderColor, bool isDark) {
+    final authState = ref.watch(authStateProvider).valueOrNull;
+    final role = authState?.role?.toLowerCase() ?? 'student';
+    final isTeacher = role == 'teacher';
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -2751,7 +2812,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            context.tr('data_export_title'),
+                            isTeacher
+                                ? 'Attestation d\'Exercice & Fiche de Service'
+                                : context.tr('data_export_title'),
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
@@ -2760,7 +2823,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            context.tr('data_export_desc'),
+                            isTeacher
+                                ? 'Générez et téléchargez votre attestation officielle d\'exercice et de charge d\'enseignement certifiée ENT au format PDF A4 officiel.'
+                                : context.tr('data_export_desc'),
                             style: TextStyle(
                               fontSize: 11.5,
                               color: isDark
@@ -2818,18 +2883,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ),
                       onPressed: () {
                         final authState = ref.read(authStateProvider).valueOrNull;
+                        final isTeacher = authState?.role?.toLowerCase() == 'teacher';
                         final now = DateTime.now();
                         final dateFormatted = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
                         final instName = _universityController.text.trim().isNotEmpty
                             ? _universityController.text.trim()
-                            : (authState?.institution ?? 'Université Mohammed VI Polytechnique');
-                        final studentName = authState?.displayName ?? 'Ahmed Mohsen';
+                            : (authState?.institution ?? (isTeacher ? 'Institut Supérieur / Université' : 'Université Mohammed VI Polytechnique'));
+                        final studentName = authState?.displayName ?? (isTeacher ? 'Professeur' : 'Ahmed Mohsen');
                         final studentId = _studentIdController.text.trim().isNotEmpty
                             ? _studentIdController.text.trim()
-                            : (authState?.studentId ?? 'STU-2026-9482');
+                            : (authState?.studentId ?? (isTeacher ? 'PPR-2026-89421' : 'STU-2026-9482'));
                         final majorName = _majorController.text.trim().isNotEmpty
                             ? _majorController.text.trim()
-                            : (authState?.major ?? 'Cycle Ingénieur • Génie Informatique');
+                            : (authState?.major ?? (isTeacher ? 'Département Informatique & Technologies Numériques' : 'Cycle Ingénieur • Génie Informatique'));
 
                         showDialog(
                           context: context,
@@ -2874,7 +2940,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                         const SizedBox(width: 10),
                                         Expanded(
                                           child: Text(
-                                            'Attestation Académique & Relevé Officiel ENT',
+                                            isTeacher
+                                                ? 'Attestation d\'Exercice & Fiche de Service Enseignant'
+                                                : 'Attestation Académique & Relevé Officiel ENT',
                                             style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold,
@@ -2944,9 +3012,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                                     borderRadius: BorderRadius.circular(20),
                                                     border: Border.all(color: const Color(0xFFBFDBFE)),
                                                   ),
-                                                  child: const Text(
-                                                    'RELEVÉ GLOBAL DE NOTES & CRÉDITS ECTS • ANNÉE 2025-2026',
-                                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)),
+                                                  child: Text(
+                                                    isTeacher
+                                                        ? 'ATTESTATION D\'EXERCICE & CHARGES D\'ENSEIGNEMENT • 2025-2026'
+                                                        : 'RELEVÉ GLOBAL DE NOTES & CRÉDITS ECTS • ANNÉE 2025-2026',
+                                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)),
                                                   ),
                                                 ),
                                               ],
@@ -2956,7 +3026,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                           const Divider(),
                                           const SizedBox(height: 12),
 
-                                          // Student Info Grid
+                                          // Info Grid
                                           Container(
                                             padding: const EdgeInsets.all(14),
                                             decoration: BoxDecoration(
@@ -2968,21 +3038,21 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                               children: [
                                                 Row(
                                                   children: [
-                                                    Expanded(child: _buildTranscriptInfoItem('Nom de l\'étudiant', studentName, isDark)),
-                                                    Expanded(child: _buildTranscriptInfoItem('Identifiant (CNE / MASSAR)', studentId, isDark)),
+                                                    Expanded(child: _buildTranscriptInfoItem(isTeacher ? 'Nom de l\'enseignant' : 'Nom de l\'étudiant', studentName, isDark)),
+                                                    Expanded(child: _buildTranscriptInfoItem(isTeacher ? 'Matricule Enseignant (PPR)' : 'Identifiant (CNE / MASSAR)', studentId, isDark)),
                                                   ],
                                                 ),
                                                 const SizedBox(height: 10),
                                                 Row(
                                                   children: [
-                                                    Expanded(child: _buildTranscriptInfoItem('Filière / Spécialité', majorName, isDark)),
-                                                    Expanded(child: _buildTranscriptInfoItem('Email académique', authState?.email ?? '', isDark)),
+                                                    Expanded(child: _buildTranscriptInfoItem(isTeacher ? 'Département / Discipline' : 'Filière / Spécialité', majorName, isDark)),
+                                                    Expanded(child: _buildTranscriptInfoItem(isTeacher ? 'Email institutionnel' : 'Email académique', authState?.email ?? '', isDark)),
                                                   ],
                                                 ),
                                                 const SizedBox(height: 10),
                                                 Row(
                                                   children: [
-                                                    Expanded(child: _buildTranscriptInfoItem('Statut académique', 'Inscrit en règle (ENT Actif)', isDark)),
+                                                    Expanded(child: _buildTranscriptInfoItem('Statut académique', isTeacher ? 'Enseignant Titulaire (Certifié ENT)' : 'Inscrit en règle (ENT Actif)', isDark)),
                                                     Expanded(child: _buildTranscriptInfoItem('Date d\'émission', dateFormatted, isDark)),
                                                   ],
                                                 ),
@@ -2991,9 +3061,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                           ),
                                           const SizedBox(height: 18),
 
-                                          // Academic Records Summary Table
+                                          // Records Summary Table
                                           Text(
-                                            'Unités d\'Enseignement & Résultats (Semestre en cours)',
+                                            isTeacher
+                                                ? 'Charges d\'Enseignement & Modules Attribués (Semestre en cours)'
+                                                : 'Unités d\'Enseignement & Résultats (Semestre en cours)',
                                             style: TextStyle(
                                               fontSize: 12.5,
                                               fontWeight: FontWeight.bold,
@@ -3001,7 +3073,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                             ),
                                           ),
                                           const SizedBox(height: 8),
-                                          _buildTranscriptTable(isDark),
+                                          isTeacher ? _buildTeacherServiceTable(isDark) : _buildTranscriptTable(isDark),
                                           const SizedBox(height: 16),
 
                                           // Cryptographic Footer Seal
@@ -3072,8 +3144,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                               institution: instName,
                                               major: majorName,
                                               email: authState?.email ?? 'faroukmessay006@gmail.com',
-                                              status: 'Inscrit en règle (ENT Actif)',
+                                              status: isTeacher ? 'Enseignant Titulaire • Certifié ENT' : 'Inscrit en règle (ENT Actif)',
                                               date: dateFormatted,
+                                              isTeacher: isTeacher,
                                             );
                                             _showSuccessSnackBar('Génération du document officiel A4 et ouverture du dialogue d\'impression PDF...');
                                           },
@@ -3110,15 +3183,21 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ),
           const Divider(height: 20),
           _buildNotificationSwitchRow(
-            icon: Icons.leaderboard_outlined,
-            title: context.tr('privacy_visibility_ranking'),
-            subtitle: context.tr('privacy_visibility_ranking_desc'),
+            icon: isTeacher ? Icons.badge_outlined : Icons.leaderboard_outlined,
+            title: isTeacher
+                ? 'Visibilité dans l\'annuaire des enseignants'
+                : context.tr('privacy_visibility_ranking'),
+            subtitle: isTeacher
+                ? 'Permettre aux étudiants et collègues de consulter mes cours, coordonnées et heures de permanence.'
+                : context.tr('privacy_visibility_ranking_desc'),
             value: _rankingVisible,
             isDark: isDark,
             onChanged: (val) async {
               setState(() => _rankingVisible = val);
               await _savePreferences();
-              _showSuccessSnackBar('Préférences de classement mises à jour et enregistrées.');
+              _showSuccessSnackBar(isTeacher
+                  ? 'Préférences d\'annuaire enseignant mises à jour et enregistrées.'
+                  : 'Préférences de classement mises à jour et enregistrées.');
             },
           ),
           const Divider(height: 20),
@@ -4148,6 +4227,59 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 SizedBox(width: 60, child: Text(m['ects']!, style: const TextStyle(fontSize: 11))),
                 SizedBox(width: 70, child: Text(m['note']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF15803D)))),
                 SizedBox(width: 70, child: Text(m['res']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)))),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeacherServiceTable(bool isDark) {
+    final modules = [
+      {'code': 'INFO-401', 'title': 'Algorithmes Avancés & Structures de Données', 'class': 'Cycle Ingénieur • 2A', 'hours': '48h', 'type': 'Cours & TD'},
+      {'code': 'DEV-405', 'title': 'Génie Logiciel & Architecture Microservices', 'class': 'Master 1 • Informatique', 'hours': '42h', 'type': 'Cours & TP'},
+      {'code': 'SYS-402', 'title': 'Systèmes Distribués, Réseaux & Cloud', 'class': 'Cycle Ingénieur • 3A', 'hours': '36h', 'type': 'Cours & TP'},
+      {'code': 'PROJ-401', 'title': 'Supervision Projets de Fin d\'Études (PFE)', 'class': 'Master 2 • Systèmes Intelligents', 'hours': '36h', 'type': 'Encadrement'},
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+            ),
+            child: const Row(
+              children: [
+                SizedBox(width: 75, child: Text('Code', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
+                Expanded(child: Text('Module d\'enseignement', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
+                SizedBox(width: 140, child: Text('Filière / Niveau', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
+                SizedBox(width: 55, child: Text('Volume', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
+                SizedBox(width: 75, child: Text('Type', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
+              ],
+            ),
+          ),
+          ...modules.map((m) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+              ),
+            ),
+            child: Row(
+              children: [
+                SizedBox(width: 75, child: Text(m['code']!, style: const TextStyle(fontSize: 11, fontFamily: 'monospace'))),
+                Expanded(child: Text(m['title']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500))),
+                SizedBox(width: 140, child: Text(m['class']!, style: const TextStyle(fontSize: 11))),
+                SizedBox(width: 55, child: Text(m['hours']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)))),
+                SizedBox(width: 75, child: Text(m['type']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF15803D)))),
               ],
             ),
           )),

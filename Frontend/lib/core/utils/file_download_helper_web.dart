@@ -27,6 +27,7 @@ void printOfficialTranscriptImpl({
   required String email,
   required String status,
   required String date,
+  bool isTeacher = false,
 }) {
   try {
     final existingIframe = html.document.getElementById('smartclass_print_iframe');
@@ -42,6 +43,7 @@ void printOfficialTranscriptImpl({
       email: email,
       status: status,
       date: date,
+      isTeacher: isTeacher,
     );
 
     final iframe = html.IFrameElement()
@@ -78,11 +80,228 @@ String _generateTranscriptHtml({
   required String email,
   required String status,
   required String date,
+  bool isTeacher = false,
 }) {
-  final instDisplay = institution.trim().isNotEmpty ? institution.trim() : 'Université Mohammed V de Rabat';
-  final nameDisplay = studentName.trim().isNotEmpty ? studentName.trim() : 'Ahmed Mohsen';
-  final idDisplay = studentId.trim().isNotEmpty ? studentId.trim() : 'CNE-2026-984210';
-  final majorDisplay = major.trim().isNotEmpty ? major.trim() : 'Cycle Ingénieur • Informatique & Systèmes Intelligents';
+  final instDisplay = institution.trim().isNotEmpty ? institution.trim() : (isTeacher ? 'Institut Supérieur / Université' : 'Université Mohammed V de Rabat');
+  final nameDisplay = studentName.trim().isNotEmpty ? studentName.trim() : (isTeacher ? 'Professeur' : 'Ahmed Mohsen');
+  final idDisplay = studentId.trim().isNotEmpty ? studentId.trim() : (isTeacher ? 'PPR-2026-89421' : 'CNE-2026-984210');
+  final majorDisplay = major.trim().isNotEmpty ? major.trim() : (isTeacher ? 'Département Informatique & Technologies Numériques' : 'Cycle Ingénieur • Informatique & Systèmes Intelligents');
+
+  final docTitle = isTeacher
+      ? 'Attestation d\'Exercice & Fiche de Service Enseignant'
+      : 'Relevé Officiel de Notes & Attestation Académique';
+
+  final docSub = isTeacher
+      ? 'Enseignement Supérieur, Recherche & Encadrement Pédagogique • Année 2025 - 2026'
+      : 'Cycle Universitaire d\'Excellence • Année Académique 2025 - 2026';
+
+  final cardHtml = isTeacher
+      ? '''
+      <div>
+        <div class="info-label">Nom & Prénom de l'Enseignant</div>
+        <div class="info-value">$nameDisplay</div>
+      </div>
+      <div>
+        <div class="info-label">Matricule Enseignant (PPR / Somme)</div>
+        <div class="info-value">$idDisplay</div>
+      </div>
+      <div>
+        <div class="info-label">Département & Discipline</div>
+        <div class="info-value">$majorDisplay</div>
+      </div>
+      <div>
+        <div class="info-label">Statut Académique</div>
+        <div class="info-value"><span class="status-badge">Enseignant Titulaire • Certifié ENT</span></div>
+      </div>
+      <div>
+        <div class="info-label">Établissement d'Affectation</div>
+        <div class="info-value">$instDisplay</div>
+      </div>
+      <div>
+        <div class="info-label">Email Institutionnel</div>
+        <div class="info-value">$email</div>
+      </div>
+      '''
+      : '''
+      <div>
+        <div class="info-label">Nom & Prénom de l'étudiant</div>
+        <div class="info-value">$nameDisplay</div>
+      </div>
+      <div>
+        <div class="info-label">Identifiant National (CNE / MASSAR)</div>
+        <div class="info-value">$idDisplay</div>
+      </div>
+      <div>
+        <div class="info-label">Filière / Spécialité d'Excellence</div>
+        <div class="info-value">$majorDisplay</div>
+      </div>
+      <div>
+        <div class="info-label">Statut d'Inscription & Scolarité</div>
+        <div class="info-value"><span class="status-badge">Inscrit en règle • $status</span></div>
+      </div>
+      <div>
+        <div class="info-label">Établissement de Rattachement</div>
+        <div class="info-value">$instDisplay</div>
+      </div>
+      <div>
+        <div class="info-label">Adresse Email Académique</div>
+        <div class="info-value">$email</div>
+      </div>
+      ''';
+
+  final tableHtml = isTeacher
+      ? '''
+  <h2 class="section-title">Charges d'Enseignement & Modules Attribués (Semestre en cours)</h2>
+  <table class="transcript-table">
+    <thead>
+      <tr>
+        <th style="width: 80px;">Code Module</th>
+        <th>Intitulé du Cours / Module</th>
+        <th style="width: 140px;">Filière / Classe</th>
+        <th style="width: 85px; text-align: center;">Volume Horaire</th>
+        <th style="width: 95px; text-align: center;">Type</th>
+        <th style="width: 80px; text-align: center;">Statut</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>INFO-401</strong></td>
+        <td>Algorithmes Avancés & Structures de Données</td>
+        <td>Cycle Ingénieur • 2A</td>
+        <td class="grade-cell" style="text-align: center;">48h</td>
+        <td style="text-align: center;">Cours & TD</td>
+        <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
+      </tr>
+      <tr>
+        <td><strong>DEV-405</strong></td>
+        <td>Génie Logiciel & Architecture Microservices</td>
+        <td>Master 1 • Informatique</td>
+        <td class="grade-cell" style="text-align: center;">42h</td>
+        <td style="text-align: center;">Cours & TP</td>
+        <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
+      </tr>
+      <tr>
+        <td><strong>SYS-402</strong></td>
+        <td>Systèmes Distribués, Réseaux & Cloud</td>
+        <td>Cycle Ingénieur • 3A</td>
+        <td class="grade-cell" style="text-align: center;">36h</td>
+        <td style="text-align: center;">Cours & TP</td>
+        <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
+      </tr>
+      <tr>
+        <td><strong>PROJ-401</strong></td>
+        <td>Supervision Projets de Fin d'Études (PFE)</td>
+        <td>Master 2 • Systèmes Intelligents</td>
+        <td class="grade-cell" style="text-align: center;">36h</td>
+        <td style="text-align: center;">Encadrement</td>
+        <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="summary-card">
+    <div class="summary-item">
+      <div class="summary-title">Total Charge Horaire</div>
+      <div class="summary-val">162 Heures</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-title">Modules Enseignés</div>
+      <div class="summary-val">4 Modules</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-title">Validation Décanat</div>
+      <div class="summary-val" style="color: #15803d;">CERTIFIÉ CONFORME</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-title">Année Universitaire</div>
+      <div class="summary-val">2025 - 2026</div>
+    </div>
+  </div>
+  '''
+      : '''
+  <h2 class="section-title">Résultats & Évaluations des Modules (Semestre Académique en cours)</h2>
+  <table class="transcript-table">
+    <thead>
+      <tr>
+        <th style="width: 80px;">Code UE</th>
+        <th>Intitulé du Module</th>
+        <th style="width: 60px; text-align: center;">Crédits</th>
+        <th style="width: 75px; text-align: center;">Note /20</th>
+        <th style="width: 75px; text-align: center;">Résultat</th>
+        <th style="width: 95px; text-align: center;">Mention</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>INFO-401</strong></td>
+        <td>Algorithmes Avancés & Structures de Données</td>
+        <td style="text-align: center;">6 ECTS</td>
+        <td class="grade-cell" style="text-align: center;">17.50</td>
+        <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
+        <td class="mention-cell" style="text-align: center;">Très Bien</td>
+      </tr>
+      <tr>
+        <td><strong>MATH-302</strong></td>
+        <td>Probabilités, Statistiques & Analyse pour l'IA</td>
+        <td style="text-align: center;">6 ECTS</td>
+        <td class="grade-cell" style="text-align: center;">16.00</td>
+        <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
+        <td class="mention-cell" style="text-align: center;">Très Bien</td>
+      </tr>
+      <tr>
+        <td><strong>DEV-405</strong></td>
+        <td>Génie Logiciel & Architecture Microservices</td>
+        <td style="text-align: center;">6 ECTS</td>
+        <td class="grade-cell" style="text-align: center;">18.00</td>
+        <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
+        <td class="mention-cell" style="text-align: center;">Excellent</td>
+      </tr>
+      <tr>
+        <td><strong>SYS-402</strong></td>
+        <td>Systèmes Distribués, Réseaux & Cloud Computing</td>
+        <td style="text-align: center;">6 ECTS</td>
+        <td class="grade-cell" style="text-align: center;">15.50</td>
+        <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
+        <td class="mention-cell" style="text-align: center;">Bien</td>
+      </tr>
+      <tr>
+        <td><strong>IA-408</strong></td>
+        <td>Machine Learning & Réseaux de Neurones Profonds</td>
+        <td style="text-align: center;">6 ECTS</td>
+        <td class="grade-cell" style="text-align: center;">17.00</td>
+        <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
+        <td class="mention-cell" style="text-align: center;">Très Bien</td>
+      </tr>
+      <tr>
+        <td><strong>PROJ-401</strong></td>
+        <td>Projet d'Ingénierie Collaboratif & Soutenance</td>
+        <td style="text-align: center;">8 ECTS</td>
+        <td class="grade-cell" style="text-align: center;">18.50</td>
+        <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
+        <td class="mention-cell" style="text-align: center;">Excellent</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="summary-card">
+    <div class="summary-item">
+      <div class="summary-title">Total Crédits ECTS</div>
+      <div class="summary-val">60 / 60</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-title">Moyenne Générale</div>
+      <div class="summary-val">17.08 / 20</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-title">Mention Académique</div>
+      <div class="summary-val" style="color: #15803d;">TRÈS BIEN</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-title">Rang de Promotion</div>
+      <div class="summary-val">3ème / 142</div>
+    </div>
+  </div>
+  ''';
 
   return '''
 <!DOCTYPE html>
@@ -328,123 +547,18 @@ String _generateTranscriptHtml({
         <div class="badge-date">Émis le $date</div>
       </div>
     </div>
-
     <div class="document-banner">
-      <h1 class="document-title">Relevé Officiel de Notes & Attestation Académique</h1>
-      <p class="document-subtitle">Cycle Universitaire d'Excellence • Année Académique 2025 - 2026</p>
+      <h1 class="document-title">$docTitle</h1>
+      <p class="document-subtitle">$docSub</p>
     </div>
 
     <div class="student-card">
       <div class="info-grid">
-        <div>
-          <div class="info-label">Nom & Prénom de l'étudiant</div>
-          <div class="info-value">$nameDisplay</div>
-        </div>
-        <div>
-          <div class="info-label">Identifiant National (CNE / MASSAR)</div>
-          <div class="info-value">$idDisplay</div>
-        </div>
-        <div>
-          <div class="info-label">Filière / Spécialité d'Excellence</div>
-          <div class="info-value">$majorDisplay</div>
-        </div>
-        <div>
-          <div class="info-label">Statut d'Inscription & Scolarité</div>
-          <div class="info-value"><span class="status-badge">Inscrit en règle • $status</span></div>
-        </div>
-        <div>
-          <div class="info-label">Établissement de Rattachement</div>
-          <div class="info-value">$instDisplay</div>
-        </div>
-        <div>
-          <div class="info-label">Adresse Email Académique</div>
-          <div class="info-value">$email</div>
-        </div>
+        $cardHtml
       </div>
     </div>
 
-    <h2 class="section-title">Unités d'Enseignement (UE) & Résultats Validés</h2>
-    <table class="transcript-table">
-      <thead>
-        <tr>
-          <th style="width: 80px;">Code UE</th>
-          <th>Intitulé du Module</th>
-          <th style="width: 60px; text-align: center;">Crédits</th>
-          <th style="width: 75px; text-align: center;">Note /20</th>
-          <th style="width: 75px; text-align: center;">Résultat</th>
-          <th style="width: 95px; text-align: center;">Mention</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>INFO-401</strong></td>
-          <td>Algorithmes Avancés & Structures de Données</td>
-          <td style="text-align: center;">6 ECTS</td>
-          <td class="grade-cell" style="text-align: center;">17.50</td>
-          <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
-          <td class="mention-cell" style="text-align: center;">Très Bien</td>
-        </tr>
-        <tr>
-          <td><strong>MATH-302</strong></td>
-          <td>Probabilités, Statistiques & Analyse pour l'IA</td>
-          <td style="text-align: center;">6 ECTS</td>
-          <td class="grade-cell" style="text-align: center;">16.00</td>
-          <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
-          <td class="mention-cell" style="text-align: center;">Très Bien</td>
-        </tr>
-        <tr>
-          <td><strong>DEV-405</strong></td>
-          <td>Génie Logiciel & Architecture Microservices</td>
-          <td style="text-align: center;">6 ECTS</td>
-          <td class="grade-cell" style="text-align: center;">18.00</td>
-          <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
-          <td class="mention-cell" style="text-align: center;">Excellent</td>
-        </tr>
-        <tr>
-          <td><strong>SYS-402</strong></td>
-          <td>Systèmes Distribués, Réseaux & Cloud Computing</td>
-          <td style="text-align: center;">6 ECTS</td>
-          <td class="grade-cell" style="text-align: center;">15.50</td>
-          <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
-          <td class="mention-cell" style="text-align: center;">Bien</td>
-        </tr>
-        <tr>
-          <td><strong>IA-408</strong></td>
-          <td>Machine Learning & Réseaux de Neurones Profonds</td>
-          <td style="text-align: center;">6 ECTS</td>
-          <td class="grade-cell" style="text-align: center;">17.00</td>
-          <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
-          <td class="mention-cell" style="text-align: center;">Très Bien</td>
-        </tr>
-        <tr>
-          <td><strong>PROJ-401</strong></td>
-          <td>Projet d'Ingénierie Collaboratif & Soutenance</td>
-          <td style="text-align: center;">8 ECTS</td>
-          <td class="grade-cell" style="text-align: center;">18.50</td>
-          <td style="text-align: center; color: #15803d; font-weight: 700;">Validé</td>
-          <td class="mention-cell" style="text-align: center;">Excellent</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div class="summary-card">
-      <div class="summary-item">
-        <div class="summary-title">Total Crédits ECTS</div>
-        <div class="summary-val">60 / 60</div>
-      </div>
-      <div class="summary-item">
-        <div class="summary-title">Moyenne Générale</div>
-        <div class="summary-val">17.08 / 20</div>
-      </div>
-      <div class="summary-item">
-        <div class="summary-title">Mention Académique</div>
-        <div class="summary-val" style="color: #15803d;">TRÈS BIEN</div>
-      </div>
-      <div class="summary-item">
-        <div class="summary-title">Rang de Promotion</div>
-        <div class="summary-val">3ème / 142</div>
-      </div>
-    </div>
+    $tableHtml
 
     <div class="legal-footer">
       <div class="footer-left">

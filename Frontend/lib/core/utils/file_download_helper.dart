@@ -13,6 +13,7 @@ void printOfficialTranscript({
   required String email,
   required String status,
   required String date,
+  bool isTeacher = false,
 }) {
   printOfficialTranscriptImpl(
     studentName: studentName,
@@ -22,5 +23,6 @@ void printOfficialTranscript({
     email: email,
     status: status,
     date: date,
+    isTeacher: isTeacher,
   );
 }
