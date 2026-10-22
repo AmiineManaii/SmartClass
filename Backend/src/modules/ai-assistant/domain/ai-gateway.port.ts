@@ -25,6 +25,11 @@ export interface GenerateExtras {
    * for cours complet / difficile).
    */
   thinking: boolean;
+  /**
+   * Local AI image generation via ComfyUI Desktop. When enabled, the model
+   * can generate custom illustrations on the teacher's GPU.
+   */
+  generateImages: boolean;
 }
 
 export interface ChatTool {

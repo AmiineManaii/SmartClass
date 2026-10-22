@@ -66,6 +66,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
   // tool calls), thinking adds a long silent reasoning phase.
   bool _exWebSearch = false;
   bool _exThinking = false;
+  bool _exGenerateImages = false;
   String? _pdfName;
   List<int>? _pdfBytes;
 
@@ -182,6 +183,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
         webImages: _exWebImages,
         webSearch: _exWebSearch,
         thinking: _exThinking,
+        generateImages: _exGenerateImages,
       );
 
       if (!mounted) return;
@@ -232,6 +234,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
             webImages: _exWebImages,
             webSearch: _exWebSearch,
             thinking: _exThinking,
+            generateImages: _exGenerateImages,
             outline: useOutline ? _outline : null,
           ),
         );
@@ -943,12 +946,14 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
           webImages: _exWebImages,
           webSearch: _exWebSearch,
           thinking: _exThinking,
-          onChanged: (examples, mermaid, webImages, webSearch, thinking) => setState(() {
+          generateImages: _exGenerateImages,
+          onChanged: (examples, mermaid, webImages, webSearch, thinking, generateImages) => setState(() {
             _exExamples = examples;
             _exMermaid = mermaid;
             _exWebImages = webImages;
             _exWebSearch = webSearch;
             _exThinking = thinking;
+            _exGenerateImages = generateImages;
           }),
         ),
 
@@ -1944,8 +1949,9 @@ class _ExtrasBox extends StatelessWidget {
   final bool webImages;
   final bool webSearch;
   final bool thinking;
+  final bool generateImages;
   final void Function(
-      bool examples, bool mermaid, bool webImages, bool webSearch, bool thinking) onChanged;
+      bool examples, bool mermaid, bool webImages, bool webSearch, bool thinking, bool generateImages) onChanged;
 
   const _ExtrasBox({
     required this.examples,
@@ -1953,6 +1959,7 @@ class _ExtrasBox extends StatelessWidget {
     required this.webImages,
     required this.webSearch,
     required this.thinking,
+    required this.generateImages,
     required this.onChanged,
   });
 
@@ -2005,19 +2012,22 @@ class _ExtrasBox extends StatelessWidget {
       child: Column(
         children: [
           row('ai_extra_examples', 'ai_extra_examples_desc', examples,
-              (v) => onChanged(v, mermaid, webImages, webSearch, thinking)),
+              (v) => onChanged(v, mermaid, webImages, webSearch, thinking, generateImages)),
           const SizedBox(height: 12),
           row('ai_extra_mermaid', 'ai_extra_mermaid_desc', mermaid,
-              (v) => onChanged(examples, v, webImages, webSearch, thinking)),
+              (v) => onChanged(examples, v, webImages, webSearch, thinking, generateImages)),
           const SizedBox(height: 12),
           row('ai_extra_webimages', 'ai_extra_webimages_desc', webImages,
-              (v) => onChanged(examples, mermaid, v, webSearch, thinking)),
+              (v) => onChanged(examples, mermaid, v, webSearch, thinking, generateImages)),
+          const SizedBox(height: 12),
+          row('ai_extra_generateimages', 'ai_extra_generateimages_desc', generateImages,
+              (v) => onChanged(examples, mermaid, webImages, webSearch, thinking, v)),
           const SizedBox(height: 12),
           row('ai_extra_websearch', 'ai_extra_websearch_desc', webSearch,
-              (v) => onChanged(examples, mermaid, webImages, v, thinking)),
+              (v) => onChanged(examples, mermaid, webImages, v, thinking, generateImages)),
           const SizedBox(height: 12),
           row('ai_extra_thinking', 'ai_extra_thinking_desc', thinking,
-              (v) => onChanged(examples, mermaid, webImages, webSearch, v)),
+              (v) => onChanged(examples, mermaid, webImages, webSearch, v, generateImages)),
         ],
       ),
     );

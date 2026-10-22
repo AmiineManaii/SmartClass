@@ -25,6 +25,7 @@ export const DEFAULT_EXTRAS: GenerateExtras = {
   webImages: false,
   webSearch: false,
   thinking: false,
+  generateImages: false,
 };
 
 export interface GenerateCourseDTO {
@@ -220,6 +221,7 @@ export class GenerateCourseUseCase {
       toolsOffered: shouldOfferTools({
         webSearch: extras.webSearch,
         webImages: extras.webImages,
+        generateImages: extras.generateImages,
         webSearchEnabled: env.AI_ENABLE_WEB_SEARCH,
       }),
       truncatedSource,

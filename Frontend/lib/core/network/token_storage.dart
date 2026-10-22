@@ -76,22 +76,33 @@ class TokenStorage {
       await prefs.setString('${prefix}_institution', institution);
       await prefs.setString('smartclass_current_institution', institution);
     }
-    if (faculty != null) await prefs.setString('${prefix}_faculty', faculty);
-    if (major != null) await prefs.setString('${prefix}_major', major);
-    if (studentId != null) await prefs.setString('${prefix}_student_id', studentId);
-    if (bio != null) await prefs.setString('${prefix}_bio', bio);
+    if (faculty != null) {
+      await prefs.setString('${prefix}_faculty', faculty);
+      await prefs.setString('smartclass_current_faculty', faculty);
+    }
+    if (major != null) {
+      await prefs.setString('${prefix}_major', major);
+      await prefs.setString('smartclass_current_major', major);
+    }
+    if (studentId != null) {
+      await prefs.setString('${prefix}_student_id', studentId);
+      await prefs.setString('smartclass_current_student_id', studentId);
+    }
+    if (bio != null) {
+      await prefs.setString('${prefix}_bio', bio);
+      await prefs.setString('smartclass_current_bio', bio);
+    }
   }
 
   Future<Map<String, String?>> readAcademicProfile(String? userIdOrEmail) async {
     final prefs = await _prefs;
     final prefix = 'smartclass_profile_${(userIdOrEmail != null && userIdOrEmail.isNotEmpty) ? userIdOrEmail : 'default'}';
-    final globalInst = prefs.getString('smartclass_current_institution');
     return {
-      'institution': prefs.getString('${prefix}_institution') ?? globalInst,
-      'faculty': prefs.getString('${prefix}_faculty'),
-      'major': prefs.getString('${prefix}_major'),
-      'studentId': prefs.getString('${prefix}_student_id'),
-      'bio': prefs.getString('${prefix}_bio'),
+      'institution': prefs.getString('${prefix}_institution') ?? prefs.getString('smartclass_current_institution'),
+      'faculty': prefs.getString('${prefix}_faculty') ?? prefs.getString('smartclass_current_faculty'),
+      'major': prefs.getString('${prefix}_major') ?? prefs.getString('smartclass_current_major'),
+      'studentId': prefs.getString('${prefix}_student_id') ?? prefs.getString('smartclass_current_student_id'),
+      'bio': prefs.getString('${prefix}_bio') ?? prefs.getString('smartclass_current_bio'),
     };
   }
 }

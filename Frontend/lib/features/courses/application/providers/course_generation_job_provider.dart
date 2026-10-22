@@ -29,6 +29,7 @@ class GenerationJobParams {
   final bool webImages;
   final bool webSearch;
   final bool thinking;
+  final bool generateImages;
   final CourseOutline? outline;
 
   const GenerationJobParams({
@@ -45,6 +46,7 @@ class GenerationJobParams {
     required this.webImages,
     required this.webSearch,
     required this.thinking,
+    this.generateImages = false,
     this.outline,
   });
 }
@@ -268,6 +270,7 @@ class CourseGenerationJob extends StateNotifier<GenerationJobState> {
           'webImages': params.webImages,
           'webSearch': params.webSearch,
           'thinking': params.thinking,
+          'generateImages': params.generateImages,
         },
       };
       switch (params.mode) {
@@ -287,6 +290,7 @@ class CourseGenerationJob extends StateNotifier<GenerationJobState> {
                 'webImages': params.webImages,
                 'webSearch': params.webSearch,
                 'thinking': params.thinking,
+                'generateImages': params.generateImages,
               }),
             },
             file: MultipartFile.fromBytes(

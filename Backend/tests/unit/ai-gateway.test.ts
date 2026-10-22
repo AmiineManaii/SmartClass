@@ -248,4 +248,75 @@ describe('Unit: OpenAICompatibleGateway', () => {
       await new Promise<void>((resolve) => sse.close(() => resolve()));
     }
   });
+
+  it('autonomously executes tool_calls and returns final completion', async () => {
+    let callIndex = 0;
+    const baseUrl = await stub((body) => {
+      callIndex += 1;
+      if (callIndex === 1) {
+        // First turn: model requests web_search tool call
+        return {
+          status: 200,
+          payload: {
+            choices: [
+              {
+                message: {
+                  content: null,
+                  tool_calls: [
+                    {
+                      id: 'call_search_1',
+                      type: 'function',
+                      function: {
+                        name: 'web_search',
+                        arguments: JSON.stringify({ query: 'quantum computing' }),
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        };
+      }
+      // Second turn: server receives tool answer and returns final text
+      const messages = body.messages as Array<Record<string, unknown>>;
+      const toolMsg = messages.find((m) => m.role === 'tool');
+      if (!toolMsg || toolMsg.tool_call_id !== 'call_search_1') {
+        throw new Error('expected tool message in conversation turn');
+      }
+      return {
+        status: 200,
+        payload: {
+          choices: [{ message: { content: '# Quantum Computing Course' } }],
+          usage: { prompt_tokens: 10, completion_tokens: 20 },
+        },
+      };
+    });
+
+    const searchMock = {
+      searchWeb: async () => [
+        { title: 'Quantum Info', url: 'https://example.com/q', snippet: 'Intro' },
+      ],
+      searchImages: async () => [],
+    };
+
+    const gateway = new OpenAICompatibleGateway({
+      baseUrl,
+      searchService: searchMock,
+    });
+
+    const result = await gateway.chatCompletion({
+      ...input,
+      tools: [
+        {
+          type: 'function',
+          function: { name: 'web_search', description: 'd', parameters: {} },
+        },
+      ],
+    });
+
+    expect(result.content).toBe('# Quantum Computing Course');
+    expect(result.toolsUsed).toBe(true);
+    expect(callIndex).toBe(2);
+  });
 });

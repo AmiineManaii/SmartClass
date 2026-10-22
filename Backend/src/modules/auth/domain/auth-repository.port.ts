@@ -107,4 +107,8 @@ export interface AuthRepositoryPort {
   revokeRefreshToken(id: string): Promise<void>;
   revokeFamily(familyId: string): Promise<void>;
   revokeAllUserTokens(userId: string): Promise<void>;
+  getActiveUserSessions(userId: string): Promise<Array<StoredRefreshToken>>;
+  revokeUserSessionById(userId: string, sessionId: string): Promise<boolean>;
+  revokeOtherUserSessions(userId: string, currentSessionId?: string): Promise<number>;
+  deleteUser(userId: string): Promise<void>;
 }

@@ -144,6 +144,19 @@ export const authenticate2faSchema = z
   })
   .strict();
 
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+  })
+  .strict();
+
+export const deleteAccountSchema = z
+  .object({
+    password: z.string().min(1, 'Password is required for deletion confirmation'),
+  })
+  .strict();
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
@@ -157,4 +170,7 @@ export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type Verify2faInput = z.infer<typeof verify2faSchema>;
 export type Disable2faInput = z.infer<typeof disable2faSchema>;
 export type Authenticate2faInput = z.infer<typeof authenticate2faSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;
+
 

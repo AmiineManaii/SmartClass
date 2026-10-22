@@ -35,6 +35,7 @@ class WebMainScaffold extends ConsumerWidget {
         ? user!.displayName!.trim()
         : (currentRole == 'teacher' ? 'Professeur' : 'Étudiant');
     final email = user?.email?.trim() ?? '';
+    final institution = user?.institution?.trim() ?? '';
 
     // Détection du chemin actif
     String currentRoute = activePath ?? '';
@@ -425,11 +426,13 @@ class WebMainScaffold extends ConsumerWidget {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                         Text(
-                                          email.isNotEmpty
-                                              ? email
-                                              : (isTeacher
-                                                  ? 'Professeur'
-                                                  : 'L3 Informatique'),
+                                          institution.isNotEmpty
+                                              ? institution
+                                              : (email.isNotEmpty
+                                                  ? email
+                                                  : (isTeacher
+                                                      ? 'Professeur'
+                                                      : 'L3 Informatique')),
                                           style: TextStyle(
                                             color: isDark
                                                 ? const Color(0xFF94A3B8)
@@ -492,49 +495,50 @@ class WebMainScaffold extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      // Institutional switcher / School badge (Stitch maquette)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF1E293B)
-                              : const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
+                      // Institutional switcher / School badge (Dynamic based on user profile)
+                      if (user?.institution != null && user!.institution!.trim().isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
                             color: isDark
-                                ? Colors.white.withValues(alpha: 0.1)
-                                : const Color(0xFFCBD5E1),
+                                ? const Color(0xFF1E293B)
+                                : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.1)
+                                  : const Color(0xFFCBD5E1),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.account_balance_rounded,
+                                size: 15,
+                                color: isDark
+                                    ? const Color(0xFF93C5FD)
+                                    : const Color(0xFF2563EB),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                user.institution!.trim(),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF1E293B),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.account_balance_rounded,
-                              size: 15,
-                              color: isDark
-                                  ? const Color(0xFF93C5FD)
-                                  : const Color(0xFF2563EB),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              context.tr('institution_tag'),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF1E293B),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(width: 16),
+                        const SizedBox(width: 16),
+                      ],
 
                       // Search Bar
                       Expanded(
@@ -672,6 +676,7 @@ class WebMainScaffold extends ConsumerWidget {
                             ),
                           ),
                           child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               CircleAvatar(
                                 radius: 12,
@@ -700,6 +705,54 @@ class WebMainScaffold extends ConsumerWidget {
                                       : const Color(0xFF1E293B),
                                 ),
                               ),
+                              if (institution.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF1E3A8A).withValues(alpha: 0.4)
+                                        : const Color(0xFFEFF6FF),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
+                                          : const Color(0xFFBFDBFE),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.account_balance_rounded,
+                                        size: 11,
+                                        color: isDark
+                                            ? const Color(0xFF93C5FD)
+                                            : const Color(0xFF2563EB),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      ConstrainedBox(
+                                        constraints: const BoxConstraints(maxWidth: 160),
+                                        child: Text(
+                                          institution,
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: isDark
+                                                ? const Color(0xFF93C5FD)
+                                                : const Color(0xFF1D4ED8),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),

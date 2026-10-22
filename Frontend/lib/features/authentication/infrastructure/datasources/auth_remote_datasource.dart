@@ -205,11 +205,67 @@ class AuthRemoteDataSource {
 
   Future<List<Map<String, dynamic>>> getAuditLogs({int limit = 20}) async {
     final res = await _client.get<dynamic>('$_base/auth/audit-logs?limit=$limit');
-    final data = apiEnvelope(res);
-    if (data is List) {
-      return data.cast<Map<String, dynamic>>();
+    final body = res.data;
+    if (body is Map<String, dynamic> && body['data'] is List) {
+      return (body['data'] as List)
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
     }
     return [];
+  }
+
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final res = await _client.post<dynamic>(
+      '$_base/auth/change-password',
+      data: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      },
+    );
+    return apiEnvelope(res);
+  }
+
+  Future<List<Map<String, dynamic>>> getSessions() async {
+    final res = await _client.get<dynamic>('$_base/auth/sessions');
+    final body = res.data;
+    if (body is Map<String, dynamic> && body['data'] is List) {
+      return (body['data'] as List)
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> revokeSession(String sessionId) async {
+    final res = await _client.delete<dynamic>('$_base/auth/sessions/$sessionId');
+    return apiEnvelope(res);
+  }
+
+  Future<Map<String, dynamic>> revokeAllOtherSessions() async {
+    final res = await _client.delete<dynamic>('$_base/auth/sessions');
+    return apiEnvelope(res);
+  }
+
+  Future<Map<String, dynamic>> freezeAccount() async {
+    final res = await _client.post<dynamic>('$_base/auth/freeze-account');
+    return apiEnvelope(res);
+  }
+
+  Future<Map<String, dynamic>> deleteAccount({
+    required String passwordConfirmation,
+  }) async {
+    final res = await _client.post<dynamic>(
+      '$_base/auth/delete-account',
+      data: {
+        'passwordConfirmation': passwordConfirmation,
+      },
+    );
+    return apiEnvelope(res);
   }
 }
 

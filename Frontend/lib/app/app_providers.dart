@@ -78,7 +78,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/splash';
       }
 
-      final auth = ProviderScope.containerOf(context).read(authStateProvider).valueOrNull;
+      final authAsync = ProviderScope.containerOf(context).read(authStateProvider);
+      // Ne jamais rediriger vers /login si l'état est en chargement transitoire (ex: mise à jour en cours)
+      if (authAsync.isLoading && authAsync.valueOrNull == null) {
+        return null;
+      }
+      final auth = authAsync.valueOrNull;
       final isLoggedIn = auth?.isAuthenticated ?? false;
       final completed = auth?.onboardingCompleted ?? false;
 
@@ -639,6 +644,8 @@ class AuthState {
   final String? bio;
   final bool twoFactorEnabled;
 
+  String get status => emailVerified ? 'ACTIVE' : 'PENDING_VERIFICATION';
+
   const AuthState({
     this.isAuthenticated = false,
     this.userId,
@@ -710,9 +717,16 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
 
   AuthRepository get _repo => _ref.read(authRepositoryProvider);
 
-  void _emit(AsyncValue<AuthState> next) {
+  void _emit(AsyncValue<AuthState> next, {bool forceNotifyRouter = false}) {
+    final prev = state.valueOrNull;
     state = next;
-    onChanged();
+    final curr = next.valueOrNull;
+    if (forceNotifyRouter ||
+        prev?.isAuthenticated != curr?.isAuthenticated ||
+        prev?.role != curr?.role ||
+        prev?.onboardingCompleted != curr?.onboardingCompleted) {
+      onChanged();
+    }
   }
 
   AuthState _fromUser(
@@ -723,19 +737,21 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     String? major,
     String? studentId,
     String? bio,
+    AuthState? previousState,
   }) {
-    final currentRole = state.valueOrNull?.role;
-    final currentInst = institution ?? state.valueOrNull?.institution;
-    final currentFaculty = faculty ?? state.valueOrNull?.faculty;
-    final currentMajor = major ?? state.valueOrNull?.major;
-    final currentStudentId = studentId ?? state.valueOrNull?.studentId;
-    final currentBio = bio ?? state.valueOrNull?.bio;
+    final prev = previousState ?? state.valueOrNull;
+    final currentRole = (user.role != null && user.role!.isNotEmpty) ? user.role : prev?.role;
+    final currentInst = institution ?? prev?.institution;
+    final currentFaculty = faculty ?? prev?.faculty;
+    final currentMajor = major ?? prev?.major;
+    final currentStudentId = studentId ?? prev?.studentId;
+    final currentBio = bio ?? prev?.bio;
 
     return AuthState(
       isAuthenticated: authenticated,
       userId: user.id.isEmpty ? null : user.id,
       email: user.email.isEmpty ? null : user.email,
-      role: (user.role != null && user.role!.isNotEmpty) ? user.role : currentRole,
+      role: currentRole,
       displayName: user.displayName.isEmpty ? null : user.displayName,
       emailVerified: user.emailVerified,
       onboardingCompleted: user.onboardingCompleted,
@@ -916,13 +932,16 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   Future<void> updateProfile({String? firstName, String? lastName}) async {
     final current = state.value;
     if (current == null || !current.isAuthenticated) return;
-    _emit(const AsyncValue.loading());
     try {
       final user = await _repo.updateProfile(
         firstName: firstName,
         lastName: lastName,
       );
-      _emit(AsyncValue.data(_fromUser(user, authenticated: true)));
+      _emit(AsyncValue.data(_fromUser(
+        user,
+        authenticated: true,
+        previousState: current,
+      )));
     } catch (e) {
       _emit(AsyncValue.data(current));
       rethrow;
@@ -947,7 +966,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     _emit(const AsyncValue.loading());
     try {
       final session = await _repo.setMyRole(role: normalized);
-      _emit(AsyncValue.data(_fromUser(session.user, authenticated: true)));
+      _emit(AsyncValue.data(_fromUser(
+        session.user,
+        authenticated: true,
+        previousState: current,
+      )));
     } catch (e) {
       // Role already set server-side: resync from the backend (source of
       // truth). Only swallow the error when the synced role matches the
@@ -955,7 +978,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       // otherwise surface it so the user isn't sent to the wrong dashboard.
       try {
         final user = await _repo.getMe();
-        final synced = _fromUser(user, authenticated: true);
+        final synced = _fromUser(user, authenticated: true, previousState: current);
         _emit(AsyncValue.data(synced));
         if (synced.role == normalized) return;
       } catch (_) {
@@ -1102,5 +1125,49 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
 
   Future<List<Map<String, dynamic>>> getAuditLogs({int limit = 20}) {
     return _repo.getAuditLogs(limit: limit);
+  }
+
+  Future<String> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return _repo.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getSessions() {
+    return _repo.getSessions();
+  }
+
+  Future<void> revokeSession(String sessionId) {
+    return _repo.revokeSession(sessionId);
+  }
+
+  Future<void> revokeAllOtherSessions() {
+    return _repo.revokeAllOtherSessions();
+  }
+
+  Future<String> freezeAccount() async {
+    final tokens = _ref.read(tokenStorageProvider);
+    try {
+      final msg = await _repo.freezeAccount();
+      return msg;
+    } finally {
+      await tokens.clear(keepSavedEmail: true);
+      _emit(const AsyncValue.data(AuthState()));
+    }
+  }
+
+  Future<String> deleteAccount({required String passwordConfirmation}) async {
+    final tokens = _ref.read(tokenStorageProvider);
+    try {
+      final msg = await _repo.deleteAccount(passwordConfirmation: passwordConfirmation);
+      return msg;
+    } finally {
+      await tokens.clear(keepSavedEmail: false);
+      _emit(const AsyncValue.data(AuthState()));
+    }
   }
 }

@@ -133,12 +133,18 @@ export class LoginUseCase {
       );
     }
 
-    // 3. Check account status & email verification
+    // 3. Check account status: if frozen, reactivate it automatically on successful credentials
     if (user.status === 'SUSPENDED') {
-      throw new ForbiddenError(
-        'Your account has been suspended. Please contact an administrator.',
-        ErrorCodes.AUTH_USER_SUSPENDED,
-      );
+      await this.authRepository.updateUser(user.id, { status: 'ACTIVE' });
+      if (typeof this.authRepository.saveAuditLog === 'function') {
+        await this.authRepository.saveAuditLog({
+          userId: user.id,
+          action: 'AUTH_ACCOUNT_REACTIVATED',
+          targetType: 'User',
+          targetId: user.id,
+          details: { ipAddress: dto.ipAddress ?? 'unknown' },
+        });
+      }
     }
 
     if (!user.emailVerified) {

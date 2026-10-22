@@ -82,6 +82,7 @@ class MockAuthRepository implements AuthRepositoryPort {
       failedLoginAttempts: number;
       lockedUntil: Date | null;
       status: 'ACTIVE' | 'SUSPENDED';
+      twoFactorEnabled: boolean;
     }>,
   ): Promise<UserEntity> {
     const current = this.users.get(id);
@@ -293,6 +294,15 @@ class MockTokenService implements TokenServicePort {
   public hashRefreshToken(token: string): string {
     return `hash_${token}`;
   }
+
+  public async generateTwoFactorTempToken(userId: string, email: string): Promise<string> {
+    return `2fa_temp_${userId}_${email}`;
+  }
+
+  public async verifyTwoFactorTempToken(token: string): Promise<{ userId: string; email: string }> {
+    const parts = token.replace('2fa_temp_', '').split('_');
+    return { userId: parts[0] || 'mock-id', email: parts[1] || 'mock@example.com' };
+  }
 }
 
 class MockEmailService implements EmailPort {
@@ -415,6 +425,7 @@ describe('Auth Module — Unit Tests', () => {
         password: 'Password123!',
       });
 
+      if (result.twoFactorRequired) throw new Error('Expected full session');
       expect(result.accessToken).toBeDefined();
       expect(result.user.email).toBe('amine@test.com');
     });
@@ -435,6 +446,7 @@ describe('Auth Module — Unit Tests', () => {
         rememberMe: true,
       });
 
+      if (result.twoFactorRequired) throw new Error('Expected full session');
       expect(result.accessToken).toBeDefined();
       const tokenHash = tokenService.hashRefreshToken(result.refreshToken);
       const stored = await authRepo.findRefreshToken(tokenHash);

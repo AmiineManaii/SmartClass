@@ -31,6 +31,7 @@ class AiCourseRemoteDataSource {
     bool webImages = false,
     bool webSearch = false,
     bool thinking = false,
+    bool generateImages = false,
   }) async {
     final cleanSubject = subject?.trim();
     final res = await _client.post<dynamic>(
@@ -56,6 +57,7 @@ class AiCourseRemoteDataSource {
           'webImages': webImages,
           'webSearch': webSearch,
           'thinking': thinking,
+          'generateImages': generateImages,
         },
       },
     );
@@ -124,8 +126,9 @@ class AiCourseRemoteDataSource {
     bool exMermaid,
     bool exWebImages,
     bool exWebSearch,
-    bool exThinking,
-  ) {
+    bool exThinking, [
+    bool exGenerateImages = false,
+  ]) {
     return {
       'level': level,
       'difficulty': difficulty,
@@ -136,6 +139,7 @@ class AiCourseRemoteDataSource {
         'webImages': exWebImages,
         'webSearch': exWebSearch,
         'thinking': exThinking,
+        'generateImages': exGenerateImages,
       },
     };
   }
@@ -151,13 +155,14 @@ class AiCourseRemoteDataSource {
     required bool exWebImages,
     required bool exWebSearch,
     required bool exThinking,
+    bool exGenerateImages = false,
   }) async {
     final res = await _client.post<dynamic>(
       '$_base/ai/courses/from-topic',
       data: {
         'subject': subject.trim(),
         ..._options(level, difficulty, format, exExamples, exMermaid,
-            exWebImages, exWebSearch, exThinking),
+            exWebImages, exWebSearch, exThinking, exGenerateImages),
       },
     );
     return apiEnvelope(res);
@@ -173,13 +178,14 @@ class AiCourseRemoteDataSource {
     required bool exWebImages,
     required bool exWebSearch,
     required bool exThinking,
+    bool exGenerateImages = false,
   }) async {
     final res = await _client.post<dynamic>(
       '$_base/ai/courses/from-url',
       data: {
         'url': url.trim(),
         ..._options(level, difficulty, format, exExamples, exMermaid,
-            exWebImages, exWebSearch, exThinking),
+            exWebImages, exWebSearch, exThinking, exGenerateImages),
       },
     );
     return apiEnvelope(res);
@@ -203,6 +209,7 @@ class AiCourseRemoteDataSource {
     required bool exWebImages,
     required bool exWebSearch,
     required bool exThinking,
+    bool exGenerateImages = false,
   }) async {
     final form = FormData.fromMap({
       'level': level,
@@ -215,6 +222,7 @@ class AiCourseRemoteDataSource {
         'webImages': exWebImages,
         'webSearch': exWebSearch,
         'thinking': exThinking,
+        'generateImages': exGenerateImages,
       }),
       'file': MultipartFile.fromBytes(bytes, filename: fileName),
     });

@@ -373,4 +373,62 @@ export class PrismaAuthRepositoryAdapter implements AuthRepositoryPort {
       data: { isRevoked: true },
     });
   }
+
+  public async getActiveUserSessions(userId: string): Promise<Array<StoredRefreshToken>> {
+    const raw = await this.prisma.refreshToken.findMany({
+      where: {
+        userId,
+        isRevoked: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return raw.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      tokenHash: r.tokenHash,
+      familyId: r.familyId,
+      isRevoked: r.isRevoked,
+      expiresAt: r.expiresAt,
+      createdAt: r.createdAt,
+    }));
+  }
+
+  public async revokeUserSessionById(userId: string, sessionId: string): Promise<boolean> {
+    const session = await this.prisma.refreshToken.findFirst({
+      where: { id: sessionId, userId },
+    });
+    if (!session) return false;
+
+    await this.prisma.refreshToken.update({
+      where: { id: sessionId },
+      data: { isRevoked: true },
+    });
+    return true;
+  }
+
+  public async revokeOtherUserSessions(userId: string, currentSessionId?: string): Promise<number> {
+    const res = await this.prisma.refreshToken.updateMany({
+      where: {
+        userId,
+        isRevoked: false,
+        ...(currentSessionId ? { id: { not: currentSessionId } } : {}),
+      },
+      data: { isRevoked: true },
+    });
+    return res.count;
+  }
+
+  public async deleteUser(userId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.refreshToken.deleteMany({ where: { userId } });
+      await tx.emailVerificationCode.deleteMany({ where: { userId } });
+      await tx.passwordResetCode.deleteMany({ where: { userId } });
+      await tx.groupMember.deleteMany({ where: { userId } });
+      await tx.teacherAssignment.deleteMany({ where: { teacherId: userId } });
+      await tx.auditLog.deleteMany({ where: { userId } });
+      await tx.user.delete({ where: { id: userId } });
+    });
+  }
 }

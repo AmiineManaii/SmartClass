@@ -90,5 +90,18 @@ abstract class AuthRepository {
   });
 
   Future<List<Map<String, dynamic>>> getAuditLogs({int limit = 20});
+
+  Future<String> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+
+  Future<List<Map<String, dynamic>>> getSessions();
+
+  Future<void> revokeSession(String sessionId);
+
+  Future<void> revokeAllOtherSessions();
+  Future<String> freezeAccount();
+  Future<String> deleteAccount({required String passwordConfirmation});
 }
 

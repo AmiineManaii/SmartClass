@@ -46,9 +46,10 @@ export interface CoursePromptInput {
 export const shouldOfferTools = (args: {
   webSearch: boolean;
   webImages: boolean;
+  generateImages?: boolean;
   webSearchEnabled: boolean;
 }): boolean =>
-  args.webSearchEnabled && (args.webSearch || args.webImages);
+  args.webSearchEnabled && (args.webSearch || args.webImages || !!args.generateImages);
 
 export interface CoursePrompt {
   version: string;
@@ -131,9 +132,16 @@ const extrasGuidance = (extras: GenerateExtras): string => {
   }
   if (extras.webImages) {
     lines.push(
-      '- Images web : illustre les notions clés avec des images issues ' +
-        'd\'internet en Markdown `![description](url)` — utilise UNIQUEMENT ' +
-        'des URL trouvées via web_search, jamais d\'URL inventée.',
+      '- Images web : illustre les notions clés avec des images et schémas réels ' +
+        'en Markdown `![description](url)` — utilise UNIQUEMENT des URL fournies ' +
+        'par l\'outil image_search ou web_search, jamais d\'URL inventée.',
+    );
+  }
+  if (extras.generateImages) {
+    lines.push(
+      '- Illustrations IA générées (ComfyUI) : utilise l\'outil generate_image ' +
+        'pour concevoir des schémas explicatifs ou illustrations sur mesure, ' +
+        'et insère l\'URL retournée au format Markdown `![description](url)`.',
     );
   }
   if (lines.length === 0) return 'Contenu texte seul, sans exemple ni figure.';

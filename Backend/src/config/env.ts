@@ -64,6 +64,8 @@ const envSchema = z.object({
   EMBEDDING_BASE_URL: z.string().default('http://host.docker.internal:11434'),
   EMBEDDING_MODEL: z.string().default('embeddinggemma'),
   EMBEDDING_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
+  // Optional Ollama official API key for cloud search/inference upgrade.
+  OLLAMA_API_KEY: z.string().optional().default(''),
   // ComfyUI image generation (section illustrations, SDXL workflow
   // image_sdxl_simple.json at 512x512). Empty = disabled: the adapter
   // answers IMAGE_SERVICE_UNAVAILABLE. This base is the origin the BACKEND

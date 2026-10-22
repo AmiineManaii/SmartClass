@@ -50,6 +50,7 @@ export class ImprovePdfUseCase {
     const toolsOffered = shouldOfferTools({
       webSearch: extras.webSearch,
       webImages: extras.webImages,
+      generateImages: extras.generateImages,
       webSearchEnabled: env.AI_ENABLE_WEB_SEARCH,
     });
     const prompt = buildCoursePrompt({
@@ -111,6 +112,7 @@ export class ImprovePdfUseCase {
     const toolsOffered = shouldOfferTools({
       webSearch: extras.webSearch,
       webImages: extras.webImages,
+      generateImages: extras.generateImages,
       webSearchEnabled: env.AI_ENABLE_WEB_SEARCH,
     });
     const prompt = buildCoursePrompt({

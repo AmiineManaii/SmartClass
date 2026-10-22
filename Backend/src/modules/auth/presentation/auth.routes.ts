@@ -15,6 +15,8 @@ import {
   verify2faSchema,
   disable2faSchema,
   authenticate2faSchema,
+  changePasswordSchema,
+  deleteAccountSchema,
 } from './auth.validation.js';
 
 export interface AuthRouterOptions {
@@ -141,6 +143,51 @@ export const createAuthRouter = (options: AuthRouterOptions): Router => {
     authenticateMiddleware,
     validate({ body: updateProfileSchema }),
     controller.updateProfile,
+  );
+
+  router.post(
+    '/change-password',
+    authenticateMiddleware,
+    validate({ body: changePasswordSchema }),
+    controller.changePassword,
+  );
+
+  router.get(
+    '/sessions',
+    authenticateMiddleware,
+    controller.getSessions,
+  );
+
+  router.delete(
+    '/sessions/:id',
+    authenticateMiddleware,
+    controller.revokeSession,
+  );
+
+  router.delete(
+    '/sessions',
+    authenticateMiddleware,
+    controller.revokeOtherSessions,
+  );
+
+  router.post(
+    '/freeze-account',
+    authenticateMiddleware,
+    controller.freezeAccount,
+  );
+
+  router.post(
+    '/delete-account',
+    authenticateMiddleware,
+    validate({ body: deleteAccountSchema }),
+    controller.deleteAccount,
+  );
+
+  router.delete(
+    '/delete-account',
+    authenticateMiddleware,
+    validate({ body: deleteAccountSchema }),
+    controller.deleteAccount,
   );
 
   return router;

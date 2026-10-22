@@ -15,6 +15,12 @@ import type { Verify2FAUseCase } from '../application/verify-2fa.use-case.js';
 import type { Disable2FAUseCase } from '../application/disable-2fa.use-case.js';
 import type { Authenticate2FAUseCase } from '../application/authenticate-2fa.use-case.js';
 import type { GetAuditLogsUseCase } from '../application/get-audit-logs.use-case.js';
+import type { ChangePasswordUseCase } from '../application/change-password.use-case.js';
+import type { GetSessionsUseCase } from '../application/get-sessions.use-case.js';
+import type { RevokeSessionUseCase } from '../application/revoke-session.use-case.js';
+import type { RevokeOtherSessionsUseCase } from '../application/revoke-other-sessions.use-case.js';
+import type { FreezeAccountUseCase } from '../application/freeze-account.use-case.js';
+import type { DeleteAccountUseCase } from '../application/delete-account.use-case.js';
 import { UnauthorizedError } from '../../../shared/errors/app-error.js';
 import { ErrorCodes } from '../../../shared/errors/error-codes.js';
 
@@ -36,6 +42,12 @@ export class AuthController {
     private readonly disable2FAUseCase: Disable2FAUseCase,
     private readonly authenticate2FAUseCase: Authenticate2FAUseCase,
     private readonly getAuditLogsUseCase: GetAuditLogsUseCase,
+    private readonly changePasswordUseCase: ChangePasswordUseCase,
+    private readonly getSessionsUseCase: GetSessionsUseCase,
+    private readonly revokeSessionUseCase: RevokeSessionUseCase,
+    private readonly revokeOtherSessionsUseCase: RevokeOtherSessionsUseCase,
+    private readonly freezeAccountUseCase: FreezeAccountUseCase,
+    private readonly deleteAccountUseCase: DeleteAccountUseCase,
   ) {}
 
   public register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -316,6 +328,98 @@ export class AuthController {
         throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
       }
       const result = await this.updateProfileUseCase.execute(req.user.id, req.body);
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public changePassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress;
+      const result = await this.changePasswordUseCase.execute({
+        userId: req.user.id,
+        currentPassword: req.body.currentPassword,
+        newPassword: req.body.newPassword,
+        ipAddress: clientIp,
+      });
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public getSessions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const result = await this.getSessionsUseCase.execute(req.user.id);
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public revokeSession = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const sessionId = req.params.id as string;
+      const result = await this.revokeSessionUseCase.execute(req.user.id, sessionId);
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public revokeOtherSessions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const result = await this.revokeOtherSessionsUseCase.execute(req.user.id);
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public freezeAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const result = await this.freezeAccountUseCase.execute(req.user.id);
+      res.status(200).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public deleteAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const { password } = req.body;
+      const result = await this.deleteAccountUseCase.execute(req.user.id, password);
       res.status(200).json({
         data: result,
       });

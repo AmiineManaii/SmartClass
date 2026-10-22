@@ -25,6 +25,12 @@ import { Verify2FAUseCase } from './application/verify-2fa.use-case.js';
 import { Disable2FAUseCase } from './application/disable-2fa.use-case.js';
 import { Authenticate2FAUseCase } from './application/authenticate-2fa.use-case.js';
 import { GetAuditLogsUseCase } from './application/get-audit-logs.use-case.js';
+import { ChangePasswordUseCase } from './application/change-password.use-case.js';
+import { GetSessionsUseCase } from './application/get-sessions.use-case.js';
+import { RevokeSessionUseCase } from './application/revoke-session.use-case.js';
+import { RevokeOtherSessionsUseCase } from './application/revoke-other-sessions.use-case.js';
+import { FreezeAccountUseCase } from './application/freeze-account.use-case.js';
+import { DeleteAccountUseCase } from './application/delete-account.use-case.js';
 import { AuthController } from './presentation/auth.controller.js';
 import { createAuthRouter } from './presentation/auth.routes.js';
 import {
@@ -129,6 +135,12 @@ export const createAuthModule = (options: AuthModuleOptions = {}): AuthModule =>
     refreshExpirationDays,
   );
   const getAuditLogsUseCase = new GetAuditLogsUseCase(authRepository);
+  const changePasswordUseCase = new ChangePasswordUseCase(authRepository, passwordHasher);
+  const getSessionsUseCase = new GetSessionsUseCase(authRepository);
+  const revokeSessionUseCase = new RevokeSessionUseCase(authRepository);
+  const revokeOtherSessionsUseCase = new RevokeOtherSessionsUseCase(authRepository);
+  const freezeAccountUseCase = new FreezeAccountUseCase(authRepository);
+  const deleteAccountUseCase = new DeleteAccountUseCase(authRepository, passwordHasher);
 
   const controller = new AuthController(
     registerUseCase,
@@ -147,6 +159,12 @@ export const createAuthModule = (options: AuthModuleOptions = {}): AuthModule =>
     disable2FAUseCase,
     authenticate2FAUseCase,
     getAuditLogsUseCase,
+    changePasswordUseCase,
+    getSessionsUseCase,
+    revokeSessionUseCase,
+    revokeOtherSessionsUseCase,
+    freezeAccountUseCase,
+    deleteAccountUseCase,
   );
 
   const authenticateMiddleware = createAuthenticateMiddleware(tokenService);

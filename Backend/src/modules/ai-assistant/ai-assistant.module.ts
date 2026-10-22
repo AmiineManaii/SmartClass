@@ -38,8 +38,12 @@ import { SectionMemoryService } from './application/section-memory.service.js';
 import { AiController } from './presentation/ai.controller.js';
 import { createAiRouter } from './presentation/ai.routes.js';
 
+import type { SearchPort } from './domain/search.port.js';
+import { HybridSearchAdapter } from './infrastructure/hybrid-search.adapter.js';
+
 export interface AiModuleOptions {
   gateway?: AiGatewayPort;
+  searchService?: SearchPort;
   urlFetcher?: UrlFetcherPort;
   pdfExtractor?: PdfTextExtractorPort;
   courseRepository?: CourseRepositoryPort;
@@ -59,8 +63,12 @@ export interface AiModule {
 }
 
 export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
-  const gateway = options.gateway ?? new OpenAICompatibleGateway();
+  const searchService = options.searchService ?? new HybridSearchAdapter();
   const urlFetcher = options.urlFetcher ?? new NativeUrlFetcher();
+  const imageGenerator = options.imageGenerator ?? new ComfyUIImageAdapter();
+  const gateway =
+    options.gateway ??
+    new OpenAICompatibleGateway({ searchService, imageGenerator, urlFetcher });
   const pdfExtractor = options.pdfExtractor ?? new UnpdfTextExtractor();
   const courseRepository = options.courseRepository ?? new PrismaCourseRepositoryAdapter();
   const sectionRepository =
@@ -70,7 +78,6 @@ export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
     options.sectionMemory ??
     new PrismaSectionMemoryAdapter(undefined, embedding);
   const memoryService = new SectionMemoryService(sectionMemory, embedding);
-  const imageGenerator = options.imageGenerator ?? new ComfyUIImageAdapter();
   const imagePromptOptimizer =
     options.imagePromptOptimizer ?? new LlmImagePromptOptimizer(gateway);
 

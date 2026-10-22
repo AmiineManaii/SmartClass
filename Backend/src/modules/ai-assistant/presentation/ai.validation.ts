@@ -23,6 +23,7 @@ const extrasSchema = z
       webImages: z.boolean().optional(),
       webSearch: z.boolean().optional(),
       thinking: z.boolean().optional(),
+      generateImages: z.boolean().optional(),
     })
     .strict()
     .optional());

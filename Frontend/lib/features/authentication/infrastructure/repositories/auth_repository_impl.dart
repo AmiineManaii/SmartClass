@@ -271,5 +271,58 @@ class AuthRepositoryImpl implements AuthRepository {
       return await _remote.getAuditLogs(limit: limit);
     });
   }
+
+  @override
+  Future<String> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return _guard(() async {
+      final data = await _remote.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+      return data['message'] as String? ?? 'Mot de passe modifié avec succès.';
+    });
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getSessions() {
+    return _guard(() async {
+      return await _remote.getSessions();
+    });
+  }
+
+  @override
+  Future<void> revokeSession(String sessionId) {
+    return _guard(() async {
+      await _remote.revokeSession(sessionId);
+    });
+  }
+
+  @override
+  Future<void> revokeAllOtherSessions() {
+    return _guard(() async {
+      await _remote.revokeAllOtherSessions();
+    });
+  }
+
+  @override
+  Future<String> freezeAccount() {
+    return _guard(() async {
+      final data = await _remote.freezeAccount();
+      await _tokens.clear();
+      return data['message'] as String? ?? 'Compte gelé avec succès.';
+    });
+  }
+
+  @override
+  Future<String> deleteAccount({required String passwordConfirmation}) {
+    return _guard(() async {
+      final data = await _remote.deleteAccount(passwordConfirmation: passwordConfirmation);
+      await _tokens.clear();
+      return data['message'] as String? ?? 'Compte supprimé définitivement.';
+    });
+  }
 }
 
