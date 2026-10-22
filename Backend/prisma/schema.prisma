@@ -174,7 +174,7 @@ model TeacherAssignment {
   classGroup ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
   teacher    User       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
-  @@unique([classGroupId, teacherId])
+  @@unique([classGroupId, teacherId, subject])
   @@index([classGroupId])
   @@index([teacherId])
   @@map("teacher_assignments")

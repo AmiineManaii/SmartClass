@@ -5,8 +5,8 @@ const levelSchema = z.enum(['concis', 'equilibre', 'detaille']);
 const difficultySchema = z.enum(['facile', 'moyen', 'difficile']);
 const formatSchema = z.enum(['resume', 'flashcards', 'carte-mentale']);
 
-const extrasSchema = z
-  .preprocess((val) => {
+const extrasSchema = z.preprocess(
+  (val) => {
     // Multipart fields arrive as strings: accept a JSON-encoded object.
     if (typeof val === 'string') {
       try {
@@ -16,7 +16,8 @@ const extrasSchema = z
       }
     }
     return val;
-  }, z
+  },
+  z
     .object({
       examples: z.boolean().optional(),
       mermaid: z.boolean().optional(),
@@ -26,7 +27,8 @@ const extrasSchema = z
       generateImages: z.boolean().optional(),
     })
     .strict()
-    .optional());
+    .optional(),
+);
 
 const courseOptions = {
   level: levelSchema.default('equilibre'),
@@ -53,8 +55,8 @@ const outlineSectionSchema = z
       s.keyTopics && s.keyTopics.length > 0
         ? s.keyTopics
         : s.subtopics && s.subtopics.length > 0
-        ? s.subtopics
-        : [],
+          ? s.subtopics
+          : [],
     estimatedMinutes: s.estimatedMinutes ?? 15,
   }));
 
@@ -84,12 +86,7 @@ export const generateOutlineBodySchema = z
   .passthrough()
   .refine(
     (data) => {
-      const main =
-        data.topic ||
-        data.subject ||
-        data.sourceContext ||
-        data.sourceText ||
-        data.url;
+      const main = data.topic || data.subject || data.sourceContext || data.sourceText || data.url;
       return typeof main === 'string' && main.trim().length >= 2;
     },
     {
@@ -125,9 +122,7 @@ export const refineSectionBodySchema = z
   }));
 
 /** `/ai/courses/:id/build` path params. */
-export const courseBuildParamsSchema = z
-  .object({ id: z.string().uuid() })
-  .strict();
+export const courseBuildParamsSchema = z.object({ id: z.string().uuid() }).strict();
 
 /** Identifies one section of a course build. */
 const sectionTargetFields = {
@@ -156,6 +151,26 @@ export const imageSectionBodySchema = z
   .object({
     ...sectionTargetFields,
     kind: z.enum(['FIGURE', 'ARCHITECTURE', 'FLOWCHART', 'WORKFLOW']),
+  })
+  .strict();
+
+/** GET /ai/courses/sections/image/jobs/:jobId. */
+export const sectionImageJobParamsSchema = z.object({ jobId: z.string().uuid() }).strict();
+
+/** POST /ai/courses/sections/image/search — up to five web candidates. */
+export const searchSectionImagesBodySchema = z
+  .object({
+    ...sectionTargetFields,
+    query: z.string().trim().max(200).optional(),
+  })
+  .strict();
+
+/** POST /ai/courses/sections/image/apply — insert the chosen image. */
+export const applySectionImageBodySchema = z
+  .object({
+    ...sectionTargetFields,
+    imageUrl: z.string().trim().url().max(2000),
+    caption: z.string().trim().max(300).optional(),
   })
   .strict();
 
@@ -206,4 +221,5 @@ export type RefineSectionBodyInput = z.infer<typeof refineSectionBodySchema>;
 export type GenerateSectionBodyInput = z.infer<typeof generateSectionBodySchema>;
 export type ValidateSectionBodyInput = z.infer<typeof validateSectionBodySchema>;
 export type ImageSectionBodyInput = z.infer<typeof imageSectionBodySchema>;
-
+export type SearchSectionImagesBodyInput = z.infer<typeof searchSectionImagesBodySchema>;
+export type ApplySectionImageBodyInput = z.infer<typeof applySectionImageBodySchema>;

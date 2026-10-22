@@ -90,26 +90,37 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final isTeacher = authState?.role?.toLowerCase() == 'teacher';
 
     final defaultId = isTeacher ? 'PPR-2026-89421' : 'CNE-2026-984210';
-    final initialId = (authState?.studentId != null && authState!.studentId!.isNotEmpty)
-        ? (isTeacher && authState.studentId!.startsWith('CNE-') ? defaultId : authState.studentId!)
+    final initialId =
+        (authState?.studentId != null && authState!.studentId!.isNotEmpty)
+        ? (isTeacher && authState.studentId!.startsWith('CNE-')
+              ? defaultId
+              : authState.studentId!)
         : defaultId;
 
     final defaultMajor = isTeacher
         ? 'Département Informatique & Technologies Numériques'
         : 'Cycle Ingénieur • Génie Informatique';
-    final initialMajor = (authState?.major != null && authState!.major!.isNotEmpty)
-        ? (isTeacher && (authState.major!.startsWith('Cycle') || authState.major!.startsWith('Master')) ? defaultMajor : authState.major!)
+    final initialMajor =
+        (authState?.major != null && authState!.major!.isNotEmpty)
+        ? (isTeacher &&
+                  (authState.major!.startsWith('Cycle') ||
+                      authState.major!.startsWith('Master'))
+              ? defaultMajor
+              : authState.major!)
         : defaultMajor;
 
     final defaultBio = isTeacher
         ? 'Enseignant en Informatique & Systèmes Numériques • Spécialisé en Génie Logiciel, IA et Systèmes Distribués.'
         : 'Étudiant en Cycle d\'Ingénieur • Passionné par l\'intelligence artificielle et le génie logiciel.';
     final initialBio = (authState?.bio != null && authState!.bio!.isNotEmpty)
-        ? (isTeacher && authState.bio!.contains('Étudiant') ? defaultBio : authState.bio!)
+        ? (isTeacher && authState.bio!.contains('Étudiant')
+              ? defaultBio
+              : authState.bio!)
         : defaultBio;
 
     _fullNameController = TextEditingController(
-      text: (authState?.displayName != null && authState!.displayName!.isNotEmpty)
+      text:
+          (authState?.displayName != null && authState!.displayName!.isNotEmpty)
           ? authState.displayName!
           : (isTeacher ? 'Professeur' : 'Ahmed Mohsen'),
     );
@@ -118,20 +129,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ? authState.email!
           : 'faroukmessay006@gmail.com',
     );
-    _studentIdController = TextEditingController(
-      text: initialId,
-    );
+    _studentIdController = TextEditingController(text: initialId);
     _universityController = TextEditingController(
-      text: (authState?.institution != null && authState!.institution!.isNotEmpty)
+      text:
+          (authState?.institution != null && authState!.institution!.isNotEmpty)
           ? authState.institution!
-          : (isTeacher ? 'Institut Supérieur / Université' : 'Université Mohammed V de Rabat'),
+          : '',
     );
-    _majorController = TextEditingController(
-      text: initialMajor,
-    );
-    _bioController = TextEditingController(
-      text: initialBio,
-    );
+    _majorController = TextEditingController(text: initialMajor);
+    _bioController = TextEditingController(text: initialBio);
 
     _loadInitialData();
   }
@@ -151,30 +157,30 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       final userKey = authState?.userId ?? authState?.email;
       final profile = await tokens.readAcademicProfile(userKey);
 
-      var inst = profile['institution'] ?? authState?.institution ?? '';
+      var inst =
+          sanitizeInstitution(profile['institution']?.toString()) ??
+          sanitizeInstitution(authState?.institution) ??
+          '';
       var fac = profile['faculty'] ?? authState?.faculty ?? '';
       var maj = profile['major'] ?? authState?.major ?? '';
       var sId = profile['studentId'] ?? authState?.studentId ?? '';
       var bio = profile['bio'] ?? authState?.bio ?? '';
 
-      // Default university & academic values according to role
+      // Default academic values according to role
       if (isTeacher) {
-        if (inst.isEmpty) {
-          inst = 'Institut Supérieur / Université';
-        }
-        if (maj.isEmpty || maj.startsWith('Cycle Ingénieur') || maj.startsWith('Master')) {
+        if (maj.isEmpty ||
+            maj.startsWith('Cycle Ingénieur') ||
+            maj.startsWith('Master')) {
           maj = 'Département Informatique & Technologies Numériques';
         }
         if (sId.isEmpty || sId.startsWith('CNE-')) {
           sId = 'PPR-2026-89421';
         }
         if (bio.isEmpty || bio.contains('Étudiant')) {
-          bio = 'Enseignant en Informatique & Systèmes Numériques • Spécialisé en Génie Logiciel, IA et Systèmes Distribués.';
+          bio =
+              'Enseignant en Informatique & Systèmes Numériques • Spécialisé en Génie Logiciel, IA et Systèmes Distribués.';
         }
       } else {
-        if (inst.isEmpty) {
-          inst = 'Université Mohammed V de Rabat';
-        }
         if (maj.isEmpty) {
           maj = 'Cycle Ingénieur • Génie Informatique';
         }
@@ -182,7 +188,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           sId = 'CNE-2026-984210';
         }
         if (bio.isEmpty) {
-          bio = 'Étudiant en Cycle d\'Ingénieur • Passionné par l\'intelligence artificielle et le génie logiciel.';
+          bio =
+              'Étudiant en Cycle d\'Ingénieur • Passionné par l\'intelligence artificielle et le génie logiciel.';
         }
       }
 
@@ -191,13 +198,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           if (_universityController.text.trim().isEmpty) {
             _universityController.text = inst;
           }
-          if (_majorController.text.trim().isEmpty || (isTeacher && (_majorController.text.startsWith('Cycle') || _majorController.text.startsWith('Master')))) {
+          if (_majorController.text.trim().isEmpty ||
+              (isTeacher &&
+                  (_majorController.text.startsWith('Cycle') ||
+                      _majorController.text.startsWith('Master')))) {
             _majorController.text = maj;
           }
-          if (_studentIdController.text.trim().isEmpty || (isTeacher && _studentIdController.text.startsWith('CNE-'))) {
+          if (_studentIdController.text.trim().isEmpty ||
+              (isTeacher && _studentIdController.text.startsWith('CNE-'))) {
             _studentIdController.text = sId;
           }
-          if (_bioController.text.trim().isEmpty || (isTeacher && _bioController.text.contains('Étudiant'))) {
+          if (_bioController.text.trim().isEmpty ||
+              (isTeacher && _bioController.text.contains('Étudiant'))) {
             _bioController.text = bio;
           }
         });
@@ -207,13 +219,21 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ? _universityController.text.trim()
           : inst;
 
-      await ref.read(authStateProvider.notifier).updateAcademicProfile(
-        institution: activeInst,
-        faculty: fac,
-        major: _majorController.text.trim().isNotEmpty ? _majorController.text.trim() : maj,
-        studentId: _studentIdController.text.trim().isNotEmpty ? _studentIdController.text.trim() : sId,
-        bio: _bioController.text.trim().isNotEmpty ? _bioController.text.trim() : bio,
-      );
+      await ref
+          .read(authStateProvider.notifier)
+          .updateAcademicProfile(
+            institution: activeInst,
+            faculty: fac,
+            major: _majorController.text.trim().isNotEmpty
+                ? _majorController.text.trim()
+                : maj,
+            studentId: _studentIdController.text.trim().isNotEmpty
+                ? _studentIdController.text.trim()
+                : sId,
+            bio: _bioController.text.trim().isNotEmpty
+                ? _bioController.text.trim()
+                : bio,
+          );
     } catch (_) {}
   }
 
@@ -233,7 +253,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       final sessions = await ref.read(authStateProvider.notifier).getSessions();
       if (mounted) {
         setState(() {
-          _remoteSessions = sessions.where((s) => s['isCurrent'] != true).toList();
+          _remoteSessions = sessions
+              .where((s) => s['isCurrent'] != true)
+              .toList();
         });
       }
     } catch (_) {
@@ -251,10 +273,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           _pushNotifications = prefs.getBool('pref_push_notif') ?? true;
           _emailNotifications = prefs.getBool('pref_email_notif') ?? true;
           _smsEmergencyAlerts = prefs.getBool('pref_sms_alerts') ?? false;
-          _aiSmartMentorRecommendations = prefs.getBool('pref_ai_mentor') ?? true;
+          _aiSmartMentorRecommendations =
+              prefs.getBool('pref_ai_mentor') ?? true;
           _deadlinesReminders = prefs.getBool('pref_deadlines') ?? true;
           _quietHoursEnabled = prefs.getBool('pref_quiet_hours') ?? true;
-          _profileVisibleToCohort = prefs.getBool('pref_profile_visible') ?? true;
+          _profileVisibleToCohort =
+              prefs.getBool('pref_profile_visible') ?? true;
           _rankingVisible = prefs.getBool('pref_ranking_visible') ?? true;
           _shareAiSummaries = prefs.getBool('pref_share_ai') ?? false;
         });
@@ -263,7 +287,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       if (rawPk != null && mounted) {
         final list = jsonDecode(rawPk) as List;
         setState(() {
-          _passkeys = list.map((e) => Map<String, String>.from(e as Map)).toList();
+          _passkeys = list
+              .map((e) => Map<String, String>.from(e as Map))
+              .toList();
         });
       }
     } catch (_) {}
@@ -357,10 +383,34 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       'academicRecords': {
         'status': 'Synchronisé ENT',
         'enrolledCourses': [
-          {'code': 'INFO-401', 'title': 'Algorithmes Avancés & Structures de Données', 'credits': 6, 'grade': '17.5/20', 'status': 'Validé'},
-          {'code': 'MATH-302', 'title': 'Probabilités & Statistiques pour l\'IA', 'credits': 6, 'grade': '16.0/20', 'status': 'Validé'},
-          {'code': 'DEV-405', 'title': 'Génie Logiciel & Architecture Microservices', 'credits': 6, 'grade': '18.0/20', 'status': 'Validé'},
-          {'code': 'SYS-402', 'title': 'Systèmes Distribués & Cloud Computing', 'credits': 6, 'grade': '15.5/20', 'status': 'Validé'},
+          {
+            'code': 'INFO-401',
+            'title': 'Algorithmes Avancés & Structures de Données',
+            'credits': 6,
+            'grade': '17.5/20',
+            'status': 'Validé',
+          },
+          {
+            'code': 'MATH-302',
+            'title': 'Probabilités & Statistiques pour l\'IA',
+            'credits': 6,
+            'grade': '16.0/20',
+            'status': 'Validé',
+          },
+          {
+            'code': 'DEV-405',
+            'title': 'Génie Logiciel & Architecture Microservices',
+            'credits': 6,
+            'grade': '18.0/20',
+            'status': 'Validé',
+          },
+          {
+            'code': 'SYS-402',
+            'title': 'Systèmes Distribués & Cloud Computing',
+            'credits': 6,
+            'grade': '15.5/20',
+            'status': 'Validé',
+          },
         ],
         'totalEcts': 60,
         'gpa': '16.75/20 (Mention Très Bien)',
@@ -377,16 +427,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         'shareAiSummaries': _shareAiSummaries,
       },
       'securityLogsCount': _auditLogs.length,
-      'exportIntegrityHash': 'sha256-${now.millisecondsSinceEpoch.toRadixString(16)}',
+      'exportIntegrityHash':
+          'sha256-${now.millisecondsSinceEpoch.toRadixString(16)}',
     };
     final jsonStr = const JsonEncoder.withIndent('  ').convert(exportData);
-    final filename = 'smartclass_export_${authState?.displayName?.replaceAll(' ', '_') ?? 'etudiant'}_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}.json';
+    final filename =
+        'smartclass_export_${authState?.displayName?.replaceAll(' ', '_') ?? 'etudiant'}_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}.json';
 
     // Trigger browser download of the actual JSON archive file
     downloadJsonFile(filename, jsonStr);
     // Also copy to clipboard for convenience
     Clipboard.setData(ClipboardData(text: jsonStr));
-    _showSuccessSnackBar('Archive JSON téléchargée ($filename) et copiée dans le presse-papiers.');
+    _showSuccessSnackBar(
+      'Archive JSON téléchargée ($filename) et copiée dans le presse-papiers.',
+    );
   }
 
   @override
@@ -422,7 +476,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       final bio = _bioController.text.trim();
 
       // 1. Immediately persist local academic profile & update AuthState in real-time
-      await ref.read(authStateProvider.notifier).updateAcademicProfile(
+      await ref
+          .read(authStateProvider.notifier)
+          .updateAcademicProfile(
             institution: university,
             studentId: studentId,
             major: major,
@@ -434,10 +490,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
       // 3. Update backend user profile
       try {
-        await ref.read(authStateProvider.notifier).updateProfile(
-              firstName: firstName,
-              lastName: lastName,
-            );
+        await ref
+            .read(authStateProvider.notifier)
+            .updateProfile(firstName: firstName, lastName: lastName);
       } catch (_) {
         // Backend name update fallback - academic profile is already secured
       }
@@ -583,10 +638,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.10)
         : const Color(0xFFE2E8F0);
-    final textMuted = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final textMuted = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      backgroundColor: isDark
+          ? const Color(0xFF0F172A)
+          : const Color(0xFFF8FAFC),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
           horizontal: isDesktop ? 32 : 16,
@@ -616,7 +675,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         // Left Column: Configuration Menu + Quota Box
                         SizedBox(
                           width: 290,
-                          child: _buildLeftMenuColumn(cardBg, borderColor, isDark),
+                          child: _buildLeftMenuColumn(
+                            cardBg,
+                            borderColor,
+                            isDark,
+                          ),
                         ),
                         const SizedBox(width: 24),
                         // Right Column: Active Tab Dynamic View
@@ -660,11 +723,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   // DYNAMIC TAB DISPATCHER
   // ===========================================================================
 
-  Widget _buildActiveTabContent(
-    Color cardBg,
-    Color borderColor,
-    bool isDark,
-  ) {
+  Widget _buildActiveTabContent(Color cardBg, Color borderColor, bool isDark) {
     switch (_selectedMenuIndex) {
       case 0:
         return KeyedSubtree(
@@ -749,18 +808,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final roleLabel = role == 'admin'
         ? 'Administrateur'
         : (role == 'teacher'
-            ? 'Enseignant Certifié'
-            : context.tr('active_student_badge'));
+              ? 'Enseignant Certifié'
+              : context.tr('active_student_badge'));
     final roleBg = role == 'admin'
         ? const Color(0xFFE0E7FF)
         : (role == 'teacher'
-            ? const Color(0xFFF3E8FF)
-            : const Color(0xFFDCFCE7));
+              ? const Color(0xFFF3E8FF)
+              : const Color(0xFFDCFCE7));
     final roleFg = role == 'admin'
         ? const Color(0xFF3730A3)
         : (role == 'teacher'
-            ? const Color(0xFF6B21A8)
-            : const Color(0xFF15803D));
+              ? const Color(0xFF6B21A8)
+              : const Color(0xFF15803D));
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -820,9 +879,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF1E293B)
-                : const Color(0xFFF1F5F9),
+            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: isDark
@@ -847,7 +904,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.bold,
-                  color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF15803D),
+                  color: isDark
+                      ? const Color(0xFF86EFAC)
+                      : const Color(0xFF15803D),
                 ),
               ),
             ],
@@ -868,23 +927,36 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final quotaText = role == 'admin'
         ? '45.2 / 250 Go'
         : (isTeacher ? '18.6 / 100 Go' : '2.4 / 20 Go');
-    final quotaProgress = role == 'admin'
-        ? 0.181
-        : (isTeacher ? 0.186 : 0.120);
+    final quotaProgress = role == 'admin' ? 0.181 : (isTeacher ? 0.186 : 0.120);
 
     final menuItems = [
-      (Icons.person_outline_rounded, context.tr('menu_personal_info'), null, false),
+      (
+        Icons.person_outline_rounded,
+        context.tr('menu_personal_info'),
+        null,
+        false,
+      ),
       (
         Icons.security_rounded,
         context.tr('menu_security_auth'),
         _twoFactorEnabled
             ? context.tr('two_factor_active_badge')
             : context.tr('two_factor_inactive_badge'),
-        false
+        false,
       ),
-      (Icons.notifications_none_rounded, context.tr('menu_notifications'), null, false),
+      (
+        Icons.notifications_none_rounded,
+        context.tr('menu_notifications'),
+        null,
+        false,
+      ),
       (Icons.palette_outlined, context.tr('menu_appearance'), null, false),
-      (Icons.lock_outline_rounded, context.tr('menu_privacy_gdpr'), null, false),
+      (
+        Icons.lock_outline_rounded,
+        context.tr('menu_privacy_gdpr'),
+        null,
+        false,
+      ),
       (Icons.devices_rounded, context.tr('menu_sessions_devices'), null, true),
     ];
 
@@ -933,8 +1005,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   decoration: BoxDecoration(
                     color: isSelected
                         ? (isDark
-                            ? const Color(0xFF1E3A8A)
-                            : const Color(0xFF1E293B))
+                              ? const Color(0xFF1E3A8A)
+                              : const Color(0xFF1E293B))
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -946,8 +1018,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         color: isSelected
                             ? Colors.white
                             : (isDark
-                                ? const Color(0xFF94A3B8)
-                                : const Color(0xFF475569)),
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF475569)),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -955,13 +1027,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           item.$2,
                           style: TextStyle(
                             fontSize: 12.5,
-                            fontWeight:
-                                isSelected ? FontWeight.bold : FontWeight.w500,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.w500,
                             color: isSelected
                                 ? Colors.white
                                 : (isDark
-                                    ? Colors.white
-                                    : const Color(0xFF1E293B)),
+                                      ? Colors.white
+                                      : const Color(0xFF1E293B)),
                           ),
                         ),
                       ),
@@ -975,10 +1048,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             color: isSelected
                                 ? Colors.white.withValues(alpha: 0.2)
                                 : (_twoFactorEnabled
-                                    ? const Color(0xFFDCFCE7)
-                                    : (isDark
-                                        ? const Color(0xFF334155)
-                                        : const Color(0xFFE2E8F0))),
+                                      ? const Color(0xFFDCFCE7)
+                                      : (isDark
+                                            ? const Color(0xFF334155)
+                                            : const Color(0xFFE2E8F0))),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -989,10 +1062,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               color: isSelected
                                   ? Colors.white
                                   : (_twoFactorEnabled
-                                      ? const Color(0xFF15803D)
-                                      : (isDark
-                                          ? Colors.white70
-                                          : const Color(0xFF475569))),
+                                        ? const Color(0xFF15803D)
+                                        : (isDark
+                                              ? Colors.white70
+                                              : const Color(0xFF475569))),
                             ),
                           ),
                         ),
@@ -1018,9 +1091,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF0F172A)
-                  : const Color(0xFFEEF2FF),
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFEEF2FF),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isDark
@@ -1062,7 +1133,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     value: quotaProgress,
                     minHeight: 6,
                     backgroundColor: const Color(0xFFCBD5E1),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFF2563EB),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1167,7 +1240,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: isDark
                       ? const Color(0xFF1E293B)
@@ -1191,7 +1267,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      isTeacher ? 'Matricule officiel certifié' : context.tr('official_id'),
+                      isTeacher
+                          ? 'Matricule officiel certifié'
+                          : context.tr('official_id'),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -1209,9 +1287,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF0F172A)
-                  : const Color(0xFFF8FAFC),
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isDark
@@ -1433,8 +1509,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 ? 'Matricule Enseignant (PPR / Somme)'
                                 : context.tr('student_number_label'),
                             controller: _studentIdController,
-                            icon: isTeacher ? Icons.assignment_ind_outlined : Icons.badge_outlined,
-                            trailingIcon: isTeacher ? Icons.verified_user_outlined : Icons.badge_rounded,
+                            icon: isTeacher
+                                ? Icons.assignment_ind_outlined
+                                : Icons.badge_outlined,
+                            trailingIcon: isTeacher
+                                ? Icons.verified_user_outlined
+                                : Icons.badge_rounded,
                             isDark: isDark,
                             readOnly: false,
                           ),
@@ -1460,8 +1540,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           ? 'Matricule Enseignant (PPR / Somme)'
                           : context.tr('student_number_label'),
                       controller: _studentIdController,
-                      icon: isTeacher ? Icons.assignment_ind_outlined : Icons.badge_outlined,
-                      trailingIcon: isTeacher ? Icons.verified_user_outlined : Icons.badge_rounded,
+                      icon: isTeacher
+                          ? Icons.assignment_ind_outlined
+                          : Icons.badge_outlined,
+                      trailingIcon: isTeacher
+                          ? Icons.verified_user_outlined
+                          : Icons.badge_rounded,
                       isDark: isDark,
                       readOnly: false,
                     ),
@@ -1483,7 +1567,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         ? 'Département & Discipline d\'enseignement'
                         : context.tr('major_promotion_label'),
                     controller: _majorController,
-                    icon: isTeacher ? Icons.domain_rounded : Icons.school_outlined,
+                    icon: isTeacher
+                        ? Icons.domain_rounded
+                        : Icons.school_outlined,
                     isDark: isDark,
                     readOnly: false,
                   ),
@@ -1493,7 +1579,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         ? 'Biographie & Domaines d\'expertise / Recherche'
                         : 'Biographie / Présentation académique',
                     controller: _bioController,
-                    icon: isTeacher ? Icons.psychology_outlined : Icons.edit_note_rounded,
+                    icon: isTeacher
+                        ? Icons.psychology_outlined
+                        : Icons.edit_note_rounded,
                     isDark: isDark,
                     readOnly: false,
                   ),
@@ -1610,7 +1698,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -1633,7 +1723,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           vertical: 8,
                         ),
                         side: BorderSide(
-                          color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+                          color: isDark
+                              ? Colors.white24
+                              : const Color(0xFFCBD5E1),
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -1645,7 +1737,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : const Color(0xFF1E293B),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF1E293B),
                         ),
                       ),
                     ),
@@ -1746,7 +1840,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ),
                   ),
                   onPressed: _showTotpSetupModal,
-                  child: const Text('TOTP QR', style: TextStyle(fontSize: 11.5)),
+                  child: const Text(
+                    'TOTP QR',
+                    style: TextStyle(fontSize: 11.5),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Switch(
@@ -1759,7 +1856,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: const Text('Désactiver la validation en deux étapes ?'),
+                          title: const Text(
+                            'Désactiver la validation en deux étapes ?',
+                          ),
                           content: const Text(
                             'Votre compte ne sera plus protégé par un code à usage unique lors de vos connexions.',
                           ),
@@ -1769,7 +1868,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               child: Text(context.tr('cancel')),
                             ),
                             FilledButton(
-                              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFEF4444),
+                              ),
                               onPressed: () => Navigator.of(ctx).pop(true),
                               child: const Text('Désactiver'),
                             ),
@@ -1778,15 +1879,21 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       );
                       if (confirm == true) {
                         try {
-                          await ref.read(authStateProvider.notifier).disable2fa();
+                          await ref
+                              .read(authStateProvider.notifier)
+                              .disable2fa();
                           if (mounted) {
                             setState(() => _twoFactorEnabled = false);
-                            _showSuccessSnackBar('Authentification à deux facteurs désactivée.');
+                            _showSuccessSnackBar(
+                              'Authentification à deux facteurs désactivée.',
+                            );
                             _loadAuditLogs();
                           }
                         } catch (e) {
                           if (mounted) {
-                            _showErrorSnackBar('Erreur lors de la désactivation du 2FA.');
+                            _showErrorSnackBar(
+                              'Erreur lors de la désactivation du 2FA.',
+                            );
                           }
                         }
                       }
@@ -1832,7 +1939,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -1856,14 +1965,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           vertical: 8,
                         ),
                         side: BorderSide(
-                          color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+                          color: isDark
+                              ? Colors.white24
+                              : const Color(0xFFCBD5E1),
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                       onPressed: () {
-                        final nameCtrl = TextEditingController(text: 'Clé de sécurité FIDO2');
+                        final nameCtrl = TextEditingController(
+                          text: 'Clé de sécurité FIDO2',
+                        );
                         showDialog(
                           context: context,
                           builder: (ctx) => AlertDialog(
@@ -1881,7 +1994,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 child: Text(context.tr('cancel')),
                               ),
                               FilledButton(
-                                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF2563EB),
+                                ),
                                 onPressed: () {
                                   Navigator.of(ctx).pop();
                                   _addPasskey(nameCtrl.text);
@@ -1897,7 +2012,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : const Color(0xFF1E293B),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF1E293B),
                         ),
                       ),
                     ),
@@ -1913,7 +2030,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       'Aucune clé de sécurité enregistrée. Vous pouvez en ajouter une pour renforcer la protection de votre compte.',
                       style: TextStyle(
                         fontSize: 12,
-                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        color: isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
                       ),
                     ),
                   )
@@ -1937,20 +2056,31 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF1E293B),
                               ),
                             ),
                           ),
                           Text(
-                            context.tr('registered_on', args: {'date': p['date'] ?? ''}),
+                            context.tr(
+                              'registered_on',
+                              args: {'date': p['date'] ?? ''},
+                            ),
                             style: TextStyle(
                               fontSize: 11,
-                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                              color: isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B),
                             ),
                           ),
                           const SizedBox(width: 6),
                           IconButton(
-                            icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFEF4444)),
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 16,
+                              color: Color(0xFFEF4444),
+                            ),
                             tooltip: 'Supprimer cette clé',
                             onPressed: () => _removePasskey(p['id'] ?? ''),
                           ),
@@ -1980,7 +2110,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.history_rounded, size: 18, color: Color(0xFF2563EB)),
+                    const Icon(
+                      Icons.history_rounded,
+                      size: 18,
+                      color: Color(0xFF2563EB),
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       context.tr('security_audit_log_title'),
@@ -1999,23 +2133,41 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     final ip = log['ipAddress'] as String? ?? '127.0.0.1';
                     final status = log['status'] as String? ?? 'SUCCESS';
                     final isSuccess = status == 'SUCCESS';
-                    final dateStr = (log['createdAt'] as String?)?.split('T').first ?? '';
+                    final dateStr =
+                        (log['createdAt'] as String?)?.split('T').first ?? '';
 
                     String displayTitle = action.replaceAll('_', ' ');
-                    if (action == 'AUTH_LOGIN_SUCCESS') displayTitle = context.tr('security_log_login_success');
-                    if (action == 'AUTH_2FA_ENABLED') displayTitle = 'Activation du 2FA (TOTP)';
-                    if (action == 'AUTH_2FA_DISABLED') displayTitle = 'Désactivation du 2FA';
-                    if (action == 'AUTH_2FA_SUCCESS') displayTitle = context.tr('security_log_2fa_success');
-                    if (action == 'AUTH_ACCOUNT_LOCKED') displayTitle = 'Compte temporairement verrouillé';
-                    if (action == 'AUTH_PASSWORD_CHANGED') displayTitle = 'Changement de mot de passe';
-                    if (action == 'AUTH_SESSIONS_REVOKED') displayTitle = 'Révocation de sessions actives';
+                    if (action == 'AUTH_LOGIN_SUCCESS') {
+                      displayTitle = context.tr('security_log_login_success');
+                    }
+                    if (action == 'AUTH_2FA_ENABLED') {
+                      displayTitle = 'Activation du 2FA (TOTP)';
+                    }
+                    if (action == 'AUTH_2FA_DISABLED') {
+                      displayTitle = 'Désactivation du 2FA';
+                    }
+                    if (action == 'AUTH_2FA_SUCCESS') {
+                      displayTitle = context.tr('security_log_2fa_success');
+                    }
+                    if (action == 'AUTH_ACCOUNT_LOCKED') {
+                      displayTitle = 'Compte temporairement verrouillé';
+                    }
+                    if (action == 'AUTH_PASSWORD_CHANGED') {
+                      displayTitle = 'Changement de mot de passe';
+                    }
+                    if (action == 'AUTH_SESSIONS_REVOKED') {
+                      displayTitle = 'Révocation de sessions actives';
+                    }
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8.0),
                       child: _buildSecurityLogItem(
                         title: displayTitle,
-                        subtitle: 'IP: $ip • ${log['userAgent'] ?? 'Web / Mobile'}',
-                        time: dateStr.isNotEmpty ? dateStr : context.tr('security_log_time_now'),
+                        subtitle:
+                            'IP: $ip • ${log['userAgent'] ?? 'Web / Mobile'}',
+                        time: dateStr.isNotEmpty
+                            ? dateStr
+                            : context.tr('security_log_time_now'),
                         isSuccess: isSuccess,
                         isDark: isDark,
                       ),
@@ -2059,7 +2211,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           width: 8,
           height: 8,
           decoration: BoxDecoration(
-            color: isSuccess ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+            color: isSuccess
+                ? const Color(0xFF10B981)
+                : const Color(0xFFEF4444),
             shape: BoxShape.circle,
           ),
         ),
@@ -2080,7 +2234,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 subtitle,
                 style: TextStyle(
                   fontSize: 11,
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  color: isDark
+                      ? const Color(0xFF94A3B8)
+                      : const Color(0xFF64748B),
                 ),
               ),
             ],
@@ -2192,7 +2348,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             isDark: isDark,
             onChanged: (val) {
               setState(() => _emailNotifications = val);
-              _showSuccessSnackBar('Préférences email universitaire mises à jour.');
+              _showSuccessSnackBar(
+                'Préférences email universitaire mises à jour.',
+              );
             },
           ),
           const Divider(height: 20),
@@ -2217,7 +2375,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             isDark: isDark,
             onChanged: (val) {
               setState(() => _aiSmartMentorRecommendations = val);
-              _showSuccessSnackBar('Algorithme de révision SmartMentor mis à jour.');
+              _showSuccessSnackBar(
+                'Algorithme de révision SmartMentor mis à jour.',
+              );
             },
           ),
           const Divider(height: 20),
@@ -2494,7 +2654,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -2519,9 +2681,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF1E293B)
-                            : Colors.white,
+                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: isDark
@@ -2600,9 +2760,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             onChanged: (val) {
               setState(() => _highContrast = val);
               _showSuccessSnackBar(
-                val
-                    ? 'Mode contraste élevé activé'
-                    : 'Mode contraste standard',
+                val ? 'Mode contraste élevé activé' : 'Mode contraste standard',
               );
             },
           ),
@@ -2618,9 +2776,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             onChanged: (val) {
               setState(() => _reduceAnimations = val);
               _showSuccessSnackBar(
-                val
-                    ? 'Animations atténuées'
-                    : 'Animations standards activées',
+                val ? 'Animations atténuées' : 'Animations standards activées',
               );
             },
           ),
@@ -2652,8 +2808,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             color: isSelected
                 ? const Color(0xFF2563EB)
                 : (isDark
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : const Color(0xFFCBD5E1)),
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : const Color(0xFFCBD5E1)),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -2755,7 +2911,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFDCFCE7),
                   borderRadius: BorderRadius.circular(20),
@@ -2818,7 +2977,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -2867,7 +3028,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           vertical: 9,
                         ),
                         side: BorderSide(
-                          color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+                          color: isDark
+                              ? Colors.white24
+                              : const Color(0xFFCBD5E1),
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -2878,38 +3041,62 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         context.tr('download_pdf_btn'),
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDark ? Colors.white : const Color(0xFF1E293B),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF1E293B),
                         ),
                       ),
                       onPressed: () {
-                        final authState = ref.read(authStateProvider).valueOrNull;
-                        final isTeacher = authState?.role?.toLowerCase() == 'teacher';
+                        final authState = ref
+                            .read(authStateProvider)
+                            .valueOrNull;
+                        final isTeacher =
+                            authState?.role?.toLowerCase() == 'teacher';
                         final now = DateTime.now();
-                        final dateFormatted = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
-                        final instName = _universityController.text.trim().isNotEmpty
+                        final dateFormatted =
+                            '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+                        final instName =
+                            _universityController.text.trim().isNotEmpty
                             ? _universityController.text.trim()
-                            : (authState?.institution ?? (isTeacher ? 'Institut Supérieur / Université' : 'Université Mohammed VI Polytechnique'));
-                        final studentName = authState?.displayName ?? (isTeacher ? 'Professeur' : 'Ahmed Mohsen');
-                        final studentId = _studentIdController.text.trim().isNotEmpty
+                            : (authState?.institution ?? '');
+                        final studentName =
+                            authState?.displayName ??
+                            (isTeacher ? 'Professeur' : 'Ahmed Mohsen');
+                        final studentId =
+                            _studentIdController.text.trim().isNotEmpty
                             ? _studentIdController.text.trim()
-                            : (authState?.studentId ?? (isTeacher ? 'PPR-2026-89421' : 'STU-2026-9482'));
-                        final majorName = _majorController.text.trim().isNotEmpty
+                            : (authState?.studentId ??
+                                  (isTeacher
+                                      ? 'PPR-2026-89421'
+                                      : 'STU-2026-9482'));
+                        final majorName =
+                            _majorController.text.trim().isNotEmpty
                             ? _majorController.text.trim()
-                            : (authState?.major ?? (isTeacher ? 'Département Informatique & Technologies Numériques' : 'Cycle Ingénieur • Génie Informatique'));
+                            : (authState?.major ??
+                                  (isTeacher
+                                      ? 'Département Informatique & Technologies Numériques'
+                                      : 'Cycle Ingénieur • Génie Informatique'));
 
                         showDialog(
                           context: context,
                           builder: (ctx) => Dialog(
                             backgroundColor: Colors.transparent,
-                            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                            insetPadding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 32,
+                            ),
                             child: Container(
                               width: 680,
                               constraints: const BoxConstraints(maxHeight: 780),
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                                color: isDark
+                                    ? const Color(0xFF0F172A)
+                                    : Colors.white,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+                                  color: isDark
+                                      ? Colors.white12
+                                      : const Color(0xFFE2E8F0),
                                 ),
                                 boxShadow: [
                                   BoxShadow(
@@ -2924,19 +3111,32 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 children: [
                                   // Top Modal Bar
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 14,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                      color: isDark
+                                          ? const Color(0xFF1E293B)
+                                          : const Color(0xFFF8FAFC),
+                                      borderRadius: const BorderRadius.vertical(
+                                        top: Radius.circular(16),
+                                      ),
                                       border: Border(
                                         bottom: BorderSide(
-                                          color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+                                          color: isDark
+                                              ? Colors.white10
+                                              : const Color(0xFFE2E8F0),
                                         ),
                                       ),
                                     ),
                                     child: Row(
                                       children: [
-                                        const Icon(Icons.verified_user_rounded, color: Color(0xFF15803D), size: 20),
+                                        const Icon(
+                                          Icons.verified_user_rounded,
+                                          color: Color(0xFF15803D),
+                                          size: 20,
+                                        ),
                                         const SizedBox(width: 10),
                                         Expanded(
                                           child: Text(
@@ -2946,25 +3146,40 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                             style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold,
-                                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : const Color(0xFF0F172A),
                                             ),
                                           ),
                                         ),
                                         Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 3,
+                                          ),
                                           decoration: BoxDecoration(
                                             color: const Color(0xFFDCFCE7),
-                                            borderRadius: BorderRadius.circular(6),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
                                           ),
                                           child: const Text(
                                             'CERTIFIÉ PAR ENT',
-                                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF15803D),
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 12),
                                         IconButton(
-                                          icon: const Icon(Icons.close_rounded, size: 20),
-                                          onPressed: () => Navigator.of(ctx).pop(),
+                                          icon: const Icon(
+                                            Icons.close_rounded,
+                                            size: 20,
+                                          ),
+                                          onPressed: () =>
+                                              Navigator.of(ctx).pop(),
                                           tooltip: 'Fermer',
                                         ),
                                       ],
@@ -2976,13 +3191,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                     child: SingleChildScrollView(
                                       padding: const EdgeInsets.all(24),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           // Header with Institution & Ministry
                                           Center(
                                             child: Column(
                                               children: [
-                                                const Icon(Icons.account_balance_rounded, size: 36, color: Color(0xFF2563EB)),
+                                                const Icon(
+                                                  Icons.account_balance_rounded,
+                                                  size: 36,
+                                                  color: Color(0xFF2563EB),
+                                                ),
                                                 const SizedBox(height: 8),
                                                 Text(
                                                   instName.toUpperCase(),
@@ -2991,7 +3211,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                                     fontSize: 16,
                                                     fontWeight: FontWeight.w900,
                                                     letterSpacing: 0.8,
-                                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : const Color(
+                                                            0xFF0F172A,
+                                                          ),
                                                   ),
                                                 ),
                                                 const SizedBox(height: 4),
@@ -3001,22 +3225,46 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                                   style: TextStyle(
                                                     fontSize: 10.5,
                                                     fontWeight: FontWeight.w600,
-                                                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                                    color: isDark
+                                                        ? const Color(
+                                                            0xFF94A3B8,
+                                                          )
+                                                        : const Color(
+                                                            0xFF64748B,
+                                                          ),
                                                   ),
                                                 ),
                                                 const SizedBox(height: 6),
                                                 Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 14,
+                                                        vertical: 4,
+                                                      ),
                                                   decoration: BoxDecoration(
-                                                    color: const Color(0xFFEFF6FF),
-                                                    borderRadius: BorderRadius.circular(20),
-                                                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                                                    color: const Color(
+                                                      0xFFEFF6FF,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          20,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: const Color(
+                                                        0xFFBFDBFE,
+                                                      ),
+                                                    ),
                                                   ),
                                                   child: Text(
                                                     isTeacher
                                                         ? 'ATTESTATION D\'EXERCICE & CHARGES D\'ENSEIGNEMENT • 2025-2026'
                                                         : 'RELEVÉ GLOBAL DE NOTES & CRÉDITS ECTS • ANNÉE 2025-2026',
-                                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)),
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Color(0xFF1D4ED8),
+                                                    ),
                                                   ),
                                                 ),
                                               ],
@@ -3030,30 +3278,84 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                           Container(
                                             padding: const EdgeInsets.all(14),
                                             decoration: BoxDecoration(
-                                              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-                                              borderRadius: BorderRadius.circular(10),
-                                              border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+                                              color: isDark
+                                                  ? const Color(0xFF1E293B)
+                                                  : const Color(0xFFF8FAFC),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              border: Border.all(
+                                                color: isDark
+                                                    ? Colors.white10
+                                                    : const Color(0xFFE2E8F0),
+                                              ),
                                             ),
                                             child: Column(
                                               children: [
                                                 Row(
                                                   children: [
-                                                    Expanded(child: _buildTranscriptInfoItem(isTeacher ? 'Nom de l\'enseignant' : 'Nom de l\'étudiant', studentName, isDark)),
-                                                    Expanded(child: _buildTranscriptInfoItem(isTeacher ? 'Matricule Enseignant (PPR)' : 'Identifiant (CNE / MASSAR)', studentId, isDark)),
+                                                    Expanded(
+                                                      child: _buildTranscriptInfoItem(
+                                                        isTeacher
+                                                            ? 'Nom de l\'enseignant'
+                                                            : 'Nom de l\'étudiant',
+                                                        studentName,
+                                                        isDark,
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child: _buildTranscriptInfoItem(
+                                                        isTeacher
+                                                            ? 'Matricule Enseignant (PPR)'
+                                                            : 'Identifiant (CNE / MASSAR)',
+                                                        studentId,
+                                                        isDark,
+                                                      ),
+                                                    ),
                                                   ],
                                                 ),
                                                 const SizedBox(height: 10),
                                                 Row(
                                                   children: [
-                                                    Expanded(child: _buildTranscriptInfoItem(isTeacher ? 'Département / Discipline' : 'Filière / Spécialité', majorName, isDark)),
-                                                    Expanded(child: _buildTranscriptInfoItem(isTeacher ? 'Email institutionnel' : 'Email académique', authState?.email ?? '', isDark)),
+                                                    Expanded(
+                                                      child: _buildTranscriptInfoItem(
+                                                        isTeacher
+                                                            ? 'Département / Discipline'
+                                                            : 'Filière / Spécialité',
+                                                        majorName,
+                                                        isDark,
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child: _buildTranscriptInfoItem(
+                                                        isTeacher
+                                                            ? 'Email institutionnel'
+                                                            : 'Email académique',
+                                                        authState?.email ?? '',
+                                                        isDark,
+                                                      ),
+                                                    ),
                                                   ],
                                                 ),
                                                 const SizedBox(height: 10),
                                                 Row(
                                                   children: [
-                                                    Expanded(child: _buildTranscriptInfoItem('Statut académique', isTeacher ? 'Enseignant Titulaire (Certifié ENT)' : 'Inscrit en règle (ENT Actif)', isDark)),
-                                                    Expanded(child: _buildTranscriptInfoItem('Date d\'émission', dateFormatted, isDark)),
+                                                    Expanded(
+                                                      child: _buildTranscriptInfoItem(
+                                                        'Statut académique',
+                                                        isTeacher
+                                                            ? 'Enseignant Titulaire (Certifié ENT)'
+                                                            : 'Inscrit en règle (ENT Actif)',
+                                                        isDark,
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child:
+                                                          _buildTranscriptInfoItem(
+                                                            'Date d\'émission',
+                                                            dateFormatted,
+                                                            isDark,
+                                                          ),
+                                                    ),
                                                   ],
                                                 ),
                                               ],
@@ -3069,36 +3371,62 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                             style: TextStyle(
                                               fontSize: 12.5,
                                               fontWeight: FontWeight.bold,
-                                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : const Color(0xFF0F172A),
                                             ),
                                           ),
                                           const SizedBox(height: 8),
-                                          isTeacher ? _buildTeacherServiceTable(isDark) : _buildTranscriptTable(isDark),
+                                          isTeacher
+                                              ? _buildTeacherServiceTable(
+                                                  isDark,
+                                                )
+                                              : _buildTranscriptTable(isDark),
                                           const SizedBox(height: 16),
 
                                           // Cryptographic Footer Seal
                                           Container(
                                             padding: const EdgeInsets.all(12),
                                             decoration: BoxDecoration(
-                                              color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.5) : const Color(0xFFF1F5F9),
-                                              borderRadius: BorderRadius.circular(8),
+                                              color: isDark
+                                                  ? const Color(
+                                                      0xFF1E293B,
+                                                    ).withValues(alpha: 0.5)
+                                                  : const Color(0xFFF1F5F9),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: Row(
                                               children: [
-                                                const Icon(Icons.qr_code_2_rounded, size: 40, color: Color(0xFF2563EB)),
+                                                const Icon(
+                                                  Icons.qr_code_2_rounded,
+                                                  size: 40,
+                                                  color: Color(0xFF2563EB),
+                                                ),
                                                 const SizedBox(width: 12),
                                                 Expanded(
                                                   child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
                                                     children: [
                                                       Text(
                                                         'Signature Cryptographique ENT : SHA256-${DateTime.now().millisecondsSinceEpoch.toRadixString(16).toUpperCase()}',
-                                                        style: const TextStyle(fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.bold),
+                                                        style: const TextStyle(
+                                                          fontSize: 10,
+                                                          fontFamily:
+                                                              'monospace',
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
                                                       ),
                                                       const SizedBox(height: 2),
                                                       const Text(
                                                         'Vérifiable publiquement via le registre national ENT SmartClass. Document faisant foi.',
-                                                        style: TextStyle(fontSize: 10, color: Colors.grey),
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          color: Colors.grey,
+                                                        ),
                                                       ),
                                                     ],
                                                   ),
@@ -3113,13 +3441,22 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
                                   // Bottom Dialog Actions
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 14,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-                                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+                                      color: isDark
+                                          ? const Color(0xFF1E293B)
+                                          : const Color(0xFFF8FAFC),
+                                      borderRadius: const BorderRadius.vertical(
+                                        bottom: Radius.circular(16),
+                                      ),
                                       border: Border(
                                         top: BorderSide(
-                                          color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+                                          color: isDark
+                                              ? Colors.white10
+                                              : const Color(0xFFE2E8F0),
                                         ),
                                       ),
                                     ),
@@ -3127,28 +3464,42 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                       mainAxisAlignment: MainAxisAlignment.end,
                                       children: [
                                         OutlinedButton(
-                                          onPressed: () => Navigator.of(ctx).pop(),
+                                          onPressed: () =>
+                                              Navigator.of(ctx).pop(),
                                           child: const Text('Fermer'),
                                         ),
                                         const SizedBox(width: 12),
                                         FilledButton.icon(
                                           style: FilledButton.styleFrom(
-                                            backgroundColor: const Color(0xFF2563EB),
+                                            backgroundColor: const Color(
+                                              0xFF2563EB,
+                                            ),
                                           ),
-                                          icon: const Icon(Icons.print_rounded, size: 16),
-                                          label: const Text('Imprimer / Exporter en PDF'),
+                                          icon: const Icon(
+                                            Icons.print_rounded,
+                                            size: 16,
+                                          ),
+                                          label: const Text(
+                                            'Imprimer / Exporter en PDF',
+                                          ),
                                           onPressed: () {
                                             printOfficialTranscript(
                                               studentName: studentName,
                                               studentId: studentId,
                                               institution: instName,
                                               major: majorName,
-                                              email: authState?.email ?? 'faroukmessay006@gmail.com',
-                                              status: isTeacher ? 'Enseignant Titulaire • Certifié ENT' : 'Inscrit en règle (ENT Actif)',
+                                              email:
+                                                  authState?.email ??
+                                                  'faroukmessay006@gmail.com',
+                                              status: isTeacher
+                                                  ? 'Enseignant Titulaire • Certifié ENT'
+                                                  : 'Inscrit en règle (ENT Actif)',
                                               date: dateFormatted,
                                               isTeacher: isTeacher,
                                             );
-                                            _showSuccessSnackBar('Génération du document officiel A4 et ouverture du dialogue d\'impression PDF...');
+                                            _showSuccessSnackBar(
+                                              'Génération du document officiel A4 et ouverture du dialogue d\'impression PDF...',
+                                            );
                                           },
                                         ),
                                       ],
@@ -3178,7 +3529,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             onChanged: (val) async {
               setState(() => _profileVisibleToCohort = val);
               await _savePreferences();
-              _showSuccessSnackBar('Visibilité auprès des pairs mise à jour et enregistrée.');
+              _showSuccessSnackBar(
+                'Visibilité auprès des pairs mise à jour et enregistrée.',
+              );
             },
           ),
           const Divider(height: 20),
@@ -3195,9 +3548,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             onChanged: (val) async {
               setState(() => _rankingVisible = val);
               await _savePreferences();
-              _showSuccessSnackBar(isTeacher
-                  ? 'Préférences d\'annuaire enseignant mises à jour et enregistrées.'
-                  : 'Préférences de classement mises à jour et enregistrées.');
+              _showSuccessSnackBar(
+                isTeacher
+                    ? 'Préférences d\'annuaire enseignant mises à jour et enregistrées.'
+                    : 'Préférences de classement mises à jour et enregistrées.',
+              );
             },
           ),
           const Divider(height: 20),
@@ -3210,7 +3565,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             onChanged: (val) async {
               setState(() => _shareAiSummaries = val);
               await _savePreferences();
-              _showSuccessSnackBar('Partage des synthèses IA mis à jour et enregistré.');
+              _showSuccessSnackBar(
+                'Partage des synthèses IA mis à jour et enregistré.',
+              );
             },
           ),
           const SizedBox(height: 24),
@@ -3260,7 +3617,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF1E293B),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1E293B),
                             ),
                           ),
                           Text(
@@ -3308,7 +3667,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF1E293B),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1E293B),
                             ),
                           ),
                           Text(
@@ -3354,7 +3715,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   // TAB 5: SESSIONS & APPAREILS
   // ===========================================================================
 
-  Widget _buildSessionsDevicesCard(Color cardBg, Color borderColor, bool isDark) {
+  Widget _buildSessionsDevicesCard(
+    Color cardBg,
+    Color borderColor,
+    bool isDark,
+  ) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -3417,7 +3782,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFDBEAFE),
                   borderRadius: BorderRadius.circular(20),
@@ -3446,7 +3814,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   ? const Color(0xFF1E3A8A).withValues(alpha: 0.25)
                   : const Color(0xFFEFF6FF),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.4)),
+              border: Border.all(
+                color: const Color(0xFF3B82F6).withValues(alpha: 0.4),
+              ),
             ),
             child: Row(
               children: [
@@ -3469,7 +3839,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             style: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -3498,7 +3870,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         'Session active • ${context.tr('last_active_now')}',
                         style: TextStyle(
                           fontSize: 11.5,
-                          color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                          color: isDark
+                              ? const Color(0xFF93C5FD)
+                              : const Color(0xFF1D4ED8),
                         ),
                       ),
                     ],
@@ -3530,7 +3904,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                color: isDark
+                    ? const Color(0xFF0F172A)
+                    : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isDark
@@ -3540,14 +3916,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.verified_user_rounded, color: Color(0xFF10B981), size: 20),
+                  const Icon(
+                    Icons.verified_user_rounded,
+                    color: Color(0xFF10B981),
+                    size: 20,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Aucune autre session active. Votre compte n\'est actuellement ouvert que sur cet appareil.',
                       style: TextStyle(
                         fontSize: 12,
-                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        color: isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
                       ),
                     ),
                   ),
@@ -3558,9 +3940,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ..._remoteSessions.map(
               (session) => Container(
                 margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                  color: isDark
+                      ? const Color(0xFF0F172A)
+                      : const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isDark
@@ -3581,11 +3968,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            (session['device'] as String?) ?? 'Session connectée',
+                            (session['device'] as String?) ??
+                                'Session connectée',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -3593,7 +3983,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             'IP : ${session['ipAddress'] ?? '127.0.0.1'} • ${session['location'] ?? 'Réseau sécurisé'} • ${(session['createdAt'] as String?)?.split('T').first ?? ''}',
                             style: TextStyle(
                               fontSize: 11.5,
-                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                              color: isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B),
                             ),
                           ),
                         ],
@@ -3606,7 +3998,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           vertical: 6,
                         ),
                         side: BorderSide(
-                          color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+                          color: isDark
+                              ? Colors.white24
+                              : const Color(0xFFCBD5E1),
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -3637,7 +4031,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            icon: const Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 16),
+            icon: const Icon(
+              Icons.logout_rounded,
+              color: Color(0xFFEF4444),
+              size: 16,
+            ),
             label: Text(
               context.tr('revoke_all_sessions_btn'),
               style: const TextStyle(
@@ -3675,14 +4073,17 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           final hasUpper = pass.contains(RegExp(r'[A-Z]'));
           final hasDigit = pass.contains(RegExp(r'[0-9]'));
           final hasSpecial = pass.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
-          final score = (hasLen ? 1 : 0) +
+          final score =
+              (hasLen ? 1 : 0) +
               (hasUpper ? 1 : 0) +
               (hasDigit ? 1 : 0) +
               (hasSpecial ? 1 : 0);
 
           return AlertDialog(
             backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: Row(
               children: [
                 const Icon(Icons.lock_reset_rounded, color: Color(0xFF2563EB)),
@@ -3706,18 +4107,27 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   children: [
                     if (dialogError != null) ...[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         margin: const EdgeInsets.only(bottom: 14),
                         decoration: BoxDecoration(
                           color: const Color(0xFFEF4444).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: const Color(0xFFEF4444).withValues(alpha: 0.3),
+                            color: const Color(
+                              0xFFEF4444,
+                            ).withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 16),
+                            const Icon(
+                              Icons.error_outline_rounded,
+                              color: Color(0xFFEF4444),
+                              size: 16,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -3744,8 +4154,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
                           ),
-                          onPressed: () =>
-                              setDlgState(() => _obscureCurrent = !_obscureCurrent),
+                          onPressed: () => setDlgState(
+                            () => _obscureCurrent = !_obscureCurrent,
+                          ),
                         ),
                       ),
                     ),
@@ -3779,10 +4190,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           score <= 1
                               ? const Color(0xFFEF4444)
                               : (score <= 2
-                                  ? const Color(0xFFF59E0B)
-                                  : (score <= 3
-                                      ? const Color(0xFF3B82F6)
-                                      : const Color(0xFF10B981))),
+                                    ? const Color(0xFFF59E0B)
+                                    : (score <= 3
+                                          ? const Color(0xFF3B82F6)
+                                          : const Color(0xFF10B981))),
                         ),
                       ),
                     ),
@@ -3791,13 +4202,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       score <= 1
                           ? 'Force : Faible (minimum 8 caractères)'
                           : (score <= 2
-                              ? 'Force : Moyenne'
-                              : (score <= 3
-                                  ? 'Force : Bonne'
-                                  : 'Force : Excellente')),
+                                ? 'Force : Moyenne'
+                                : (score <= 3
+                                      ? 'Force : Bonne'
+                                      : 'Force : Excellente')),
                       style: TextStyle(
                         fontSize: 11,
-                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        color: isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -3812,8 +4225,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
                           ),
-                          onPressed: () =>
-                              setDlgState(() => _obscureConfirm = !_obscureConfirm),
+                          onPressed: () => setDlgState(
+                            () => _obscureConfirm = !_obscureConfirm,
+                          ),
                         ),
                       ),
                     ),
@@ -3838,15 +4252,25 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         final confPass = _confirmPasswordController.text;
 
                         if (cur.isEmpty) {
-                          setDlgState(() => dialogError = 'Veuillez saisir votre mot de passe actuel.');
+                          setDlgState(
+                            () => dialogError =
+                                'Veuillez saisir votre mot de passe actuel.',
+                          );
                           return;
                         }
                         if (newPass.length < 8) {
-                          setDlgState(() => dialogError = 'Le nouveau mot de passe doit comporter au moins 8 caractères.');
+                          setDlgState(
+                            () => dialogError =
+                                'Le nouveau mot de passe doit comporter au moins 8 caractères.',
+                          );
                           return;
                         }
                         if (newPass != confPass) {
-                          setDlgState(() => dialogError = context.tr('passwords_dont_match'));
+                          setDlgState(
+                            () => dialogError = context.tr(
+                              'passwords_dont_match',
+                            ),
+                          );
                           return;
                         }
 
@@ -3856,10 +4280,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         });
 
                         try {
-                          await ref.read(authStateProvider.notifier).changePassword(
-                            currentPassword: cur,
-                            newPassword: newPass,
-                          );
+                          await ref
+                              .read(authStateProvider.notifier)
+                              .changePassword(
+                                currentPassword: cur,
+                                newPassword: newPass,
+                              );
                           if (ctx.mounted) {
                             Navigator.of(ctx).pop();
                           }
@@ -3871,8 +4297,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           if (ctx.mounted) {
                             setDlgState(() {
                               isSubmitting = false;
-                              final err = e.toString().replaceFirst('Exception: ', '');
-                              dialogError = err.isNotEmpty ? err : 'Erreur lors du changement de mot de passe.';
+                              final err = e.toString().replaceFirst(
+                                'Exception: ',
+                                '',
+                              );
+                              dialogError = err.isNotEmpty
+                                  ? err
+                                  : 'Erreur lors du changement de mot de passe.';
                             });
                           }
                         }
@@ -3899,9 +4330,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
     );
 
     Map<String, dynamic> setupData;
@@ -3920,7 +4349,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
     final secret = setupData['secret'] as String? ?? '';
     final qrCodeDataUrl = setupData['qrCodeDataUrl'] as String? ?? '';
-    final recoveryCodes = (setupData['recoveryCodes'] as List<dynamic>? ?? []).cast<String>();
+    final recoveryCodes = (setupData['recoveryCodes'] as List<dynamic>? ?? [])
+        .cast<String>();
 
     Uint8List? qrBytes;
     try {
@@ -3942,7 +4372,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             final isDark = Theme.of(ctx).brightness == Brightness.dark;
             return AlertDialog(
               backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: Row(
                 children: [
                   const Icon(Icons.qr_code_2_rounded, color: Color(0xFF2563EB)),
@@ -3969,7 +4401,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         context.tr('two_factor_modal_desc'),
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -3999,11 +4433,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             InkWell(
                               onTap: () {
                                 Clipboard.setData(ClipboardData(text: secret));
-                                context.showSuccessToast('Clé secrète copiée !');
+                                context.showSuccessToast(
+                                  'Clé secrète copiée !',
+                                );
                               },
                               borderRadius: BorderRadius.circular(6),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -4017,7 +4456,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                       ),
                                     ),
                                     const SizedBox(width: 6),
-                                    const Icon(Icons.copy_rounded, size: 14, color: Color(0xFF2563EB)),
+                                    const Icon(
+                                      Icons.copy_rounded,
+                                      size: 14,
+                                      color: Color(0xFF2563EB),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -4030,10 +4473,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                            color: isDark
+                                ? const Color(0xFF0F172A)
+                                : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+                              color: isDark
+                                  ? Colors.white12
+                                  : const Color(0xFFE2E8F0),
                             ),
                           ),
                           child: Column(
@@ -4041,14 +4488,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.key_rounded, size: 14, color: Color(0xFFF59E0B)),
+                                  const Icon(
+                                    Icons.key_rounded,
+                                    size: 14,
+                                    color: Color(0xFFF59E0B),
+                                  ),
                                   const SizedBox(width: 6),
                                   Text(
                                     'Codes de secours (conservez-les précieusement) :',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
-                                      color: isDark ? Colors.white70 : const Color(0xFF334155),
+                                      color: isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF334155),
                                     ),
                                   ),
                                 ],
@@ -4057,22 +4510,35 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               Wrap(
                                 spacing: 6,
                                 runSpacing: 4,
-                                children: recoveryCodes.map((rc) => Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.white10 : Colors.white,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    rc,
-                                    style: TextStyle(
-                                      fontFamily: 'monospace',
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                    ),
-                                  ),
-                                )).toList(),
+                                children: recoveryCodes
+                                    .map(
+                                      (rc) => Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? Colors.white10
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          rc,
+                                          style: TextStyle(
+                                            fontFamily: 'monospace',
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark
+                                                ? Colors.white
+                                                : const Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
                               ),
                             ],
                           ),
@@ -4106,13 +4572,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   child: Text(context.tr('cancel')),
                 ),
                 FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                  ),
                   onPressed: isVerifying
                       ? null
                       : () async {
                           final code = codeCtrl.text.trim();
                           if (code.length != 6) {
-                            setDlgState(() => errorMessage = 'Le code doit contenir 6 chiffres.');
+                            setDlgState(
+                              () => errorMessage =
+                                  'Le code doit contenir 6 chiffres.',
+                            );
                             return;
                           }
                           setDlgState(() {
@@ -4120,7 +4591,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             errorMessage = null;
                           });
                           try {
-                            await ref.read(authStateProvider.notifier).verify2fa(code);
+                            await ref
+                                .read(authStateProvider.notifier)
+                                .verify2fa(code);
                             if (ctx.mounted) Navigator.of(ctx).pop();
                             if (mounted) {
                               setState(() => _twoFactorEnabled = true);
@@ -4133,7 +4606,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             setDlgState(() {
                               isVerifying = false;
                               final l10n = failureL10n(f);
-                              errorMessage = context.tr(l10n.key, args: l10n.args);
+                              errorMessage = context.tr(
+                                l10n.key,
+                                args: l10n.args,
+                              );
                             });
                           } catch (e) {
                             setDlgState(() {
@@ -4146,7 +4622,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : Text(context.tr('two_factor_verify_btn')),
                 ),
@@ -4184,16 +4663,42 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   Widget _buildTranscriptTable(bool isDark) {
     final modules = [
-      {'code': 'INFO-401', 'title': 'Algorithmes Avancés & Structures', 'ects': '6 ECTS', 'note': '17.5/20', 'res': 'Validé'},
-      {'code': 'MATH-302', 'title': 'Probabilités & Statistiques IA', 'ects': '6 ECTS', 'note': '16.0/20', 'res': 'Validé'},
-      {'code': 'DEV-405', 'title': 'Génie Logiciel & Microservices', 'ects': '6 ECTS', 'note': '18.0/20', 'res': 'Validé'},
-      {'code': 'SYS-402', 'title': 'Systèmes Distribués & Cloud', 'ects': '6 ECTS', 'note': '15.5/20', 'res': 'Validé'},
+      {
+        'code': 'INFO-401',
+        'title': 'Algorithmes Avancés & Structures',
+        'ects': '6 ECTS',
+        'note': '17.5/20',
+        'res': 'Validé',
+      },
+      {
+        'code': 'MATH-302',
+        'title': 'Probabilités & Statistiques IA',
+        'ects': '6 ECTS',
+        'note': '16.0/20',
+        'res': 'Validé',
+      },
+      {
+        'code': 'DEV-405',
+        'title': 'Génie Logiciel & Microservices',
+        'ects': '6 ECTS',
+        'note': '18.0/20',
+        'res': 'Validé',
+      },
+      {
+        'code': 'SYS-402',
+        'title': 'Systèmes Distribués & Cloud',
+        'ects': '6 ECTS',
+        'note': '15.5/20',
+        'res': 'Validé',
+      },
     ];
 
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+        ),
       ),
       child: Column(
         children: [
@@ -4201,35 +4706,113 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(7),
+              ),
             ),
             child: const Row(
               children: [
-                SizedBox(width: 70, child: Text('Code', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
-                Expanded(child: Text('Module d\'enseignement', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
-                SizedBox(width: 60, child: Text('Crédits', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
-                SizedBox(width: 70, child: Text('Note /20', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
-                SizedBox(width: 70, child: Text('Résultat', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
+                SizedBox(
+                  width: 70,
+                  child: Text(
+                    'Code',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'Module d\'enseignement',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(
+                  width: 60,
+                  child: Text(
+                    'Crédits',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(
+                  width: 70,
+                  child: Text(
+                    'Note /20',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(
+                  width: 70,
+                  child: Text(
+                    'Résultat',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ],
             ),
           ),
-          ...modules.map((m) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+          ...modules.map(
+            (m) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 70,
+                    child: Text(
+                      m['code']!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      m['title']!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 60,
+                    child: Text(
+                      m['ects']!,
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 70,
+                    child: Text(
+                      m['note']!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF15803D),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 70,
+                    child: Text(
+                      m['res']!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                SizedBox(width: 70, child: Text(m['code']!, style: const TextStyle(fontSize: 11, fontFamily: 'monospace'))),
-                Expanded(child: Text(m['title']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500))),
-                SizedBox(width: 60, child: Text(m['ects']!, style: const TextStyle(fontSize: 11))),
-                SizedBox(width: 70, child: Text(m['note']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF15803D)))),
-                SizedBox(width: 70, child: Text(m['res']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)))),
-              ],
-            ),
-          )),
+          ),
         ],
       ),
     );
@@ -4237,16 +4820,42 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   Widget _buildTeacherServiceTable(bool isDark) {
     final modules = [
-      {'code': 'INFO-401', 'title': 'Algorithmes Avancés & Structures de Données', 'class': 'Cycle Ingénieur • 2A', 'hours': '48h', 'type': 'Cours & TD'},
-      {'code': 'DEV-405', 'title': 'Génie Logiciel & Architecture Microservices', 'class': 'Master 1 • Informatique', 'hours': '42h', 'type': 'Cours & TP'},
-      {'code': 'SYS-402', 'title': 'Systèmes Distribués, Réseaux & Cloud', 'class': 'Cycle Ingénieur • 3A', 'hours': '36h', 'type': 'Cours & TP'},
-      {'code': 'PROJ-401', 'title': 'Supervision Projets de Fin d\'Études (PFE)', 'class': 'Master 2 • Systèmes Intelligents', 'hours': '36h', 'type': 'Encadrement'},
+      {
+        'code': 'INFO-401',
+        'title': 'Algorithmes Avancés & Structures de Données',
+        'class': 'Cycle Ingénieur • 2A',
+        'hours': '48h',
+        'type': 'Cours & TD',
+      },
+      {
+        'code': 'DEV-405',
+        'title': 'Génie Logiciel & Architecture Microservices',
+        'class': 'Master 1 • Informatique',
+        'hours': '42h',
+        'type': 'Cours & TP',
+      },
+      {
+        'code': 'SYS-402',
+        'title': 'Systèmes Distribués, Réseaux & Cloud',
+        'class': 'Cycle Ingénieur • 3A',
+        'hours': '36h',
+        'type': 'Cours & TP',
+      },
+      {
+        'code': 'PROJ-401',
+        'title': 'Supervision Projets de Fin d\'Études (PFE)',
+        'class': 'Master 2 • Systèmes Intelligents',
+        'hours': '36h',
+        'type': 'Encadrement',
+      },
     ];
 
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+        ),
       ),
       child: Column(
         children: [
@@ -4254,35 +4863,113 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(7),
+              ),
             ),
             child: const Row(
               children: [
-                SizedBox(width: 75, child: Text('Code', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
-                Expanded(child: Text('Module d\'enseignement', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
-                SizedBox(width: 140, child: Text('Filière / Niveau', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
-                SizedBox(width: 55, child: Text('Volume', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
-                SizedBox(width: 75, child: Text('Type', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
+                SizedBox(
+                  width: 75,
+                  child: Text(
+                    'Code',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'Module d\'enseignement',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(
+                  width: 140,
+                  child: Text(
+                    'Filière / Niveau',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(
+                  width: 55,
+                  child: Text(
+                    'Volume',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(
+                  width: 75,
+                  child: Text(
+                    'Type',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ],
             ),
           ),
-          ...modules.map((m) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+          ...modules.map(
+            (m) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 75,
+                    child: Text(
+                      m['code']!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      m['title']!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 140,
+                    child: Text(
+                      m['class']!,
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 55,
+                    child: Text(
+                      m['hours']!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1D4ED8),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 75,
+                    child: Text(
+                      m['type']!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF15803D),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                SizedBox(width: 75, child: Text(m['code']!, style: const TextStyle(fontSize: 11, fontFamily: 'monospace'))),
-                Expanded(child: Text(m['title']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500))),
-                SizedBox(width: 140, child: Text(m['class']!, style: const TextStyle(fontSize: 11))),
-                SizedBox(width: 55, child: Text(m['hours']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)))),
-                SizedBox(width: 75, child: Text(m['type']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF15803D)))),
-              ],
-            ),
-          )),
+          ),
         ],
       ),
     );
@@ -4297,7 +4984,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           builder: (context, setDialogState) => AlertDialog(
             title: Row(
               children: [
-                const Icon(Icons.pause_circle_outline_rounded, color: Color(0xFFF97316)),
+                const Icon(
+                  Icons.pause_circle_outline_rounded,
+                  color: Color(0xFFF97316),
+                ),
                 const SizedBox(width: 8),
                 Text(context.tr('freeze_confirm_title')),
               ],
@@ -4323,12 +5013,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline, size: 18, color: Color(0xFFEA580C)),
+                        Icon(
+                          Icons.info_outline,
+                          size: 18,
+                          color: Color(0xFFEA580C),
+                        ),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Toutes vos sessions actives seront révoquées. Vos cours, devoirs et notes resteront archivés en sécurité. La réactivation s\'effectuera automatiquement lors de votre prochaine authentification.',
-                            style: TextStyle(fontSize: 11.5, color: Color(0xFF9A3412)),
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFF9A3412),
+                            ),
                           ),
                         ),
                       ],
@@ -4343,14 +5040,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 child: Text(context.tr('cancel')),
               ),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFF97316),
+                ),
                 onPressed: isLoading
                     ? null
                     : () async {
                         final router = GoRouter.of(context);
                         setDialogState(() => isLoading = true);
                         try {
-                          final msg = await ref.read(authStateProvider.notifier).freezeAccount();
+                          final msg = await ref
+                              .read(authStateProvider.notifier)
+                              .freezeAccount();
                           if (ctx.mounted) Navigator.of(ctx).pop();
                           if (mounted) {
                             _showSuccessSnackBar(msg);
@@ -4368,7 +5069,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Text('Confirmer la mise en veille'),
               ),
@@ -4419,12 +5123,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       child: const Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.shield_outlined, size: 18, color: Color(0xFFDC2626)),
+                          Icon(
+                            Icons.shield_outlined,
+                            size: 18,
+                            color: Color(0xFFDC2626),
+                          ),
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Conformément à l\'article 17 du RGPD (Droit à l\'effacement), cette suppression est irréversible et efface l\'ensemble de vos données d\'apprentissage.',
-                              style: TextStyle(fontSize: 11.5, color: Color(0xFF991B1B)),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFF991B1B),
+                              ),
                             ),
                           ),
                         ],
@@ -4433,7 +5144,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     const SizedBox(height: 16),
                     const Text(
                       'Confirmez avec votre mot de passe actuel :',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     TextField(
@@ -4444,14 +5158,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         prefixIcon: const Icon(Icons.lock_outline, size: 18),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                            obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
                             size: 18,
                           ),
-                          onPressed: () => setDialogState(() => obscurePassword = !obscurePassword),
+                          onPressed: () => setDialogState(
+                            () => obscurePassword = !obscurePassword,
+                          ),
                         ),
                         errorText: errorMessage,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                       ),
                     ),
                   ],
@@ -4463,13 +5186,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   child: Text(context.tr('cancel')),
                 ),
                 FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFDC2626),
+                  ),
                   onPressed: isLoading
                       ? null
                       : () async {
                           final password = passwordCtrl.text.trim();
                           if (password.isEmpty) {
-                            setDialogState(() => errorMessage = 'Veuillez saisir votre mot de passe pour confirmer.');
+                            setDialogState(
+                              () => errorMessage =
+                                  'Veuillez saisir votre mot de passe pour confirmer.',
+                            );
                             return;
                           }
                           setDialogState(() {
@@ -4478,9 +5206,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           });
                           final router = GoRouter.of(context);
                           try {
-                            final msg = await ref.read(authStateProvider.notifier).deleteAccount(
-                              passwordConfirmation: password,
-                            );
+                            final msg = await ref
+                                .read(authStateProvider.notifier)
+                                .deleteAccount(passwordConfirmation: password);
                             if (ctx.mounted) Navigator.of(ctx).pop();
                             if (mounted) {
                               _showSuccessSnackBar(msg);
@@ -4494,7 +5222,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           } catch (e) {
                             setDialogState(() {
                               isLoading = false;
-                              errorMessage = 'Mot de passe incorrect ou erreur réseau.';
+                              errorMessage =
+                                  'Mot de passe incorrect ou erreur réseau.';
                             });
                           }
                         },
@@ -4502,7 +5231,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : Text(context.tr('delete')),
                 ),
@@ -4526,7 +5258,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             child: Text(context.tr('cancel')),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+            ),
             onPressed: () {
               Navigator.of(ctx).pop();
               _revokeAllSessions();
@@ -4568,11 +5302,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           decoration: BoxDecoration(
             color: readOnly
                 ? (isDark
-                    ? const Color(0xFF0F172A).withValues(alpha: 0.6)
-                    : const Color(0xFFF1F5F9))
-                : (isDark
-                    ? const Color(0xFF0F172A)
-                    : Colors.white),
+                      ? const Color(0xFF0F172A).withValues(alpha: 0.6)
+                      : const Color(0xFFF1F5F9))
+                : (isDark ? const Color(0xFF0F172A) : Colors.white),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: isDark
@@ -4774,8 +5506,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 color: isDarkCard
                     ? const Color(0xFF1E293B)
                     : (isSplitCard
-                        ? const Color(0xFFE2E8F0)
-                        : const Color(0xFFF1F5F9)),
+                          ? const Color(0xFFE2E8F0)
+                          : const Color(0xFFF1F5F9)),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: isDarkCard
@@ -4989,7 +5721,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 Icon(
                   Icons.cloud_done_rounded,
                   size: 15,
-                  color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
+                  color: isDark
+                      ? const Color(0xFF6EE7B7)
+                      : const Color(0xFF059669),
                 ),
                 const SizedBox(width: 6),
                 Text(
@@ -5010,10 +5744,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           // Discard / Reset button
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 13,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
               side: BorderSide(
                 color: isDark
                     ? Colors.white.withValues(alpha: 0.20)
@@ -5038,7 +5769,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF334155),
+                color: isDark
+                    ? const Color(0xFFF1F5F9)
+                    : const Color(0xFF334155),
               ),
             ),
           ),
@@ -5072,10 +5805,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: (_justSaved
-                              ? const Color(0xFF10B981)
-                              : const Color(0xFF2563EB))
-                          .withValues(alpha: _isSaving ? 0.15 : 0.40),
+                      color:
+                          (_justSaved
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFF2563EB))
+                              .withValues(alpha: _isSaving ? 0.15 : 0.40),
                       blurRadius: 14,
                       offset: const Offset(0, 4),
                     ),
@@ -5165,7 +5899,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text('•', style: TextStyle(fontSize: 11, color: textMuted)),
+              child: Text(
+                '•',
+                style: TextStyle(fontSize: 11, color: textMuted),
+              ),
             ),
             InkWell(
               onTap: () {},
@@ -5176,7 +5913,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text('•', style: TextStyle(fontSize: 11, color: textMuted)),
+              child: Text(
+                '•',
+                style: TextStyle(fontSize: 11, color: textMuted),
+              ),
             ),
             InkWell(
               onTap: () {},

@@ -9,7 +9,7 @@ import type {
 import { COURSE_TOOLS } from '../domain/ai-tools.js';
 import { buildCoursePrompt, COURSE_PROMPT_VERSION, maxTokensForLevel, shouldOfferTools } from '../domain/course-prompt.js';
 import type { PdfTextExtractorPort } from '../infrastructure/pdf-text-extractor.adapter.js';
-import { DEFAULT_EXTRAS } from './generate-course.use-case.js';
+import { extrasForMode } from './generate-course.use-case.js';
 
 export interface ImprovePdfDTO {
   file: { buffer: Buffer; originalName: string; size: number };
@@ -46,7 +46,7 @@ export class ImprovePdfUseCase {
 
     const truncatedSource = text.length > env.AI_MAX_SOURCE_CHARS;
     const difficulty: GenerateDifficulty = dto.difficulty ?? 'moyen';
-    const extras: GenerateExtras = { ...DEFAULT_EXTRAS, ...dto.extras };
+    const extras: GenerateExtras = extrasForMode('text', dto.extras);
     const toolsOffered = shouldOfferTools({
       webSearch: extras.webSearch,
       webImages: extras.webImages,
@@ -108,7 +108,7 @@ export class ImprovePdfUseCase {
     onPhase?.('generating');
     const truncatedSource = text.length > env.AI_MAX_SOURCE_CHARS;
     const difficulty: GenerateDifficulty = dto.difficulty ?? 'moyen';
-    const extras: GenerateExtras = { ...DEFAULT_EXTRAS, ...dto.extras };
+    const extras: GenerateExtras = extrasForMode('text', dto.extras);
     const toolsOffered = shouldOfferTools({
       webSearch: extras.webSearch,
       webImages: extras.webImages,

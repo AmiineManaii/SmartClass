@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_config.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/network/network_providers.dart';
 import '../../domain/entities/course_section.dart';
 import '../../infrastructure/datasources/course_section_remote_datasource.dart';
@@ -15,8 +16,8 @@ import 'courses_provider.dart';
 /// [aiCourseRemoteDataSourceProvider] (SSE).
 final courseSectionRemoteDataSourceProvider =
     Provider<CourseSectionRemoteDataSource>(
-  (ref) => CourseSectionRemoteDataSource(ref.watch(apiClientProvider)),
-);
+      (ref) => CourseSectionRemoteDataSource(ref.watch(apiClientProvider)),
+    );
 
 /// Snapshot of the by-section build of one course.
 ///
@@ -34,6 +35,7 @@ class CourseSectionBuildState {
     this.streamingText = '',
     this.streamingPhase = '',
     this.streamError,
+    this.imageJobs = const {},
   });
 
   /// Initial fetch in flight.
@@ -57,7 +59,13 @@ class CourseSectionBuildState {
   /// Generation failure (SSE error event / transport error).
   final Object? streamError;
 
+  /// ComfyUI background jobs by `sectionKey`. Kept in this non-disposed
+  /// notifier so a generation survives leaving the builder page.
+  final Map<String, SectionImageJob> imageJobs;
+
   bool get isStreaming => streamingKey != null;
+
+  SectionImageJob? imageJob(String sectionKey) => imageJobs[sectionKey];
 
   int get validatedCount => sections
       .where((section) => section.status == CourseSectionStatus.validated)
@@ -82,19 +90,22 @@ class CourseSectionBuildState {
     String? streamingPhase,
     bool resetStreaming = false,
     Object? streamError,
+    Map<String, SectionImageJob>? imageJobs,
   }) {
     return CourseSectionBuildState(
       loading: loading ?? this.loading,
       error: error,
       course: course ?? this.course,
       sections: sections ?? this.sections,
-      streamingKey:
-          resetStreaming ? null : (streamingKey ?? this.streamingKey),
-      streamingText:
-          resetStreaming ? '' : (streamingText ?? this.streamingText),
-      streamingPhase:
-          resetStreaming ? '' : (streamingPhase ?? this.streamingPhase),
+      streamingKey: resetStreaming ? null : (streamingKey ?? this.streamingKey),
+      streamingText: resetStreaming
+          ? ''
+          : (streamingText ?? this.streamingText),
+      streamingPhase: resetStreaming
+          ? ''
+          : (streamingPhase ?? this.streamingPhase),
       streamError: streamError,
+      imageJobs: imageJobs ?? this.imageJobs,
     );
   }
 }
@@ -108,7 +119,7 @@ class CourseSectionBuildState {
 /// between reader and builder. Re-entering the page always reloads.
 class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
   CourseSectionBuild(this._ref, this.courseId)
-      : super(const CourseSectionBuildState());
+    : super(const CourseSectionBuildState());
 
   final Ref _ref;
   final String courseId;
@@ -116,6 +127,7 @@ class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
   CancelToken? _cancel;
   int _loadRun = 0;
   int _streamRun = 0;
+  final Map<String, Future<Map<String, dynamic>>> _imageJobRuns = {};
 
   /// Fetches the build state (materializes the sections from the outline
   /// on first call). No-op while a stream is live — it would clobber the
@@ -165,7 +177,9 @@ class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
       streamingPhase: 'memory',
     );
 
-    await _ref.read(aiCourseRemoteDataSourceProvider).streamCourse(
+    await _ref
+        .read(aiCourseRemoteDataSourceProvider)
+        .streamCourse(
           path:
               '${ApiConfig.apiPrefix}/ai/courses/sections/${regenerate ? 'regenerate' : 'generate'}',
           fields: {
@@ -239,17 +253,127 @@ class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
   }
 
   /// Illustration of one section — returns `{imageUrl, prompt, provider}`.
-  /// Throws [ApiException]: 503 `IMAGE_SERVICE_UNAVAILABLE` while the
-  /// ComfyUI nodes are being wired (page shows "coming soon").
+  ///
+  /// Starts a background job and polls it here, not in the page: the
+  /// notifier outlives the builder, so a 4-5 min ComfyUI generation keeps
+  /// running when the teacher navigates away. Throws [ApiException]: 503
+  /// `IMAGE_SERVICE_UNAVAILABLE` when ComfyUI is unconfigured (the page
+  /// then points the teacher to web image search).
   Future<Map<String, dynamic>> generateSectionImage(
     String sectionKey, {
     String kind = 'FIGURE',
   }) {
-    return _ref.read(courseSectionRemoteDataSourceProvider).generateSectionImage(
+    final existing = state.imageJobs[sectionKey];
+    if (existing != null && existing.isSucceeded) {
+      return Future<Map<String, dynamic>>.sync(() => _imageResult(existing));
+    }
+    final inFlight = _imageJobRuns[sectionKey];
+    if (inFlight != null) return inFlight;
+
+    final run = _runImageJob(sectionKey: sectionKey, kind: kind);
+    _imageJobRuns[sectionKey] = run;
+    return run;
+  }
+
+  Future<Map<String, dynamic>> _runImageJob({
+    required String sectionKey,
+    required String kind,
+  }) async {
+    final datasource = _ref.read(courseSectionRemoteDataSourceProvider);
+    try {
+      var job = await datasource.startSectionImageJob(
+        courseId: courseId,
+        sectionKey: sectionKey,
+        kind: kind,
+      );
+      _setImageJob(sectionKey, job);
+
+      final deadline = DateTime.now().add(const Duration(minutes: 7));
+      while (job.isActive) {
+        if (DateTime.now().isAfter(deadline)) {
+          throw const ApiException(
+            code: 'IMAGE_JOB_TIMEOUT',
+            message: 'Image generation is taking too long',
+          );
+        }
+        job = await datasource.getSectionImageJob(job.id);
+        if (!mounted) {
+          throw const ApiException(message: 'Section build was disposed');
+        }
+        _setImageJob(sectionKey, job);
+        if (job.isActive) {
+          await Future<void>.delayed(const Duration(seconds: 2));
+        }
+      }
+
+      if (!job.isSucceeded) {
+        throw ApiException(
+          code: job.errorCode ?? 'IMAGE_GENERATION_FAILED',
+          message: job.errorMessage ?? 'Image generation failed',
+        );
+      }
+      return _imageResult(job);
+    } finally {
+      _imageJobRuns.remove(sectionKey);
+    }
+  }
+
+  void _setImageJob(String sectionKey, SectionImageJob job) {
+    if (!mounted) return;
+    state = state.copyWith(imageJobs: {...state.imageJobs, sectionKey: job});
+  }
+
+  Map<String, dynamic> _imageResult(SectionImageJob job) {
+    if (job.imageUrl == null || job.imageUrl!.isEmpty) {
+      throw const ApiException(
+        code: 'IMAGE_GENERATION_FAILED',
+        message: 'Image generation returned no URL',
+      );
+    }
+    return {
+      'imageUrl': job.imageUrl,
+      'prompt': job.prompt,
+      'provider': job.provider,
+    };
+  }
+
+  /// Up to five web image candidates for one section.
+  Future<List<SectionImageCandidate>> searchSectionImages(
+    String sectionKey, {
+    String? query,
+  }) {
+    return _ref
+        .read(courseSectionRemoteDataSourceProvider)
+        .searchSectionImages(
           courseId: courseId,
           sectionKey: sectionKey,
-          kind: kind,
+          query: query,
         );
+  }
+
+  /// Inserts the chosen image and updates the section row in place.
+  Future<CourseSectionEntry> applySectionImage({
+    required String sectionKey,
+    required String imageUrl,
+    String? caption,
+  }) async {
+    final updated = await _ref
+        .read(courseSectionRemoteDataSourceProvider)
+        .applySectionImage(
+          courseId: courseId,
+          sectionKey: sectionKey,
+          imageUrl: imageUrl,
+          caption: caption,
+        );
+    if (!mounted) return updated;
+    state = state.copyWith(
+      sections: [
+        for (final item in state.sections)
+          if (item.sectionKey == sectionKey) updated else item,
+      ],
+    );
+    _ref.invalidate(myGeneratedCoursesProvider);
+    return updated;
   }
 
   /// Consumes [CourseSectionBuildState.streamError] after the snackbar.
@@ -265,7 +389,9 @@ class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
   }
 }
 
-final courseSectionBuildProvider = StateNotifierProvider.family<
-    CourseSectionBuild, CourseSectionBuildState, String>(
-  (ref, courseId) => CourseSectionBuild(ref, courseId),
-);
+final courseSectionBuildProvider =
+    StateNotifierProvider.family<
+      CourseSectionBuild,
+      CourseSectionBuildState,
+      String
+    >((ref, courseId) => CourseSectionBuild(ref, courseId));

@@ -31,7 +31,8 @@ class CourseOutlineEditorCard extends StatefulWidget {
   });
 
   @override
-  State<CourseOutlineEditorCard> createState() => _CourseOutlineEditorCardState();
+  State<CourseOutlineEditorCard> createState() =>
+      _CourseOutlineEditorCardState();
 }
 
 class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
@@ -91,8 +92,9 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
     final section = _currentOutline.sections[index];
     final titleCtrl = TextEditingController(text: section.title);
     final descCtrl = TextEditingController(text: section.description);
-    final subtopicsCtrl =
-        TextEditingController(text: section.subtopics.join(', '));
+    final subtopicsCtrl = TextEditingController(
+      text: section.subtopics.join(', '),
+    );
     final durationCtrl = TextEditingController(
       text: section.estimatedMinutes != null
           ? '${section.estimatedMinutes}'
@@ -103,7 +105,9 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               Container(
@@ -121,7 +125,10 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
               const SizedBox(width: 12),
               Text(
                 'Modifier le chapitre ${index + 1}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
             ],
           ),
@@ -144,7 +151,8 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                   maxLines: 3,
                   decoration: const InputDecoration(
                     labelText: 'Description / Objectifs pédagogiques',
-                    hintText: 'Notions et concepts abordés dans cette partie...',
+                    hintText:
+                        'Notions et concepts abordés dans cette partie...',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -153,8 +161,10 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                   controller: subtopicsCtrl,
                   maxLines: 2,
                   decoration: const InputDecoration(
-                    labelText: 'Notions clés & mots-clés (séparés par des virgules)',
-                    hintText: 'Modèle Client-Serveur, Protocole HTTP, Codes 2xx/4xx/5xx',
+                    labelText:
+                        'Notions clés & mots-clés (séparés par des virgules)',
+                    hintText:
+                        'Modèle Client-Serveur, Protocole HTTP, Codes 2xx/4xx/5xx',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -204,7 +214,9 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
     );
 
     if (updated != null) {
-      final sections = List<CourseOutlineSection>.from(_currentOutline.sections);
+      final sections = List<CourseOutlineSection>.from(
+        _currentOutline.sections,
+      );
       sections[index] = updated;
       _updateOutline(_currentOutline.copyWith(sections: sections));
     }
@@ -220,7 +232,9 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               Container(
@@ -330,10 +344,12 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
 
   Future<void> _editTitleAndDesc() async {
     final titleCtrl = TextEditingController(text: _currentOutline.title);
-    final audienceCtrl =
-        TextEditingController(text: _currentOutline.targetAudience);
-    final prereqCtrl =
-        TextEditingController(text: _currentOutline.prerequisites.join(', '));
+    final audienceCtrl = TextEditingController(
+      text: _currentOutline.targetAudience,
+    );
+    final prereqCtrl = TextEditingController(
+      text: _currentOutline.prerequisites.join(', '),
+    );
 
     final updated = await showDialog<bool>(
       context: context,
@@ -392,13 +408,15 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
           .map((s) => s.trim())
           .where((s) => s.isNotEmpty)
           .toList();
-      _updateOutline(_currentOutline.copyWith(
-        title: titleCtrl.text.trim().isNotEmpty
-            ? titleCtrl.text.trim()
-            : _currentOutline.title,
-        targetAudience: audienceCtrl.text.trim(),
-        prerequisites: prereqs,
-      ));
+      _updateOutline(
+        _currentOutline.copyWith(
+          title: titleCtrl.text.trim().isNotEmpty
+              ? titleCtrl.text.trim()
+              : _currentOutline.title,
+          targetAudience: audienceCtrl.text.trim(),
+          prerequisites: prereqs,
+        ),
+      );
     }
   }
 
@@ -439,7 +457,9 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(18),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,7 +468,10 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: colorScheme.primary,
                         borderRadius: BorderRadius.circular(8),
@@ -456,7 +479,11 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.auto_awesome, size: 14, color: Colors.white),
+                          const Icon(
+                            Icons.auto_awesome,
+                            size: 14,
+                            color: Colors.white,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             'PLAN PROPOSÉ PAR L\'IA',
@@ -471,19 +498,27 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: colorScheme.surface.withValues(alpha: 0.8),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                          color: colorScheme.outlineVariant.withValues(
+                            alpha: 0.5,
+                          ),
                         ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.schedule_rounded,
-                              size: 14, color: colorScheme.primary),
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 14,
+                            color: colorScheme.primary,
+                          ),
                           const SizedBox(width: 5),
                           Text(
                             _formatTotalDuration(_totalEstimatedMinutes),
@@ -528,7 +563,9 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                             color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                              color: colorScheme.outlineVariant.withValues(
+                                alpha: 0.5,
+                              ),
                             ),
                           ),
                           child: Icon(
@@ -588,7 +625,9 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: colorScheme.secondaryContainer,
                             borderRadius: BorderRadius.circular(12),
@@ -623,7 +662,9 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                       color: colorScheme.surfaceContainerLowest,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                        color: colorScheme.outlineVariant.withValues(
+                          alpha: 0.3,
+                        ),
                       ),
                     ),
                     child: Center(
@@ -684,62 +725,56 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                 const Divider(height: 1),
                 const SizedBox(height: 20),
 
-                // Primary Generation CTA
-                FilledButton.icon(
-                  onPressed: widget.generating || sections.isEmpty
-                      ? null
-                      : widget.onGenerateFullCourse,
-                  icon: widget.generating
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.auto_awesome, size: 22),
-                  label: Text(
-                    widget.generating
-                        ? 'Rédaction complète en cours...'
-                        : '✨ Rédiger le cours complet selon ce plan',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
-                    elevation: 3,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // Section-by-section alternative: one chapter at a time,
-                // each validated before the draft can be published (RG27).
+                // Primary CTA: section-by-section (one chapter at a time,
+                // each validated before the draft can be published, RG27).
                 if (widget.onBuildSections != null) ...[
-                  OutlinedButton.icon(
+                  FilledButton.icon(
                     onPressed:
                         widget.generating || widget.building || sections.isEmpty
-                            ? null
-                            : widget.onBuildSections,
+                        ? null
+                        : widget.onBuildSections,
                     icon: widget.building
                         ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
                           )
-                        : const Icon(Icons.auto_awesome_motion_rounded,
-                            size: 18),
+                        : const Icon(
+                            Icons.auto_awesome_motion_rounded,
+                            size: 22,
+                          ),
                     label: Text(
                       widget.building
                           ? context.tr('ai_build_save_building')
                           : context.tr('ai_build_save_outline'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
+                      elevation: 3,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: widget.generating || sections.isEmpty
+                        ? null
+                        : widget.onGenerateFullCourse,
+                    icon: const Icon(Icons.auto_awesome, size: 18),
+                    label: Text(
+                      widget.generating
+                          ? 'Rédaction complète en cours...'
+                          : context.tr('ai_outline_generate_all'),
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -750,7 +785,40 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                ],
+                ] else
+                  FilledButton.icon(
+                    onPressed: widget.generating || sections.isEmpty
+                        ? null
+                        : widget.onGenerateFullCourse,
+                    icon: widget.generating
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.auto_awesome, size: 22),
+                    label: Text(
+                      widget.generating
+                          ? 'Rédaction complète en cours...'
+                          : '✨ Rédiger le cours complet selon ce plan',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
+                      elevation: 3,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
 
                 // Secondary Actions Row
                 Row(
@@ -777,7 +845,9 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                       label: Text(context.tr('cancel')),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ],
@@ -850,7 +920,9 @@ class _ChapterCard extends StatelessWidget {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(8),
@@ -868,7 +940,9 @@ class _ChapterCard extends StatelessWidget {
                       if (item.estimatedMinutes != null)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: colorScheme.surfaceContainerHighest
                                 .withValues(alpha: 0.6),
@@ -877,8 +951,11 @@ class _ChapterCard extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.schedule_rounded,
-                                  size: 12, color: colorScheme.onSurfaceVariant),
+                              Icon(
+                                Icons.schedule_rounded,
+                                size: 12,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 '${item.estimatedMinutes} min',
@@ -900,18 +977,25 @@ class _ChapterCard extends StatelessWidget {
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.all(6),
-                  constraints:
-                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
                   onPressed: onEdit,
                   tooltip: 'Modifier ce chapitre',
                 ),
                 IconButton(
-                  icon: Icon(Icons.delete_outline_rounded,
-                      size: 18, color: colorScheme.error),
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 18,
+                    color: colorScheme.error,
+                  ),
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.all(6),
-                  constraints:
-                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
                   onPressed: onDelete,
                   tooltip: 'Supprimer ce chapitre',
                 ),
@@ -921,8 +1005,9 @@ class _ChapterCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest
-                          .withValues(alpha: 0.4),
+                      color: colorScheme.surfaceContainerHighest.withValues(
+                        alpha: 0.4,
+                      ),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Icon(
@@ -968,14 +1053,19 @@ class _ChapterCard extends StatelessWidget {
                 runSpacing: 6,
                 children: item.subtopics.map((st) {
                   return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest
-                          .withValues(alpha: 0.45),
+                      color: colorScheme.surfaceContainerHighest.withValues(
+                        alpha: 0.45,
+                      ),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                        color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+                        color: colorScheme.outlineVariant.withValues(
+                          alpha: 0.35,
+                        ),
                       ),
                     ),
                     child: Text.rich(

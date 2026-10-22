@@ -141,6 +141,13 @@ class FakeGroups implements GroupRepositoryPort {
       teacherCount: assignments.length,
     };
   }
+  async addTeacherSubject(
+    _groupId: string,
+    teacherId: string,
+    input: { subject: string; weeklyHours?: string | null },
+  ) {
+    return { teacherId, subject: input.subject, weeklyHours: input.weeklyHours ?? null };
+  }
 }
 
 describe('Unit: ListMyGroupsUseCase', () => {

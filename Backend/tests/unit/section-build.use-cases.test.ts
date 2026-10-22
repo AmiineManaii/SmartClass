@@ -220,12 +220,13 @@ describe('Unit: buildSectionPrompt', () => {
     expect(prompt.user).toContain('terminologie');
   });
 
-  it('stays silent on memory and figures when they are unavailable', () => {
+  it('includes examples and figures by default, and can opt out', () => {
     const bare = buildSectionPrompt(base);
     expect(bare.user).not.toContain('CONTENUS DÉJÀ VALIDÉS');
-    expect(bare.system).not.toContain('bloc de code mermaid');
-    const figures = buildSectionPrompt({ ...base, extras: { mermaid: true } });
-    expect(figures.system).toContain('jamais `mindmap`');
+    expect(bare.system).toContain('bloc de code mermaid');
+    expect(bare.system).toContain('au moins un exemple simple');
+    const noFigures = buildSectionPrompt({ ...base, extras: { mermaid: false } });
+    expect(noFigures.system).not.toContain('bloc de code mermaid');
   });
 
   it('flags the last section of the plan', () => {
@@ -275,7 +276,11 @@ describe('Unit: GetCourseBuildUseCase', () => {
 });
 
 describe('Unit: GenerateSectionUseCase', () => {
-  const buildUseCase = (opts?: { memory?: SectionMemoryPort; embedder?: EmbeddingPort }) => {
+  const buildUseCase = (opts?: {
+    memory?: SectionMemoryPort;
+    embedder?: EmbeddingPort;
+    gateway?: AiGatewayPort;
+  }) => {
     const sections = new FakeSectionRepository();
     sections.rows = makeSections();
     const memory = new SectionMemoryService(
@@ -283,7 +288,7 @@ describe('Unit: GenerateSectionUseCase', () => {
       opts?.embedder ?? workingEmbedder,
     );
     const useCase = new GenerateSectionUseCase(
-      makeGateway(),
+      opts?.gateway ?? makeGateway(),
       makeCourseRepo(makeCourse()),
       sections,
       memory,
@@ -311,6 +316,25 @@ describe('Unit: GenerateSectionUseCase', () => {
     const saved = await sections.findByKey(ACCESS.courseId, 'sec-2');
     expect(saved?.content).toContain('BFS et DFS.');
     expect(saved?.status).toBe('GENERATED');
+  });
+
+  it('attaches thinking and web tools to every section', async () => {
+    const seen: Parameters<AiGatewayPort['streamCompletion']>[0][] = [];
+    const gateway: AiGatewayPort = {
+      ...makeGateway(),
+      streamCompletion: async (input, onDelta) => {
+        seen.push(input);
+        onDelta('## Graphes\nBFS et DFS.');
+        return { promptTokens: 5, completionTokens: 7, model: 'test-model' };
+      },
+    };
+    const { useCase } = buildUseCase({ gateway });
+
+    await useCase.stream(DTO, () => undefined);
+
+    expect(seen[0]?.thinking).toBe(true);
+    expect(seen[0]?.tools?.map((tool) => tool.function.name)).toEqual(['web_search', 'fetch_url']);
+    expect(seen[0]?.system).toContain("tu disposes de l'outil web_search");
   });
 
   it('refuses to silently overwrite a VALIDATED section', async () => {

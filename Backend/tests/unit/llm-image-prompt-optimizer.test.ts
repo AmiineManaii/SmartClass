@@ -20,7 +20,7 @@ const makeGateway = (content: string): AiGatewayPort => ({
     content,
     promptTokens: 10,
     completionTokens: 20,
-    model: 'hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1',
+    model: 'qwen2.5:3b',
     toolsUsed: false,
   }),
   streamCompletion: async () => ({ promptTokens: null, completionTokens: null, model: 'x' }),
@@ -86,7 +86,7 @@ describe('Unit: LlmImagePromptOptimizer', () => {
           content: VALID_JSON,
           promptTokens: 10,
           completionTokens: 20,
-          model: 'hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1',
+          model: 'qwen2.5:3b',
           toolsUsed: false,
         };
       },
@@ -110,10 +110,10 @@ describe('Unit: LlmImagePromptOptimizer', () => {
     const optimizer = new LlmImagePromptOptimizer({
       ...makeGateway(VALID_JSON),
       chatCompletion: async () => {
-        throw new Error('unsloth down');
+        throw new Error('ollama down');
       },
     });
-    await expect(optimizer.optimize(INPUT)).rejects.toThrow('unsloth down');
+    await expect(optimizer.optimize(INPUT)).rejects.toThrow('ollama down');
   });
 
   it('propagates malformed model answers as errors', async () => {

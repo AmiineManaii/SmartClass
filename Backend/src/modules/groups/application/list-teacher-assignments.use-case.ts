@@ -19,7 +19,8 @@ export class ListTeacherAssignmentsUseCase {
     }
 
     const assignments = await this.groups.listTeacherAssignments(groupId);
+    const teacherCount = new Set(assignments.map((assignment) => assignment.teacherId)).size;
 
-    return { assignments, teacherCount: assignments.length };
+    return { assignments, teacherCount };
   }
 }

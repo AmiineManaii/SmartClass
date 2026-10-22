@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../courses/application/providers/courses_provider.dart';
+import '../../../courses/domain/entities/course_entry.dart';
 
 /// ──────────────────────────────────────────────────────
 /// Assist Revision AI – "Générer Mes Révisions"
@@ -18,34 +20,36 @@ class AiRevisionPage extends ConsumerStatefulWidget {
 class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
     with TickerProviderStateMixin {
   // State
-  String _selectedModule = 'Licence 3 - Algorithmique Avancée';
-  String _selectedModuleProf = 'Prof. Amine • Semestre 6';
+  String _selectedModule = '';
   String? _importedDocumentName;
 
   int _selectedFormat = 0; // 0=Résumé, 1=Flashcards, 2=MindMap
   double _granularity = 2; // 1=Concis, 2=Équilibré, 3=Détaillé
-  bool _isGenerating = false;
+  final bool _isGenerating = false;
   late AnimationController _entranceController;
   late AnimationController _pulseController;
 
-  final List<Map<String, String>> _availableModules = [
-    {
-      'title': 'Licence 3 - Algorithmique Avancée',
-      'prof': 'Prof. Amine • Semestre 6',
-    },
-    {
-      'title': 'Licence 3 - Systèmes d\'Exploitation',
-      'prof': 'Prof. Mansouri • Semestre 6',
-    },
-    {
-      'title': 'Licence 3 - Bases de Données Avancées',
-      'prof': 'Prof. Karray • Semestre 6',
-    },
-    {
-      'title': 'Licence 3 - Intelligence Artificielle',
-      'prof': 'Prof. Benali • Semestre 6',
-    },
-  ];
+  CourseEntry? _activeClass(List<CourseEntry> classes) {
+    if (classes.isEmpty) return null;
+    for (final c in classes) {
+      if (c.name == _selectedModule) return c;
+    }
+    return classes.first;
+  }
+
+  String _classSubtitle(BuildContext context, CourseEntry c) {
+    final levelKey = switch (c.level) {
+      'LICENCE' => 'level_licence',
+      'MASTER' => 'level_master',
+      'DOCTORAT' => 'level_doctorat',
+      _ => '',
+    };
+    final level = levelKey.isEmpty ? c.level : context.tr(levelKey);
+    return [
+      level,
+      if (c.department != null && c.department!.isNotEmpty) c.department!,
+    ].join(' • ');
+  }
 
   @override
   void initState() {
@@ -526,6 +530,12 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
 
   // ────────── SOURCE SECTION ──────────
   Widget _buildSourceSection(ThemeData theme, ColorScheme cs, bool isDark) {
+    final classes =
+        ref.watch(myCoursesProvider).valueOrNull ?? const <CourseEntry>[];
+    final active = _activeClass(classes);
+    final moduleName = active?.name ?? context.tr('no_class_title');
+    final moduleSubtitle =
+        active == null ? '' : _classSubtitle(context, active);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -577,7 +587,7 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          _selectedModule,
+                          moduleName,
                           style: theme.textTheme.labelMedium?.copyWith(
                             color: cs.onSurface,
                             fontWeight: FontWeight.w600,
@@ -586,7 +596,7 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          _selectedModuleProf,
+                          moduleSubtitle,
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: cs.onSurfaceVariant,
                             fontSize: 11,
@@ -1017,17 +1027,14 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
                   gradient: LinearGradient(
                     colors: _isGenerating
                         ? [cs.surfaceContainerHigh, cs.surfaceContainerHigh]
-                        : [
-                            const Color(0xFFF5A623),
-                            const Color(0xFFE0961D),
-                          ],
+                        : [cs.primary, cs.secondary],
                   ),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: _isGenerating
                       ? null
                       : [
                           BoxShadow(
-                            color: const Color(0xFFF5A623).withValues(alpha: 0.25 + (pulse * 0.2)),
+                            color: cs.primary.withValues(alpha: 0.25 + (pulse * 0.2)),
                             blurRadius: 14 + (pulse * 8),
                             offset: const Offset(0, 4),
                           ),
@@ -1061,14 +1068,14 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
                         children: [
                           Transform.rotate(
                             angle: pulse * 0.12 - 0.06,
-                            child: const Icon(Icons.auto_awesome,
-                                size: 22, color: Color(0xFF1D2338)),
+                            child: Icon(Icons.auto_awesome,
+                                size: 22, color: cs.onPrimary),
                           ),
                           const SizedBox(width: 8),
                           Text(
                             context.tr('ai_generate_summary_btn'),
                             style: theme.textTheme.labelLarge?.copyWith(
-                              color: const Color(0xFF1D2338),
+                              color: cs.onPrimary,
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
                             ),
@@ -1103,23 +1110,21 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
     );
   }
 
-  Future<void> _handleGenerate() async {
-    setState(() => _isGenerating = true);
-    await Future.delayed(const Duration(milliseconds: 1400));
-    if (mounted) {
-      setState(() => _isGenerating = false);
-      _showGeneratedSummaryModal(context, Theme.of(context), Theme.of(context).colorScheme);
-    }
+  void _handleGenerate() {
+    final theme = Theme.of(context);
+    _showGeneratedSummaryModal(context, theme, theme.colorScheme);
   }
 
   void _handleDocumentImport() {
-    setState(() {
-      _importedDocumentName = 'TD3_Arbres_AVL_Enonce_Corrige.pdf (1.4 Mo)';
-    });
-    context.showSuccessToast(context.tr('ai_import_doc_success'));
+    context.showInfoToast(
+      'Import de document à venir avec le module IA (📋 planifié).',
+    );
   }
 
   void _showModuleSelector(BuildContext context, ThemeData theme, ColorScheme cs) {
+    final classes =
+        ref.read(myCoursesProvider).valueOrNull ?? const <CourseEntry>[];
+    final active = _activeClass(classes);
     showModalBottomSheet(
       context: context,
       backgroundColor: cs.surfaceContainerLowest,
@@ -1153,50 +1158,63 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
                   ),
                 ),
                 const SizedBox(height: 12),
-                ...List.generate(_availableModules.length, (i) {
-                  final mod = _availableModules[i];
-                  final isSelected = mod['title'] == _selectedModule;
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: isSelected ? cs.primary : cs.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.account_tree_rounded,
-                        color: isSelected ? cs.onPrimary : cs.primary,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      mod['title']!,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                    subtitle: Text(
-                      mod['prof']!,
+                if (classes.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      context.tr('no_class_message'),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
-                        fontSize: 12,
                       ),
                     ),
-                    trailing: isSelected
-                        ? Icon(Icons.check_circle, color: cs.primary)
-                        : null,
-                    onTap: () {
-                      setState(() {
-                        _selectedModule = mod['title']!;
-                        _selectedModuleProf = mod['prof']!;
-                      });
-                      Navigator.pop(ctx);
-                    },
-                  );
-                }),
+                  )
+                else
+                  ...List.generate(classes.length, (i) {
+                    final mod = classes[i];
+                    final isSelected = mod.id == active?.id;
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? cs.primary
+                              : cs.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.account_tree_rounded,
+                          color: isSelected ? cs.onPrimary : cs.primary,
+                          size: 20,
+                        ),
+                      ),
+                      title: Text(
+                        mod.name,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      subtitle: Text(
+                        _classSubtitle(context, mod),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? Icon(Icons.check_circle, color: cs.primary)
+                          : null,
+                      onTap: () {
+                        setState(() {
+                          _selectedModule = mod.name;
+                        });
+                        Navigator.pop(ctx);
+                      },
+                    );
+                  }),
               ],
             ),
           ),
@@ -1206,6 +1224,10 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
   }
 
   void _showGeneratedSummaryModal(BuildContext context, ThemeData theme, ColorScheme cs) {
+    final classes =
+        ref.read(myCoursesProvider).valueOrNull ?? const <CourseEntry>[];
+    final active = _activeClass(classes);
+    final moduleName = active?.name ?? context.tr('no_class_title');
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1241,7 +1263,7 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.auto_awesome, color: const Color(0xFFF5A623), size: 22),
+                          Icon(Icons.auto_awesome, color: cs.primary, size: 22),
                           const SizedBox(width: 8),
                           Text(
                             context.tr('ai_summary_modal_title'),
@@ -1266,7 +1288,7 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      _selectedModule,
+                      moduleName,
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: cs.primary,
                         fontWeight: FontWeight.w600,
@@ -1277,22 +1299,9 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
                   _buildSummarySection(
                     theme,
                     cs,
-                    '1. Théorèmes & Axiomes Clés',
-                    '• Définition de l\'arbre AVL : arbre binaire de recherche équilibré en hauteur.\n• Facteur d\'équilibrage : h(gauche) - h(droite) ∈ {-1, 0, 1}.\n• Complexité garantie : Recherche, insertion et suppression en O(log n).',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSummarySection(
-                    theme,
-                    cs,
-                    '2. Algorithmes de Rotations',
-                    '• Rotation Gauche (LL) : appliquée lors d\'un déséquilibre consécutif à droite.\n• Rotation Droite (RR) : appliquée lors d\'un déséquilibre consécutif à gauche.\n• Double Rotation (LR / RL) : appliquée lors des cas de déséquilibres internes alternés.',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSummarySection(
-                    theme,
-                    cs,
-                    '3. Vigilance Partiels',
-                    '• Vérifier systématiquement la mise à jour des hauteurs post-insertion.\n• Attention aux cas de suppression avec deux descendants.',
+                    context.tr('ai_summary_modal_title'),
+                    'Le résumé sera généré par le module IA (📋 planifié) pour « $moduleName ». '
+                    'Aucun contenu n\'est inventé tant que ce module n\'est pas connecté.',
                   ),
                   const SizedBox(height: 24),
                   Row(
@@ -1375,116 +1384,51 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
     );
   }
 
-  // ────────── RECENT SUMMARIES ──────────
+  // ────────── CLASSES PRÊTES À RÉVISER ──────────
   Widget _buildRecentSummariesSection(
       ThemeData theme, ColorScheme cs, bool isDark) {
+    final classes =
+        ref.watch(myCoursesProvider).valueOrNull ?? const <CourseEntry>[];
+    if (classes.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              context.tr('ai_recent_summaries_title'),
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: cs.onSurface,
-                fontSize: 18,
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    context.tr('ai_see_all_count', args: {'count': '8'}),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: cs.secondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-                  Icon(Icons.arrow_forward_rounded,
-                      size: 14, color: cs.secondary),
-                ],
-              ),
-            ),
-          ],
+        Text(
+          context.tr('my_courses'),
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: cs.onSurface,
+            fontSize: 18,
+          ),
         ),
         const SizedBox(height: 12),
-
-        // Card 1
-        _buildSummaryCard(
-          theme: theme,
-          cs: cs,
-          isDark: isDark,
-          icon: Icons.picture_as_pdf_rounded,
-          iconBgColor: cs.errorContainer,
-          iconColor: cs.onErrorContainer,
-          title: 'Synthèse - Arbres AVL & Rotations',
-          subtitle: 'Algorithmique • Il y a 2h • 4 pages • 8 flashcards',
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _miniIconButton(Icons.share_rounded, cs),
-              const SizedBox(width: 4),
-              _actionChip(context.tr('open'), Icons.visibility_rounded, theme, cs, () {
-                _showGeneratedSummaryModal(context, theme, cs);
-              }),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // Card 2
-        _buildSummaryCard(
-          theme: theme,
-          cs: cs,
-          isDark: isDark,
-          icon: Icons.description_rounded,
-          iconBgColor: cs.primaryFixed,
-          iconColor: cs.onPrimaryFixed,
-          title: 'Fiche Mémo - Espaces Vectoriels & Rang',
-          subtitle: 'Algèbre Linéaire • Hier • Résumé express',
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: cs.tertiaryFixed,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.verified_rounded,
-                        size: 13, color: cs.onTertiaryFixedVariant),
-                    const SizedBox(width: 3),
-                    Text(
-                      '94%',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: cs.onTertiaryFixedVariant,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
+        ...classes.take(4).map(
+              (c) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildSummaryCard(
+                  theme: theme,
+                  cs: cs,
+                  isDark: isDark,
+                  icon: Icons.description_rounded,
+                  iconBgColor: cs.primaryFixed,
+                  iconColor: cs.onPrimaryFixed,
+                  title: c.name,
+                  subtitle: [
+                    _classSubtitle(context, c),
+                    context.tr('courses_students_count',
+                        args: {'count': '${c.memberCount}'}),
+                  ].join(' • '),
+                  trailing: _actionChip(
+                    context.tr('generate_action'),
+                    Icons.auto_awesome_rounded,
+                    theme,
+                    cs,
+                    () => _showGeneratedSummaryModal(context, theme, cs),
+                  ),
                 ),
               ),
-              const SizedBox(width: 6),
-              Icon(Icons.chevron_right_rounded,
-                  size: 20, color: cs.onSurfaceVariant),
-            ],
-          ),
-        ),
+            ),
       ],
     );
   }
@@ -1565,24 +1509,6 @@ class _AiRevisionPageState extends ConsumerState<AiRevisionPage>
           const SizedBox(width: 8),
           trailing,
         ],
-      ),
-    );
-  }
-
-  Widget _miniIconButton(IconData icon, ColorScheme cs) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          context.showSuccessToast(context.tr('ai_share_link_copied'));
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          child: Icon(icon, size: 18, color: cs.onSurfaceVariant),
-        ),
       ),
     );
   }

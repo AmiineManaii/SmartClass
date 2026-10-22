@@ -71,4 +71,77 @@ class CourseSectionRemoteDataSource {
     );
     return apiEnvelope(res);
   }
+
+  /// POST /ai/courses/sections/image/jobs — starts a background job.
+  Future<SectionImageJob> startSectionImageJob({
+    required String courseId,
+    required String sectionKey,
+    String kind = 'FIGURE',
+  }) async {
+    final res = await _client.post<dynamic>(
+      '$_base/ai/courses/sections/image/jobs',
+      data: {'courseId': courseId, 'sectionKey': sectionKey, 'kind': kind},
+    );
+    return SectionImageJob.fromJson(apiEnvelope(res));
+  }
+
+  /// GET /ai/courses/sections/image/jobs/:jobId — polls one job.
+  Future<SectionImageJob> getSectionImageJob(String jobId) async {
+    final res = await _client.get<dynamic>(
+      '$_base/ai/courses/sections/image/jobs/$jobId',
+    );
+    return SectionImageJob.fromJson(apiEnvelope(res));
+  }
+
+  /// POST /ai/courses/sections/image/search — up to five web candidates.
+  Future<List<SectionImageCandidate>> searchSectionImages({
+    required String courseId,
+    required String sectionKey,
+    String? query,
+  }) async {
+    final res = await _client.post<dynamic>(
+      '$_base/ai/courses/sections/image/search',
+      data: {
+        'courseId': courseId,
+        'sectionKey': sectionKey,
+        if (query != null && query.trim().isNotEmpty) 'query': query.trim(),
+      },
+    );
+    final env = apiEnvelope(res);
+    final images = env['images'];
+    if (images is! List) {
+      throw const ApiException(message: 'Invalid image search response');
+    }
+    return images
+        .whereType<Map<String, dynamic>>()
+        .map(SectionImageCandidate.fromJson)
+        .where((image) => image.url.isNotEmpty)
+        .toList();
+  }
+
+  /// POST /ai/courses/sections/image/apply — inserts the chosen image and
+  /// returns the updated section (a VALIDATED section is demoted).
+  Future<CourseSectionEntry> applySectionImage({
+    required String courseId,
+    required String sectionKey,
+    required String imageUrl,
+    String? caption,
+  }) async {
+    final res = await _client.post<dynamic>(
+      '$_base/ai/courses/sections/image/apply',
+      data: {
+        'courseId': courseId,
+        'sectionKey': sectionKey,
+        'imageUrl': imageUrl,
+        if (caption != null && caption.trim().isNotEmpty)
+          'caption': caption.trim(),
+      },
+    );
+    final env = apiEnvelope(res);
+    final section = env['section'];
+    if (section is! Map<String, dynamic>) {
+      throw const ApiException(message: 'Invalid image apply response');
+    }
+    return CourseSectionEntry.fromJson(section);
+  }
 }

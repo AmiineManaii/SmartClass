@@ -94,6 +94,11 @@ describe('Unit: AssignStudentsUseCase', () => {
     existingMemberUserIds: async () => [],
     addMembers: async () => ({ memberCount: 1 }),
     upsertTeacherAssignments: async () => ({ assigned: [], teacherCount: 0 }),
+    addTeacherSubject: async (_groupId: string, teacherId: string, input: { subject: string; weeklyHours?: string | null }) => ({
+      teacherId,
+      subject: input.subject,
+      weeklyHours: input.weeklyHours ?? null,
+    }),
     ...overrides,
   });
 
@@ -172,6 +177,11 @@ describe('Unit: AssignTeachersUseCase', () => {
       existingMemberUserIds: async () => [],
       addMembers: async () => ({ memberCount: 0 }),
       upsertTeacherAssignments: async () => ({ assigned: [], teacherCount: 0 }),
+      addTeacherSubject: async (_groupId: string, teacherId: string, input: { subject: string; weeklyHours?: string | null }) => ({
+        teacherId,
+        subject: input.subject,
+        weeklyHours: input.weeklyHours ?? null,
+      }),
     };
     const useCase = new AssignTeachersUseCase(repo);
 

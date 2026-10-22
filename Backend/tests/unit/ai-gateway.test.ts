@@ -112,7 +112,8 @@ describe('Unit: OpenAICompatibleGateway', () => {
     await expect(gateway.chatCompletion(input)).rejects.toMatchObject({ statusCode: 500 });
   });
 
-  it('sends the API key on chat and health calls (Unsloth requires auth)', async () => {    const seenHeaders: Array<Record<string, string | string[] | undefined>> = [];
+  it('sends the API key on chat and health calls (Ollama may require auth)', async () => {
+    const seenHeaders: Array<Record<string, string | string[] | undefined>> = [];
     const { createServer: create } = await import('node:http');
     const keyed = create((req, res) => {
       seenHeaders.push({ ...req.headers });
@@ -140,7 +141,7 @@ describe('Unit: OpenAICompatibleGateway', () => {
     } finally {
       await new Promise<void>((resolve) => keyed.close(() => resolve()));
     }
-    // Both calls must carry the API key (Unsloth requires auth, even on
+    // Both calls must carry the API key (Ollama may require auth, even on
     // GET /v1/models).
     expect(seenHeaders).toHaveLength(2);
     for (const headers of seenHeaders) {
@@ -148,7 +149,7 @@ describe('Unit: OpenAICompatibleGateway', () => {
     }
   });
 
-  it('sends the full Unsloth toolset and execution flags', async () => {
+  it('sends the standard OpenAI-compatible toolset without vendor flags', async () => {
     let seen: Record<string, unknown> = {};
     const { createServer: create } = await import('node:http');
     const sse = create((req, res) => {
@@ -191,13 +192,11 @@ describe('Unit: OpenAICompatibleGateway', () => {
     ]);
     expect(seen.tool_choice).toBe('auto');
     expect(seen.chat_template_kwargs).toMatchObject({ enable_thinking: true });
-    expect(seen.enable_tools).toBe(true);
-    expect(seen.tool_servers).toEqual(
-      expect.arrayContaining(['web_search', 'fetch_url', 'execute_code', 'calculator']),
-    );
-    expect(seen.auto_execute_tools).toBe(true);
-    expect(typeof seen.max_tool_iterations).toBe('number');
-    expect(seen.permission_mode).toBe('off');
+    expect(seen).not.toHaveProperty('enable_tools');
+    expect(seen).not.toHaveProperty('tool_servers');
+    expect(seen).not.toHaveProperty('auto_execute_tools');
+    expect(seen).not.toHaveProperty('max_tool_iterations');
+    expect(seen).not.toHaveProperty('permission_mode');
   });
 
   it('sends the thinking flag even without tools (cheap courses skip thinking)', async () => {

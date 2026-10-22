@@ -40,9 +40,8 @@ const envSchema = z.object({
   // Local LLM gateway (Ollama, OpenAI-compatible API).
   AI_BASE_URL: z.string().default('http://host.docker.internal:11434'),
   AI_MODEL: z.string().default('gemma4:e4b'),
-  // Fallback model served by Ollama (HF GGUF tag) when the primary model
-  // is unreachable or errors out.
-  AI_FALLBACK_MODEL: z.string().default('hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1'),
+  // Fallback Ollama model when the primary model is unreachable or errors.
+  AI_FALLBACK_MODEL: z.string().default('qwen2.5:3b'),
   AI_API_KEY: z.string().optional().default(''),
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(300000),
   AI_STATUS_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
@@ -56,9 +55,6 @@ const envSchema = z.object({
     .preprocess((val) => val === 'true' || val === true, z.boolean())
     .default(true),
   AI_MAX_TOOL_ITERATIONS: z.coerce.number().int().positive().default(10),
-  // Unsloth refuses tool execution without it ("confirm_tool_calls ..."
-  // 400). 'off' = run declared tools without interactive confirmation.
-  AI_PERMISSION_MODE: z.enum(['off', 'auto', 'confirm']).default('off'),
   // Local embedding server (Ollama, RG27 — no third-party LLM APIs).
   // EmbeddingGemma outputs 768-dim vectors (course_passages.embedding).
   EMBEDDING_BASE_URL: z.string().default('http://host.docker.internal:11434'),

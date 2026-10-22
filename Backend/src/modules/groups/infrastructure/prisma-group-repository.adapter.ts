@@ -46,7 +46,7 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
     return getPrismaClient();
   }
 
-  private toSummary(raw: RawGroupRow): ClassGroupSummary {
+  private toSummary(raw: RawGroupRow, teacherCount = raw._count.teachers): ClassGroupSummary {
     return {
       id: raw.id,
       name: raw.name,
@@ -58,7 +58,7 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
       isVirtual: raw.isVirtual ?? false,
       ownerId: raw.ownerId ?? null,
       memberCount: raw._count.members,
-      teacherCount: raw._count.teachers,
+      teacherCount,
       referent: raw.referent
         ? {
             id: raw.referent.id,
@@ -77,14 +77,40 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
       entSyncEnabled: boolean;
       updatedAt: Date;
     },
+    teacherCount = raw._count.teachers,
   ): ClassGroupDetail {
     return {
-      ...this.toSummary(raw),
+      ...this.toSummary(raw, teacherCount),
       description: raw.description,
       forumEnabled: raw.forumEnabled,
       entSyncEnabled: raw.entSyncEnabled,
       updatedAt: raw.updatedAt,
     };
+  }
+
+  /**
+   * A teacher can teach several subjects in the same class, so assignment rows
+   * are not a reliable teacher count. Count distinct teachers instead.
+   */
+  private async distinctTeacherCounts(groupIds: string[]): Promise<Map<string, number>> {
+    if (groupIds.length === 0) return new Map();
+    const rows = await this.prisma.teacherAssignment.groupBy({
+      by: ['classGroupId', 'teacherId'],
+      where: { classGroupId: { in: groupIds } },
+    });
+    const counts = new Map<string, number>();
+    for (const row of rows) {
+      counts.set(row.classGroupId, (counts.get(row.classGroupId) ?? 0) + 1);
+    }
+    return counts;
+  }
+
+  private async countDistinctTeachers(groupId: string): Promise<number> {
+    const rows = await this.prisma.teacherAssignment.groupBy({
+      by: ['teacherId'],
+      where: { classGroupId: groupId },
+    });
+    return rows.length;
   }
 
   private readonly detailSelect = {
@@ -136,7 +162,12 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
       this.prisma.classGroup.count({ where }),
     ]);
 
-    return { groups: rows.map((row) => this.toSummary(row)), total };
+    const teacherCounts = await this.distinctTeacherCounts(rows.map((row) => row.id));
+
+    return {
+      groups: rows.map((row) => this.toSummary(row, teacherCounts.get(row.id) ?? 0)),
+      total,
+    };
   }
 
   public async listMyGroups(userId: string): Promise<MyClassGroup[]> {
@@ -167,10 +198,19 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
       }),
     ]);
 
+    const groupIds = [...new Set([
+      ...memberships.map((membership) => membership.classGroup.id),
+      ...assignments.map((assignment) => assignment.classGroup.id),
+      ...referents.map((referent) => referent.id),
+      ...owned.map((own) => own.id),
+    ])];
+    const teacherCounts = await this.distinctTeacherCounts(groupIds);
+    const teacherCountOf = (groupId: string) => teacherCounts.get(groupId) ?? 0;
+
     const byId = new Map<string, MyClassGroup>();
     for (const membership of memberships) {
       byId.set(membership.classGroup.id, {
-        ...this.toSummary(membership.classGroup),
+        ...this.toSummary(membership.classGroup, teacherCountOf(membership.classGroup.id)),
         myRole: 'STUDENT',
         joinedAt: membership.joinedAt,
         mySubjects: [],
@@ -186,7 +226,7 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
         }
       } else {
         byId.set(assignment.classGroup.id, {
-          ...this.toSummary(assignment.classGroup),
+          ...this.toSummary(assignment.classGroup, teacherCountOf(assignment.classGroup.id)),
           myRole: 'TEACHER',
           joinedAt: assignment.assignedAt,
           mySubjects: [assignment.subject],
@@ -199,7 +239,7 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
         existing.myRole = 'REFERENT';
       } else {
         byId.set(referent.id, {
-          ...this.toSummary(referent),
+          ...this.toSummary(referent, teacherCountOf(referent.id)),
           myRole: 'REFERENT',
           joinedAt: null,
           mySubjects: [],
@@ -212,7 +252,7 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
         existing.myRole = 'TEACHER';
       } else {
         byId.set(own.id, {
-          ...this.toSummary(own),
+          ...this.toSummary(own, teacherCountOf(own.id)),
           myRole: 'TEACHER',
           joinedAt: null,
           mySubjects: ['Enseignement virtuel'],
@@ -251,7 +291,7 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
     });
     if (!row) return null;
 
-    return this.toDetail(row);
+    return this.toDetail(row, await this.countDistinctTeachers(id));
   }
 
   public async updateGroup(
@@ -287,7 +327,7 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
         data,
         select: this.detailSelect,
       });
-      return this.toDetail(row);
+      return this.toDetail(row, await this.countDistinctTeachers(id));
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
         return null;
@@ -404,9 +444,7 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
         where: { classGroupId: groupId, teacherId: { in: uniqueIds } },
       });
     }
-    const teacherCount = await this.prisma.teacherAssignment.count({
-      where: { classGroupId: groupId },
-    });
+    const teacherCount = await this.countDistinctTeachers(groupId);
     return { removed: uniqueIds, teacherCount };
   }
 
@@ -453,8 +491,9 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
   ): Promise<{ assigned: TeacherAssignmentView[]; teacherCount: number }> {
     const seen = new Set<string>();
     const unique = assignments.filter((assignment) => {
-      if (seen.has(assignment.teacherId)) return false;
-      seen.add(assignment.teacherId);
+      const key = `${assignment.teacherId}\u0000${assignment.subject}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
 
@@ -462,10 +501,13 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
       unique.map((assignment) =>
         this.prisma.teacherAssignment.upsert({
           where: {
-            classGroupId_teacherId: { classGroupId: groupId, teacherId: assignment.teacherId },
+            classGroupId_teacherId_subject: {
+              classGroupId: groupId,
+              teacherId: assignment.teacherId,
+              subject: assignment.subject,
+            },
           },
           update: {
-            subject: assignment.subject,
             weeklyHours: assignment.weeklyHours ?? null,
           },
           create: {
@@ -478,9 +520,7 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
       ),
     );
 
-    const teacherCount = await this.prisma.teacherAssignment.count({
-      where: { classGroupId: groupId },
-    });
+    const teacherCount = await this.countDistinctTeachers(groupId);
 
     return {
       assigned: unique.map((assignment) => ({
@@ -492,6 +532,35 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
     };
   }
 
+  public async addTeacherSubject(
+    groupId: string,
+    teacherId: string,
+    input: Omit<TeacherAssignInput, 'teacherId'>,
+  ): Promise<TeacherAssignmentView> {
+    const row = await this.prisma.teacherAssignment.upsert({
+      where: {
+        classGroupId_teacherId_subject: {
+          classGroupId: groupId,
+          teacherId,
+          subject: input.subject,
+        },
+      },
+      update: { weeklyHours: input.weeklyHours ?? null },
+      create: {
+        classGroupId: groupId,
+        teacherId,
+        subject: input.subject,
+        weeklyHours: input.weeklyHours ?? null,
+      },
+    });
+
+    return {
+      teacherId: row.teacherId,
+      subject: row.subject,
+      weeklyHours: row.weeklyHours,
+    };
+  }
+
   public async isTeacherAuthorizedForGroup(groupId: string, teacherId: string): Promise<boolean> {
     const group = await this.prisma.classGroup.findUnique({
       where: { id: groupId },
@@ -500,8 +569,8 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
     if (!group) return false;
     if (group.referentId === teacherId || group.ownerId === teacherId) return true;
 
-    const assignment = await this.prisma.teacherAssignment.findUnique({
-      where: { classGroupId_teacherId: { classGroupId: groupId, teacherId } },
+    const assignment = await this.prisma.teacherAssignment.findFirst({
+      where: { classGroupId: groupId, teacherId },
     });
     return !!assignment;
   }
@@ -518,8 +587,8 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
       this.prisma.groupMember.findUnique({
         where: { classGroupId_userId: { classGroupId: groupId, userId } },
       }),
-      this.prisma.teacherAssignment.findUnique({
-        where: { classGroupId_teacherId: { classGroupId: groupId, teacherId: userId } },
+      this.prisma.teacherAssignment.findFirst({
+        where: { classGroupId: groupId, teacherId: userId },
       }),
     ]);
     return {
@@ -645,7 +714,10 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
       maxUses: record.maxUses,
       usedCount: record.usedCount,
       createdAt: record.createdAt,
-      classGroup: this.toSummary(record.classGroup as any),
+      classGroup: this.toSummary(
+        record.classGroup as any,
+        await this.countDistinctTeachers(record.classGroupId),
+      ),
     };
   }
 
@@ -706,11 +778,17 @@ export class PrismaGroupRepositoryAdapter implements GroupRepositoryPort {
       });
 
       const updatedCount = await tx.groupMember.count({ where: { classGroupId: groupId } });
+      const teacherCount = (
+        await tx.teacherAssignment.groupBy({
+          by: ['teacherId'],
+          where: { classGroupId: groupId },
+        })
+      ).length;
       const rawWithCount = {
         ...group,
         _count: {
           members: updatedCount,
-          teachers: group._count.teachers,
+          teachers: teacherCount,
         },
       };
 

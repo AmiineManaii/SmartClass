@@ -31,8 +31,8 @@ export class PrismaTimetableRepositoryAdapter implements TimetableRepositoryPort
         where: { classGroupId_userId: { classGroupId, userId } },
         select: { userId: true },
       }),
-      this.prisma.teacherAssignment.findUnique({
-        where: { classGroupId_teacherId: { classGroupId, teacherId: userId } },
+      this.prisma.teacherAssignment.findFirst({
+        where: { classGroupId, teacherId: userId },
         select: { teacherId: true },
       }),
       this.prisma.classGroup.findFirst({

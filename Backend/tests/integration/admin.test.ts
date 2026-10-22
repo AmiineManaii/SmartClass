@@ -20,6 +20,7 @@ describe('Integration: Admin endpoints (users / groups / exams / videoconference
 
   let adminToken = '';
   let studentToken = '';
+  let teacherToken = '';
   let groupId = '';
   let studentId = '';
   let teacherId = '';
@@ -64,6 +65,12 @@ describe('Integration: Admin endpoints (users / groups / exams / videoconference
       .send({ email: studentEmail, password });
     expect(studentLogin.status).toBe(200);
     studentToken = studentLogin.body.data.accessToken as string;
+
+    const teacherLogin = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: teacherEmail, password });
+    expect(teacherLogin.status).toBe(200);
+    teacherToken = teacherLogin.body.data.accessToken as string;
 
     const student = await prisma.user.findUnique({ where: { email: studentEmail } });
     const teacher = await prisma.user.findUnique({ where: { email: teacherEmail } });
@@ -179,8 +186,7 @@ describe('Integration: Admin endpoints (users / groups / exams / videoconference
     expect(detail.body.data.memberCount).toBe(1);
   });
 
-  it('POST /groups/:id/teachers upserts assignments and rejects non-teachers (422)', async () => {
-    const assigned = await request(app)
+  it('POST /groups/:id/teachers upserts assignments and rejects non-teachers (422)', async () => {    const assigned = await request(app)
       .post(`/api/v1/groups/${groupId}/teachers`)
       .set(auth(adminToken))
       .send({
@@ -201,12 +207,58 @@ describe('Integration: Admin endpoints (users / groups / exams / videoconference
     expect(updated.body.data.teacherCount).toBe(1);
     expect(updated.body.data.assigned[0].subject).toBe('Algorithmique');
 
+    const assignments = await request(app)
+      .get(`/api/v1/groups/${groupId}/teachers`)
+      .set(auth(adminToken));
+
+    expect(assignments.body.data.teacherCount).toBe(1);
+    expect(
+      assignments.body.data.assignments.map(
+        (assignment: { subject: string }) => assignment.subject,
+      ),
+    ).toEqual(expect.arrayContaining(['Développement Mobile', 'Algorithmique']));
+
     const wrongRole = await request(app)
       .post(`/api/v1/groups/${groupId}/teachers`)
       .set(auth(adminToken))
       .send({ assignments: [{ teacherId: studentId, subject: 'Maths' }] });
 
     expect(wrongRole.status).toBe(422);
+  });
+
+  it('POST /groups/:id/subjects lets an assigned teacher add several subjects', async () => {
+    const added = await request(app)
+      .post(`/api/v1/groups/${groupId}/subjects`)
+      .set(auth(teacherToken))
+      .send({ subject: 'Architecture Logicielle', weeklyHours: '3h/semaine' });
+
+    expect(added.status).toBe(201);
+    expect(added.body.data.assignment).toMatchObject({
+      teacherId,
+      subject: 'Architecture Logicielle',
+      weeklyHours: '3h/semaine',
+    });
+
+    const mine = await request(app)
+      .get('/api/v1/groups/mine')
+      .set(auth(teacherToken));
+    const taughtGroup = mine.body.data.find(
+      (group: { id: string }) => group.id === groupId,
+    );
+    expect(taughtGroup).toMatchObject({ myRole: 'TEACHER' });
+    expect(taughtGroup.mySubjects).toEqual(
+      expect.arrayContaining([
+        'Développement Mobile',
+        'Algorithmique',
+        'Architecture Logicielle',
+      ]),
+    );
+
+    const forbidden = await request(app)
+      .post(`/api/v1/groups/${groupId}/subjects`)
+      .set(auth(studentToken))
+      .send({ subject: 'Maths' });
+    expect(forbidden.status).toBe(403);
   });
 
   it('GET /groups/mine returns the caller classes with roles (no admin required)', async () => {
@@ -518,10 +570,13 @@ describe('Integration: Admin endpoints (users / groups / exams / videoconference
 
     expect(list.status).toBe(200);
     expect(list.body.data.teacherCount).toBe(1);
-    expect(list.body.data.assignments[0]).toMatchObject({
-      teacherId,
-      subject: 'Algorithmique',
-    });
+    expect(
+      list.body.data.assignments.map(
+        (assignment: { subject: string }) => assignment.subject,
+      ),
+    ).toEqual(
+      expect.arrayContaining(['Développement Mobile', 'Algorithmique']),
+    );
 
     const removed = await request(app)
       .delete(`/api/v1/groups/${groupId}/teachers`)

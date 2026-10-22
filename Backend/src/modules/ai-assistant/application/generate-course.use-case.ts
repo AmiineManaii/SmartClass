@@ -28,6 +28,26 @@ export const DEFAULT_EXTRAS: GenerateExtras = {
   generateImages: false,
 };
 
+/**
+ * Source-aware defaults:
+ * - URL import enriches the fetched page with fresh web results.
+ * - An old PDF/notes needs reasoning to restructure it and web search to
+ *   fill what the document is missing.
+ * Explicit caller values still win, so a teacher can turn either off.
+ */
+export const extrasForMode = (
+  mode: GenerateMode,
+  extras?: Partial<GenerateExtras>,
+): GenerateExtras => {
+  const sourceDefaults: Partial<GenerateExtras> =
+    mode === 'url'
+      ? { webSearch: true }
+      : mode === 'text'
+        ? { thinking: true, webSearch: true }
+        : {};
+  return { ...DEFAULT_EXTRAS, ...sourceDefaults, ...extras };
+};
+
 export interface GenerateCourseDTO {
   mode: GenerateMode;
   level: GenerateLevel;
@@ -82,7 +102,7 @@ export class GenerateCourseUseCase {
       maxTokens: maxTokensForLevel(prepared.level, env.AI_MAX_TOKENS),
       temperature: env.AI_TEMPERATURE,
       // Outils seulement quand utiles : chaque appel d'outil retarde le
-      // premier token visible de 20 s+ côté Unsloth.
+        // premier token visible de 20 s+ côté Ollama.
       tools: prepared.toolsOffered ? COURSE_TOOLS : undefined,
       // Thinking réservé aux générations exigeantes (longues ou challenge).
       thinking: prepared.extras.thinking,
@@ -208,7 +228,7 @@ export class GenerateCourseUseCase {
 
     const truncatedSource = (sourceText?.length ?? 0) > env.AI_MAX_SOURCE_CHARS;
     const difficulty = dto.difficulty ?? 'moyen';
-    const extras = { ...DEFAULT_EXTRAS, ...dto.extras };
+    const extras = extrasForMode(dto.mode, dto.extras);
     return {
       mode: dto.mode,
       level: dto.level,

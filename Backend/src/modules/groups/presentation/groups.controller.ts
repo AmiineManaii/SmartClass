@@ -23,6 +23,7 @@ import type { GetInvitationStatusUseCase } from '../application/get-invitation-s
 import type { JoinClassUseCase } from '../application/join-class.use-case.js';
 import type { LeaveClassUseCase } from '../application/leave-class.use-case.js';
 import type { CreateVirtualClassroomUseCase } from '../application/create-virtual-classroom.use-case.js';
+import type { AddMySubjectUseCase } from '../application/add-my-subject.use-case.js';
 import type { UpdateGroupParams } from '../domain/group-repository.port.js';
 import { UnauthorizedError } from '../../../shared/errors/app-error.js';
 import { ErrorCodes } from '../../../shared/errors/error-codes.js';
@@ -61,6 +62,7 @@ export class GroupsController {
     private readonly joinClassUseCase?: JoinClassUseCase,
     private readonly leaveClassUseCase?: LeaveClassUseCase,
     private readonly createVirtualClassroomUseCase?: CreateVirtualClassroomUseCase,
+    private readonly addMySubjectUseCase?: AddMySubjectUseCase,
   ) {}
 
   public listGroups = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -449,8 +451,35 @@ export class GroupsController {
     }
   };
 
-  public createVirtualClassroom = async (
+  public addMySubject = async (
     req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      if (!this.addMySubjectUseCase) {
+        throw new Error('addMySubjectUseCase not configured');
+      }
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      const body = req.body as { subject: string; weeklyHours?: string | null };
+      const result = await this.addMySubjectUseCase.execute({
+        groupId: req.params.id as string,
+        teacherId: req.user.id,
+        actorRole: req.user.role ?? '',
+        subject: body.subject,
+        weeklyHours: body.weeklyHours,
+      });
+      res.status(201).json({
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public createVirtualClassroom = async (    req: Request,
     res: Response,
     next: NextFunction,
   ): Promise<void> => {

@@ -1,11 +1,9 @@
 import type { ChatTool } from '../domain/ai-gateway.port.js';
 
 /**
- * Tools advertised to the local model (Unsloth Desktop tool calling,
- * OpenAI-compatible `tools` parameter + Unsloth execution flags
- * `enable_tools`, `tool_servers`, `auto_execute_tools`,
- * `max_tool_iterations`). The server executes the tools when supported;
- * otherwise the gateway retries without tools.
+ * Tools advertised to the local model through Ollama's OpenAI-compatible
+ * `tools` parameter. The gateway executes the returned `tool_calls` in a
+ * bounded loop; unsupported models are retried without tools.
  */
 export const WEB_SEARCH_TOOL: ChatTool = {
   type: 'function',

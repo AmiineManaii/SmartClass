@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../courses/application/providers/courses_provider.dart';
+import '../../../courses/domain/entities/course_entry.dart';
 
 /// ──────────────────────────────────────────────────────
 /// Train with AI – "S'entraîner avec l'IA"
@@ -17,43 +19,43 @@ class AiQuizPage extends ConsumerStatefulWidget {
 class _AiQuizPageState extends ConsumerState<AiQuizPage>
     with TickerProviderStateMixin {
   // State
-  String _selectedModule = 'Algorithmique Avancée';
-  String _selectedModuleSubtitle = 'LICENCE 3 • ALGORITHMIQUE';
-  String _selectedModuleProf = 'Prof. Amine Mansouri';
+  String _selectedModule = '';
 
-  final Set<int> _selectedChapters = {1, 2};
+  final Set<int> _selectedChapters = {0};
   int _selectedDifficulty = 1; // 0=Débutant, 1=Intermédiaire, 2=Expert
   double _questionCount = 15;
   bool _explanationsEnabled = true;
   bool _timedModeEnabled = true;
   bool _mcqEnabled = true;
-  bool _isGenerating = false;
+  final bool _isGenerating = false;
 
   late AnimationController _entryController;
   late AnimationController _pulseController;
 
-  final List<Map<String, String>> _availableCourses = [
-    {
-      'title': 'Algorithmique Avancée',
-      'dept': 'LICENCE 3 • ALGORITHMIQUE',
-      'prof': 'Prof. Amine Mansouri',
-    },
-    {
-      'title': 'Systèmes d\'Exploitation',
-      'dept': 'LICENCE 3 • SYSTÈMES & RÉSEAUX',
-      'prof': 'Prof. Mansouri H.',
-    },
-    {
-      'title': 'Bases de Données Relationnelles',
-      'dept': 'LICENCE 3 • DONNÉES & IA',
-      'prof': 'Prof. Karray S.',
-    },
-    {
-      'title': 'Intelligence Artificielle',
-      'dept': 'LICENCE 3 • DONNÉES & IA',
-      'prof': 'Prof. Benali R.',
-    },
-  ];
+  CourseEntry? _activeClass(List<CourseEntry> classes) {
+    if (classes.isEmpty) return null;
+    for (final c in classes) {
+      if (c.name == _selectedModule) return c;
+    }
+    return classes.first;
+  }
+
+  String _levelLabel(BuildContext context, String level) {
+    final key = switch (level) {
+      'LICENCE' => 'level_licence',
+      'MASTER' => 'level_master',
+      'DOCTORAT' => 'level_doctorat',
+      _ => '',
+    };
+    return key.isEmpty ? level : context.tr(key);
+  }
+
+  String _classSubtitle(BuildContext context, CourseEntry c) {
+    return [
+      _levelLabel(context, c.level),
+      if (c.department != null && c.department!.isNotEmpty) c.department!,
+    ].join(' • ');
+  }
 
   @override
   void initState() {
@@ -406,6 +408,16 @@ class _AiQuizPageState extends ConsumerState<AiQuizPage>
 
   // ────────── COURSE CARD ──────────
   Widget _buildCourseCard(ThemeData theme, ColorScheme cs, bool isDark) {
+    final classes =
+        ref.watch(myCoursesProvider).valueOrNull ?? const <CourseEntry>[];
+    final active = _activeClass(classes);
+    final moduleName = active?.name ?? context.tr('no_class_title');
+    final moduleSubtitle =
+        active == null ? '' : _classSubtitle(context, active);
+    final moduleMeta = active == null
+        ? ''
+        : context.tr('courses_students_count',
+            args: {'count': '${active.memberCount}'});
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -440,7 +452,7 @@ class _AiQuizPageState extends ConsumerState<AiQuizPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _selectedModuleSubtitle,
+                  moduleSubtitle,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: cs.secondary,
                     fontWeight: FontWeight.w700,
@@ -450,7 +462,7 @@ class _AiQuizPageState extends ConsumerState<AiQuizPage>
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _selectedModule,
+                  moduleName,
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: cs.onSurface,
                     fontWeight: FontWeight.w700,
@@ -460,7 +472,7 @@ class _AiQuizPageState extends ConsumerState<AiQuizPage>
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  _selectedModuleProf,
+                  moduleMeta,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontSize: 11,
@@ -506,12 +518,8 @@ class _AiQuizPageState extends ConsumerState<AiQuizPage>
 
   // ────────── CHAPTERS SELECTION ──────────
   Widget _buildChapterSection(ThemeData theme, ColorScheme cs, bool isDark) {
-    final chapters = [
+    final chapters = <String>[
       context.tr('ai_all_module'),
-      'Ch. 1 : Complexité Asymptotique',
-      'Ch. 2 : Récursivité & Appels',
-      'Ch. 3 : Arbres Binaires & AVL',
-      'Ch. 4 : Graphes & BFS/DFS',
     ];
 
     final allSelected = _selectedChapters.length == chapters.length;
@@ -1339,17 +1347,16 @@ class _AiQuizPageState extends ConsumerState<AiQuizPage>
     );
   }
 
-  Future<void> _handleStart() async {
-    setState(() => _isGenerating = true);
-    await Future.delayed(const Duration(milliseconds: 1400));
-    if (mounted) {
-      setState(() => _isGenerating = false);
-      _showQuizSessionModal(context, Theme.of(context), Theme.of(context).colorScheme);
-    }
+  void _handleStart() {
+    final theme = Theme.of(context);
+    _showQuizSessionModal(context, theme, theme.colorScheme);
   }
 
   void _showCourseSelector(
       BuildContext context, ThemeData theme, ColorScheme cs) {
+    final classes =
+        ref.read(myCoursesProvider).valueOrNull ?? const <CourseEntry>[];
+    final active = _activeClass(classes);
     showModalBottomSheet(
       context: context,
       backgroundColor: cs.surfaceContainerLowest,
@@ -1383,52 +1390,67 @@ class _AiQuizPageState extends ConsumerState<AiQuizPage>
                   ),
                 ),
                 const SizedBox(height: 12),
-                ...List.generate(_availableCourses.length, (i) {
-                  final c = _availableCourses[i];
-                  final isSelected = c['title'] == _selectedModule;
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: isSelected ? cs.primary : cs.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.terminal_rounded,
-                        color: isSelected ? cs.onPrimary : cs.primary,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      c['title']!,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${c['dept']} • ${c['prof']}',
+                if (classes.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      context.tr('no_class_message'),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
-                        fontSize: 11,
                       ),
                     ),
-                    trailing: isSelected
-                        ? Icon(Icons.check_circle, color: cs.primary)
-                        : null,
-                    onTap: () {
-                      setState(() {
-                        _selectedModule = c['title']!;
-                        _selectedModuleSubtitle = c['dept']!;
-                        _selectedModuleProf = c['prof']!;
-                      });
-                      Navigator.pop(ctx);
-                    },
-                  );
-                }),
+                  )
+                else
+                  ...List.generate(classes.length, (i) {
+                    final c = classes[i];
+                    final isSelected = c.id == active?.id;
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? cs.primary
+                              : cs.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.terminal_rounded,
+                          color: isSelected ? cs.onPrimary : cs.primary,
+                          size: 20,
+                        ),
+                      ),
+                      title: Text(
+                        c.name,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      subtitle: Text(
+                        [
+                          _classSubtitle(context, c),
+                          context.tr('courses_students_count',
+                              args: {'count': '${c.memberCount}'}),
+                        ].join(' • '),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? Icon(Icons.check_circle, color: cs.primary)
+                          : null,
+                      onTap: () {
+                        setState(() {
+                          _selectedModule = c.name;
+                        });
+                        Navigator.pop(ctx);
+                      },
+                    );
+                  }),
               ],
             ),
           ),
@@ -1471,6 +1493,32 @@ class _AiQuizPageState extends ConsumerState<AiQuizPage>
                       ),
                     ),
                     const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: cs.secondaryContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline_rounded,
+                              size: 15, color: cs.onSecondaryContainer),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Aperçu — la génération IA de quiz sera connectée avec le module IA (📋 planifié).',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: cs.onSecondaryContainer,
+                                fontSize: 10.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [

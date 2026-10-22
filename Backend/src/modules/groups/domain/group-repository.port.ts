@@ -111,6 +111,11 @@ export interface GroupRepositoryPort {
     groupId: string,
     assignments: TeacherAssignInput[],
   ): Promise<{ assigned: TeacherAssignmentView[]; teacherCount: number }>;
+  addTeacherSubject(
+    groupId: string,
+    teacherId: string,
+    input: Omit<TeacherAssignInput, 'teacherId'>,
+  ): Promise<TeacherAssignmentView>;
   isTeacherAuthorizedForGroup(groupId: string, teacherId: string): Promise<boolean>;
   findUserClassMembership(groupId: string, userId: string): Promise<{ isMember: boolean; isTeacher: boolean; isReferent: boolean; isOwner: boolean }>;
   createInvitation(params: {

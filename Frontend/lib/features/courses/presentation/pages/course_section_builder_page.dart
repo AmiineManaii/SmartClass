@@ -13,9 +13,8 @@ import '../widgets/markdown_course_view.dart';
 import '../../../../core/widgets/smart_loader.dart';
 
 void _showBuildFailure(BuildContext context, Object error) {
-  // ComfyUI is not wired yet: honest "coming soon" instead of a raw 503.
-  if (error is ApiException &&
-      error.code == 'IMAGE_SERVICE_UNAVAILABLE') {
+  // ComfyUI unavailable: point the teacher to the web image search.
+  if (error is ApiException && error.code == 'IMAGE_SERVICE_UNAVAILABLE') {
     context.showInfoToast(context.tr('ai_build_image_soon'));
     return;
   }
@@ -56,6 +55,14 @@ class _CourseSectionBuilderPageState
 
   CourseSectionBuild get _build =>
       ref.read(courseSectionBuildProvider(widget.courseId).notifier);
+
+  bool _imageActionBusy(String sectionKey) =>
+      _imageLoadingKey != null ||
+      (ref
+              .read(courseSectionBuildProvider(widget.courseId))
+              .imageJob(sectionKey)
+              ?.isActive ??
+          false);
 
   @override
   void initState() {
@@ -123,8 +130,106 @@ class _CourseSectionBuilderPageState
     return section.keyTopics.join(' · ');
   }
 
+  /// Two image options for a section: local ComfyUI generation or a web
+  /// search returning five candidates.
+  Future<void> _chooseImageAction(CourseSectionEntry section) async {
+    if (_imageActionBusy(section.sectionKey)) return;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  context.tr('ai_image_choose_title'),
+                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.auto_awesome_outlined),
+              title: Text(context.tr('ai_image_generate_local')),
+              subtitle: Text(context.tr('ai_image_generate_local_desc')),
+              onTap: () => Navigator.of(ctx).pop('local'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.image_search_rounded),
+              title: Text(context.tr('ai_image_search_web')),
+              subtitle: Text(context.tr('ai_image_search_web_desc')),
+              onTap: () => Navigator.of(ctx).pop('web'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return;
+    if (choice == 'local') {
+      await _generateImage(section);
+    } else {
+      await _searchWebImage(section);
+    }
+  }
+
+  Future<void> _applyImage(
+    CourseSectionEntry section, {
+    required String imageUrl,
+    String? caption,
+  }) async {
+    try {
+      await _build.applySectionImage(
+        sectionKey: section.sectionKey,
+        imageUrl: imageUrl,
+        caption: caption,
+      );
+      if (!mounted) return;
+      _showSnack('ai_image_added');
+    } catch (e) {
+      if (!mounted) return;
+      _showBuildFailure(context, e);
+    }
+  }
+
+  Future<void> _searchWebImage(CourseSectionEntry section) async {
+    if (_imageActionBusy(section.sectionKey)) return;
+    setState(() => _imageLoadingKey = section.sectionKey);
+    try {
+      final images = await _build.searchSectionImages(section.sectionKey);
+      if (!mounted) return;
+      setState(() => _imageLoadingKey = null);
+      if (images.isEmpty) {
+        context.showInfoToast(context.tr('ai_image_search_empty'));
+        return;
+      }
+      final selected = await showDialog<SectionImageCandidate>(
+        context: context,
+        builder: (ctx) => _WebImagePickerDialog(images: images),
+      );
+      if (selected == null || !mounted) return;
+      await _applyImage(
+        section,
+        imageUrl: selected.url,
+        caption: selected.caption.isNotEmpty
+            ? selected.caption
+            : selected.title,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showBuildFailure(context, e);
+    } finally {
+      if (mounted) setState(() => _imageLoadingKey = null);
+    }
+  }
+
   Future<void> _generateImage(CourseSectionEntry section) async {
-    if (_imageLoadingKey != null) return;
+    if (_imageActionBusy(section.sectionKey)) return;
     setState(() => _imageLoadingKey = section.sectionKey);
     try {
       final result = await _build.generateSectionImage(section.sectionKey);
@@ -135,10 +240,12 @@ class _CourseSectionBuilderPageState
       final imageUrl = result['imageUrl']?.toString() ?? '';
       final prompt = result['prompt']?.toString();
       final provider = result['provider']?.toString();
-      await showDialog<void>(
+      final insert = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Text(context.tr('ai_build_image_title')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -165,16 +272,16 @@ class _CourseSectionBuilderPageState
                 Text(
                   context.tr('ai_build_image_explanation'),
                   style: Theme.of(ctx).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(ctx).colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: Theme.of(ctx).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   _imageExplanation(section),
                   style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
               if (prompt != null && prompt.isNotEmpty) ...[
@@ -182,18 +289,19 @@ class _CourseSectionBuilderPageState
                 Text(
                   prompt,
                   style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
               if (provider != null && provider.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
-                    color:
-                        Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -206,12 +314,26 @@ class _CourseSectionBuilderPageState
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
+              onPressed: () => Navigator.of(ctx).pop(false),
               child: Text(context.tr('close')),
+            ),
+            FilledButton.icon(
+              onPressed: imageUrl.isEmpty
+                  ? null
+                  : () => Navigator.of(ctx).pop(true),
+              icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
+              label: Text(context.tr('ai_image_insert')),
             ),
           ],
         ),
       );
+      if (insert == true && imageUrl.isNotEmpty && mounted) {
+        await _applyImage(
+          section,
+          imageUrl: imageUrl,
+          caption: _imageExplanation(section),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       _showBuildFailure(context, e);
@@ -253,8 +375,10 @@ class _CourseSectionBuilderPageState
             Center(
               child: Container(
                 margin: const EdgeInsets.only(right: 14),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: allValidated
                       ? colorScheme.secondaryContainer
@@ -282,11 +406,11 @@ class _CourseSectionBuilderPageState
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    if (state.loading &&
-        state.sections.isEmpty &&
-        state.error == null) {
+    if (state.loading && state.sections.isEmpty && state.error == null) {
       return const Center(
-        child: SmartLoader.large(message: 'Chargement des sections du cours...'),
+        child: SmartLoader.large(
+          message: 'Chargement des sections du cours...',
+        ),
       );
     }
     if (state.error != null && state.sections.isEmpty) {
@@ -296,8 +420,11 @@ class _CourseSectionBuilderPageState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.cloud_off_rounded,
-                  size: 44, color: colorScheme.outline),
+              Icon(
+                Icons.cloud_off_rounded,
+                size: 44,
+                color: colorScheme.outline,
+              ),
               const SizedBox(height: 12),
               Text(
                 context.tr('ai_build_error'),
@@ -308,8 +435,9 @@ class _CourseSectionBuilderPageState
               ),
               const SizedBox(height: 16),
               FilledButton.tonalIcon(
-                onPressed: () =>
-                    ref.read(courseSectionBuildProvider(widget.courseId).notifier).load(),
+                onPressed: () => ref
+                    .read(courseSectionBuildProvider(widget.courseId).notifier)
+                    .load(),
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: Text(context.tr('retry')),
               ),
@@ -325,8 +453,11 @@ class _CourseSectionBuilderPageState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.list_alt_rounded,
-                  size: 44, color: colorScheme.outline),
+              Icon(
+                Icons.list_alt_rounded,
+                size: 44,
+                color: colorScheme.outline,
+              ),
               const SizedBox(height: 12),
               Text(
                 context.tr('ai_build_no_sections'),
@@ -348,8 +479,9 @@ class _CourseSectionBuilderPageState
     }
 
     final allValidated = state.remainingToValidate == 0;
-    final notifier =
-        ref.read(courseSectionBuildProvider(widget.courseId).notifier);
+    final notifier = ref.read(
+      courseSectionBuildProvider(widget.courseId).notifier,
+    );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
@@ -363,18 +495,15 @@ class _CourseSectionBuilderPageState
                 : colorScheme.primaryContainer.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: (allValidated
-                      ? colorScheme.secondary
-                      : colorScheme.primary)
-                  .withValues(alpha: 0.35),
+              color:
+                  (allValidated ? colorScheme.secondary : colorScheme.primary)
+                      .withValues(alpha: 0.35),
             ),
           ),
           child: Row(
             children: [
               Icon(
-                allValidated
-                    ? Icons.verified_rounded
-                    : Icons.rule_rounded,
+                allValidated ? Icons.verified_rounded : Icons.rule_rounded,
                 size: 22,
                 color: allValidated
                     ? colorScheme.onSecondaryContainer
@@ -387,9 +516,7 @@ class _CourseSectionBuilderPageState
                       ? context.tr('ai_build_all_validated')
                       : context.tr(
                           'ai_build_remaining',
-                          args: {
-                            'count': '${state.remainingToValidate}',
-                          },
+                          args: {'count': '${state.remainingToValidate}'},
                         ),
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w600,
@@ -409,18 +536,19 @@ class _CourseSectionBuilderPageState
             index: index,
             section: state.sections[index],
             state: state,
-            imageLoading: _imageLoadingKey ==
-                state.sections[index].sectionKey,
+            imageLoading:
+                _imageLoadingKey == state.sections[index].sectionKey ||
+                (state.imageJob(state.sections[index].sectionKey)?.isActive ??
+                    false),
             onGenerate: () => ref
                 .read(courseSectionBuildProvider(widget.courseId).notifier)
                 .generate(
-              sectionKey: state.sections[index].sectionKey,
-              regenerate: false,
-            ),
-            onRegenerate: () =>
-                _confirmRegenerate(state.sections[index]),
+                  sectionKey: state.sections[index].sectionKey,
+                  regenerate: false,
+                ),
+            onRegenerate: () => _confirmRegenerate(state.sections[index]),
             onValidate: () => _validate(state.sections[index]),
-            onImage: () => _generateImage(state.sections[index]),
+            onImage: () => _chooseImageAction(state.sections[index]),
             onCancel: () => notifier.cancel(),
           ),
           const SizedBox(height: 10),
@@ -538,7 +666,9 @@ class _SectionCard extends StatelessWidget {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(8),
@@ -546,9 +676,7 @@ class _SectionCard extends StatelessWidget {
                         child: Text(
                           context.tr(
                             'ai_build_section_num',
-                            args: {
-                              'n': (index + 1).toString().padLeft(2, '0'),
-                            },
+                            args: {'n': (index + 1).toString().padLeft(2, '0')},
                           ),
                           style: TextStyle(
                             fontWeight: FontWeight.w800,
@@ -560,7 +688,9 @@ class _SectionCard extends StatelessWidget {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: _statusColor(colorScheme),
                           borderRadius: BorderRadius.circular(8),
@@ -568,9 +698,11 @@ class _SectionCard extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(_statusIcon(),
-                                size: 13,
-                                color: _statusTextColor(colorScheme)),
+                            Icon(
+                              _statusIcon(),
+                              size: 13,
+                              color: _statusTextColor(colorScheme),
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               _statusLabel(context),
@@ -585,18 +717,23 @@ class _SectionCard extends StatelessWidget {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.6),
+                          color: colorScheme.surfaceContainerHighest.withValues(
+                            alpha: 0.6,
+                          ),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.schedule_rounded,
-                                size: 12,
-                                color: colorScheme.onSurfaceVariant),
+                            Icon(
+                              Icons.schedule_rounded,
+                              size: 12,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               '${section.estimatedMinutes} min',
@@ -645,14 +782,18 @@ class _SectionCard extends StatelessWidget {
                   for (final topic in section.keyTopics)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHighest
-                            .withValues(alpha: 0.45),
+                        color: colorScheme.surfaceContainerHighest.withValues(
+                          alpha: 0.45,
+                        ),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                          color: colorScheme.outlineVariant
-                              .withValues(alpha: 0.35),
+                          color: colorScheme.outlineVariant.withValues(
+                            alpha: 0.35,
+                          ),
                         ),
                       ),
                       child: Text(
@@ -673,8 +814,7 @@ class _SectionCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer
-                      .withValues(alpha: 0.45),
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.45),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: colorScheme.primary.withValues(alpha: 0.3),
@@ -685,9 +825,7 @@ class _SectionCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const SmartLoader.small(
-                          customSize: 16,
-                        ),
+                        const SmartLoader.small(customSize: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -744,8 +882,11 @@ class _SectionCard extends StatelessWidget {
                       dense: true,
                       title: Row(
                         children: [
-                          Icon(Icons.description_outlined,
-                              size: 16, color: colorScheme.primary),
+                          Icon(
+                            Icons.description_outlined,
+                            size: 16,
+                            color: colorScheme.primary,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             context.tr('ai_build_preview'),
@@ -755,9 +896,7 @@ class _SectionCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      children: [
-                        MarkdownCourseView(data: section.content!),
-                      ],
+                      children: [MarkdownCourseView(data: section.content!)],
                     ),
                   ),
                 ),
@@ -772,38 +911,38 @@ class _SectionCard extends StatelessWidget {
                 children: [
                   if (section.status == CourseSectionStatus.pending)
                     FilledButton.icon(
-                      onPressed: otherBusy
-                          ? null
-                          : () => onGenerate(),
+                      onPressed: otherBusy ? null : () => onGenerate(),
                       icon: const Icon(Icons.auto_awesome, size: 18),
                       label: Text(context.tr('ai_build_generate')),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                       ),
                     ),
                   if (section.status == CourseSectionStatus.generated)
                     FilledButton.icon(
-                      onPressed: otherBusy
-                          ? null
-                          : () => onValidate(),
+                      onPressed: otherBusy ? null : () => onValidate(),
                       icon: const Icon(Icons.check_rounded, size: 18),
                       label: Text(context.tr('ai_build_validate')),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                       ),
                     ),
                   if (section.status != CourseSectionStatus.pending)
                     OutlinedButton.icon(
-                      onPressed: otherBusy
-                          ? null
-                          : () => onRegenerate(),
+                      onPressed: otherBusy ? null : () => onRegenerate(),
                       icon: const Icon(Icons.refresh_rounded, size: 16),
                       label: Text(context.tr('ai_build_regenerate')),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                       ),
                     ),
                   IconButton(
@@ -812,14 +951,116 @@ class _SectionCard extends StatelessWidget {
                         ? null
                         : () => onImage(),
                     icon: imageLoading
-                        ? const SmartLoader.small(
-                            customSize: 18,
-                          )
+                        ? const SmartLoader.small(customSize: 18)
                         : const Icon(Icons.image_outlined, size: 20),
                   ),
                 ],
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Five web image candidates, tappable to insert into the section.
+class _WebImagePickerDialog extends StatelessWidget {
+  const _WebImagePickerDialog({required this.images});
+
+  final List<SectionImageCandidate> images;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Dialog(
+      insetPadding: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 680, maxHeight: 680),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 8, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      context.tr('ai_image_search_title'),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns = constraints.maxWidth >= 560 ? 3 : 2;
+                  return GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                    shrinkWrap: true,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: columns,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 0.86,
+                    ),
+                    itemCount: images.length,
+                    itemBuilder: (context, index) {
+                      final image = images[index];
+                      return Material(
+                        color: colorScheme.surfaceContainerLowest,
+                        clipBehavior: Clip.antiAlias,
+                        borderRadius: BorderRadius.circular(12),
+                        child: InkWell(
+                          onTap: () => Navigator.of(context).pop(image),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: Image.network(
+                                  image.url,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => ColoredBox(
+                                    color: colorScheme.surfaceContainerHighest,
+                                    child: Icon(
+                                      Icons.broken_image_outlined,
+                                      color: colorScheme.outline,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Text(
+                                  image.caption.isNotEmpty
+                                      ? image.caption
+                                      : image.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),

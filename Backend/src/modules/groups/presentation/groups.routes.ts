@@ -3,6 +3,7 @@ import type { GroupsController } from './groups.controller.js';
 import { validate } from '../../../shared/http/validate.middleware.js';
 import { offsetPaginationQuerySchema } from '../../../shared/http/pagination/index.js';
 import {
+  addMySubjectBodySchema,
   assignStudentsBodySchema,
   assignTeachersBodySchema,
   createGroupBodySchema,
@@ -35,6 +36,13 @@ export const createGroupsRouter = (options: GroupsRouterOptions): Router => {
   // Class group detail and member management accessible to assigned teachers and enrolled students
   router.get('/:id', authenticateMiddleware, validate({ params: groupIdParamsSchema }), controller.getGroup);
   router.post('/:id/leave', authenticateMiddleware, validate({ params: groupIdParamsSchema }), controller.leaveClass);
+  // Teachers can declare an additional subject they teach in this class.
+  router.post(
+    '/:id/subjects',
+    authenticateMiddleware,
+    validate({ params: groupIdParamsSchema, body: addMySubjectBodySchema }),
+    controller.addMySubject,
+  );
 
   // Invitation endpoints (checked in use-cases for ADMIN or assigned TEACHER)
   router.post(

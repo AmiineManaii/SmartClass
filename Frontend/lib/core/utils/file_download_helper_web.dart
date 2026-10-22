@@ -30,7 +30,9 @@ void printOfficialTranscriptImpl({
   bool isTeacher = false,
 }) {
   try {
-    final existingIframe = html.document.getElementById('smartclass_print_iframe');
+    final existingIframe = html.document.getElementById(
+      'smartclass_print_iframe',
+    );
     if (existingIframe != null) {
       existingIframe.remove();
     }
@@ -82,10 +84,20 @@ String _generateTranscriptHtml({
   required String date,
   bool isTeacher = false,
 }) {
-  final instDisplay = institution.trim().isNotEmpty ? institution.trim() : (isTeacher ? 'Institut Supérieur / Université' : 'Université Mohammed V de Rabat');
-  final nameDisplay = studentName.trim().isNotEmpty ? studentName.trim() : (isTeacher ? 'Professeur' : 'Ahmed Mohsen');
-  final idDisplay = studentId.trim().isNotEmpty ? studentId.trim() : (isTeacher ? 'PPR-2026-89421' : 'CNE-2026-984210');
-  final majorDisplay = major.trim().isNotEmpty ? major.trim() : (isTeacher ? 'Département Informatique & Technologies Numériques' : 'Cycle Ingénieur • Informatique & Systèmes Intelligents');
+  final instDisplay = institution.trim().isNotEmpty
+      ? institution.trim()
+      : 'Établissement non renseigné';
+  final nameDisplay = studentName.trim().isNotEmpty
+      ? studentName.trim()
+      : (isTeacher ? 'Professeur' : 'Ahmed Mohsen');
+  final idDisplay = studentId.trim().isNotEmpty
+      ? studentId.trim()
+      : (isTeacher ? 'PPR-2026-89421' : 'CNE-2026-984210');
+  final majorDisplay = major.trim().isNotEmpty
+      ? major.trim()
+      : (isTeacher
+            ? 'Département Informatique & Technologies Numériques'
+            : 'Cycle Ingénieur • Informatique & Systèmes Intelligents');
 
   final docTitle = isTeacher
       ? 'Attestation d\'Exercice & Fiche de Service Enseignant'

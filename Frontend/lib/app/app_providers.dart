@@ -78,7 +78,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/splash';
       }
 
-      final authAsync = ProviderScope.containerOf(context).read(authStateProvider);
+      final authAsync = ProviderScope.containerOf(
+        context,
+      ).read(authStateProvider);
       // Ne jamais rediriger vers /login si l'état est en chargement transitoire (ex: mise à jour en cours)
       if (authAsync.isLoading && authAsync.valueOrNull == null) {
         return null;
@@ -89,14 +91,18 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Si l'utilisateur tente d'aller manuellement sur /splash après l'avoir terminé
       if (location == '/splash') {
-        return completed ? '/home' : (isLoggedIn ? '/role-selection' : '/login');
+        return completed
+            ? '/home'
+            : (isLoggedIn ? '/role-selection' : '/login');
       }
 
-      final isPublicRoute = location.startsWith('/login') ||
+      final isPublicRoute =
+          location.startsWith('/login') ||
           location.startsWith('/register') ||
           location.startsWith('/forgot-password') ||
           location.startsWith('/reset-password');
-      final isOnboardingRoute = location.startsWith('/role-selection') ||
+      final isOnboardingRoute =
+          location.startsWith('/role-selection') ||
           location.startsWith('/profile-setup') ||
           location.startsWith('/verify-email');
 
@@ -130,7 +136,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/home';
       }
 
-      if ((location.startsWith('/courses/ai-create') || location.endsWith('/build')) &&
+      if ((location.startsWith('/courses/ai-create') ||
+              location.endsWith('/build')) &&
           normalizedRole != 'teacher' &&
           normalizedRole != 'admin') {
         return '/courses';
@@ -251,8 +258,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'group-detail',
             builder: (context, state) => ClassDetailPage(
               groupId: state.pathParameters['groupId'] ?? '',
-              initialTitle:
-                  state.extra is String ? state.extra as String : null,
+              initialTitle: state.extra is String
+                  ? state.extra as String
+                  : null,
             ),
           ),
           GoRoute(
@@ -268,7 +276,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/collaboration',
             name: 'collaboration',
-            builder: (context, state) => const collaboration_page.CollaborationPage(),
+            builder: (context, state) =>
+                const collaboration_page.CollaborationPage(),
           ),
           GoRoute(
             path: '/ai-assistant',
@@ -344,11 +353,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Theme.of(context).colorScheme.error),
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Theme.of(context).colorScheme.error,
+            ),
             const SizedBox(height: 16),
-            Text(context.tr('not_found'), style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              context.tr('not_found'),
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
             const SizedBox(height: 8),
-            Text(state.error.toString(), style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              state.error.toString(),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => context.go('/home'),
@@ -363,19 +382,16 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 class MainScaffold extends ConsumerWidget {
   final Widget child;
-  
+
   const MainScaffold({required this.child, super.key});
-  
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
     final role = ref.watch(authStateProvider).valueOrNull?.role;
 
     if (isDesktop && role != 'admin') {
-      return WebMainScaffold(
-        body: child,
-        role: role,
-      );
+      return WebMainScaffold(body: child, role: role);
     }
 
     return Scaffold(
@@ -511,33 +527,37 @@ class _BottomNavBar extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(24),
                     gradient: isSelected
                         ? (item.isAiPill
-                            ? const LinearGradient(
-                                colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              )
-                            : const LinearGradient(
-                                colors: [Color(0xFF122675), Color(0xFF263EA8)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ))
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFF4F46E5),
+                                    Color(0xFF7C3AED),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : const LinearGradient(
+                                  colors: [
+                                    Color(0xFF122675),
+                                    Color(0xFF263EA8),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ))
                         : null,
                     color: !isSelected && item.isAiPill
                         ? const Color(0xFFEEF2FF)
                         : Colors.transparent,
                     border: !isSelected && item.isAiPill
-                        ? Border.all(
-                            color: const Color(0xFFC7D2FE),
-                            width: 0.8,
-                          )
+                        ? Border.all(color: const Color(0xFFC7D2FE), width: 0.8)
                         : null,
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: (item.isAiPill
-                                      ? const Color(0xFF6366F1)
-                                      : const Color(0xFF122675))
-                                  .withValues(alpha: 0.30),
+                              color:
+                                  (item.isAiPill
+                                          ? const Color(0xFF6366F1)
+                                          : const Color(0xFF122675))
+                                      .withValues(alpha: 0.30),
                               blurRadius: 8,
                               offset: const Offset(0, 3),
                             ),
@@ -553,8 +573,8 @@ class _BottomNavBar extends ConsumerWidget {
                         color: isSelected
                             ? Colors.white
                             : (item.isAiPill
-                                ? const Color(0xFF4F46E5)
-                                : const Color(0xFF64748B)),
+                                  ? const Color(0xFF4F46E5)
+                                  : const Color(0xFF64748B)),
                       ),
                       if (isSelected) ...[
                         const SizedBox(width: 6),
@@ -599,16 +619,16 @@ class _NavItem {
 
 class AppProviders extends ConsumerWidget {
   final Widget child;
-  
+
   const AppProviders({required this.child, super.key});
-  
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final typographyConfig = ref.watch(typographyConfigProvider);
-    
+
     final config = typographyConfig.valueOrNull ?? const TypographyConfig();
-    
+
     return MaterialApp.router(
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
@@ -621,9 +641,9 @@ class AppProviders extends ConsumerWidget {
       themeMode: ref.watch(themeModeProvider),
       builder: (context, child) {
         return MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(config.textScaleFactor),
-          ),
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(config.textScaleFactor)),
           child: child ?? const SizedBox.shrink(),
         );
       },
@@ -631,9 +651,28 @@ class AppProviders extends ConsumerWidget {
   }
 }
 
-final localeProvider = StateProvider<String>((ref) => AppConstants.defaultLanguageCode);
+final localeProvider = StateProvider<String>(
+  (ref) => AppConstants.defaultLanguageCode,
+);
 
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
+
+/// Values that older builds pre-filled in the academic profile form.
+/// They are not real user data, so they must never be displayed as if they
+/// were the user's institution.
+const _legacyMockInstitutions = <String>{
+  'Université Mohammed V de Rabat',
+  'Université Mohammed V de Rabat - Faculté des Sciences',
+  'Université Mohammed VI Polytechnique',
+  'Institut Supérieur / Université',
+};
+
+String? sanitizeInstitution(String? value) {
+  final trimmed = value?.trim();
+  if (trimmed == null || trimmed.isEmpty) return null;
+  if (_legacyMockInstitutions.contains(trimmed)) return null;
+  return trimmed;
+}
 
 @immutable
 class AuthState {
@@ -652,7 +691,6 @@ class AuthState {
   final bool twoFactorEnabled;
 
   String get status => emailVerified ? 'ACTIVE' : 'PENDING_VERIFICATION';
-
   const AuthState({
     this.isAuthenticated = false,
     this.userId,
@@ -702,20 +740,21 @@ class AuthState {
   }
 }
 
-final authStateProvider = StateNotifierProvider<AuthNotifier, AsyncValue<AuthState>>((ref) {
-  final refresher = ref.watch(authRefreshProvider);
-  final notifier = AuthNotifier(ref, onChanged: refresher.refresh);
-  // Session expiry surfaced by ApiClient (e.g. refresh-token reuse) logs out.
-  ref.read(apiClientProvider).onUnauthorized = notifier.expireSession;
-  return notifier;
-});
+final authStateProvider =
+    StateNotifierProvider<AuthNotifier, AsyncValue<AuthState>>((ref) {
+      final refresher = ref.watch(authRefreshProvider);
+      final notifier = AuthNotifier(ref, onChanged: refresher.refresh);
+      // Session expiry surfaced by ApiClient (e.g. refresh-token reuse) logs out.
+      ref.read(apiClientProvider).onUnauthorized = notifier.expireSession;
+      return notifier;
+    });
 
 /// Orchestrates the real auth API ([AuthRepository]).
 /// Throws [Failure] on error — pages catch it to show localized messages
 /// and skip navigation (see `failureL10n`).
 class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   AuthNotifier(this._ref, {required this.onChanged})
-      : super(const AsyncValue.data(AuthState())) {
+    : super(const AsyncValue.data(AuthState())) {
     _restoreSession();
   }
 
@@ -747,7 +786,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     AuthState? previousState,
   }) {
     final prev = previousState ?? state.valueOrNull;
-    final currentRole = (user.role != null && user.role!.isNotEmpty) ? user.role : prev?.role;
+    final currentRole = (user.role != null && user.role!.isNotEmpty)
+        ? user.role
+        : prev?.role;
     final currentInst = institution ?? prev?.institution;
     final currentFaculty = faculty ?? prev?.faculty;
     final currentMajor = major ?? prev?.major;
@@ -762,7 +803,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       displayName: user.displayName.isEmpty ? null : user.displayName,
       emailVerified: user.emailVerified,
       onboardingCompleted: user.onboardingCompleted,
-      institution: currentInst,
+      institution: sanitizeInstitution(currentInst),
       faculty: currentFaculty,
       major: currentMajor,
       studentId: currentStudentId,
@@ -778,16 +819,22 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       // In web environments, the refresh token might be held in a hardened httpOnly cookie.
       try {
         final user = await _repo.getMe();
-        final profile = await tokens.readAcademicProfile(user.id.isNotEmpty ? user.id : user.email);
-        _emit(AsyncValue.data(_fromUser(
-          user,
-          authenticated: true,
-          institution: profile['institution'],
-          faculty: profile['faculty'],
-          major: profile['major'],
-          studentId: profile['studentId'],
-          bio: profile['bio'],
-        )));
+        final profile = await tokens.readAcademicProfile(
+          user.id.isNotEmpty ? user.id : user.email,
+        );
+        _emit(
+          AsyncValue.data(
+            _fromUser(
+              user,
+              authenticated: true,
+              institution: profile['institution'],
+              faculty: profile['faculty'],
+              major: profile['major'],
+              studentId: profile['studentId'],
+              bio: profile['bio'],
+            ),
+          ),
+        );
       } catch (_) {
         // No active session cookie
       }
@@ -796,29 +843,41 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     try {
       await _repo.refreshSession(refreshToken: refreshToken);
       final user = await _repo.getMe();
-      final profile = await tokens.readAcademicProfile(user.id.isNotEmpty ? user.id : user.email);
-      _emit(AsyncValue.data(_fromUser(
-        user,
-        authenticated: true,
-        institution: profile['institution'],
-        faculty: profile['faculty'],
-        major: profile['major'],
-        studentId: profile['studentId'],
-        bio: profile['bio'],
-      )));
+      final profile = await tokens.readAcademicProfile(
+        user.id.isNotEmpty ? user.id : user.email,
+      );
+      _emit(
+        AsyncValue.data(
+          _fromUser(
+            user,
+            authenticated: true,
+            institution: profile['institution'],
+            faculty: profile['faculty'],
+            major: profile['major'],
+            studentId: profile['studentId'],
+            bio: profile['bio'],
+          ),
+        ),
+      );
     } catch (_) {
       try {
         final user = await _repo.getMe();
-        final profile = await tokens.readAcademicProfile(user.id.isNotEmpty ? user.id : user.email);
-        _emit(AsyncValue.data(_fromUser(
-          user,
-          authenticated: true,
-          institution: profile['institution'],
-          faculty: profile['faculty'],
-          major: profile['major'],
-          studentId: profile['studentId'],
-          bio: profile['bio'],
-        )));
+        final profile = await tokens.readAcademicProfile(
+          user.id.isNotEmpty ? user.id : user.email,
+        );
+        _emit(
+          AsyncValue.data(
+            _fromUser(
+              user,
+              authenticated: true,
+              institution: profile['institution'],
+              faculty: profile['faculty'],
+              major: profile['major'],
+              studentId: profile['studentId'],
+              bio: profile['bio'],
+            ),
+          ),
+        );
       } catch (_) {
         await tokens.clear(keepSavedEmail: true);
         _emit(const AsyncValue.data(AuthState()));
@@ -831,7 +890,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     _emit(const AsyncValue.data(AuthState()));
   }
 
-  Future<void> login(String email, String password, {bool rememberMe = true}) async {
+  Future<void> login(
+    String email,
+    String password, {
+    bool rememberMe = true,
+  }) async {
     _ref.read(pendingEmailProvider.notifier).state = email;
     _emit(const AsyncValue.loading());
     try {
@@ -844,15 +907,19 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       final profile = await tokens.readAcademicProfile(
         session.user.id.isNotEmpty ? session.user.id : email,
       );
-      _emit(AsyncValue.data(_fromUser(
-        session.user,
-        authenticated: true,
-        institution: profile['institution'],
-        faculty: profile['faculty'],
-        major: profile['major'],
-        studentId: profile['studentId'],
-        bio: profile['bio'],
-      )));
+      _emit(
+        AsyncValue.data(
+          _fromUser(
+            session.user,
+            authenticated: true,
+            institution: profile['institution'],
+            faculty: profile['faculty'],
+            major: profile['major'],
+            studentId: profile['studentId'],
+            bio: profile['bio'],
+          ),
+        ),
+      );
     } catch (e) {
       _emit(AsyncValue.error(e, StackTrace.current));
       rethrow;
@@ -873,24 +940,33 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       final result = await _repo.register(
         email: email,
         password: password,
-        firstName: (firstName == null || firstName.isEmpty) ? fallback : firstName,
+        firstName: (firstName == null || firstName.isEmpty)
+            ? fallback
+            : firstName,
         lastName: (lastName == null || lastName.isEmpty)
             ? ((firstName == null || firstName.isEmpty) ? fallback : firstName)
             : lastName,
         role: role,
       );
       // No tokens are issued until email verification: local session only.
-      _emit(AsyncValue.data(_fromUser(
-        result.user.copyWith(role: () => role),
-        authenticated: true,
-      )));
+      _emit(
+        AsyncValue.data(
+          _fromUser(
+            result.user.copyWith(role: () => role),
+            authenticated: true,
+          ),
+        ),
+      );
     } catch (e) {
       _emit(AsyncValue.error(e, StackTrace.current));
       rethrow;
     }
   }
 
-  Future<void> verifyEmail({required String email, required String code}) async {
+  Future<void> verifyEmail({
+    required String email,
+    required String code,
+  }) async {
     _emit(const AsyncValue.loading());
     try {
       final session = await _repo.verifyEmail(email: email, code: code);
@@ -921,7 +997,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     required String code,
     required String newPassword,
   }) {
-    return _repo.resetPassword(email: email, code: code, newPassword: newPassword);
+    return _repo.resetPassword(
+      email: email,
+      code: code,
+      newPassword: newPassword,
+    );
   }
 
   Future<void> logout() async {
@@ -944,11 +1024,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
         firstName: firstName,
         lastName: lastName,
       );
-      _emit(AsyncValue.data(_fromUser(
-        user,
-        authenticated: true,
-        previousState: current,
-      )));
+      _emit(
+        AsyncValue.data(
+          _fromUser(user, authenticated: true, previousState: current),
+        ),
+      );
     } catch (e) {
       _emit(AsyncValue.data(current));
       rethrow;
@@ -973,11 +1053,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     _emit(const AsyncValue.loading());
     try {
       final session = await _repo.setMyRole(role: normalized);
-      _emit(AsyncValue.data(_fromUser(
-        session.user,
-        authenticated: true,
-        previousState: current,
-      )));
+      _emit(
+        AsyncValue.data(
+          _fromUser(session.user, authenticated: true, previousState: current),
+        ),
+      );
     } catch (e) {
       // Role already set server-side: resync from the backend (source of
       // truth). Only swallow the error when the synced role matches the
@@ -985,7 +1065,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       // otherwise surface it so the user isn't sent to the wrong dashboard.
       try {
         final user = await _repo.getMe();
-        final synced = _fromUser(user, authenticated: true, previousState: current);
+        final synced = _fromUser(
+          user,
+          authenticated: true,
+          previousState: current,
+        );
         _emit(AsyncValue.data(synced));
         if (synced.role == normalized) return;
       } catch (_) {
@@ -1023,25 +1107,35 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
 
     try {
       final user = await _repo.updateProfile(onboardingCompleted: true);
-      _emit(AsyncValue.data(_fromUser(
-        user,
-        authenticated: true,
-        institution: institution ?? current.institution,
-        faculty: faculty ?? current.faculty,
-        major: major ?? current.major,
-        studentId: studentId ?? current.studentId,
-        bio: bio ?? current.bio,
-      )));
+      _emit(
+        AsyncValue.data(
+          _fromUser(
+            user,
+            authenticated: true,
+            institution: institution ?? current.institution,
+            faculty: faculty ?? current.faculty,
+            major: major ?? current.major,
+            studentId: studentId ?? current.studentId,
+            bio: bio ?? current.bio,
+          ),
+        ),
+      );
     } catch (_) {
       // Offline-tolerant onboarding: validated locally, synced later.
-      _emit(AsyncValue.data(current.copyWith(
-        onboardingCompleted: true,
-        institution: institution ?? current.institution,
-        faculty: faculty ?? current.faculty,
-        major: major ?? current.major,
-        studentId: studentId ?? current.studentId,
-        bio: bio ?? current.bio,
-      )));
+      _emit(
+        AsyncValue.data(
+          current.copyWith(
+            onboardingCompleted: true,
+            institution: sanitizeInstitution(
+              institution ?? current.institution,
+            ),
+            faculty: faculty ?? current.faculty,
+            major: major ?? current.major,
+            studentId: studentId ?? current.studentId,
+            bio: bio ?? current.bio,
+          ),
+        ),
+      );
     }
   }
 
@@ -1066,13 +1160,17 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       bio: bio,
     );
 
-    _emit(AsyncValue.data(current.copyWith(
-      institution: institution ?? current.institution,
-      faculty: faculty ?? current.faculty,
-      major: major ?? current.major,
-      studentId: studentId ?? current.studentId,
-      bio: bio ?? current.bio,
-    )));
+    _emit(
+      AsyncValue.data(
+        current.copyWith(
+          institution: sanitizeInstitution(institution ?? current.institution),
+          faculty: faculty ?? current.faculty,
+          major: major ?? current.major,
+          studentId: studentId ?? current.studentId,
+          bio: bio ?? current.bio,
+        ),
+      ),
+    );
   }
 
   Future<Map<String, dynamic>> setup2fa() {
@@ -1115,15 +1213,19 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
       final profile = await tokens.readAcademicProfile(
         session.user.id.isNotEmpty ? session.user.id : session.user.email,
       );
-      _emit(AsyncValue.data(_fromUser(
-        session.user,
-        authenticated: true,
-        institution: profile['institution'],
-        faculty: profile['faculty'],
-        major: profile['major'],
-        studentId: profile['studentId'],
-        bio: profile['bio'],
-      )));
+      _emit(
+        AsyncValue.data(
+          _fromUser(
+            session.user,
+            authenticated: true,
+            institution: profile['institution'],
+            faculty: profile['faculty'],
+            major: profile['major'],
+            studentId: profile['studentId'],
+            bio: profile['bio'],
+          ),
+        ),
+      );
     } catch (e) {
       _emit(AsyncValue.error(e, StackTrace.current));
       rethrow;
@@ -1170,11 +1272,13 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   Future<String> deleteAccount({required String passwordConfirmation}) async {
     final tokens = _ref.read(tokenStorageProvider);
     try {
-      final msg = await _repo.deleteAccount(passwordConfirmation: passwordConfirmation);
+      final msg = await _repo.deleteAccount(
+        passwordConfirmation: passwordConfirmation,
+      );
       return msg;
     } finally {
       await tokens.clear(keepSavedEmail: false);
       _emit(const AsyncValue.data(AuthState()));
     }
   }
-}
+}

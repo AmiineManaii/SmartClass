@@ -34,12 +34,17 @@ import { GetCourseBuildUseCase } from './application/get-course-build.use-case.j
 import { GenerateSectionUseCase } from './application/generate-section.use-case.js';
 import { ValidateSectionUseCase } from './application/validate-section.use-case.js';
 import { GenerateSectionImageUseCase } from './application/generate-section-image.use-case.js';
+import { SearchSectionImagesUseCase } from './application/search-section-images.use-case.js';
+import { ApplySectionImageUseCase } from './application/apply-section-image.use-case.js';
+import { SectionImageJobService } from './application/section-image-job.service.js';
 import { SectionMemoryService } from './application/section-memory.service.js';
 import { AiController } from './presentation/ai.controller.js';
 import { createAiRouter } from './presentation/ai.routes.js';
 
 import type { SearchPort } from './domain/search.port.js';
+import type { SectionImageJobStorePort } from './domain/section-image-job.port.js';
 import { HybridSearchAdapter } from './infrastructure/hybrid-search.adapter.js';
+import { InMemorySectionImageJobStore } from './infrastructure/in-memory-section-image-job.store.js';
 
 export interface AiModuleOptions {
   gateway?: AiGatewayPort;
@@ -52,6 +57,7 @@ export interface AiModuleOptions {
   sectionMemory?: SectionMemoryPort;
   imageGenerator?: ImageGeneratorPort;
   imagePromptOptimizer?: ImagePromptOptimizerPort;
+  imageJobStore?: SectionImageJobStorePort;
   tokenService?: TokenServicePort;
   authenticateMiddleware?: RequestHandler;
   requireTeacherMiddleware?: RequestHandler;
@@ -67,19 +73,15 @@ export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
   const urlFetcher = options.urlFetcher ?? new NativeUrlFetcher();
   const imageGenerator = options.imageGenerator ?? new ComfyUIImageAdapter();
   const gateway =
-    options.gateway ??
-    new OpenAICompatibleGateway({ searchService, imageGenerator, urlFetcher });
+    options.gateway ?? new OpenAICompatibleGateway({ searchService, imageGenerator, urlFetcher });
   const pdfExtractor = options.pdfExtractor ?? new UnpdfTextExtractor();
   const courseRepository = options.courseRepository ?? new PrismaCourseRepositoryAdapter();
-  const sectionRepository =
-    options.sectionRepository ?? new PrismaCourseSectionRepositoryAdapter();
+  const sectionRepository = options.sectionRepository ?? new PrismaCourseSectionRepositoryAdapter();
   const embedding = options.embedding ?? new OllamaEmbeddingAdapter();
   const sectionMemory =
-    options.sectionMemory ??
-    new PrismaSectionMemoryAdapter(undefined, embedding);
+    options.sectionMemory ?? new PrismaSectionMemoryAdapter(undefined, embedding);
   const memoryService = new SectionMemoryService(sectionMemory, embedding);
-  const imagePromptOptimizer =
-    options.imagePromptOptimizer ?? new LlmImagePromptOptimizer(gateway);
+  const imagePromptOptimizer = options.imagePromptOptimizer ?? new LlmImagePromptOptimizer(gateway);
 
   const generateCourseUseCase = new GenerateCourseUseCase(gateway, urlFetcher);
   const improvePdfUseCase = new ImprovePdfUseCase(pdfExtractor, gateway);
@@ -104,6 +106,22 @@ export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
     imageGenerator,
     imagePromptOptimizer,
   );
+  const searchSectionImagesUseCase = new SearchSectionImagesUseCase(
+    courseRepository,
+    sectionRepository,
+    searchService,
+  );
+  const applySectionImageUseCase = new ApplySectionImageUseCase(
+    courseRepository,
+    sectionRepository,
+  );
+  const sectionImageJobService = new SectionImageJobService(
+    courseRepository,
+    sectionRepository,
+    generateSectionImageUseCase,
+    imageGenerator,
+    options.imageJobStore ?? new InMemorySectionImageJobStore(),
+  );
   const controller = new AiController(
     generateCourseUseCase,
     improvePdfUseCase,
@@ -114,6 +132,9 @@ export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
     generateSectionUseCase,
     validateSectionUseCase,
     generateSectionImageUseCase,
+    searchSectionImagesUseCase,
+    applySectionImageUseCase,
+    sectionImageJobService,
   );
 
   let authenticateMiddleware = options.authenticateMiddleware;

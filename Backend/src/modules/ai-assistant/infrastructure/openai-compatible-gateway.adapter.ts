@@ -4,7 +4,6 @@ import {
   ServiceUnavailableError,
 } from '../../../shared/errors/app-error.js';
 import { logger } from '../../../shared/infrastructure/logger.js';
-import { COURSE_TOOL_NAMES } from '../domain/ai-tools.js';
 import type {
   AiGatewayPort,
   AiGatewayStatus,
@@ -88,33 +87,17 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
   }
 
   /**
-   * Unsloth execution flags: chain-of-thought, server-side tool running
-   * (`tool_servers` + `auto_execute_tools` + `permission_mode: 'off'` —
-   * Unsloth refuses tool calls without it: "confirm_tool_calls requires
-   * ... set permission_mode to 'off' to run tools without confirmation")
-   * and iteration budget. Plain OpenAI-compatible servers ignore unknown
-   * fields. The thinking flag is sent on EVERY request (not just tool
-   * ones) so cheap generations can skip the silent thinking phase.
+   * Ollama OpenAI-compatible payload: `chat_template_kwargs.enable_thinking`
+   * toggles chain-of-thought on thinking-capable models. Ollama ignores
+   * fields it does not know, so the flag is harmless on other models.
+   * Tool calls use the standard OpenAI `tools` / `tool_calls` protocol and
+   * are executed by this adapter loop.
    */
-  private unslothParams(thinking: boolean | undefined, withTools: boolean): Record<string, unknown> {
+  private thinkingParams(thinking: boolean | undefined): Record<string, unknown> {
     const env = getEnv();
     return {
       chat_template_kwargs: { enable_thinking: thinking ?? env.AI_ENABLE_THINKING },
-      ...(withTools
-        ? {
-            enable_tools: true,
-            tool_servers: COURSE_TOOL_NAMES,
-            auto_execute_tools: true,
-            permission_mode: env.AI_PERMISSION_MODE,
-            max_tool_iterations: env.AI_MAX_TOOL_ITERATIONS,
-          }
-        : {}),
     };
-  }
-
-  /** Unsloth needs this header for server-side tool execution streams. */
-  private unslothHeaders(hasTools: boolean): Record<string, string> {
-    return hasTools ? { 'X-Unsloth-Events': '1' } : {};
   }
 
   private async executeTool(call: {
@@ -231,7 +214,6 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...this.unslothHeaders(!!(tools && tools.length > 0)),
           ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
         },
         body: JSON.stringify({
@@ -239,7 +221,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
           messages,
           max_tokens: input.maxTokens,
           temperature: input.temperature,
-          ...this.unslothParams(input.thinking, !!(tools && tools.length > 0)),
+          ...this.thinkingParams(input.thinking),
           ...(tools && tools.length > 0
             ? { tools, tool_choice: 'auto' }
             : {}),
@@ -279,7 +261,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
     } catch (error) {
       logger.warn({ err: error, model: modelName }, 'AI gateway request failed');
       throw new ServiceUnavailableError(
-        'The local AI model is currently unreachable. Start it in Unsloth Desktop and retry.',
+        'The local AI model is currently unreachable. Start Ollama and retry.',
       );
     }
   }
@@ -398,7 +380,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
     } catch (error) {
       logger.warn({ err: error, model: modelName }, 'AI gateway request failed');
       throw new ServiceUnavailableError(
-        'The local AI model is currently unreachable. Start it in Unsloth Desktop and retry.',
+        'The local AI model is currently unreachable. Start Ollama and retry.',
       );
     }
   }
@@ -494,7 +476,6 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
-          ...this.unslothHeaders(!!(tools && tools.length > 0)),
           ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
         },
         body: JSON.stringify({
@@ -503,7 +484,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
           max_tokens: input.maxTokens,
           temperature: input.temperature,
           stream: true,
-          ...this.unslothParams(input.thinking, !!(tools && tools.length > 0)),
+          ...this.thinkingParams(input.thinking),
           ...(tools && tools.length > 0
             ? { tools, tool_choice: 'auto' }
             : {}),
@@ -534,7 +515,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
       }
       logger.warn({ err: error }, 'AI gateway stream unreachable');
       throw new ServiceUnavailableError(
-        'The local AI model is currently unreachable. Start it in Unsloth Desktop and retry.',
+        'The local AI model is currently unreachable. Start Ollama and retry.',
       );
     } finally {
       clearTimeout(timer);
@@ -623,7 +604,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
       const timer = setTimeout(() => controller.abort(), this.statusTimeoutMs);
       let detectedModel = this.model;
       try {
-        // Unsloth requires the API key even on GET /v1/models.
+        // Ollama may require the API key even on GET /v1/models.
         const response = await fetch(`${this.baseUrl}/v1/models`, {
           headers: {
             ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),

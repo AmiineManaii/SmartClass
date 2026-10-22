@@ -19,7 +19,7 @@ export interface OptimizedImagePrompts {
  * Rewrites section content (possibly French) into an optimized SDXL prompt
  * pair for the `sd_xl_base_1.0` checkpoint: English comma-separated
  * keywords + a visual description, and an English artifact/quality
- * negative. Implemented by the local chat model (Unsloth/Ollama, e.g.
+ * negative. Implemented by the local chat model (Ollama, e.g.
  * Qwen); any failure must throw so the caller falls back to the
  * deterministic template (RG27: everything stays local).
  */

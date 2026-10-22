@@ -4,7 +4,7 @@ info:
   version: 0.1.0
   description: >
     Course generation for teachers through the self-hosted local LLM
-    (Unsloth Desktop, OpenAI-compatible API — RG27: no third-party LLM API).
+    (Ollama, OpenAI-compatible API — RG27: no third-party LLM API).
     One endpoint per teacher-facing method: `from-topic` (from scratch),
     `from-url` (fetch a link, then improve), `improve-pdf` (upload an old
     PDF, then improve); the generic `generate` endpoint covers all modes.
@@ -16,7 +16,11 @@ info:
     `sections/image` requests a section illustration (local LLM rewrites
     the SDXL prompt pair in English, then the local ComfyUI SDXL
     workflow, 512×512 — 503 while `COMFYUI_BASE_URL` is empty or ComfyUI
-    is unreachable). `refine-section` revises a selection with the
+    is unreachable). `sections/image/jobs` runs the same generation as a
+    background job (202 + poll `sections/image/jobs/{jobId}`) because a
+    generation takes 4-5 minutes. `sections/image/search` returns up to five web image
+    candidates and `sections/image/apply` inserts the teacher's choice
+    into the section Markdown. `refine-section` revises a selection with the
     same memory recall and returns `refinedText` AND `revisedText`.
     The prompt is versioned (v6) and adapts to length — cours court
     (≤800 mots: objectifs, synthèse, points clés, quiz 5 QCM), cours
@@ -27,7 +31,11 @@ info:
     (cours structuré/fiches mémo/carte mentale en `graph TD`, `mindmap`
     interdit car non supporté par flutter_mermaid 0.1.0). Output budget
     per level (court 8K, normal 20K, complet 32K via AI_MAX_TOKENS=32768);
-    sources truncated to AI_MAX_SOURCE_CHARS. TEACHER or ADMIN only.
+    sources truncated to AI_MAX_SOURCE_CHARS. Enrichments default to
+    examples + figures (mermaid) on; URL imports also enable web search;
+    old PDF/text sources enable thinking + web search; explicit `extras`
+    values win. The outline never enables thinking or tools. TEACHER or
+    ADMIN only.
 servers:
   - url: /api/v1
     description: SmartClass API v1 prefix
@@ -42,10 +50,9 @@ paths:
         - ai
       summary: Local model reachability
       description: >
-        Probes the Unsloth Desktop gateway (`/v1/models`, short timeout,
-        API key forwarded — Unsloth requires auth even for listing).
-        Never fails: reports `available: false` when the desktop app is
-        closed so the UI can show the real model state.
+        Probes the Ollama gateway (`/v1/models`, short timeout, API key
+        forwarded when configured). Never fails: reports `available: false`
+        when Ollama is down so the UI can show the real model state.
       security:
         - bearerAuth: []
       x-status: implemented
@@ -69,7 +76,7 @@ paths:
                         type: boolean
                       model:
                         type: string
-                        example: Qwen3.5-4B-GGUF
+                        example: qwen2.5:3b
                       latencyMs:
                         type:
                           - integer
@@ -77,7 +84,7 @@ paths:
               example:
                 data:
                   available: true
-                  model: Qwen3.5-4B-GGUF
+                  model: qwen2.5:3b
                   latencyMs: 42
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
@@ -259,7 +266,7 @@ paths:
               example:
                 error:
                   code: SERVICE_UNAVAILABLE
-                  message: The local AI model is currently unreachable. Start it in Unsloth Desktop and retry.
+                  message: The local AI model is currently unreachable. Start Ollama and retry.
                   details: []
                   requestId: 9f84725e-38aa-4e12-b162-817346ac7901
   /ai/courses/from-topic:
@@ -506,7 +513,7 @@ paths:
                 example: |
                   data: {"delta":"# Les Arbres AVL"}
 
-                  data: {"done":true,"mode":"topic","level":"equilibre","difficulty":"moyen","format":"resume","model":"unsloth/Qwen3.5-4B-GGUF","promptVersion":"2026-10-11.v2","truncatedSource":false,"sourceChars":0,"toolsUsed":true,"usage":{"promptTokens":657,"completionTokens":1656}}
+                  data: {"done":true,"mode":"topic","level":"equilibre","difficulty":"moyen","format":"resume","model":"qwen2.5:3b","promptVersion":"2026-10-11.v2","truncatedSource":false,"sourceChars":0,"toolsUsed":true,"usage":{"promptTokens":657,"completionTokens":1656}}
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':
@@ -708,7 +715,7 @@ paths:
               example:
                 error:
                   code: SERVICE_UNAVAILABLE
-                  message: The local AI model is currently unreachable. Start it in Unsloth Desktop and retry.
+                  message: The local AI model is currently unreachable. Start Ollama and retry.
                   details: []
                   requestId: 9f84725e-38aa-4e12-b162-817346ac7901
   /ai/courses/generate-outline:
@@ -832,7 +839,7 @@ paths:
                         description: Algorithmes de tri et complexité
                         keyTopics: [Quick sort, Merge sort]
                         estimatedMinutes: 20
-                  model: Qwen3.5-4B-GGUF
+                  model: qwen2.5:3b
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':
@@ -930,7 +937,7 @@ paths:
                   refinedText: Le tri rapide est **instable** ; voir l'exemple ci-dessous.
                   revisedText: Le tri rapide est **instable** ; voir l'exemple ci-dessous.
                   explanation: Ajoute un exemple concret après la définition d'instabilité.
-                  model: Qwen3.5-4B-GGUF
+                  model: qwen2.5:3b
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':
@@ -1145,7 +1152,7 @@ paths:
 
                   data: {"delta":"## Graphes"}
 
-                  data: {"done":true,"section":{"id":"33333333-3333-3333-3333-333333333333","sectionKey":"sec-2","status":"GENERATED"},"model":"Qwen3.5-4B-GGUF","promptVersion":"2026-10-18.v6","writtenBefore":1,"memoryHits":2,"regenerated":false,"usage":{"promptTokens":412,"completionTokens":733}}
+                  data: {"done":true,"section":{"id":"33333333-3333-3333-3333-333333333333","sectionKey":"sec-2","status":"GENERATED"},"model":"qwen2.5:3b","promptVersion":"2026-10-18.v6","writtenBefore":1,"memoryHits":2,"regenerated":false,"usage":{"promptTokens":412,"completionTokens":733}}
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':
@@ -1331,7 +1338,7 @@ paths:
         or workflow) for one section through the local ComfyUI image
         service. The image is strictly text-free (SDXL cannot render
         readable words): before queueing, the local chat model
-        (Unsloth/Ollama — the same gateway as course generation, e.g.
+        (Ollama — the same gateway as course generation, e.g.
         Qwen) distills the section (course title/subject + description +
         key points, possibly French) into ONE concrete visual scene with
         an English `{"positive", "negative"}` pair for the
@@ -1350,9 +1357,10 @@ paths:
         (4-5 min observed): the backend allows 6 min and the app 7 min.
         When ComfyUI is not configured,
         unreachable or the workflow errors/times out, the adapter answers
-        503 IMAGE_SERVICE_UNAVAILABLE — the UI shows an honest "coming
-        soon" state instead of a fake image (RG27: images stay local too).
-        IDOR: foreign courses answer 404. TEACHER/ADMIN only, 20/min.
+        503 IMAGE_SERVICE_UNAVAILABLE; the UI then points the teacher to
+        the web image search instead of showing a fake image (RG27:
+        generated images stay local). IDOR: foreign courses answer 404.
+        TEACHER/ADMIN only, 20/min.
       security:
         - bearerAuth: []
       x-status: implemented
@@ -1425,11 +1433,408 @@ paths:
                   message: Image generation service is not available yet
                   details: []
                   requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+  /ai/courses/sections/image/jobs:
+    post:
+      operationId: startSectionImageJob
+      tags:
+        - ai
+      summary: Start an asynchronous ComfyUI illustration job
+      description: >
+        Starts the section illustration described by
+        `sections/image` as a background job and answers 202 with a
+        job id. A generation can take 4-5 minutes, so the client can
+        navigate away and poll `sections/image/jobs/{jobId}` instead of
+        holding the request open. An active job for the same teacher,
+        course and section is returned instead of starting a duplicate.
+        ComfyUI availability is checked before enqueueing: an unavailable
+        service answers 503 immediately. IDOR: foreign courses answer 404.
+        TEACHER/ADMIN only, 20/min.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+                - sectionKey
+                - kind
+              properties:
+                courseId:
+                  type: string
+                  format: uuid
+                sectionKey:
+                  type: string
+                  maxLength: 120
+                kind:
+                  type: string
+                  enum: [FIGURE, ARCHITECTURE, FLOWCHART, WORKFLOW]
+              additionalProperties: false
+      responses:
+        '202':
+          description: Job accepted (or the already-active job returned)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SectionImageJob'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          $ref: './common.yaml#/components/responses/TooManyRequests'
+        '503':
+          description: Image service unavailable (COMFYUI_BASE_URL unset or ComfyUI unreachable)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: IMAGE_SERVICE_UNAVAILABLE
+                  message: Image generation service is not available yet
+                  details: []
+                  requestId: 9f84725e-38aa-4e12-b162-817346ac7901
+  /ai/courses/sections/image/jobs/{jobId}:
+    get:
+      operationId: getSectionImageJob
+      tags:
+        - ai
+      summary: Poll one asynchronous illustration job
+      description: >
+        Returns the current state of a job started with
+        `sections/image/jobs`: `QUEUED`, `RUNNING`, `SUCCEEDED` (with
+        `result`) or `FAILED` (with `error.code`/`error.message`).
+        Jobs are process-local and kept for 30 minutes after their last
+        update; an unknown, expired or foreign job answers 404.
+        TEACHER/ADMIN only.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current job state
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SectionImageJob'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /ai/courses/sections/image/search:
+    post:
+      operationId: searchSectionImages
+      tags:
+        - ai
+      summary: Find up to five web image candidates for a section
+      description: >
+        Searches the configured image providers through the server-side
+        hybrid search port and returns up to five raster candidates. The
+        teacher can refine the search with `query`; otherwise the query is
+        built from the section title, the course subject and its first
+        three key topics (200 chars max). Nothing is persisted: the
+        teacher picks a candidate and calls `sections/image/apply`.
+        IDOR: foreign courses answer 404. TEACHER/ADMIN only, 20/min.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+                - sectionKey
+              properties:
+                courseId:
+                  type: string
+                  format: uuid
+                sectionKey:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                query:
+                  type: string
+                  maxLength: 200
+              additionalProperties: false
+      responses:
+        '200':
+          description: Image candidates
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - query
+                      - images
+                    properties:
+                      query:
+                        type: string
+                      images:
+                        type: array
+                        maxItems: 5
+                        items:
+                          type: object
+                          required:
+                            - title
+                            - url
+                            - caption
+                            - source
+                          properties:
+                            title:
+                              type: string
+                            url:
+                              type: string
+                              format: uri
+                              description: Raster image URL (Wikimedia thumbnail preferred)
+                            caption:
+                              type: string
+                            source:
+                              type: string
+                              enum: [wikimedia, unsplash, web]
+                            width:
+                              type: integer
+                            height:
+                              type: integer
+              example:
+                data:
+                  query: Algorithmique avancée Tris Quick sort Merge sort
+                  images:
+                    - title: Sorting algorithm visualisation
+                      url: https://upload.wikimedia.org/.../640px-Sorting_example.png
+                      caption: Sorting algorithm visualisation
+                      source: wikimedia
+                      width: 640
+                      height: 400
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          $ref: './common.yaml#/components/responses/TooManyRequests'
+        '503':
+          $ref: './common.yaml#/components/responses/ServiceUnavailable'
+  /ai/courses/sections/image/apply:
+    post:
+      operationId: applySectionImage
+      tags:
+        - ai
+      summary: Insert a chosen image into a section
+      description: >
+        Appends `![caption](imageUrl)` at the end of the section Markdown
+        and returns the updated section. Only http/https URLs are accepted;
+        raw `)` characters are percent-encoded for Markdown. A validated
+        section is demoted to `GENERATED` so it must be approved again.
+        Re-applying the same URL is idempotent. A section with no content
+        answers 400. IDOR: foreign courses answer 404. TEACHER/ADMIN only.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+                - sectionKey
+                - imageUrl
+              properties:
+                courseId:
+                  type: string
+                  format: uuid
+                sectionKey:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                imageUrl:
+                  type: string
+                  format: uri
+                  maxLength: 2000
+                caption:
+                  type: string
+                  maxLength: 300
+              additionalProperties: false
+      responses:
+        '200':
+          description: Updated section
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - section
+                    properties:
+                      section:
+                        $ref: '#/components/schemas/CourseSection'
+        '400':
+          description: Section has no content yet or imageUrl is not http/https
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
 components:
   securitySchemes:
     bearerAuth:
       $ref: './common.yaml#/components/securitySchemes/bearerAuth'
   schemas:
+    SectionImageJob:
+      type: object
+      required:
+        - id
+        - courseId
+        - sectionKey
+        - kind
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        courseId:
+          type: string
+          format: uuid
+        sectionKey:
+          type: string
+          example: sec-1
+        kind:
+          type: string
+          enum: [FIGURE, ARCHITECTURE, FLOWCHART, WORKFLOW]
+        status:
+          type: string
+          enum: [QUEUED, RUNNING, SUCCEEDED, FAILED]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        result:
+          type: object
+          description: Present when status is SUCCEEDED
+          required:
+            - imageUrl
+            - prompt
+            - provider
+          properties:
+            imageUrl:
+              type: string
+              format: uri
+            prompt:
+              type: string
+            provider:
+              type: string
+              example: comfyui
+        error:
+          type: object
+          description: Present when status is FAILED
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              example: IMAGE_SERVICE_UNAVAILABLE
+            message:
+              type: string
+    CourseSection:
+      type: object
+      required:
+        - id
+        - courseId
+        - sectionKey
+        - title
+        - description
+        - keyTopics
+        - content
+        - order
+        - estimatedMinutes
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        courseId:
+          type: string
+          format: uuid
+        sectionKey:
+          type: string
+          example: sec-1
+        title:
+          type: string
+        description:
+          type: string
+        keyTopics:
+          type: array
+          items:
+            type: string
+        content:
+          type:
+            - string
+            - 'null'
+          description: Markdown body (null until generated)
+        order:
+          type: integer
+        estimatedMinutes:
+          type: integer
+        status:
+          type: string
+          enum: [PENDING, GENERATED, VALIDATED]
     GeneratedCourse:
       type: object
       required:

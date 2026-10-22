@@ -1,11 +1,13 @@
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_config.dart';
 import '../../../../core/network/api_exception.dart';
+
 /// Student/teacher side of the groups bounded context.
 ///
-/// Only `GET /api/v1/groups/mine` (any authenticated role): the classes
-/// the caller belongs to, with `myRole` (STUDENT/TEACHER/REFERENT).
-/// All other group endpoints are ADMIN-only (see the admin feature).
+/// `GET /api/v1/groups/mine` (any authenticated role) returns the classes the
+/// caller belongs to, with `myRole` (STUDENT/TEACHER/REFERENT) and the subjects
+/// a teacher teaches in each class. Teachers can add subjects to a class they
+/// already teach in via `POST /api/v1/groups/:id/subjects`.
 class GroupsRemoteDataSource {
   GroupsRemoteDataSource(this._client);
 
@@ -17,9 +19,7 @@ class GroupsRemoteDataSource {
     );
     final body = res.data;
     if (body is Map<String, dynamic> && body['data'] is List) {
-      return (body['data'] as List)
-          .whereType<Map<String, dynamic>>()
-          .toList();
+      return (body['data'] as List).whereType<Map<String, dynamic>>().toList();
     }
     throw const ApiException(message: 'Unexpected response format');
   }
@@ -49,6 +49,23 @@ class GroupsRemoteDataSource {
     return apiEnvelope(res);
   }
 
+  /// Declares an additional subject the caller teaches in this class.
+  Future<Map<String, dynamic>> addMySubject(
+    String groupId, {
+    required String subject,
+    String? weeklyHours,
+  }) async {
+    final res = await _client.post<dynamic>(
+      '${ApiConfig.apiPrefix}/groups/$groupId/subjects',
+      data: {
+        'subject': subject.trim(),
+        if (weeklyHours != null && weeklyHours.trim().isNotEmpty)
+          'weeklyHours': weeklyHours.trim(),
+      },
+    );
+    return apiEnvelope(res);
+  }
+
   Future<Map<String, dynamic>> generateInvitation(
     String groupId, {
     int? expiresInHours,
@@ -56,10 +73,7 @@ class GroupsRemoteDataSource {
   }) async {
     final res = await _client.post<dynamic>(
       '${ApiConfig.apiPrefix}/groups/$groupId/invitations',
-      data: {
-        'expiresInHours': ?expiresInHours,
-        'maxUses': ?maxUses,
-      },
+      data: {'expiresInHours': ?expiresInHours, 'maxUses': ?maxUses},
     );
     return apiEnvelope(res);
   }
@@ -71,10 +85,7 @@ class GroupsRemoteDataSource {
   }) async {
     final res = await _client.post<dynamic>(
       '${ApiConfig.apiPrefix}/groups/$groupId/invitations/rotate',
-      data: {
-        'expiresInHours': ?expiresInHours,
-        'maxUses': ?maxUses,
-      },
+      data: {'expiresInHours': ?expiresInHours, 'maxUses': ?maxUses},
     );
     return apiEnvelope(res);
   }
@@ -100,11 +111,7 @@ class GroupsRemoteDataSource {
   }) async {
     final res = await _client.post<dynamic>(
       '${ApiConfig.apiPrefix}/groups/virtual',
-      data: {
-        'name': name,
-        'capacity': ?capacity,
-        'description': ?description,
-      },
+      data: {'name': name, 'capacity': ?capacity, 'description': ?description},
     );
     return apiEnvelope(res);
   }
@@ -138,9 +145,7 @@ class GroupsRemoteDataSource {
     );
     final body = res.data;
     if (body is Map<String, dynamic> && body['data'] is List) {
-      return (body['data'] as List)
-          .whereType<Map<String, dynamic>>()
-          .toList();
+      return (body['data'] as List).whereType<Map<String, dynamic>>().toList();
     }
     return [];
   }

@@ -68,3 +68,42 @@ final studentAssignmentsProvider =
   // `ref.watch(examsRepositoryProvider).upcoming()`.
   return const [];
 });
+
+/// Real classes the student belongs to, mapped from `GET /api/v1/groups/mine`.
+///
+/// Used by the dashboard to display the student's enrolled classes as course
+/// cards with real titles, departments/levels, and member/teacher counts.
+/// No mock data: empty list is an honest empty state.
+final dashboardClassesProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final groups = await ref.watch(myGroupsProvider.future);
+  return groups
+      .where((g) => g['myRole'] == 'STUDENT' || g['myRole'] == 'REFERENT')
+      .toList();
+});
+
+/// Today's real schedule for the student's class.
+///
+/// `GET /api/v1/videoconference/timetable?classGroupId=<id>` returns a week
+/// view with `events` (`{id, date, start, end, kind, title, subtitle,
+/// teacher, room}` — see `contracts/videoconference.openapi.yaml`). We keep
+/// only the events whose `date` is today. Empty list = honest empty state.
+final studentDayTimetableProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final membership = await ref.watch(studentClassMembershipProvider.future);
+  if (membership == null) return const [];
+  final data = await ref
+      .watch(groupsRemoteDataSourceProvider)
+      .weekTimetable(membership.id);
+  final events = data['events'];
+  if (events is! List) return const [];
+  final now = DateTime.now();
+  final today =
+      '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  final list = events
+      .whereType<Map<String, dynamic>>()
+      .where((e) => e['date'] == today)
+      .toList()
+    ..sort((a, b) => '${a['start']}'.compareTo('${b['start']}'));
+  return list;
+});

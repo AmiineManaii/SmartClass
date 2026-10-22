@@ -14,11 +14,7 @@ class ClassDetailPage extends ConsumerStatefulWidget {
   final String groupId;
   final String? initialTitle;
 
-  const ClassDetailPage({
-    required this.groupId,
-    this.initialTitle,
-    super.key,
-  });
+  const ClassDetailPage({required this.groupId, this.initialTitle, super.key});
 
   @override
   ConsumerState<ClassDetailPage> createState() => _ClassDetailPageState();
@@ -122,9 +118,10 @@ class _ClassDetailPageState extends ConsumerState<ClassDetailPage>
 
     if (confirmed == true && mounted) {
       try {
-        await ref
-            .read(groupsRemoteDataSourceProvider)
-            .removeMembers(widget.groupId, [studentId]);
+        await ref.read(groupsRemoteDataSourceProvider).removeMembers(
+          widget.groupId,
+          [studentId],
+        );
         if (mounted) {
           context.showInfoToast('$studentName a été retiré de la classe.');
           _loadAll();
@@ -141,6 +138,35 @@ class _ClassDetailPageState extends ConsumerState<ClassDetailPage>
     }
   }
 
+  Future<void> _addMySubject() async {
+    final input = await showDialog<_SubjectInput>(
+      context: context,
+      builder: (dialogCtx) => const _AddSubjectDialog(),
+    );
+    if (input == null || !mounted) return;
+
+    try {
+      await ref
+          .read(groupsRemoteDataSourceProvider)
+          .addMySubject(
+            widget.groupId,
+            subject: input.subject,
+            weeklyHours: input.weeklyHours,
+          );
+      if (!mounted) return;
+      context.showInfoToast(
+        'Matière « ${input.subject} » ajoutée à votre classe.',
+      );
+      await _loadAll();
+      ref.invalidate(myGroupsProvider);
+      ref.invalidate(teacherDashboardProvider);
+    } catch (e) {
+      if (mounted) {
+        context.showErrorToast(e.toString().replaceFirst('ApiException: ', ''));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -150,14 +176,38 @@ class _ClassDetailPageState extends ConsumerState<ClassDetailPage>
     final role = user?.role?.toLowerCase();
     final isTeacherOrAdmin = role == 'teacher' || role == 'admin';
 
+    final myGroups = ref.watch(myGroupsProvider).valueOrNull ?? const [];
+    Map<String, dynamic>? myGroup;
+    for (final group in myGroups) {
+      if (group['id'] == widget.groupId) {
+        myGroup = group;
+        break;
+      }
+    }
+    final myRole = (myGroup?['myRole'] as String?)?.toUpperCase();
+    final canAddSubject =
+        role == 'teacher' && (myRole == 'TEACHER' || myRole == 'REFERENT');
+    final mySubjects = ((myGroup?['mySubjects'] as List?) ?? const [])
+        .whereType<String>()
+        .toList();
+    final teacherCount = _teachers
+        .map((teacher) => teacher['teacherId'])
+        .whereType<String>()
+        .toSet()
+        .length;
+
     final className =
-        _group?['name'] as String? ?? widget.initialTitle ?? 'Détails de la classe';
+        _group?['name'] as String? ??
+        widget.initialTitle ??
+        'Détails de la classe';
     final level = _group?['level'] as String? ?? '';
     final department = _group?['department'] as String? ?? '';
     final academicYear = _group?['academicYear'] as String? ?? '2026–2027';
     final capacity = (_group?['capacity'] as num?)?.toInt() ?? 30;
     final memberCount = _members.length;
-    final fillRatio = capacity > 0 ? (memberCount / capacity).clamp(0.0, 1.0) : 0.0;
+    final fillRatio = capacity > 0
+        ? (memberCount / capacity).clamp(0.0, 1.0)
+        : 0.0;
     final referent = _group?['referent'] as Map<String, dynamic>?;
     final referentName = referent != null
         ? '${referent['firstName'] ?? ''} ${referent['lastName'] ?? ''}'.trim()
@@ -218,158 +268,164 @@ class _ClassDetailPageState extends ConsumerState<ClassDetailPage>
               child: SmartLoader.large(message: 'Chargement de la classe...'),
             )
           : _errorMessage != null
-              ? Center(
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.error_outline_rounded,
+                      size: 48,
+                      color: colorScheme.error,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: _loadAll,
+                      child: const Text('Réessayer'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.error_outline_rounded,
-                            size: 48, color: colorScheme.error),
-                        const SizedBox(height: 12),
-                        Text(
-                          _errorMessage!,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium,
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: _HeroClassCard(
+                      className: className,
+                      department: department,
+                      level: level,
+                      academicYear: academicYear,
+                      capacity: capacity,
+                      memberCount: memberCount,
+                      fillRatio: fillRatio,
+                      referentName: referentName,
+                    ),
+                  ),
+                ),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _TabBarDelegate(
+                    TabBar(
+                      controller: _tabController,
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      dividerColor: Colors.transparent,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      indicator: BoxDecoration(
+                        borderRadius: BorderRadius.circular(9999),
+                        color: colorScheme.primary,
+                      ),
+                      labelColor: colorScheme.onPrimary,
+                      unselectedLabelColor: colorScheme.onSurfaceVariant,
+                      labelStyle: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                      unselectedLabelStyle: theme.textTheme.labelMedium
+                          ?.copyWith(fontWeight: FontWeight.w500),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      tabs: [
+                        const Tab(
+                          height: 38,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.dashboard_outlined, size: 16),
+                              SizedBox(width: 6),
+                              Text("Vue d'ensemble"),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: _loadAll,
-                          child: const Text('Réessayer'),
+                        Tab(
+                          height: 38,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.people_outline_rounded,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text("Étudiants ($memberCount)"),
+                            ],
+                          ),
+                        ),
+                        const Tab(
+                          height: 38,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.menu_book_outlined, size: 16),
+                              SizedBox(width: 6),
+                              Text("Cours assignés"),
+                            ],
+                          ),
+                        ),
+                        Tab(
+                          height: 38,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.school_outlined, size: 16),
+                              const SizedBox(width: 6),
+                              Text("Enseignants ($teacherCount)"),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                )
-              : NestedScrollView(
-                  headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                        child: _HeroClassCard(
-                          className: className,
-                          department: department,
-                          level: level,
-                          academicYear: academicYear,
-                          capacity: capacity,
-                          memberCount: memberCount,
-                          fillRatio: fillRatio,
-                          referentName: referentName,
-                        ),
-                      ),
-                    ),
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: _TabBarDelegate(
-                        TabBar(
-                          controller: _tabController,
-                          isScrollable: true,
-                          tabAlignment: TabAlignment.start,
-                          dividerColor: Colors.transparent,
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          indicator: BoxDecoration(
-                            borderRadius: BorderRadius.circular(9999),
-                            color: colorScheme.primary,
-                          ),
-                          labelColor: colorScheme.onPrimary,
-                          unselectedLabelColor: colorScheme.onSurfaceVariant,
-                          labelStyle: theme.textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                          unselectedLabelStyle:
-                              theme.textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 6),
-                          tabs: [
-                            const Tab(
-                              height: 38,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.dashboard_outlined, size: 16),
-                                  SizedBox(width: 6),
-                                  Text("Vue d'ensemble"),
-                                ],
-                              ),
-                            ),
-                            Tab(
-                              height: 38,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.people_outline_rounded, size: 16),
-                                  const SizedBox(width: 6),
-                                  Text("Étudiants ($memberCount)"),
-                                ],
-                              ),
-                            ),
-                            const Tab(
-                              height: 38,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.menu_book_outlined, size: 16),
-                                  SizedBox(width: 6),
-                                  Text("Cours assignés"),
-                                ],
-                              ),
-                            ),
-                            Tab(
-                              height: 38,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.school_outlined, size: 16),
-                                  const SizedBox(width: 6),
-                                  Text("Enseignants (${_teachers.length})"),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        backgroundColor: colorScheme.surface,
-                      ),
-                    ),
-                  ],
-                  body: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      // TAB 1: Overview & Analytics
-                      _OverviewTab(
-                        group: _group,
-                        memberCount: memberCount,
-                        teacherCount: _teachers.length,
-                        capacity: capacity,
-                        className: className,
-                      ),
-
-                      // TAB 2: Students Roster
-                      _StudentsTab(
-                        searchController: _searchController,
-                        searchQuery: _searchQuery,
-                        onSearchChanged: (v) =>
-                            setState(() => _searchQuery = v.trim()),
-                        members: filteredMembers,
-                        canManage: isTeacherOrAdmin,
-                        onRemoveStudent: _removeStudent,
-                      ),
-
-                      // TAB 3: Assigned Courses
-                      _CoursesTab(
-                        groupId: widget.groupId,
-                        className: className,
-                      ),
-
-                      // TAB 4: Teachers & Staff
-                      _TeachersTab(
-                        teachers: _teachers,
-                        referentId: referent?['id'] as String?,
-                      ),
-                    ],
+                    backgroundColor: colorScheme.surface,
                   ),
                 ),
+              ],
+              body: TabBarView(
+                controller: _tabController,
+                children: [
+                  // TAB 1: Overview & Analytics
+                  _OverviewTab(
+                    group: _group,
+                    memberCount: memberCount,
+                    teacherCount: teacherCount,
+                    capacity: capacity,
+                    className: className,
+                  ),
+
+                  // TAB 2: Students Roster
+                  _StudentsTab(
+                    searchController: _searchController,
+                    searchQuery: _searchQuery,
+                    onSearchChanged: (v) =>
+                        setState(() => _searchQuery = v.trim()),
+                    members: filteredMembers,
+                    canManage: isTeacherOrAdmin,
+                    onRemoveStudent: _removeStudent,
+                  ),
+
+                  // TAB 3: Assigned Courses
+                  _CoursesTab(groupId: widget.groupId, className: className),
+
+                  // TAB 4: Teachers & Staff
+                  _TeachersTab(
+                    teachers: _teachers,
+                    referentId: referent?['id'] as String?,
+                    mySubjects: mySubjects,
+                    canAddSubject: canAddSubject,
+                    onAddSubject: _addMySubject,
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }
@@ -387,7 +443,10 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Container(
       color: backgroundColor,
       child: Center(child: tabBar),
@@ -459,9 +518,13 @@ class _HeroClassCard extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer.withValues(alpha: 0.35),
+                        color: colorScheme.primaryContainer.withValues(
+                          alpha: 0.35,
+                        ),
                         borderRadius: BorderRadius.circular(9999),
                       ),
                       child: Text(
@@ -486,8 +549,10 @@ class _HeroClassCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: colorScheme.tertiaryFixed.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(9999),
@@ -519,8 +584,11 @@ class _HeroClassCard extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              Icon(Icons.person_pin_circle_outlined,
-                  size: 16, color: colorScheme.secondary),
+              Icon(
+                Icons.person_pin_circle_outlined,
+                size: 16,
+                color: colorScheme.secondary,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -967,8 +1035,11 @@ class _StudentsTab extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.person_search_outlined,
-                            size: 48, color: colorScheme.outline),
+                        Icon(
+                          Icons.person_search_outlined,
+                          size: 48,
+                          color: colorScheme.outline,
+                        ),
                         const SizedBox(height: 10),
                         Text(
                           searchQuery.isNotEmpty
@@ -984,8 +1055,10 @@ class _StudentsTab extends StatelessWidget {
                   ),
                 )
               : ListView.separated(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   itemCount: members.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
@@ -993,17 +1066,22 @@ class _StudentsTab extends StatelessWidget {
                     final firstName = member['firstName'] as String? ?? '';
                     final lastName = member['lastName'] as String? ?? '';
                     final email = member['email'] as String? ?? '';
-                    final initials = (firstName.isNotEmpty ? firstName[0] : '') +
+                    final initials =
+                        (firstName.isNotEmpty ? firstName[0] : '') +
                         (lastName.isNotEmpty ? lastName[0] : '');
 
                     return Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: colorScheme.surfaceContainerLowest,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: colorScheme.outlineVariant.withValues(alpha: 0.2),
+                          color: colorScheme.outlineVariant.withValues(
+                            alpha: 0.2,
+                          ),
                           width: 0.8,
                         ),
                       ),
@@ -1046,8 +1124,10 @@ class _StudentsTab extends StatelessWidget {
                           ),
                           if (canManage)
                             IconButton(
-                              icon: const Icon(Icons.person_remove_outlined,
-                                  size: 20),
+                              icon: const Icon(
+                                Icons.person_remove_outlined,
+                                size: 20,
+                              ),
                               color: colorScheme.error,
                               tooltip: 'Retirer de la classe',
                               onPressed: () => onRemoveStudent(member),
@@ -1079,9 +1159,8 @@ class _CoursesTab extends ConsumerWidget {
       loading: () => const Center(
         child: SmartLoader.medium(message: 'Chargement des cours...'),
       ),
-      error: (e, _) => Center(
-        child: Text('Erreur de chargement des cours : $e'),
-      ),
+      error: (e, _) =>
+          Center(child: Text('Erreur de chargement des cours : $e')),
       data: (courses) {
         if (courses.isEmpty) {
           return Center(
@@ -1090,8 +1169,11 @@ class _CoursesTab extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.menu_book_outlined,
-                      size: 48, color: colorScheme.outline),
+                  Icon(
+                    Icons.menu_book_outlined,
+                    size: 48,
+                    color: colorScheme.outline,
+                  ),
                   const SizedBox(height: 10),
                   Text(
                     'Aucun cours assigné à cette classe pour le moment.',
@@ -1132,9 +1214,13 @@ class _CoursesTab extends ConsumerWidget {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
-                            color: colorScheme.secondaryFixed.withValues(alpha: 0.5),
+                            color: colorScheme.secondaryFixed.withValues(
+                              alpha: 0.5,
+                            ),
                             borderRadius: BorderRadius.circular(9999),
                           ),
                           child: Text(
@@ -1146,8 +1232,11 @@ class _CoursesTab extends ConsumerWidget {
                           ),
                         ),
                         const Spacer(),
-                        Icon(Icons.chevron_right_rounded,
-                            size: 20, color: colorScheme.onSurfaceVariant),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -1160,8 +1249,11 @@ class _CoursesTab extends ConsumerWidget {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Icon(Icons.layers_outlined,
-                            size: 14, color: colorScheme.outline),
+                        Icon(
+                          Icons.layers_outlined,
+                          size: 14,
+                          color: colorScheme.outline,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '${course.level} • ${course.difficulty}',
@@ -1170,8 +1262,11 @@ class _CoursesTab extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 14),
-                        Icon(Icons.person_outline,
-                            size: 14, color: colorScheme.outline),
+                        Icon(
+                          Icons.person_outline,
+                          size: 14,
+                          color: colorScheme.outline,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -1196,13 +1291,41 @@ class _CoursesTab extends ConsumerWidget {
   }
 }
 
+class _TeacherEntry {
+  _TeacherEntry({
+    required this.teacherId,
+    required this.firstName,
+    required this.lastName,
+    required this.email,
+  });
+
+  final String teacherId;
+  final String firstName;
+  final String lastName;
+  final String email;
+  final List<_TaughtSubject> subjects = [];
+}
+
+class _TaughtSubject {
+  const _TaughtSubject(this.subject, this.weeklyHours);
+
+  final String subject;
+  final String? weeklyHours;
+}
+
 class _TeachersTab extends StatelessWidget {
   final List<Map<String, dynamic>> teachers;
   final String? referentId;
+  final List<String> mySubjects;
+  final bool canAddSubject;
+  final VoidCallback onAddSubject;
 
   const _TeachersTab({
     required this.teachers,
     this.referentId,
+    this.mySubjects = const [],
+    this.canAddSubject = false,
+    required this.onAddSubject,
   });
 
   @override
@@ -1210,144 +1333,392 @@ class _TeachersTab extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    if (teachers.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    final grouped = <String, _TeacherEntry>{};
+    for (final teacher in teachers) {
+      final teacherId = teacher['teacherId'] as String? ?? '';
+      if (teacherId.isEmpty) continue;
+      final entry = grouped.putIfAbsent(
+        teacherId,
+        () => _TeacherEntry(
+          teacherId: teacherId,
+          firstName: teacher['firstName'] as String? ?? '',
+          lastName: teacher['lastName'] as String? ?? '',
+          email: teacher['email'] as String? ?? '',
+        ),
+      );
+      final subject = (teacher['subject'] as String?)?.trim() ?? '';
+      if (subject.isNotEmpty &&
+          !entry.subjects.any((item) => item.subject == subject)) {
+        entry.subjects.add(
+          _TaughtSubject(subject, teacher['weeklyHours'] as String?),
+        );
+      }
+    }
+    final entries = grouped.values.toList();
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      children: [
+        if (canAddSubject) ...[
+          _MySubjectsCard(mySubjects: mySubjects, onAddSubject: onAddSubject),
+          const SizedBox(height: 14),
+        ],
+        if (entries.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.school_outlined,
+                  size: 48,
+                  color: colorScheme.outline,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Aucun enseignant assigné pour l\'instant.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...entries.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _TeacherCard(
+                entry: entry,
+                isReferent: referentId != null && referentId == entry.teacherId,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _MySubjectsCard extends StatelessWidget {
+  const _MySubjectsCard({required this.mySubjects, required this.onAddSubject});
+
+  final List<String> mySubjects;
+  final VoidCallback onAddSubject;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Icon(Icons.school_outlined, size: 48, color: colorScheme.outline),
-              const SizedBox(height: 10),
-              Text(
-                'Aucun enseignant assigné pour l\'instant.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+              Icon(
+                Icons.auto_stories_rounded,
+                size: 18,
+                color: colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Mes matières dans cette classe',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: teachers.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final teacher = teachers[index];
-        final teacherId = teacher['teacherId'] as String? ?? '';
-        final firstName = teacher['firstName'] as String? ?? '';
-        final lastName = teacher['lastName'] as String? ?? '';
-        final email = teacher['email'] as String? ?? '';
-        final subject = teacher['subject'] as String? ?? 'Enseignement';
-        final weeklyHours = teacher['weeklyHours'] as String?;
-        final isReferent = referentId != null && referentId == teacherId;
-        final initials = (firstName.isNotEmpty ? firstName[0] : '') +
-            (lastName.isNotEmpty ? lastName[0] : '');
-
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isReferent
-                  ? colorScheme.primary.withValues(alpha: 0.3)
-                  : colorScheme.outlineVariant.withValues(alpha: 0.25),
-              width: isReferent ? 1.2 : 0.8,
+          const SizedBox(height: 6),
+          Text(
+            'Vous pouvez enseigner plusieurs matières dans la même classe.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: isReferent
-                    ? colorScheme.primary
-                    : colorScheme.secondaryContainer,
-                child: Text(
-                  initials.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: isReferent ? Colors.white : colorScheme.secondary,
-                  ),
-                ),
+          const SizedBox(height: 12),
+          if (mySubjects.isEmpty)
+            Text(
+              'Aucune matière déclarée pour le moment.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontStyle: FontStyle.italic,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            )
+          else
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: mySubjects
+                  .map(
+                    (subject) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        borderRadius: BorderRadius.circular(9999),
+                      ),
+                      child: Text(
+                        subject,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          const SizedBox(height: 12),
+          FilledButton.tonalIcon(
+            onPressed: onAddSubject,
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text('Ajouter une matière'),
+            style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeacherCard extends StatelessWidget {
+  const _TeacherCard({required this.entry, required this.isReferent});
+
+  final _TeacherEntry entry;
+  final bool isReferent;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final initials =
+        (entry.firstName.isNotEmpty ? entry.firstName[0] : '') +
+        (entry.lastName.isNotEmpty ? entry.lastName[0] : '');
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isReferent
+              ? colorScheme.primary.withValues(alpha: 0.3)
+              : colorScheme.outlineVariant.withValues(alpha: 0.25),
+          width: isReferent ? 1.2 : 0.8,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: isReferent
+                ? colorScheme.primary
+                : colorScheme.secondaryContainer,
+            child: Text(
+              initials.toUpperCase(),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: isReferent ? Colors.white : colorScheme.secondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          '$firstName $lastName'.trim(),
-                          style: theme.textTheme.bodyMedium?.copyWith(
+                    Flexible(
+                      child: Text(
+                        '${entry.firstName} ${entry.lastName}'.trim(),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (isReferent) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(9999),
+                        ),
+                        child: Text(
+                          'Référent',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colorScheme.primary,
+                            fontSize: 10,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        if (isReferent) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(9999),
-                            ),
-                            child: Text(
-                              'Référent',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: colorScheme.primary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subject,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.secondary,
-                        fontWeight: FontWeight.w600,
                       ),
-                    ),
-                    if (email.isNotEmpty)
-                      Text(
-                        email,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
+                    ],
                   ],
                 ),
-              ),
-              if (weeklyHours != null && weeklyHours.isNotEmpty)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    weeklyHours,
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: entry.subjects
+                      .map(
+                        (item) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.secondaryContainer.withValues(
+                              alpha: 0.6,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            item.weeklyHours != null &&
+                                    item.weeklyHours!.isNotEmpty
+                                ? '${item.subject} · ${item.weeklyHours}'
+                                : item.subject,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: colorScheme.secondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                if (entry.email.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    entry.email,
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
-            ],
+                ],
+              ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
+    );
+  }
+}
+
+class _SubjectInput {
+  const _SubjectInput({required this.subject, this.weeklyHours});
+
+  final String subject;
+  final String? weeklyHours;
+}
+
+class _AddSubjectDialog extends StatefulWidget {
+  const _AddSubjectDialog();
+
+  @override
+  State<_AddSubjectDialog> createState() => _AddSubjectDialogState();
+}
+
+class _AddSubjectDialogState extends State<_AddSubjectDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _subjectController = TextEditingController();
+  final _hoursController = TextEditingController();
+
+  @override
+  void dispose() {
+    _subjectController.dispose();
+    _hoursController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState?.validate() != true) return;
+    final hours = _hoursController.text.trim();
+    Navigator.of(context).pop(
+      _SubjectInput(
+        subject: _subjectController.text.trim(),
+        weeklyHours: hours.isEmpty ? null : hours,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Ajouter une matière'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _subjectController,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Matière',
+                hintText: 'Ex. Architecture Logicielle',
+              ),
+              validator: (value) {
+                final text = value?.trim() ?? '';
+                if (text.length < 2) {
+                  return 'Saisissez au moins 2 caractères.';
+                }
+                if (text.length > 100) {
+                  return '100 caractères maximum.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _hoursController,
+              decoration: const InputDecoration(
+                labelText: 'Volume horaire (optionnel)',
+                hintText: 'Ex. 3h/semaine',
+              ),
+              validator: (value) {
+                if ((value?.trim().length ?? 0) > 50) {
+                  return '50 caractères maximum.';
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Ajouter')),
+      ],
     );
   }
 }

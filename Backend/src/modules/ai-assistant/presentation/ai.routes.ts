@@ -62,11 +62,21 @@ export const createAiRouter = (options: AiRouterOptions): Router => {
     controller.validateSection,
   );
 
+  // Async ComfyUI jobs: start returns 202 immediately, the client polls.
+  // Kept alongside the synchronous endpoint for backward compatibility.
+  router.post('/courses/sections/image/jobs', generateRateLimiter, controller.startSectionImageJob);
+
+  router.get('/courses/sections/image/jobs/:jobId', controller.getSectionImageJob);
+
+  router.post('/courses/sections/image', generateRateLimiter, controller.generateSectionImage);
+
   router.post(
-    '/courses/sections/image',
+    '/courses/sections/image/search',
     generateRateLimiter,
-    controller.generateSectionImage,
+    controller.searchSectionImages,
   );
+
+  router.post('/courses/sections/image/apply', controller.applySectionImage);
 
   router.post(
     '/courses/generate',

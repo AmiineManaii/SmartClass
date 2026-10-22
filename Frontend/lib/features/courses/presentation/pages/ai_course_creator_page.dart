@@ -13,6 +13,7 @@ import '../../../../core/widgets/app_picker_row.dart';
 import '../../../../core/widgets/smart_loader.dart';
 import '../../application/providers/ai_course_options_provider.dart';
 import '../../application/providers/course_generation_job_provider.dart';
+import '../../application/providers/courses_provider.dart';
 import '../../domain/entities/course_outline.dart';
 import '../widgets/ai_section_refine_dialog.dart';
 import '../widgets/course_outline_editor_card.dart';
@@ -46,7 +47,8 @@ class AiCourseCreatorPage extends ConsumerStatefulWidget {
   const AiCourseCreatorPage({super.key});
 
   @override
-  ConsumerState<AiCourseCreatorPage> createState() => _AiCourseCreatorPageState();
+  ConsumerState<AiCourseCreatorPage> createState() =>
+      _AiCourseCreatorPageState();
 }
 
 class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
@@ -60,13 +62,10 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
   static const _format = 'resume';
   bool _exExamples = true;
   bool _exMermaid = true;
-  bool _exWebImages = false;
-  // Teacher-chosen AI tooling (sent as extras, default OFF for speed):
-  // web search delays the first visible token (~20 s+ of server-side
-  // tool calls), thinking adds a long silent reasoning phase.
-  bool _exWebSearch = false;
-  bool _exThinking = false;
-  bool _exGenerateImages = false;
+  // Plan: no thinking/search. Sections (builder): thinking + web search.
+  // URL imports default to web search, PDF imports to thinking + search.
+  bool get _thinkingForSource => _mode == 'pdf';
+  bool get _webSearchForSource => _mode == 'url' || _mode == 'pdf';
   String? _pdfName;
   List<int>? _pdfBytes;
 
@@ -83,6 +82,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
   /// Proposed course outline before full text generation.
   CourseOutline? _outline;
   bool _generatingOutline = false;
+  bool _savingPlan = false;
   final _scrollController = ScrollController();
 
   static const _maxPdfBytes = 25 * 1024 * 1024;
@@ -97,8 +97,9 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
   }
 
   void _showFailure(Object error) {
-    final Failure failure =
-        error is ApiException ? apiExceptionToFailure(error) : error as Failure;
+    final Failure failure = error is ApiException
+        ? apiExceptionToFailure(error)
+        : error as Failure;
     final l10n = failureL10n(failure);
     context.showErrorToast(context.tr(l10n.key, args: l10n.args));
   }
@@ -180,10 +181,10 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
         url: url.isNotEmpty ? url : null,
         examples: _exExamples,
         mermaid: _exMermaid,
-        webImages: _exWebImages,
-        webSearch: _exWebSearch,
-        thinking: _exThinking,
-        generateImages: _exGenerateImages,
+        webImages: false,
+        webSearch: false,
+        thinking: false,
+        generateImages: false,
       );
 
       if (!mounted) return;
@@ -219,7 +220,9 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
       _validated = false;
       _editedContent = null;
     });
-    await ref.read(courseGenerationJobProvider.notifier).start(
+    await ref
+        .read(courseGenerationJobProvider.notifier)
+        .start(
           GenerationJobParams(
             mode: _mode,
             subject: subject,
@@ -231,13 +234,57 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
             format: _format,
             examples: _exExamples,
             mermaid: _exMermaid,
-            webImages: _exWebImages,
-            webSearch: _exWebSearch,
-            thinking: _exThinking,
-            generateImages: _exGenerateImages,
+            webImages: false,
+            webSearch: _webSearchForSource,
+            thinking: _thinkingForSource,
+            generateImages: false,
             outline: useOutline ? _outline : null,
           ),
         );
+  }
+
+  /// Persists the teacher-validated plan as a DRAFT and opens the
+  /// section-by-section builder, which materializes its chapters.
+  Future<void> _buildSectionBySection() async {
+    final outline = _outline;
+    if (outline == null || _savingPlan) return;
+    if (outline.sections.isEmpty) {
+      context.showWarningToast(context.tr('ai_outline_empty'));
+      return;
+    }
+
+    final url = _urlController.text.trim();
+    final subject = switch (_mode) {
+      'pdf' => _pdfName ?? outline.title,
+      'url' => url.isEmpty ? outline.title : url,
+      _ =>
+        _topicController.text.trim().isEmpty
+            ? outline.title
+            : _topicController.text.trim(),
+    };
+    setState(() => _savingPlan = true);
+    try {
+      final saved = await ref
+          .read(generatedCoursesDataSourceProvider)
+          .saveDraft(
+            title: outline.title.isEmpty ? subject : outline.title,
+            subject: subject.isEmpty ? null : subject,
+            content:
+                '# ${outline.title}\n\n> Plan validé : les chapitres sont rédigés un par un dans le constructeur de sections.',
+            level: _level,
+            difficulty: _difficulty,
+            format: _format,
+            outline: outline,
+          );
+      ref.invalidate(myGeneratedCoursesProvider);
+      if (!mounted) return;
+      setState(() => _savingPlan = false);
+      await context.push('/courses/${saved.id}/build');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _savingPlan = false);
+      _showFailure(e);
+    }
   }
 
   Future<void> _onApplyRefinedSection(String oldText, String newText) async {
@@ -312,8 +359,9 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                 child: Text(
                   context.tr(titleKey),
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Flexible(
@@ -324,13 +372,14 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     return ListTile(
-                      title: Text(labels[index],
-                          style: theme.textTheme.bodyMedium),
+                      title: Text(
+                        labels[index],
+                        style: theme.textTheme.bodyMedium,
+                      ),
                       trailing: options[index] == current
                           ? const Icon(Icons.check)
                           : null,
-                      onTap: () =>
-                          Navigator.of(context).pop(options[index]),
+                      onTap: () => Navigator.of(context).pop(options[index]),
                     );
                   },
                 ),
@@ -354,13 +403,15 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
         break;
       case 'Quiz interactif inclus':
         setState(() => _exExamples = true);
-        addition = 'incluant un quiz interactif d\'évaluation avec barème et corrigés';
+        addition =
+            'incluant un quiz interactif d\'évaluation avec barème et corrigés';
         break;
       case 'Exercices pratiques':
         addition = 'avec des exercices pratiques d\'application et corrections';
         break;
       case 'Études de cas':
-        addition = 'illustré d\'études de cas réelles et contextualisations d\'ingénierie';
+        addition =
+            'illustré d\'études de cas réelles et contextualisations d\'ingénierie';
         break;
       case 'Schémas Mermaid':
         setState(() => _exMermaid = true);
@@ -433,18 +484,18 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
     );
     // A draft id appearing means the course just landed in "Mes cours"
     // (auto-save on completion, or manual save) — offer a shortcut there.
-    ref.listen<String?>(
-      courseGenerationJobProvider.select((s) => s.courseId),
-      (previous, next) {
-        if (next != null && next != previous) {
-          context.showSuccessToast(
-            context.tr('course_ready'),
-            actionLabel: context.tr('view_drafts'),
-            onAction: () => context.go('/courses'),
-          );
-        }
-      },
-    );
+    ref.listen<String?>(courseGenerationJobProvider.select((s) => s.courseId), (
+      previous,
+      next,
+    ) {
+      if (next != null && next != previous) {
+        context.showSuccessToast(
+          context.tr('course_ready'),
+          actionLabel: context.tr('view_drafts'),
+          onAction: () => context.go('/courses'),
+        );
+      }
+    });
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -463,7 +514,10 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                 letterSpacing: 0.08,
               ),
             ),
-            Text(context.tr('course_editor'), style: theme.textTheme.headlineSmall),
+            Text(
+              context.tr('course_editor'),
+              style: theme.textTheme.headlineSmall,
+            ),
           ],
         ),
         actions: [
@@ -484,7 +538,11 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                   fit: BoxFit.cover,
                   errorBuilder: (context, _, _) => Container(
                     color: colorScheme.primary,
-                    child: Icon(Icons.person, color: colorScheme.onPrimary, size: 20),
+                    child: Icon(
+                      Icons.person,
+                      color: colorScheme.onPrimary,
+                      size: 20,
+                    ),
                   ),
                 ),
               ),
@@ -509,7 +567,11 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                         // Left Column (flex: 48): Config Studio Form
                         Expanded(
                           flex: 48,
-                          child: _buildConfigForm(context, isDesktop: true, job: job),
+                          child: _buildConfigForm(
+                            context,
+                            isDesktop: true,
+                            job: job,
+                          ),
                         ),
                         const SizedBox(width: 32),
                         // Right Column (flex: 52): Live Canvas / Editor / Inspiration
@@ -576,7 +638,11 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.auto_awesome, size: 14, color: colorScheme.onSecondaryFixed),
+                Icon(
+                  Icons.auto_awesome,
+                  size: 14,
+                  color: colorScheme.onSecondaryFixed,
+                ),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
@@ -599,7 +665,10 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
           error: (_, _) => const SizedBox.shrink(),
         ),
         const SizedBox(height: 12),
-        Text(context.tr('ai_create_title'), style: theme.textTheme.headlineLarge),
+        Text(
+          context.tr('ai_create_title'),
+          style: theme.textTheme.headlineLarge,
+        ),
         const SizedBox(height: 4),
         Text(
           context.tr('ai_create_desc'),
@@ -632,7 +701,11 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.school_rounded, color: Colors.white, size: 28),
+                child: const Icon(
+                  Icons.school_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -746,8 +819,11 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.picture_as_pdf_outlined,
-                      size: 18, color: colorScheme.onSecondaryFixed),
+                  Icon(
+                    Icons.picture_as_pdf_outlined,
+                    size: 18,
+                    color: colorScheme.onSecondaryFixed,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -777,7 +853,10 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(context.tr('topic_label'), style: theme.textTheme.labelLarge),
+              Text(
+                context.tr('topic_label'),
+                style: theme.textTheme.labelLarge,
+              ),
               Text(
                 context.tr('recommended'),
                 style: theme.textTheme.labelSmall?.copyWith(
@@ -901,7 +980,10 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
         ],
 
         const SizedBox(height: 16),
-        Text(context.tr('academic_level_label'), style: theme.textTheme.labelLarge),
+        Text(
+          context.tr('academic_level_label'),
+          style: theme.textTheme.labelLarge,
+        ),
         const SizedBox(height: 8),
         AppPickerRow(
           icon: Icons.school_outlined,
@@ -923,7 +1005,10 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
         ),
 
         const SizedBox(height: 16),
-        Text(context.tr('ai_difficulty_label'), style: theme.textTheme.labelLarge),
+        Text(
+          context.tr('ai_difficulty_label'),
+          style: theme.textTheme.labelLarge,
+        ),
         const SizedBox(height: 8),
         AppPickerRow(
           icon: Icons.speed_outlined,
@@ -943,17 +1028,9 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
         _ExtrasBox(
           examples: _exExamples,
           mermaid: _exMermaid,
-          webImages: _exWebImages,
-          webSearch: _exWebSearch,
-          thinking: _exThinking,
-          generateImages: _exGenerateImages,
-          onChanged: (examples, mermaid, webImages, webSearch, thinking, generateImages) => setState(() {
+          onChanged: (examples, mermaid) => setState(() {
             _exExamples = examples;
             _exMermaid = mermaid;
-            _exWebImages = webImages;
-            _exWebSearch = webSearch;
-            _exThinking = thinking;
-            _exGenerateImages = generateImages;
           }),
         ),
 
@@ -971,7 +1048,11 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
             ),
             child: Row(
               children: [
-                Icon(Icons.schema_rounded, color: colorScheme.tertiary, size: 20),
+                Icon(
+                  Icons.schema_rounded,
+                  color: colorScheme.tertiary,
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -994,10 +1075,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
           FilledButton.icon(
             onPressed: running || _generatingOutline ? null : _generateOutline,
             icon: _generatingOutline
-                ? const SmartLoader.small(
-                    customSize: 18,
-                    color: Colors.white,
-                  )
+                ? const SmartLoader.small(customSize: 18, color: Colors.white)
                 : const Icon(Icons.schema_rounded, size: 20),
             label: Text(
               _generatingOutline
@@ -1017,7 +1095,9 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
           const SizedBox(height: 8),
           // Direct generation button (without outline)
           OutlinedButton.icon(
-            onPressed: running || _generatingOutline ? null : () => _generate(useOutline: false),
+            onPressed: running || _generatingOutline
+                ? null
+                : () => _generate(useOutline: false),
             icon: const Icon(Icons.bolt_rounded, size: 18),
             label: Text(context.tr('ai_outline_generate_direct')),
             style: OutlinedButton.styleFrom(
@@ -1065,6 +1145,8 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
         generating: running,
         onOutlineChanged: (o) => setState(() => _outline = o),
         onGenerateFullCourse: () => _generate(useOutline: true),
+        onBuildSections: _buildSectionBySection,
+        building: _savingPlan,
         onRegenerateOutline: _generateOutline,
         onCancel: () => setState(() => _outline = null),
       );
@@ -1254,8 +1336,11 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
             ),
             child: Row(
               children: [
-                Icon(Icons.lightbulb_outline_rounded,
-                    size: 20, color: colorScheme.primary),
+                Icon(
+                  Icons.lightbulb_outline_rounded,
+                  size: 20,
+                  color: colorScheme.primary,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -1279,7 +1364,11 @@ class _ModeChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _ModeChip({required this.label, required this.selected, required this.onTap});
+  const _ModeChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1287,7 +1376,9 @@ class _ModeChip extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Material(
-      color: selected ? colorScheme.primary : colorScheme.surfaceContainerLowest,
+      color: selected
+          ? colorScheme.primary
+          : colorScheme.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(9999),
       child: InkWell(
         onTap: onTap,
@@ -1387,9 +1478,7 @@ class _ResultCard extends StatelessWidget {
   });
 
   Future<void> _copy(BuildContext context) async {
-    await Clipboard.setData(
-      ClipboardData(text: '${result['content'] ?? ''}'),
-    );
+    await Clipboard.setData(ClipboardData(text: '${result['content'] ?? ''}'));
     if (!context.mounted) return;
     context.showSuccessToast(context.tr('ai_copied'));
   }
@@ -1410,7 +1499,10 @@ class _ResultCard extends StatelessWidget {
     ].where((s) => s.toString().isNotEmpty).join(' • ');
 
     final contentStr = '${result['content'] ?? ''}';
-    final words = contentStr.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+    final words = contentStr
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .length;
     final readingMin = (words / 200).ceil().clamp(1, 180);
 
     return Container(
@@ -1418,9 +1510,7 @@ class _ResultCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.tertiary.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: colorScheme.tertiary.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1456,7 +1546,11 @@ class _ResultCard extends StatelessWidget {
                           color: colorScheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Icon(Icons.auto_awesome, size: 16, color: colorScheme.primary),
+                        child: Icon(
+                          Icons.auto_awesome,
+                          size: 16,
+                          color: colorScheme.primary,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -1468,9 +1562,14 @@ class _ResultCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: colorScheme.tertiaryContainer.withValues(alpha: 0.15),
+                          color: colorScheme.tertiaryContainer.withValues(
+                            alpha: 0.15,
+                          ),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
@@ -1532,8 +1631,11 @@ class _ResultCard extends StatelessWidget {
           ),
           Row(
             children: [
-              Icon(Icons.check_circle_outline,
-                  size: 20, color: colorScheme.tertiary),
+              Icon(
+                Icons.check_circle_outline,
+                size: 20,
+                color: colorScheme.tertiary,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -1569,7 +1671,11 @@ class _ResultCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.schedule_rounded, size: 14, color: colorScheme.primary),
+                    Icon(
+                      Icons.schedule_rounded,
+                      size: 14,
+                      color: colorScheme.primary,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '~$readingMin min de lecture',
@@ -1660,8 +1766,11 @@ class _ResultCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.cloud_done_rounded,
-                      size: 20, color: colorScheme.primary),
+                  Icon(
+                    Icons.cloud_done_rounded,
+                    size: 20,
+                    color: colorScheme.primary,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -1762,9 +1871,7 @@ class _EditorCardState extends State<_EditorCard> {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.primary.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1793,8 +1900,7 @@ class _EditorCardState extends State<_EditorCard> {
                   ),
                 ],
                 selected: {_preview},
-                onSelectionChanged: (s) =>
-                    setState(() => _preview = s.first),
+                onSelectionChanged: (s) => setState(() => _preview = s.first),
                 style: SegmentedButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   textStyle: theme.textTheme.labelSmall,
@@ -1885,28 +1991,26 @@ class _LiveProgressCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.secondary.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: colorScheme.secondary.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              SmartLoader.small(
-                customSize: 20,
-                color: colorScheme.secondary,
-              ),
+              SmartLoader.small(customSize: 20, color: colorScheme.secondary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   phase == 'extracting'
                       ? context.tr('phase_extracting')
-                      : context.tr('ai_generating_live', args: {
-                          'tokens': '$tokens',
-                          'time': '$minutes:$seconds'
-                        }),
+                      : context.tr(
+                          'ai_generating_live',
+                          args: {
+                            'tokens': '$tokens',
+                            'time': '$minutes:$seconds',
+                          },
+                        ),
                   style: theme.textTheme.labelLarge,
                 ),
               ),
@@ -1946,20 +2050,11 @@ class _LiveProgressCard extends StatelessWidget {
 class _ExtrasBox extends StatelessWidget {
   final bool examples;
   final bool mermaid;
-  final bool webImages;
-  final bool webSearch;
-  final bool thinking;
-  final bool generateImages;
-  final void Function(
-      bool examples, bool mermaid, bool webImages, bool webSearch, bool thinking, bool generateImages) onChanged;
+  final void Function(bool examples, bool mermaid) onChanged;
 
   const _ExtrasBox({
     required this.examples,
     required this.mermaid,
-    required this.webImages,
-    required this.webSearch,
-    required this.thinking,
-    required this.generateImages,
     required this.onChanged,
   });
 
@@ -1968,7 +2063,12 @@ class _ExtrasBox extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    Widget row(String titleKey, String descKey, bool value, ValueChanged<bool> set) {
+    Widget row(
+      String titleKey,
+      String descKey,
+      bool value,
+      ValueChanged<bool> set,
+    ) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2011,23 +2111,36 @@ class _ExtrasBox extends StatelessWidget {
       ),
       child: Column(
         children: [
-          row('ai_extra_examples', 'ai_extra_examples_desc', examples,
-              (v) => onChanged(v, mermaid, webImages, webSearch, thinking, generateImages)),
+          row(
+            'ai_extra_examples',
+            'ai_extra_examples_desc',
+            examples,
+            (v) => onChanged(v, mermaid),
+          ),
           const SizedBox(height: 12),
-          row('ai_extra_mermaid', 'ai_extra_mermaid_desc', mermaid,
-              (v) => onChanged(examples, v, webImages, webSearch, thinking, generateImages)),
-          const SizedBox(height: 12),
-          row('ai_extra_webimages', 'ai_extra_webimages_desc', webImages,
-              (v) => onChanged(examples, mermaid, v, webSearch, thinking, generateImages)),
-          const SizedBox(height: 12),
-          row('ai_extra_generateimages', 'ai_extra_generateimages_desc', generateImages,
-              (v) => onChanged(examples, mermaid, webImages, webSearch, thinking, v)),
-          const SizedBox(height: 12),
-          row('ai_extra_websearch', 'ai_extra_websearch_desc', webSearch,
-              (v) => onChanged(examples, mermaid, webImages, v, thinking, generateImages)),
-          const SizedBox(height: 12),
-          row('ai_extra_thinking', 'ai_extra_thinking_desc', thinking,
-              (v) => onChanged(examples, mermaid, webImages, webSearch, v, generateImages)),
+          row(
+            'ai_extra_mermaid',
+            'ai_extra_mermaid_desc',
+            mermaid,
+            (v) => onChanged(examples, v),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.auto_awesome, size: 18, color: colorScheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  context.tr('ai_extras_auto'),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -2192,7 +2305,10 @@ class _QuickTemplateCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(6),
@@ -2237,7 +2353,10 @@ class _QuickTemplateCard extends StatelessWidget {
                 runSpacing: 6,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: colorScheme.surfaceContainer,
                       borderRadius: BorderRadius.circular(6),
@@ -2251,7 +2370,10 @@ class _QuickTemplateCard extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: colorScheme.surfaceContainer,
                       borderRadius: BorderRadius.circular(6),
@@ -2284,5 +2406,3 @@ class _QuickTemplateCard extends StatelessWidget {
     );
   }
 }
-
-

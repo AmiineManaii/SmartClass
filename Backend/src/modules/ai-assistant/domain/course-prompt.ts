@@ -386,8 +386,10 @@ export interface SectionPromptInput {
   writtenTitles: string[];
   /** Teacher's previously validated content recalled from vector memory. */
   memory?: SectionMemoryContext[];
-  /** Which structural extras the section must carry. */
+  /** Structural extras (examples and figures are on by default). */
   extras?: { examples?: boolean; mermaid?: boolean };
+  /** Whether the web_search/fetch_url tools are attached to this request. */
+  toolsOffered?: boolean;
 }
 
 /**
@@ -400,7 +402,7 @@ export interface SectionPromptInput {
 export const buildSectionPrompt = (input: SectionPromptInput): CoursePrompt => {
   const { index, total } = input.position;
   const isLast = index === total;
-  const extras = { examples: true, mermaid: false, ...input.extras };
+  const extras = { examples: true, mermaid: true, ...input.extras };
 
   const system =
     `Rôle : tu es un concepteur pédagogique expert de l'enseignement supérieur francophone (normes LMD).\n` +
@@ -414,6 +416,9 @@ export const buildSectionPrompt = (input: SectionPromptInput): CoursePrompt => {
       : `- Exemples : pas d'exemple résolu, va droit au concept.\n`) +
     (extras.mermaid
       ? `- Figures : si un schéma clarifie la notion, utilise un bloc de code mermaid de type \`graph TD\`, \`flowchart\`, \`sequenceDiagram\`, \`pie\`, \`gantt\` ou \`timeline\` (jamais \`mindmap\`, non supporté par le renderer).\n`
+      : '') +
+    (input.toolsOffered
+      ? `- Recherche web : tu disposes de l'outil web_search (et fetch_url pour lire une page). Utilise-les pour vérifier les faits récents, formules ou références, puis appuie-toi sur ces sources sans inventer d'URL.\n`
       : '') +
     `- Difficulté : ${DIFFICULTY_GUIDANCE[input.difficulty]}\n` +
     `- Sortie : uniquement le corps Markdown de la section, sans préambule. ` +

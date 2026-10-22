@@ -108,6 +108,13 @@ export const assignTeachersBodySchema = z
   })
   .strict();
 
+export const addMySubjectBodySchema = z
+  .object({
+    subject: z.string().trim().min(2).max(100),
+    weeklyHours: z.string().trim().max(50).nullable().optional(),
+  })
+  .strict();
+
 export type ListGroupsQueryInput = z.infer<typeof listGroupsQuerySchema>;
 export type CreateGroupBodyInput = z.infer<typeof createGroupBodySchema>;
 export type UpdateGroupBodyInput = z.infer<typeof updateGroupBodySchema>;
@@ -116,5 +123,6 @@ export type JoinClassBodyInput = z.infer<typeof joinClassBodySchema>;
 export type CreateVirtualClassroomBodyInput = z.infer<typeof createVirtualClassroomBodySchema>;
 export type AssignStudentsBodyInput = z.infer<typeof assignStudentsBodySchema>;
 export type AssignTeachersBodyInput = z.infer<typeof assignTeachersBodySchema>;
+export type AddMySubjectBodyInput = z.infer<typeof addMySubjectBodySchema>;
 export type RemoveMembersBodyInput = z.infer<typeof removeMembersBodySchema>;
 export type RemoveTeachersBodyInput = z.infer<typeof removeTeachersBodySchema>;

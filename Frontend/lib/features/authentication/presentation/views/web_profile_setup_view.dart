@@ -95,14 +95,10 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
     _activeWorkflowTab = isTeacher ? 'Profil Enseignant' : 'Profil Étudiant';
 
     _institutionController = TextEditingController(
-      text: 'Université Mohammed V de Rabat - Faculté des Sciences',
+      text: user?.institution ?? '',
     );
-    _facultyController = TextEditingController(
-      text: 'Faculté d\'Informatique & Technologies Numériques (FSI)',
-    );
-    _promotionController = TextEditingController(
-      text: 'Promotion 2025 - 2026',
-    );
+    _facultyController = TextEditingController(text: user?.faculty ?? '');
+    _promotionController = TextEditingController();
 
     _animController = AnimationController(
       vsync: this,
@@ -114,13 +110,10 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
       curve: Curves.easeOutCubic,
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.03),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOutCubic,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.03), end: Offset.zero).animate(
+          CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+        );
 
     _animController.forward();
   }
@@ -137,17 +130,16 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
   void _showFailure(Failure failure) {
     final l10n = failureL10n(failure);
     final translated = context.tr(l10n.key, args: l10n.args);
-    final message =
-        (translated == l10n.key || translated.isEmpty) ? failure.message : translated;
+    final message = (translated == l10n.key || translated.isEmpty)
+        ? failure.message
+        : translated;
 
     context.showErrorToast(message);
   }
 
   Future<void> _pickImage() async {
     try {
-      final files = await FilePicker.pickFiles(
-        type: FileType.image,
-      );
+      final files = await FilePicker.pickFiles(type: FileType.image);
       if (files.isNotEmpty) {
         final file = files.first;
         final bytes = await file.readAsBytes();
@@ -190,7 +182,9 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
     setState(() => _isLoading = true);
 
     try {
-      await ref.read(authStateProvider.notifier).completeProfile(
+      await ref
+          .read(authStateProvider.notifier)
+          .completeProfile(
             institution: _institutionController.text.trim(),
             faculty: _facultyController.text.trim(),
             major: _selectedLevel,
@@ -272,7 +266,10 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                     ),
                     const SizedBox(width: 12),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark
                             ? const Color(0xFF252E48)
@@ -343,106 +340,112 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                   children: [
                     InkWell(
                       onTap: () {},
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.help_outline_rounded,
-                          size: 18,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : const Color(0xFF64748B),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Support & Aide',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: isDark
-                                ? const Color(0xFFCBD5E1)
-                                : const Color(0xFF454651),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 16),
-
-                // User Badge (Mon Profil / En cours)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF252E48)
-                        : const Color(0xFFEEF2FF),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : const Color(0xFFC7D2FE),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 26,
-                        height: 26,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF2D3E8C),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 16,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.help_outline_rounded,
+                              size: 18,
+                              color: isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Support & Aide',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? const Color(0xFFCBD5E1)
+                                    : const Color(0xFF454651),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+
+                    const SizedBox(width: 16),
+
+                    // User Badge (Mon Profil / En cours)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF252E48)
+                            : const Color(0xFFEEF2FF),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : const Color(0xFFC7D2FE),
+                        ),
+                      ),
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            'Mon Profil',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: isDark ? Colors.white : const Color(0xFF151B2F),
+                          Container(
+                            width: 26,
+                            height: 26,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF2D3E8C),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.person,
+                              color: Colors.white,
+                              size: 16,
                             ),
                           ),
-                          const Text(
-                            'En cours',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF0F9D78),
-                            ),
+                          const SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Mon Profil',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF151B2F),
+                                ),
+                              ),
+                              const Text(
+                                'En cours',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0F9D78),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
 
-                const SizedBox(width: 14),
-                const WebControlsBar(),
+                    const SizedBox(width: 14),
+                    const WebControlsBar(),
+                  ],
+                ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
 
           // ── 2. Scrollable Body Content ──
           Expanded(
@@ -461,15 +464,18 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                           // ── Sub-header Progress Banner (White elevated card) ──
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 28, vertical: 18),
+                              horizontal: 28,
+                              vertical: 18,
+                            ),
                             decoration: BoxDecoration(
                               color: cardBgColor,
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(color: borderColor),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF0F172A)
-                                      .withValues(alpha: 0.04),
+                                  color: const Color(
+                                    0xFF0F172A,
+                                  ).withValues(alpha: 0.04),
                                   blurRadius: 16,
                                   offset: const Offset(0, 4),
                                 ),
@@ -486,7 +492,9 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: primaryNavy.withValues(alpha: 0.3),
+                                        color: primaryNavy.withValues(
+                                          alpha: 0.3,
+                                        ),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
@@ -507,7 +515,8 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'ÉTAPE 2 SUR 3 • $roleLabel',
@@ -528,7 +537,9 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                           fontSize: 20,
                                           fontWeight: FontWeight.w800,
                                           letterSpacing: -0.3,
-                                          color: isDark ? Colors.white : const Color(0xFF151B2F),
+                                          color: isDark
+                                              ? Colors.white
+                                              : const Color(0xFF151B2F),
                                         ),
                                       ),
                                     ],
@@ -580,8 +591,8 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                               : const Color(0xFFE2E8F0),
                                           valueColor:
                                               AlwaysStoppedAnimation<Color>(
-                                            primaryNavy,
-                                          ),
+                                                primaryNavy,
+                                              ),
                                         ),
                                       ),
                                     ),
@@ -645,8 +656,9 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                               border: Border.all(color: borderColor),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF0F172A)
-                                      .withValues(alpha: 0.05),
+                                  color: const Color(
+                                    0xFF0F172A,
+                                  ).withValues(alpha: 0.05),
                                   blurRadius: 28,
                                   offset: const Offset(0, 8),
                                 ),
@@ -659,7 +671,8 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                 children: [
                                   // Card Top Header: Badge, Title & LMD Certified Container
                                   Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Expanded(
                                         child: Column(
@@ -670,8 +683,9 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                             Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 5),
+                                                    horizontal: 12,
+                                                    vertical: 5,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: isDark
                                                     ? const Color(0xFF252E48)
@@ -698,7 +712,8 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                                     style: TextStyle(
                                                       fontFamily: 'Inter',
                                                       fontSize: 11,
-                                                      fontWeight: FontWeight.w700,
+                                                      fontWeight:
+                                                          FontWeight.w700,
                                                       color: primaryNavy,
                                                     ),
                                                   ),
@@ -737,16 +752,21 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                       // Right Top: Identité Certifiée container
                                       Container(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 12),
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: isDark
                                               ? const Color(0xFF252E48)
                                               : const Color(0xFFF0F4FF),
-                                          borderRadius:
-                                              BorderRadius.circular(14),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
                                           border: Border.all(
                                             color: isDark
-                                                ? Colors.white.withValues(alpha: 0.1)
+                                                ? Colors.white.withValues(
+                                                    alpha: 0.1,
+                                                  )
                                                 : const Color(0xFFDBEAFE),
                                           ),
                                         ),
@@ -771,7 +791,9 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                                     fontWeight: FontWeight.w700,
                                                     color: isDark
                                                         ? Colors.white
-                                                        : const Color(0xFF151B2F),
+                                                        : const Color(
+                                                            0xFF151B2F,
+                                                          ),
                                                   ),
                                                 ),
                                                 const SizedBox(height: 2),
@@ -782,8 +804,12 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                                     fontSize: 11,
                                                     fontWeight: FontWeight.w500,
                                                     color: isDark
-                                                        ? const Color(0xFF94A3B8)
-                                                        : const Color(0xFF64748B),
+                                                        ? const Color(
+                                                            0xFF94A3B8,
+                                                          )
+                                                        : const Color(
+                                                            0xFF64748B,
+                                                          ),
                                                   ),
                                                 ),
                                               ],
@@ -809,16 +835,18 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                             Expanded(
                                               flex: 38,
                                               child: _buildLeftColumn(
-                                                  isDark: isDark,
-                                                  primaryNavy: primaryNavy),
+                                                isDark: isDark,
+                                                primaryNavy: primaryNavy,
+                                              ),
                                             ),
                                             const SizedBox(width: 36),
                                             // Right Column (~62%)
                                             Expanded(
                                               flex: 62,
                                               child: _buildRightColumn(
-                                                  isDark: isDark,
-                                                  primaryNavy: primaryNavy),
+                                                isDark: isDark,
+                                                primaryNavy: primaryNavy,
+                                              ),
                                             ),
                                           ],
                                         );
@@ -826,12 +854,14 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                         return Column(
                                           children: [
                                             _buildLeftColumn(
-                                                isDark: isDark,
-                                                primaryNavy: primaryNavy),
+                                              isDark: isDark,
+                                              primaryNavy: primaryNavy,
+                                            ),
                                             const SizedBox(height: 32),
                                             _buildRightColumn(
-                                                isDark: isDark,
-                                                primaryNavy: primaryNavy),
+                                              isDark: isDark,
+                                              primaryNavy: primaryNavy,
+                                            ),
                                           ],
                                         );
                                       }
@@ -860,7 +890,9 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
-                                        child: const Text('Passer cette étape »'),
+                                        child: const Text(
+                                          'Passer cette étape »',
+                                        ),
                                       ),
 
                                       const Spacer(),
@@ -875,8 +907,9 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                           }
                                         },
                                         icon: const Icon(
-                                            Icons.arrow_back_rounded,
-                                            size: 16),
+                                          Icons.arrow_back_rounded,
+                                          size: 16,
+                                        ),
                                         label: const Text('Retour'),
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: isDark
@@ -884,11 +917,14 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                               : const Color(0xFF151B2F),
                                           side: BorderSide(color: borderColor),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                           ),
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 20, vertical: 14),
+                                            horizontal: 20,
+                                            vertical: 14,
+                                          ),
                                           textStyle: const TextStyle(
                                             fontFamily: 'Inter',
                                             fontSize: 13,
@@ -901,17 +937,21 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
 
                                       // Enregistrer et continuer
                                       FilledButton(
-                                        onPressed:
-                                            _isLoading ? null : _handleSubmit,
+                                        onPressed: _isLoading
+                                            ? null
+                                            : _handleSubmit,
                                         style: FilledButton.styleFrom(
                                           backgroundColor: primaryNavy,
                                           foregroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                           ),
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 24, vertical: 14),
+                                            horizontal: 24,
+                                            vertical: 14,
+                                          ),
                                           elevation: 2,
                                         ),
                                         child: _isLoading
@@ -919,7 +959,8 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                                 width: 20,
                                                 height: 20,
                                                 child: SmartLoader.small(
-                                                    color: Colors.white),
+                                                  color: Colors.white,
+                                                ),
                                               )
                                             : const Row(
                                                 mainAxisSize: MainAxisSize.min,
@@ -935,8 +976,9 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                                                   ),
                                                   SizedBox(width: 8),
                                                   Icon(
-                                                      Icons.arrow_forward_rounded,
-                                                      size: 16),
+                                                    Icons.arrow_forward_rounded,
+                                                    size: 16,
+                                                  ),
                                                 ],
                                               ),
                                       ),
@@ -1000,18 +1042,27 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  _buildFooterLink('Centre d\'Assistance', () {}),
+                                  _buildFooterLink(
+                                    'Centre d\'Assistance',
+                                    () {},
+                                  ),
                                   const SizedBox(width: 14),
-                                  const Text('•',
-                                      style: TextStyle(color: Color(0xFF94A3B8))),
+                                  const Text(
+                                    '•',
+                                    style: TextStyle(color: Color(0xFF94A3B8)),
+                                  ),
                                   const SizedBox(width: 14),
                                   _buildFooterLink('Confidentialité', () {}),
                                   const SizedBox(width: 14),
-                                  const Text('•',
-                                      style: TextStyle(color: Color(0xFF94A3B8))),
+                                  const Text(
+                                    '•',
+                                    style: TextStyle(color: Color(0xFF94A3B8)),
+                                  ),
                                   const SizedBox(width: 14),
                                   _buildFooterLink(
-                                      'Conditions d\'Utilisation', () {}),
+                                    'Conditions d\'Utilisation',
+                                    () {},
+                                  ),
                                 ],
                               ),
                             ],
@@ -1033,10 +1084,7 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
   // ─────────────────────────────────────────────────────────
   // LEFT COLUMN: Avatar Preview & Drag-and-Drop Photo Upload
   // ─────────────────────────────────────────────────────────
-  Widget _buildLeftColumn({
-    required bool isDark,
-    required Color primaryNavy,
-  }) {
+  Widget _buildLeftColumn({required bool isDark, required Color primaryNavy}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1233,8 +1281,11 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _openWebcamMock,
-                icon: Icon(Icons.videocam_outlined,
-                    size: 16, color: primaryNavy),
+                icon: Icon(
+                  Icons.videocam_outlined,
+                  size: 16,
+                  color: primaryNavy,
+                ),
                 label: Text(
                   'Webcam',
                   style: TextStyle(
@@ -1261,8 +1312,11 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _removeImage,
-                icon: const Icon(Icons.delete_outline_rounded,
-                    size: 16, color: Color(0xFFDC2626)),
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  size: 16,
+                  color: Color(0xFFDC2626),
+                ),
                 label: const Text(
                   'Supprimer',
                   style: TextStyle(
@@ -1338,10 +1392,7 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
   // ─────────────────────────────────────────────────────────
   // RIGHT COLUMN: Academic Form Fields & Subject Chips
   // ─────────────────────────────────────────────────────────
-  Widget _buildRightColumn({
-    required bool isDark,
-    required Color primaryNavy,
-  }) {
+  Widget _buildRightColumn({required bool isDark, required Color primaryNavy}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1400,7 +1451,8 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
             color: isDark ? Colors.white : const Color(0xFF151B2F),
           ),
           decoration: _buildInputDecoration(
-            hintText: 'ex: Université Mohammed V de Rabat - Faculté des Sciences',
+            hintText:
+                'ex: Université Mohammed V de Rabat - Faculté des Sciences',
             prefixIcon: Icons.account_balance_outlined,
             suffixIcon: Icons.keyboard_arrow_down_rounded,
             isDark: isDark,
@@ -1411,10 +1463,7 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
         const SizedBox(height: 16),
 
         // Field 2: UFR / Département ou Faculté
-        _buildFieldLabel(
-          label: 'UFR / Département ou Faculté',
-          isDark: isDark,
-        ),
+        _buildFieldLabel(label: 'UFR / Département ou Faculté', isDark: isDark),
         const SizedBox(height: 6),
         TextFormField(
           controller: _facultyController,
@@ -1425,7 +1474,8 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
             color: isDark ? Colors.white : const Color(0xFF151B2F),
           ),
           decoration: _buildInputDecoration(
-            hintText: 'ex: Faculté d\'Informatique & Technologies Numériques (FSI)',
+            hintText:
+                'ex: Faculté d\'Informatique & Technologies Numériques (FSI)',
             prefixIcon: Icons.account_tree_outlined,
             isDark: isDark,
             primaryNavy: primaryNavy,
@@ -1469,10 +1519,7 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                     items: _studyLevels.map((lvl) {
                       return DropdownMenuItem<String>(
                         value: lvl,
-                        child: Text(
-                          lvl,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: Text(lvl, overflow: TextOverflow.ellipsis),
                       );
                     }).toList(),
                     onChanged: (val) {
@@ -1578,21 +1625,23 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
               borderRadius: BorderRadius.circular(9999),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? primaryNavy
                       : (isDark
-                          ? const Color(0xFF252E48)
-                          : const Color(0xFFF1F5F9)),
+                            ? const Color(0xFF252E48)
+                            : const Color(0xFFF1F5F9)),
                   borderRadius: BorderRadius.circular(9999),
                   border: Border.all(
                     color: isSelected
                         ? primaryNavy
                         : (isDark
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : const Color(0xFFE2E8F0)),
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : const Color(0xFFE2E8F0)),
                   ),
                   boxShadow: isSelected
                       ? [
@@ -1613,8 +1662,8 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                       color: isSelected
                           ? Colors.white
                           : (isDark
-                              ? const Color(0xFF94A3B8)
-                              : const Color(0xFF64748B)),
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B)),
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -1622,13 +1671,14 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         color: isSelected
                             ? Colors.white
                             : (isDark
-                                ? const Color(0xFFCBD5E1)
-                                : const Color(0xFF151B2F)),
+                                  ? const Color(0xFFCBD5E1)
+                                  : const Color(0xFF151B2F)),
                       ),
                     ),
                   ],
@@ -1655,11 +1705,7 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.info_outline_rounded,
-                size: 20,
-                color: primaryNavy,
-              ),
+              Icon(Icons.info_outline_rounded, size: 20, color: primaryNavy),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -1699,10 +1745,7 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
   // ─────────────────────────────────────────────────────────
   // Helper Widgets
   // ─────────────────────────────────────────────────────────
-  Widget _buildFieldLabel({
-    required String label,
-    required bool isDark,
-  }) {
+  Widget _buildFieldLabel({required String label, required bool isDark}) {
     return Text(
       label,
       style: TextStyle(
@@ -1732,14 +1775,13 @@ class _WebProfileSetupViewState extends ConsumerState<WebProfileSetupView>
       fillColor: isDark ? const Color(0xFF151B2F) : Colors.white,
       prefixIcon: Icon(prefixIcon, size: 18, color: primaryNavy),
       suffixIcon: suffixIcon != null
-          ? Icon(suffixIcon,
+          ? Icon(
+              suffixIcon,
               size: 20,
-              color: isDark
-                  ? const Color(0xFF94A3B8)
-                  : const Color(0xFF64748B))
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            )
           : null,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(

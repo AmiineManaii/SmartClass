@@ -660,8 +660,9 @@ paths:
       summary: List teacher assignments of a class group
       description: >
         Every assignment with the teacher identity, subject and weekly
-        hours. Backs the admin teacher-assignment screen and the real
-        coverage figures (assigned teachers and subjects).
+        hours. A teacher may appear once per subject they teach in the class;
+        `teacherCount` is the number of distinct teachers. Backs the admin
+        teacher-assignment screen and the real coverage figures.
       security:
         - bearerAuth: []
       x-status: implemented
@@ -885,6 +886,72 @@ paths:
           $ref: './common.yaml#/components/responses/NotFound'
         '422':
           $ref: './common.yaml#/components/responses/ValidationError'
+  /groups/{id}/subjects:
+    post:
+      operationId: addMySubjectToGroup
+      tags:
+        - groups
+      summary: Declare an additional subject taught in a class group
+      description: >
+        Lets an authenticated TEACHER add a subject they teach in a class they
+        are already assigned to (as teacher, referent or owner). Teachers can
+        teach several subjects in the same class; adding an existing subject
+        is idempotent and only refreshes the weekly hours.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - subject
+              properties:
+                subject:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                  example: Architecture Logicielle
+                weeklyHours:
+                  type: string
+                  maxLength: 50
+                  nullable: true
+                  example: 3h/semaine
+              additionalProperties: false
+      responses:
+        '201':
+          description: Subject added to the teacher's assignments
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - assignment
+                    properties:
+                      assignment:
+                        $ref: '#/components/schemas/TeacherAssignment'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
 components:
   securitySchemes:
     bearerAuth:
@@ -914,6 +981,22 @@ components:
                 type: string
               description: Subjects the caller teaches in this class (teachers only)
           additionalProperties: false
+    TeacherAssignment:
+      type: object
+      required:
+        - teacherId
+        - subject
+      properties:
+        teacherId:
+          type: string
+          format: uuid
+        subject:
+          type: string
+        weeklyHours:
+          type:
+            - string
+            - 'null'
+      additionalProperties: false
     TeacherAssignmentDetail:
       type: object
       required:

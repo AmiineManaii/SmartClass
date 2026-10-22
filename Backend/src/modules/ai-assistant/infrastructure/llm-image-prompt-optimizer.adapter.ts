@@ -85,7 +85,7 @@ export const parseOptimizedPrompts = (content: string): OptimizedImagePrompts =>
 };
 
 /**
- * Optimizes SDXL prompts through the local chat model (Unsloth/Ollama —
+ * Optimizes SDXL prompts through the local chat model (Ollama —
  * the same gateway as course generation, with its primary/fallback model
  * chain). Used by `GenerateSectionImageUseCase`, which falls back to the
  * deterministic template on any error thrown here.

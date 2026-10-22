@@ -8,9 +8,15 @@ import type { RefineSectionUseCase } from '../application/refine-section.use-cas
 import type { GetAiStatusUseCase } from '../application/get-ai-status.use-case.js';
 import type { ImprovePdfUseCase } from '../application/improve-pdf.use-case.js';
 import type { GetCourseBuildUseCase } from '../application/get-course-build.use-case.js';
-import type { GenerateSectionDTO, GenerateSectionUseCase } from '../application/generate-section.use-case.js';
+import type {
+  GenerateSectionDTO,
+  GenerateSectionUseCase,
+} from '../application/generate-section.use-case.js';
 import type { ValidateSectionUseCase } from '../application/validate-section.use-case.js';
 import type { GenerateSectionImageUseCase } from '../application/generate-section-image.use-case.js';
+import type { SearchSectionImagesUseCase } from '../application/search-section-images.use-case.js';
+import type { ApplySectionImageUseCase } from '../application/apply-section-image.use-case.js';
+import type { SectionImageJobService } from '../application/section-image-job.service.js';
 import type {
   GenerateDifficulty,
   GenerateFormat,
@@ -19,13 +25,38 @@ import type {
 import { AppError, UnauthorizedError, ValidationError } from '../../../shared/errors/app-error.js';
 import { ErrorCodes } from '../../../shared/errors/error-codes.js';
 import {
+  applySectionImageBodySchema,
   courseBuildParamsSchema,
   generateSectionBodySchema,
   imageSectionBodySchema,
   improvePdfFieldsSchema,
+  searchSectionImagesBodySchema,
+  sectionImageJobParamsSchema,
   validateSectionBodySchema,
 } from './ai.validation.js';
 import type { Role } from '../../auth/index.js';
+
+const toPublicImageJob = (job: {
+  id: string;
+  courseId: string;
+  sectionKey: string;
+  kind: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+  result?: unknown;
+  error?: unknown;
+}) => ({
+  id: job.id,
+  courseId: job.courseId,
+  sectionKey: job.sectionKey,
+  kind: job.kind,
+  status: job.status,
+  createdAt: job.createdAt,
+  updatedAt: job.updatedAt,
+  ...(job.result ? { result: job.result } : {}),
+  ...(job.error ? { error: job.error } : {}),
+});
 
 const requireUser = (req: Request): { id: string; role: Role | null } => {
   if (!req.user) {
@@ -35,7 +66,9 @@ const requireUser = (req: Request): { id: string; role: Role | null } => {
 };
 
 /** Stable 422 from a Zod failure (ZodError is not mapped centrally). */
-const toValidationError = (error: { errors: { path: (string | number)[]; message: string }[] }): ValidationError =>
+const toValidationError = (error: {
+  errors: { path: (string | number)[]; message: string }[];
+}): ValidationError =>
   new ValidationError(
     'Validation failed',
     error.errors.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
@@ -52,6 +85,9 @@ export class AiController {
     private readonly generateSectionUseCase: GenerateSectionUseCase,
     private readonly validateSectionUseCase: ValidateSectionUseCase,
     private readonly generateSectionImageUseCase: GenerateSectionImageUseCase,
+    private readonly searchSectionImagesUseCase: SearchSectionImagesUseCase,
+    private readonly applySectionImageUseCase: ApplySectionImageUseCase,
+    private readonly sectionImageJobService: SectionImageJobService,
   ) {}
 
   public generateOutline = async (
@@ -69,11 +105,7 @@ export class AiController {
     }
   };
 
-  public refineSection = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  public refineSection = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = requireUser(req);
       const result = await this.refineSectionUseCase.execute({
@@ -151,9 +183,9 @@ export class AiController {
   };
 
   /**
-   * POST /courses/sections/image — illustration for one section.
-   * ComfyUI is not wired yet: the adapter answers 503
-   * IMAGE_SERVICE_UNAVAILABLE, which the UI surfaces as "coming soon".
+   * POST /courses/sections/image — local ComfyUI illustration for one
+   * section. When ComfyUI is unconfigured/unreachable the adapter answers
+   * 503 IMAGE_SERVICE_UNAVAILABLE; the web-image alternative stays usable.
    */
   public generateSectionImage = async (
     req: Request,
@@ -170,6 +202,97 @@ export class AiController {
         courseId: parsed.data.courseId,
         sectionKey: parsed.data.sectionKey,
         kind: parsed.data.kind,
+      });
+      res.status(200).json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /** POST /courses/sections/image/jobs — start a ComfyUI job (202). */
+  public startSectionImageJob = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const parsed = imageSectionBodySchema.safeParse(req.body);
+      if (!parsed.success) throw toValidationError(parsed.error);
+      const user = requireUser(req);
+      const job = await this.sectionImageJobService.start({
+        requesterId: user.id,
+        requesterRole: user.role,
+        courseId: parsed.data.courseId,
+        sectionKey: parsed.data.sectionKey,
+        kind: parsed.data.kind,
+      });
+      res.status(202).json({ data: toPublicImageJob(job) });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /** GET /courses/sections/image/jobs/:jobId — poll one job. */
+  public getSectionImageJob = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const parsed = sectionImageJobParamsSchema.safeParse(req.params);
+      if (!parsed.success) throw toValidationError(parsed.error);
+      const user = requireUser(req);
+      const job = await this.sectionImageJobService.get({
+        requesterId: user.id,
+        requesterRole: user.role,
+        jobId: parsed.data.jobId,
+      });
+      res.status(200).json({ data: toPublicImageJob(job) });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /** POST /courses/sections/image/search — up to five web candidates. */
+  public searchSectionImages = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const parsed = searchSectionImagesBodySchema.safeParse(req.body);
+      if (!parsed.success) throw toValidationError(parsed.error);
+      const user = requireUser(req);
+      const result = await this.searchSectionImagesUseCase.execute({
+        requesterId: user.id,
+        requesterRole: user.role,
+        courseId: parsed.data.courseId,
+        sectionKey: parsed.data.sectionKey,
+        query: parsed.data.query,
+      });
+      res.status(200).json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /** POST /courses/sections/image/apply — insert the chosen image. */
+  public applySectionImage = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const parsed = applySectionImageBodySchema.safeParse(req.body);
+      if (!parsed.success) throw toValidationError(parsed.error);
+      const user = requireUser(req);
+      const result = await this.applySectionImageUseCase.execute({
+        requesterId: user.id,
+        requesterRole: user.role,
+        courseId: parsed.data.courseId,
+        sectionKey: parsed.data.sectionKey,
+        imageUrl: parsed.data.imageUrl,
+        caption: parsed.data.caption,
       });
       res.status(200).json({ data: result });
     } catch (err) {
@@ -205,8 +328,11 @@ export class AiController {
       difficulty: parsed.data.difficulty,
       extras: parsed.data.extras,
     };
-    this.streamCourse(req, res, next, (onDelta, onPhase) =>
-      this.generateSectionUseCase.stream(dto, onDelta, onPhase),
+    this.streamCourse(
+      req,
+      res,
+      next,
+      (onDelta, onPhase) => this.generateSectionUseCase.stream(dto, onDelta, onPhase),
       { initialPhase: 'memory' },
     );
   }
@@ -227,11 +353,7 @@ export class AiController {
   };
 
   /// Dedicated per-method endpoints (simpler payloads for the teacher UI).
-  public fromTopic = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  public fromTopic = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const body = req.body as Partial<GenerateCourseDTO>;
       const result = await this.generateCourseUseCase.execute({
@@ -248,11 +370,7 @@ export class AiController {
     }
   };
 
-  public fromUrl = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  public fromUrl = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const body = req.body as Partial<GenerateCourseDTO>;
       const result = await this.generateCourseUseCase.execute({
@@ -269,11 +387,7 @@ export class AiController {
     }
   };
 
-  public improvePdf = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  public improvePdf = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       // ZodError is not mapped by the central handler: convert to a stable 422.
       const parsed = improvePdfFieldsSchema.safeParse(req.body);
@@ -306,11 +420,7 @@ export class AiController {
     }
   };
 
-  public getStatus = async (
-    _req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  public getStatus = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const result = await this.getAiStatusUseCase.execute();
       res.status(200).json({
@@ -384,7 +494,7 @@ export class AiController {
         ),
       { initialPhase: 'extracting' },
     );
-  };;
+  };
 
   private streamCourse(
     req: Request,
@@ -425,29 +535,28 @@ export class AiController {
       finish();
     });
     if (opts?.initialPhase) sendPhase(opts.initialPhase);
-    run(
-      (delta: string) => {
-        if (!closed) send({ delta });
-      },
-      sendPhase,
-    ).then(
-      (meta) => {
-        finish();
-        if (!closed) {
-          send({ done: true, ...meta });
+    run((delta: string) => {
+      if (!closed) send({ delta });
+    }, sendPhase)
+      .then(
+        (meta) => {
+          finish();
+          if (!closed) {
+            send({ done: true, ...meta });
+            res.end();
+          }
+        },
+        (error: unknown) => {
+          finish();
+          if (closed) return;
+          if (error instanceof AppError) {
+            send({ error: { code: error.code, message: error.message } });
+          } else {
+            send({ error: { code: ErrorCodes.INTERNAL_ERROR, message: 'Internal server error' } });
+          }
           res.end();
-        }
-      },
-      (error: unknown) => {
-        finish();
-        if (closed) return;
-        if (error instanceof AppError) {
-          send({ error: { code: error.code, message: error.message } });
-        } else {
-          send({ error: { code: ErrorCodes.INTERNAL_ERROR, message: 'Internal server error' } });
-        }
-        res.end();
-      },
-    ).catch(next);
+        },
+      )
+      .catch(next);
   }
 }

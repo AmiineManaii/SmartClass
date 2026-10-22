@@ -25,7 +25,7 @@ const TEXT_FREE =
 
 /**
  * Deterministic English template used when the LLM prompt optimizer is
- * unavailable (Unsloth down, malformed JSON…): quality prefix + kind style
+ * unavailable (Ollama down, malformed JSON…): quality prefix + kind style
  * + the section topic in its original language.
  */
 export const buildImagePrompt = (input: {

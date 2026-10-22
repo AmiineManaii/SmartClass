@@ -5,10 +5,17 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_providers.dart';
 import '../../../../core/extensions/extensions.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/localization/app_localizations.dart';
+import '../../../courses/application/providers/courses_provider.dart';
+import '../../../courses/domain/entities/course_entry.dart';
 
-/// Page du Tuteur IA Interactif SmartClass, alignée sur la maquette Stitch
-/// screen `07906fe145374de184b839701ca0862a`.
+/// Tuteur IA & Studio IA.
+///
+/// The conversational tutor backend does not exist yet (no chat route in
+/// `contracts/ai-assistant.openapi.yaml`), so this page never fabricates an
+/// AI answer. It is wired to the caller's real classes
+/// (`GET /api/v1/groups/mine`) and routes to the real AI features
+/// (revision summary, practice quiz, course creator for teachers).
 class AiAssistantPage extends ConsumerStatefulWidget {
   const AiAssistantPage({super.key});
 
@@ -21,288 +28,7 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
   final _scrollController = ScrollController();
   final List<_ChatMessage> _messages = [];
   bool _isGenerating = false;
-  String _selectedCourse = 'Algèbre Linéaire & Espaces Vectoriels';
-  String _selectedChapter = 'Chapitre 3 : Théorème du Rang & Dimension';
-
-  final List<String> _quickPrompts = [
-    'Donne-moi un exemple concret 💡',
-    'Générer un QCM d\'entraînement ⚡',
-    'Résume le théorème en 3 points 📝',
-    'Formule du Théorème du Rang 📐',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    final auth = ref.read(authStateProvider).valueOrNull;
-    final role = auth?.role?.toLowerCase() ?? 'student';
-    final isTeacher = role == 'teacher';
-    final name = (auth?.displayName?.trim().isNotEmpty == true)
-        ? auth!.displayName!.trim()
-        : (isTeacher ? 'Professeur' : 'Salma');
-
-    if (isTeacher) {
-      _messages.add(
-        _ChatMessage(
-          text:
-              'Bonjour Pr. $name ! Je suis votre Assistant Pédagogique IA SmartClass, prêt pour concevoir vos syllabus et supports.\n\nPosez-moi vos questions, demandez des idées de plans de cours, des exercices pratiques avec corrigés, ou lancez la génération complète dans le Studio Créateur IA !',
-          isUser: false,
-          timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-          stepTitle: 'Assistant Pédagogique Connecté',
-          hasFormula: false,
-        ),
-      );
-      _messages.add(
-        _ChatMessage(
-          text:
-              'Peux-tu me proposer une série d\'exercices d\'application avec corrigés détaillés et barème sur le Théorème du Rang ?',
-          isUser: true,
-          timestamp: DateTime.now().subtract(const Duration(minutes: 3)),
-        ),
-      );
-      _messages.add(
-        _ChatMessage(
-          text:
-              'Voici une fiche d\'évaluation prête pour vos étudiants :\n\n'
-              '• **Exercice 1 (6 pts)** : Soit f: R³ -> R² définie par f(x,y,z) = (x+y, y-z). Déterminer une base et la dimension de Ker(f), puis en déduire le rang de f.\n\n'
-              '• **Exercice 2 (8 pts)** : Soit E un espace de dimension finie n et f un endomorphisme tel que f² = 0. Démontrer que rg(f) <= n/2 à l\'aide du Théorème du Rang.\n\n'
-              '• **Question bonus (6 pts)** : Que dire de f si Ker(f) = Im(f) ?\n\n'
-              '*Barème indicatif : Rigueur (4 pts) + Justifications théoriques (10 pts) + Calculs (6 pts).*',
-          isUser: false,
-          timestamp: DateTime.now().subtract(const Duration(minutes: 2)),
-          stepTitle: 'Fiche d\'Exercices & Corrigés',
-          hasFormula: true,
-          formulaText: 'dim(E) = dim(Ker(f)) + rg(f)  <=>  3 = 1 + 2',
-          ruleHighlight: 'Idéal pour vos séances de travaux dirigés ou devoirs surveillés.',
-        ),
-      );
-    } else {
-      _messages.add(
-        _ChatMessage(
-          text:
-              'Bonjour $name ! Je suis votre Tuteur IA personnel SmartClass, synchronisé avec vos cours. Vous étudiez actuellement **$_selectedChapter**.\n\nPosez-moi vos questions, demandez des explications étape par étape, ou générez des exercices d\'entraînement !',
-          isUser: false,
-          timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-          stepTitle: 'Tuteur Connecté',
-          hasFormula: false,
-        ),
-      );
-      _messages.add(
-        _ChatMessage(
-          text:
-              'Peux-tu m\'expliquer simplement la différence entre le Noyau Ker(f) et l\'Image Im(f) d\'une application linéaire ? Et le lien avec le Théorème du Rang ?',
-          isUser: true,
-          timestamp: DateTime.now().subtract(const Duration(minutes: 3)),
-        ),
-      );
-      _messages.add(
-        _ChatMessage(
-          text:
-              'Bonjour $name ! Voici une explication claire et intuitive :\n\n'
-              '• **Le Noyau (Ker(f))** : C\'est l\'ensemble de tous les vecteurs x envoyés sur le vecteur nul 0. En clair : tout ce que f « écrase » à zéro. Si Ker(f) = {0}, la fonction est injective.\n\n'
-              '• **L\'Image (Im(f))** : C\'est l\'ensemble des vecteurs réellement atteints par f. Elle mesure l\'étendue effective de la transformation.\n\n'
-              '• **Le Théorème du Rang (Rank-Nullity Theorem)** :\n'
-              'C\'est un principe fondamental de conservation de la dimension :',
-          isUser: false,
-          timestamp: DateTime.now().subtract(const Duration(minutes: 2)),
-          stepTitle: 'Explication pas-à-pas',
-          hasFormula: true,
-          formulaText: 'dim(E) = dim(Ker(f)) + rg(f)',
-          ruleHighlight:
-              'Toute dimension perdue dans le noyau est soustraite de l\'image finale ! rg(f) = dim(Im(f)).',
-        ),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _sendMessage([String? presetText]) async {
-    final text = presetText ?? _controller.text.trim();
-    if (text.isEmpty || _isGenerating) return;
-
-    setState(() {
-      _messages.add(
-        _ChatMessage(
-          text: text,
-          isUser: true,
-          timestamp: DateTime.now(),
-        ),
-      );
-      _isGenerating = true;
-      if (presetText == null) {
-        _controller.clear();
-      }
-    });
-
-    _scrollToBottom();
-
-    await Future.delayed(const Duration(milliseconds: 1400));
-
-    if (!mounted) return;
-
-    final response = _generateTutorResponse(text);
-
-    setState(() {
-      _messages.add(response);
-      _isGenerating = false;
-    });
-
-    _scrollToBottom();
-  }
-
-  _ChatMessage _generateTutorResponse(String query) {
-    final lower = query.toLowerCase();
-
-    final auth = ref.read(authStateProvider).valueOrNull;
-    final isTeacher = auth?.role?.toLowerCase() == 'teacher';
-    final displayName = auth?.displayName?.trim().isNotEmpty == true
-        ? auth!.displayName!.trim()
-        : (isTeacher ? 'Professeur' : 'Étudiant');
-
-    if (lower.contains('plan') || lower.contains('syllabus')) {
-      return _ChatMessage(
-        text:
-            'Voici une proposition de structure de cours pour **$_selectedChapter** :\n\n'
-            '1. **Séance 1 (2h CM)** : Définitions rigoureuses du Noyau (Ker) et de l\'Image (Im). Propriétés de sous-espaces vectoriels.\n'
-            '2. **Séance 2 (2h CM)** : Énoncé et démonstration complète du Théorème du Rang en dimension finie.\n'
-            '3. **Séance 3 (2h TD)** : Exercices de calculs matriciels, détermination de bases de Ker(f) et Im(f).\n'
-            '4. **Séance 4 (1h TP/Éval)** : Mini-contrôle de 30 mins sur table et débriefing.\n\n'
-            '💡 *Conseil : Vous pouvez utiliser le Studio Créateur IA pour générer l\'intégralité des chapitres textuels avec diagrammes Mermaid !*',
-        isUser: false,
-        timestamp: DateTime.now(),
-        stepTitle: 'Proposition de Syllabus Pédagogique',
-        hasFormula: true,
-        formulaText: 'Volume : 7h (4h CM + 2h TD + 1h Contrôle)',
-        ruleHighlight: 'Aligné sur le référentiel d\'ingénierie et de mathématiques appliquées.',
-      );
-    }
-
-    if (lower.contains('exercice') || lower.contains('partiel') || lower.contains('cas')) {
-      return _ChatMessage(
-        text:
-            'Voici un énoncé de devoir universitaire avec éléments de correction :\n\n'
-            '**Énoncé :**\n'
-            'Soit E un R-espace vectoriel de dimension finie n >= 1. Soit f un endomorphisme de E tel que f² = 0.\n'
-            '1. Démontrer l\'inclusion Im(f) ⊂ Ker(f).\n'
-            '2. En déduire une inégalité reliant rg(f) et dim(Ker(f)).\n'
-            '3. À l\'aide du Théorème du Rang, établir que rg(f) <= n/2.\n\n'
-            '**Éléments de correction & Barème :**\n'
-            '• **Q1 (3 pts)** : Pour tout y ∈ Im(f), ∃x ∈ E t.q. y = f(x). Donc f(y) = f²(x) = 0, d\'où y ∈ Ker(f).\n'
-            '• **Q2 (3 pts)** : L\'inclusion entraîne dim(Im(f)) <= dim(Ker(f)), soit rg(f) <= dim(Ker(f)).\n'
-            '• **Q3 (4 pts)** : Par le théorème du rang, n = dim(Ker(f)) + rg(f) >= rg(f) + rg(f) = 2rg(f), donc rg(f) <= n/2.',
-        isUser: false,
-        timestamp: DateTime.now(),
-        stepTitle: 'Énoncé de Devoir & Solution',
-        hasFormula: true,
-        formulaText: 'f² = 0  =>  Im(f) ⊂ Ker(f)  =>  rg(f) <= n/2',
-        ruleHighlight: 'Total : 10 points. Idéal pour un contrôle continu.',
-      );
-    }
-
-    if (lower.contains('qcm') || lower.contains('quiz')) {
-      if (isTeacher) {
-        return _ChatMessage(
-          text:
-              'Voici une série de 3 questions QCM calibrées pour une évaluation de vos étudiants :\n\n'
-              '**Question 1 :** Soit f: R⁴ -> R³ une application linéaire. Si dim(Ker(f)) = 1, quel est le rang de f ?\n'
-              'A) rg(f) = 1    B) rg(f) = 2    C) rg(f) = 3 (Surjective)    D) rg(f) = 4\n'
-              '*Réponse correcte : C (dim(R⁴) = dim(Ker(f)) + rg(f) => 4 = 1 + 3)*\n\n'
-              '**Question 2 :** Une application linéaire de R³ dans R⁵ peut-elle être surjective ?\n'
-              'A) Oui    B) Non, car rg(f) <= dim(départ) = 3 < 5\n'
-              '*Réponse correcte : B*\n\n'
-              '**Question 3 :** Si f est un endomorphisme d\'un espace de dimension 5 tel que rg(f) = 5, que vaut Ker(f) ?\n'
-              'A) {0} (f injective)    B) R    C) Non déterminé\n'
-              '*Réponse correcte : A*',
-          isUser: false,
-          timestamp: DateTime.now(),
-          stepTitle: 'QCM d\'Évaluation & Corrigés',
-          hasFormula: true,
-          formulaText: 'dim(E) = dim(Ker(f)) + rg(f)',
-          ruleHighlight: 'Barème conseillé : 2 points par question (Total : 6 pts).',
-        );
-      }
-      return _ChatMessage(
-        text:
-            'Voici un QCM express pour valider votre compréhension :\n\n'
-            '**Question :** Soit f: R⁴ -> R³ une application linéaire. Si dim(Ker(f)) = 1, quel est le rang de f ?\n\n'
-            'A) rg(f) = 1\n'
-            'B) rg(f) = 2\n'
-            'C) rg(f) = 3 (Surjective)\n'
-            'D) rg(f) = 4',
-        isUser: false,
-        timestamp: DateTime.now(),
-        stepTitle: 'Quiz d\'Entraînement ⚡',
-        hasFormula: true,
-        formulaText: 'dim(E) = 4  =>  rg(f) = 4 - 1 = 3',
-        ruleHighlight: 'Réponse C ! f est donc surjective car rg(f) = dim(R³) = 3.',
-      );
-    }
-
-    if (lower.contains('exemple')) {
-      return _ChatMessage(
-        text:
-            'Considérons la projection orthogonale f sur le plan (Oxy) dans R³ :\n\n'
-            '• Tout vecteur (0, 0, z) est projeté sur (0, 0, 0), donc **Ker(f) est la droite (Oz)** (dimension 1).\n'
-            '• Les images couvrent exactement le plan (Oxy), donc **rg(f) = 2**.\n'
-            '• Vérification du Théorème du Rang : dim(R³) = 3 = 1 + 2. L\'égalité est parfaitement vérifiée !',
-        isUser: false,
-        timestamp: DateTime.now(),
-        stepTitle: 'Exemple Visuel 3D',
-        hasFormula: true,
-        formulaText: 'dim(R³) = dim(Ker(f)) + rg(f)  <=>  3 = 1 + 2',
-      );
-    }
-
-    if (lower.contains('résum') || lower.contains('3 points')) {
-      return _ChatMessage(
-        text:
-            'Voici la synthèse en 3 points essentiels :\n\n'
-            '1. **Équilibre des dimensions** : La dimension de l\'espace de départ se répartit entre ce qui disparaît (Ker) et ce qui subsiste (Im).\n'
-            '2. **Injectivité immédiate** : f est injective si et seulement si Ker(f) = {0}, soit dim(Ker(f)) = 0.\n'
-            '3. **Surjectivité immédiate** : f est surjective si et seulement si rg(f) = dim(F).',
-        isUser: false,
-        timestamp: DateTime.now(),
-        stepTitle: 'Synthèse en 3 Points',
-        hasFormula: true,
-        formulaText: 'f injective <=> Ker(f) = {0}   |   f surjective <=> rg(f) = dim(F)',
-      );
-    }
-
-    if (lower.contains('formule') || lower.contains('rang')) {
-      return _ChatMessage(
-        text:
-            'Le **Théorème du Rang** s\'applique à toute application linéaire f: E -> F avec E de dimension finie.\n\n'
-            'Formule fondamentale :',
-        isUser: false,
-        timestamp: DateTime.now(),
-        stepTitle: 'Formule Fondamentale',
-        hasFormula: true,
-        formulaText: 'dim(E) = dim(Ker(f)) + rg(f)',
-        ruleHighlight: 'Attention au piège : c\'est toujours la dimension de l\'espace de DÉPART E !',
-      );
-    }
-
-    return _ChatMessage(
-      text: isTeacher
-          ? 'Excellente démarche pédagogique Pr. $displayName ! Pour enrichir votre cours sur **$_selectedChapter**, souhaitez-vous :\n'
-            '1. Une étude de cas pratique avec modélisation matricielle ?\n'
-            '2. Un barème détaillé avec compétences visées ?\n'
-            '3. Lancer la génération d\'un chapitre complet dans le Studio Créateur IA ?'
-          : 'Excellente réflexion ! Pour approfondir ce point sur **$_selectedChapter**, souhaitez-vous :\n'
-            '1. Un exemple géométrique appliqué ?\n'
-            '2. Un exercice de type partiel universitaire ?\n'
-            '3. Une fiche récapitulative des pièges à éviter ?',
-      isUser: false,
-      timestamp: DateTime.now(),
-      stepTitle: 'Assistance Personnalisée',
-    );
-  }
+  String? _selectedClassId;
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -316,60 +42,139 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
     });
   }
 
-  void _showChangeCourseDialog(BuildContext context) {
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  CourseEntry? _activeClass(List<CourseEntry> classes) {
+    if (classes.isEmpty) return null;
+    for (final c in classes) {
+      if (c.id == _selectedClassId) return c;
+    }
+    return classes.first;
+  }
+
+  String _levelLabel(BuildContext context, String level) {
+    final key = switch (level) {
+      'LICENCE' => 'level_licence',
+      'MASTER' => 'level_master',
+      'DOCTORAT' => 'level_doctorat',
+      _ => '',
+    };
+    return key.isEmpty ? level : context.tr(key);
+  }
+
+  Future<void> _sendMessage(String text) async {
+    final value = text.trim();
+    if (value.isEmpty || _isGenerating) return;
+
+    setState(() {
+      _messages.add(
+        _ChatMessage(text: value, isUser: true, timestamp: DateTime.now()),
+      );
+      _isGenerating = true;
+      _controller.clear();
+    });
+    _scrollToBottom();
+
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+
+    final classes = ref.read(myCoursesProvider).valueOrNull ?? const [];
+    final active = _activeClass(classes);
+    final className = active?.name ?? context.tr('no_class_title');
+
+    setState(() {
+      _messages.add(
+        _ChatMessage(
+          text:
+              'Le tuteur conversationnel temps réel sera disponible avec le module IA (📋 planifié). '
+              'Aucune réponse n\'est générée hors de ce module pour éviter toute information inventée.\n\n'
+              'En attendant, le Studio IA peut réellement travailler sur **$className** :',
+          isUser: false,
+          timestamp: DateTime.now(),
+          stepTitle: 'Module IA en préparation',
+          actions: const ['summary', 'quiz'],
+        ),
+      );
+      _isGenerating = false;
+    });
+    _scrollToBottom();
+  }
+
+  void _clearHistory() {
+    setState(() => _messages.clear());
+  }
+
+  Future<void> _confirmClearHistory() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Effacer la conversation'),
+        content: const Text(
+          'Voulez-vous réinitialiser cette séance d\'étude avec le tuteur ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.tr('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Effacer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) _clearHistory();
+  }
+
+  void _showChangeClassDialog(
+    BuildContext context,
+    List<CourseEntry> classes,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.swap_horiz_rounded, color: AppTheme.primary),
-            SizedBox(width: 8),
-            Text('Changer de module'),
+            Icon(Icons.swap_horiz_rounded, color: colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text('Changer de classe'),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _CourseSelectTile(
-              title: 'Algèbre Linéaire & Espaces Vectoriels',
-              instructor: 'Prof. Amine',
-              isSelected: _selectedCourse.contains('Algèbre'),
-              onTap: () {
-                setState(() {
-                  _selectedCourse = 'Algèbre Linéaire & Espaces Vectoriels';
-                  _selectedChapter = 'Chapitre 3 : Théorème du Rang & Dimension';
-                });
-                Navigator.pop(ctx);
-              },
-            ),
-            const SizedBox(height: 8),
-            _CourseSelectTile(
-              title: 'Algorithmique & Structures de Données',
-              instructor: 'Prof. Bennani',
-              isSelected: _selectedCourse.contains('Algorithmique'),
-              onTap: () {
-                setState(() {
-                  _selectedCourse = 'Algorithmique Avancée';
-                  _selectedChapter = 'Chapitre 2 : Arbres Binaires et Graphes';
-                });
-                Navigator.pop(ctx);
-              },
-            ),
-            const SizedBox(height: 8),
-            _CourseSelectTile(
-              title: 'Bases de Données & SQL Avancé',
-              instructor: 'Prof. El Alami',
-              isSelected: _selectedCourse.contains('Bases de Données'),
-              onTap: () {
-                setState(() {
-                  _selectedCourse = 'Bases de Données & SQL';
-                  _selectedChapter = 'Chapitre 4 : Normalisation & Formes Normales';
-                });
-                Navigator.pop(ctx);
-              },
-            ),
-          ],
+        content: SizedBox(
+          width: 380,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: classes.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, i) {
+              final c = classes[i];
+              final selected = c.id == _activeClass(classes)?.id;
+              return _ClassSelectTile(
+                title: c.name,
+                subtitle: [
+                  _levelLabel(context, c.level),
+                  if (c.department != null && c.department!.isNotEmpty)
+                    c.department!,
+                ].join(' • '),
+                isSelected: selected,
+                onTap: () {
+                  setState(() {
+                    _selectedClassId = c.id;
+                    _messages.clear();
+                  });
+                  Navigator.pop(ctx);
+                },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -382,11 +187,14 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
     final isDesktop = context.screenWidth >= 1024;
     final auth = ref.watch(authStateProvider).valueOrNull;
     final isTeacher = auth?.role?.toLowerCase() == 'teacher';
+    final classesAsync = ref.watch(myCoursesProvider);
+    final classes = classesAsync.valueOrNull ?? const <CourseEntry>[];
+    final active = _activeClass(classes);
 
     return Scaffold(
-      backgroundColor: AppTheme.surface,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: colorScheme.surface,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
@@ -404,14 +212,14 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF83F8CD), Color(0xFF8197FF)],
+                gradient: LinearGradient(
+                  colors: [colorScheme.primary, colorScheme.secondary],
                 ),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.auto_awesome_rounded,
-                color: Color(0xFF002116),
+                color: colorScheme.onPrimary,
                 size: 18,
               ),
             ),
@@ -428,9 +236,7 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
                   ),
                 ),
                 Text(
-                  isTeacher
-                      ? 'SmartClass Pedagogical AI • Préparation & Conception de cours'
-                      : 'SmartClass Pedagogical AI • Aligné Université',
+                  'SmartClass AI • ${active?.name ?? context.tr('no_class_title')}',
                   style: TextStyle(
                     fontSize: 11,
                     color: colorScheme.onSurfaceVariant,
@@ -445,23 +251,25 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
             margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFF83F8CD).withValues(alpha: 0.2),
+              color: colorScheme.primary.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFF0F9D78).withValues(alpha: 0.3),
+                color: colorScheme.primary.withValues(alpha: 0.25),
               ),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircleAvatar(radius: 3, backgroundColor: Color(0xFF0F9D78)),
-                SizedBox(width: 6),
+                CircleAvatar(radius: 3, backgroundColor: colorScheme.primary),
+                const SizedBox(width: 6),
                 Text(
-                  'En ligne',
+                  classesAsync.isLoading
+                      ? context.tr('loading')
+                      : '${classes.length} classe(s)',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF003627),
+                    color: colorScheme.primary,
                   ),
                 ),
               ],
@@ -470,59 +278,131 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
           IconButton(
             icon: const Icon(Icons.delete_outline_rounded),
             tooltip: 'Effacer la conversation',
-            onPressed: () => _confirmClearHistory(context),
+            onPressed: _messages.isEmpty ? null : _confirmClearHistory,
           ),
           const SizedBox(width: 8),
         ],
       ),
-      body: Column(
-        children: [
-          // Banner de contexte du cours connecté
-          _buildCourseContextBar(context),
-
-          // Main Workspace
-          Expanded(
-            child: isDesktop
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Colonne Principale : Chat Conversationnel (65%)
-                      Expanded(
-                        flex: 7,
-                        child: _buildChatColumn(context),
-                      ),
-                      // Séparateur vertical
-                      VerticalDivider(
-                        width: 1,
-                        thickness: 1,
-                        color: AppTheme.outlineVariant.withValues(alpha: 0.35),
-                      ),
-                      // Colonne Droite Desktop : Fiches & Formules de Référence (35%)
-                      Expanded(
-                        flex: 5,
-                        child: _buildDesktopReferenceRail(context),
-                      ),
-                    ],
-                  )
-                : _buildChatColumn(context),
-          ),
-        ],
+      body: classesAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, _) => _buildEmptyState(
+          context,
+          title: context.tr('server_error'),
+          message: context.tr('check_connection'),
+          onRetry: () => ref.invalidate(myCoursesProvider),
+        ),
+        data: (realClasses) {
+          if (realClasses.isEmpty) {
+            return _buildEmptyState(
+              context,
+              title: context.tr('no_class_title'),
+              message: context.tr('no_class_message'),
+              onRetry: () => ref.invalidate(myCoursesProvider),
+            );
+          }
+          final current = _activeClass(realClasses)!;
+          return Column(
+            children: [
+              _buildClassContextBar(context, current, realClasses, isTeacher),
+              Expanded(
+                child: isDesktop
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            flex: 7,
+                            child: _buildChatColumn(context, current),
+                          ),
+                          VerticalDivider(
+                            width: 1,
+                            thickness: 1,
+                            color:
+                                colorScheme.outlineVariant.withValues(alpha: 0.4),
+                          ),
+                          Expanded(
+                            flex: 5,
+                            child: _buildDesktopRail(context, current),
+                          ),
+                        ],
+                      )
+                    : _buildChatColumn(context, current),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildCourseContextBar(BuildContext context) {
-    final auth = ref.watch(authStateProvider).valueOrNull;
-    final isTeacher = auth?.role?.toLowerCase() == 'teacher';
+  Widget _buildEmptyState(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required VoidCallback onRetry,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.smart_toy_outlined,
+              size: 72,
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: theme.textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: Text(context.tr('retry')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClassContextBar(
+    BuildContext context,
+    CourseEntry active,
+    List<CourseEntry> classes,
+    bool isTeacher,
+  ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final subtitle = [
+      _levelLabel(context, active.level),
+      if (active.department != null && active.department!.isNotEmpty)
+        active.department!,
+      context.tr('courses_students_count',
+          args: {'count': '${active.memberCount}'}),
+    ].join(' • ');
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerLowest,
+        color: colorScheme.surfaceContainerLowest,
         border: Border(
           bottom: BorderSide(
-            color: AppTheme.outlineVariant.withValues(alpha: 0.3),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.35),
           ),
         ),
       ),
@@ -532,13 +412,13 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha: 0.1),
+              color: colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             alignment: Alignment.center,
-            child: const Icon(
+            child: Icon(
               Icons.menu_book_rounded,
-              color: AppTheme.primary,
+              color: colorScheme.primary,
               size: 16,
             ),
           ),
@@ -552,11 +432,11 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
                   children: [
                     Flexible(
                       child: Text(
-                        _selectedCourse,
-                        style: const TextStyle(
+                        active.name,
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.primary,
+                          color: colorScheme.primary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -569,25 +449,25 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
                         vertical: 1.5,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.secondaryFixed,
+                        color: colorScheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        isTeacher ? 'Espace Enseignant' : 'Aligné L3',
-                        style: const TextStyle(
+                        isTeacher ? 'Espace Enseignant' : 'Aligné classe',
+                        style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.onSecondaryFixed,
+                          color: colorScheme.onSecondaryContainer,
                         ),
                       ),
                     ),
                   ],
                 ),
                 Text(
-                  isTeacher ? 'Supports pédagogiques & exercices pour vos classes' : _selectedChapter,
+                  subtitle,
                   style: TextStyle(
                     fontSize: 11,
-                    color: AppTheme.onSurfaceVariant.withValues(alpha: 0.8),
+                    color: colorScheme.onSurfaceVariant,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -599,13 +479,17 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
             FilledButton.tonalIcon(
               icon: const Icon(Icons.draw_rounded, size: 16),
               label: const Text('Studio Créateur IA'),
-              style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+              style: FilledButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+              ),
               onPressed: () => context.go('/courses/ai-create'),
             ),
             const SizedBox(width: 8),
           ],
           OutlinedButton.icon(
-            onPressed: () => _showChangeCourseDialog(context),
+            onPressed: classes.length > 1
+                ? () => _showChangeClassDialog(context, classes)
+                : null,
             icon: const Icon(Icons.swap_horiz_rounded, size: 16),
             label: const Text('Changer'),
             style: OutlinedButton.styleFrom(
@@ -622,126 +506,147 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
     );
   }
 
-  Widget _buildChatColumn(BuildContext context) {
-    final auth = ref.watch(authStateProvider).valueOrNull;
-    final isTeacher = auth?.role?.toLowerCase() == 'teacher';
-    final activePrompts = isTeacher
-        ? const [
-            'Générer un QCM d\'évaluation (10 questions) ⚡',
-            'Plan de cours complet & syllabus 📚',
-            'Exercices pratiques avec corrigés 📝',
-            'Étude de cas pour partiel 🎯',
-          ]
-        : _quickPrompts;
+  Widget _buildChatColumn(BuildContext context, CourseEntry active) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final prompts = [
+      'Résume ${active.name}',
+      'Génère un quiz sur ${active.name}',
+      'Où en est le module IA ?',
+    ];
 
     return Column(
       children: [
-        // Message timeline
         Expanded(
           child: ListView.builder(
             controller: _scrollController,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            itemCount: _messages.length + (_isGenerating ? 1 : 0),
+            itemCount: 1 + _messages.length + (_isGenerating ? 1 : 0),
             itemBuilder: (context, index) {
-              if (index == _messages.length) {
+              if (index == 0) {
+                return _buildIntroBubble(context, active);
+              }
+              final msgIndex = index - 1;
+              if (msgIndex == _messages.length) {
                 return _buildTypingIndicator(context);
               }
-              return _buildRichMessage(context, _messages[index]);
+              return _buildMessage(context, _messages[msgIndex]);
             },
           ),
         ),
-
-        // Quick prompt chips
         Container(
           height: 40,
           margin: const EdgeInsets.only(bottom: 8),
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
-            itemCount: activePrompts.length,
+            itemCount: prompts.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, i) {
               return ActionChip(
-                backgroundColor: AppTheme.surfaceContainerLowest,
+                backgroundColor: colorScheme.surfaceContainerLowest,
                 side: BorderSide(
-                  color: AppTheme.outlineVariant.withValues(alpha: 0.4),
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.4),
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
                 label: Text(
-                  activePrompts[i],
+                  prompts[i],
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                onPressed: () => _sendMessage(activePrompts[i]),
+                onPressed: () => _sendMessage(prompts[i]),
               );
             },
           ),
         ),
-
-        // Input Area
         _buildInputBar(context),
       ],
     );
   }
 
-  Widget _buildRichMessage(BuildContext context, _ChatMessage message) {
-    final isUser = message.isUser;
+  Widget _buildIntroBubble(BuildContext context, CourseEntry active) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final auth = ref.watch(authStateProvider).valueOrNull;
+    final name = (auth?.displayName?.trim().isNotEmpty == true)
+        ? auth!.displayName!.trim()
+        : context.tr('student_greeting_default');
 
-    if (isUser) {
+    return _TutorBubble(
+      title: 'Tuteur Connecté',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Bonjour $name ! Je suis connecté à votre classe **${active.name}**. '
+            'Le moteur de révision et les quiz sont disponibles via le Studio IA.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              height: 1.5,
+              color: colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _ActionPill(
+                icon: Icons.summarize_rounded,
+                label: context.tr('course_summary'),
+                onTap: () => context.push('/ai-revision'),
+              ),
+              _ActionPill(
+                icon: Icons.quiz_rounded,
+                label: context.tr('practice_quiz'),
+                onTap: () => context.push('/ai-quiz'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessage(BuildContext context, _ChatMessage message) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    if (message.isUser) {
       return Align(
         alignment: Alignment.centerRight,
         child: Container(
           margin: const EdgeInsets.only(bottom: 16, left: 48),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: AppTheme.primary,
+            color: colorScheme.primary,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(18),
               topRight: Radius.circular(18),
               bottomLeft: Radius.circular(18),
               bottomRight: Radius.circular(4),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primary.withValues(alpha: 0.15),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 message.text,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: colorScheme.onPrimary,
                   fontSize: 14,
                   height: 1.45,
                 ),
               ),
               const SizedBox(height: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    message.timestamp.formatTime(),
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 10,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.done_all_rounded,
-                    size: 14,
-                    color: Color(0xFF83F8CD),
-                  ),
-                ],
+              Text(
+                message.timestamp.formatTime(),
+                style: TextStyle(
+                  color: colorScheme.onPrimary.withValues(alpha: 0.7),
+                  fontSize: 10,
+                ),
               ),
             ],
           ),
@@ -749,314 +654,191 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
       );
     }
 
-    // Tutor Message (Stitch Design)
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16, right: 32),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceContainerLowest,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(18),
-            topRight: Radius.circular(18),
-            bottomRight: Radius.circular(18),
-            bottomLeft: Radius.circular(4),
-          ),
-          border: Border.all(
-            color: AppTheme.outlineVariant.withValues(alpha: 0.35),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+    return _TutorBubble(
+      title: message.stepTitle ?? 'Tuteur IA SmartClass',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            message.text,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              height: 1.5,
+              color: colorScheme.onSurface,
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Tutor header badge
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ),
+          if (message.actions.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryFixed,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        Icons.smart_toy_rounded,
-                        color: AppTheme.primary,
-                        size: 15,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Tuteur IA SmartClass',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-                if (message.stepTitle != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.secondaryFixed,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      message.stepTitle!,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.onSecondaryFixed,
-                      ),
-                    ),
+                if (message.actions.contains('summary'))
+                  _ActionPill(
+                    icon: Icons.summarize_rounded,
+                    label: context.tr('course_summary'),
+                    onTap: () => context.push('/ai-revision'),
+                  ),
+                if (message.actions.contains('quiz'))
+                  _ActionPill(
+                    icon: Icons.quiz_rounded,
+                    label: context.tr('practice_quiz'),
+                    onTap: () => context.push('/ai-quiz'),
                   ),
               ],
             ),
-            const SizedBox(height: 12),
-
-            // Text
-            Text(
-              message.text,
-              style: const TextStyle(
-                fontSize: 13.5,
-                height: 1.5,
-                color: AppTheme.onSurface,
+          ],
+          const SizedBox(height: 12),
+          Divider(height: 1, color: colorScheme.outlineVariant),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.content_copy_rounded, size: 16),
+                tooltip: 'Copier',
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: message.text));
+                  context.showSuccessToast('Message copié');
+                },
               ),
-            ),
-
-            // Highlighted Formula Box if present
-            if (message.hasFormula && message.formulaText != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppTheme.primary.withValues(alpha: 0.2),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      message.formulaText!,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    if (message.ruleHighlight != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        message.ruleHighlight!,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontStyle: FontStyle.italic,
-                          color: AppTheme.onSurfaceVariant,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ],
+              const Spacer(),
+              Text(
+                'Module IA non connecté',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: colorScheme.outline,
                 ),
               ),
             ],
-
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
-
-            // Action strip (Stitch design)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    _TutorActionButton(
-                      icon: Icons.volume_up_rounded,
-                      label: 'Écouter',
-                      onTap: () {
-                        context.showInfoToast('Lecture vocale du tuteur en cours...');
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.content_copy_rounded, size: 16),
-                      tooltip: 'Copier',
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: message.text));
-                        context.showSuccessToast('Explication copiée dans le presse-papier');
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.thumb_up_outlined, size: 16),
-                      tooltip: 'Explication claire',
-                      onPressed: () {},
-                    ),
-                  ],
-                ),
-                const Text(
-                  'Précision académique 99%',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.outline,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildDesktopReferenceRail(BuildContext context) {
+  Widget _buildDesktopRail(BuildContext context, CourseEntry active) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
-      color: AppTheme.surfaceContainerLowest,
+      color: colorScheme.surfaceContainerLowest,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
-                children: [
-                  Icon(Icons.style_rounded, color: AppTheme.primary, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'Fiches & Notions Clés',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppTheme.tertiaryFixed,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Text(
-                  'Chapitre 3',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.onTertiaryFixed,
-                  ),
-                ),
+              Icon(Icons.style_rounded, color: colorScheme.primary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Ma classe',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
           const SizedBox(height: 16),
-
-          // Reference cards list
-          Expanded(
-            child: ListView(
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ReferenceItemCard(
-                  title: 'Théorème du Rang (Rank-Nullity)',
-                  subtitle: 'dim(E) = dim(Ker(f)) + rg(f)',
-                  badge: 'Incontournable',
-                  badgeColor: Colors.amber,
-                  description:
-                      'La dimension de l\'espace de départ est la somme de la dimension du noyau et du rang de l\'application.',
-                  onAskTutor: () => _sendMessage(
-                    'Peux-tu me donner la démonstration du Théorème du Rang ?',
-                  ),
+                Text(
+                  active.name,
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 12),
-                _ReferenceItemCard(
-                  title: 'Injectivité & Noyau',
-                  subtitle: 'f injective <=> Ker(f) = {0}',
-                  badge: 'Propriété',
-                  badgeColor: AppTheme.secondary,
-                  description:
-                      'Une application linéaire est injective si et seulement si son noyau est réduit au vecteur nul.',
-                  onAskTutor: () => _sendMessage(
-                    'Comment prouver concrètement qu\'un noyau est réduit à {0} ?',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _ReferenceItemCard(
-                  title: 'Surjectivité & Image',
-                  subtitle: 'f surjective <=> rg(f) = dim(F)',
-                  badge: 'Propriété',
-                  badgeColor: const Color(0xFF0F9D78),
-                  description:
-                      'f est surjective si le rang égale la dimension de l\'espace d\'arrivée F.',
-                  onAskTutor: () => _sendMessage(
-                    'Donne-moi un exemple d\'application non surjective.',
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Shortcut Banner to AI Quiz
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF2D3E8C), Color(0xFF122675)],
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _InfoTag(
+                      icon: Icons.school_rounded,
+                      label: _levelLabel(context, active.level),
+                      color: colorScheme.primary,
                     ),
-                    borderRadius: BorderRadius.circular(14),
+                    if (active.department != null &&
+                        active.department!.isNotEmpty)
+                      _InfoTag(
+                        icon: Icons.account_balance_rounded,
+                        label: active.department!,
+                        color: colorScheme.secondary,
+                      ),
+                    _InfoTag(
+                      icon: Icons.people_alt_rounded,
+                      label: context.tr('courses_students_count',
+                          args: {'count': '${active.memberCount}'}),
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    _InfoTag(
+                      icon: Icons.co_present_rounded,
+                      label: context.tr('courses_teachers_count',
+                          args: {'count': '${active.teacherCount}'}),
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+                if (active.subjects.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    active.subjects.join(' • '),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Envie de vous tester ?',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Générez un QCM personnalisé de 5 questions sur ce chapitre.',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 11,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      FilledButton.icon(
-                        onPressed: () => context.push('/ai-quiz'),
-                        icon: const Icon(Icons.quiz_rounded, size: 16),
-                        label: const Text('Lancer le Quiz ⚡'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppTheme.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ],
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Outils IA disponibles',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          _RailTool(
+            icon: Icons.summarize_rounded,
+            title: context.tr('course_summary'),
+            subtitle: context.tr('course_summary_desc'),
+            onTap: () => context.push('/ai-revision'),
+          ),
+          const SizedBox(height: 10),
+          _RailTool(
+            icon: Icons.quiz_rounded,
+            title: context.tr('practice_quiz'),
+            subtitle: context.tr('practice_quiz_desc'),
+            onTap: () => context.push('/ai-quiz'),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colorScheme.secondaryContainer.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 18,
+                  color: colorScheme.onSecondaryContainer,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Le tuteur conversationnel temps réel arrive avec le module IA (📋 planifié).',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSecondaryContainer,
+                    ),
                   ),
                 ),
               ],
@@ -1068,79 +850,62 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
   }
 
   Widget _buildInputBar(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerLowest,
+        color: colorScheme.surfaceContainerLowest,
         border: Border(
           top: BorderSide(
-            color: AppTheme.outlineVariant.withValues(alpha: 0.3),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.35),
           ),
         ),
       ),
       child: SafeArea(
         child: Row(
           children: [
-            IconButton(
-              icon: const Icon(
-                Icons.mic_none_rounded,
-                color: AppTheme.onSurfaceVariant,
-              ),
-              tooltip: 'Dictée vocale',
-              onPressed: () {
-                context.showInfoToast('Microphone activé pour la dictée vocale');
-              },
-            ),
-            const SizedBox(width: 4),
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceContainerLow,
+                  color: colorScheme.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: AppTheme.outlineVariant.withValues(alpha: 0.4),
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.4),
                   ),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        minLines: 1,
-                        maxLines: 4,
-                        decoration: InputDecoration(
-                          hintText: 'Posez une question sur le cours au tuteur...',
-                          hintStyle: TextStyle(
-                            fontSize: 13,
-                            color: AppTheme.outline.withValues(alpha: 0.8),
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                        onSubmitted: (_) => _sendMessage(),
-                      ),
+                child: TextField(
+                  controller: _controller,
+                  minLines: 1,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText:
+                        'Posez une question sur le cours au tuteur...',
+                    hintStyle: TextStyle(
+                      fontSize: 13,
+                      color: colorScheme.outline,
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.attach_file_rounded, size: 20),
-                      color: AppTheme.outline,
-                      tooltip: 'Joindre un exercice ou formule',
-                      onPressed: () {},
-                    ),
-                  ],
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onSubmitted: _sendMessage,
                 ),
               ),
             ),
             const SizedBox(width: 8),
             Container(
-              decoration: const BoxDecoration(
-                color: AppTheme.primary,
+              decoration: BoxDecoration(
+                color: colorScheme.primary,
                 shape: BoxShape.circle,
               ),
               child: IconButton(
-                icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-                onPressed: _isGenerating ? null : () => _sendMessage(),
+                icon: Icon(
+                  Icons.send_rounded,
+                  color: colorScheme.onPrimary,
+                  size: 18,
+                ),
+                onPressed: _isGenerating ? null : () => _sendMessage(_controller.text),
               ),
             ),
           ],
@@ -1150,32 +915,30 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
   }
 
   Widget _buildTypingIndicator(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceContainerLowest,
+          color: colorScheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: AppTheme.outlineVariant.withValues(alpha: 0.35),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.35),
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.smart_toy_rounded,
-              color: AppTheme.primary,
-              size: 16,
-            ),
+            Icon(Icons.smart_toy_rounded, color: colorScheme.primary, size: 16),
             const SizedBox(width: 8),
             Text(
-              'Le tuteur IA rédige une explication...',
+              'Vérification du module IA...',
               style: TextStyle(
                 fontSize: 12,
-                color: AppTheme.onSurfaceVariant.withValues(alpha: 0.8),
+                color: colorScheme.onSurfaceVariant,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -1184,50 +947,98 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
       ),
     );
   }
+}
 
-  void _confirmClearHistory(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Effacer la conversation'),
-        content: const Text(
-          'Voulez-vous réinitialiser cette séance d\'étude avec le tuteur ?',
+class _ChatMessage {
+  final String text;
+  final bool isUser;
+  final DateTime timestamp;
+  final String? stepTitle;
+  final List<String> actions;
+
+  _ChatMessage({
+    required this.text,
+    required this.isUser,
+    required this.timestamp,
+    this.stepTitle,
+    this.actions = const [],
+  });
+}
+
+class _TutorBubble extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _TutorBubble({required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16, right: 32),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLowest,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomRight: Radius.circular(18),
+            bottomLeft: Radius.circular(4),
+          ),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-            onPressed: () {
-              setState(() {
-                _messages.clear();
-                _messages.add(
-                  _ChatMessage(
-                    text:
-                        'Historique réinitialisé. Je suis prêt pour votre prochaine question sur **$_selectedCourse** !',
-                    isUser: false,
-                    timestamp: DateTime.now(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                );
-              });
-              Navigator.pop(ctx);
-            },
-            child: const Text('Effacer'),
-          ),
-        ],
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.smart_toy_rounded,
+                    color: colorScheme.onPrimaryContainer,
+                    size: 15,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            child,
+          ],
+        ),
       ),
     );
   }
 }
 
-class _TutorActionButton extends StatelessWidget {
+class _ActionPill extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
 
-  const _TutorActionButton({
+  const _ActionPill({
     required this.icon,
     required this.label,
     required this.onTap,
@@ -1235,25 +1046,30 @@ class _TutorActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(8),
+          color: colorScheme.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: colorScheme.primary.withValues(alpha: 0.25),
+          ),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: AppTheme.primary),
-            const SizedBox(width: 4),
+            Icon(icon, size: 14, color: colorScheme.primary),
+            const SizedBox(width: 6),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primary,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.primary,
               ),
             ),
           ],
@@ -1263,21 +1079,135 @@ class _TutorActionButton extends StatelessWidget {
   }
 }
 
-class _CourseSelectTile extends StatelessWidget {
+class _InfoTag extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _InfoTag({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RailTool extends StatelessWidget {
+  final IconData icon;
   final String title;
-  final String instructor;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _RailTool({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, size: 18, color: colorScheme.primary),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    subtitle,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 13,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ClassSelectTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _CourseSelectTile({
+  const _ClassSelectTile({
     required this.title,
-    required this.instructor,
+    required this.subtitle,
     required this.isSelected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -1285,11 +1215,11 @@ class _CourseSelectTile extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.primary.withValues(alpha: 0.08)
-              : AppTheme.surfaceContainerLow,
+              ? colorScheme.primary.withValues(alpha: 0.08)
+              : colorScheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? AppTheme.primary : Colors.transparent,
+            color: isSelected ? colorScheme.primary : Colors.transparent,
           ),
         ),
         child: Row(
@@ -1298,7 +1228,7 @@ class _CourseSelectTile extends StatelessWidget {
               isSelected
                   ? Icons.check_circle_rounded
                   : Icons.radio_button_unchecked_rounded,
-              color: isSelected ? AppTheme.primary : AppTheme.outline,
+              color: isSelected ? colorScheme.primary : colorScheme.outline,
               size: 20,
             ),
             const SizedBox(width: 12),
@@ -1315,10 +1245,9 @@ class _CourseSelectTile extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    instructor,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.onSurfaceVariant,
+                    subtitle,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -1329,131 +1258,4 @@ class _CourseSelectTile extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ReferenceItemCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String badge;
-  final Color badgeColor;
-  final String description;
-  final VoidCallback onAskTutor;
-
-  const _ReferenceItemCard({
-    required this.title,
-    required this.subtitle,
-    required this.badge,
-    required this.badgeColor,
-    required this.description,
-    required this.onAskTutor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppTheme.outlineVariant.withValues(alpha: 0.35),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: badgeColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  badge,
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    color: badgeColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            description,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppTheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: InkWell(
-              onTap: onAskTutor,
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Demander au Tuteur',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.secondary,
-                    ),
-                  ),
-                  SizedBox(width: 4),
-                  Icon(Icons.arrow_forward_rounded,
-                      size: 12, color: AppTheme.secondary),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChatMessage {
-  final String text;
-  final bool isUser;
-  final DateTime timestamp;
-  final String? stepTitle;
-  final bool hasFormula;
-  final String? formulaText;
-  final String? ruleHighlight;
-
-  _ChatMessage({
-    required this.text,
-    required this.isUser,
-    required this.timestamp,
-    this.stepTitle,
-    this.hasFormula = false,
-    this.formulaText,
-    this.ruleHighlight,
-  });
 }

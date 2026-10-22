@@ -57,6 +57,8 @@ export class HybridSearchAdapter implements SearchPort {
       url.searchParams.set('gsrlimit', String(Math.max(limit * 2, 6)));
       url.searchParams.set('prop', 'imageinfo');
       url.searchParams.set('iiprop', 'url|mime|extmetadata|dimensions');
+      // Raster thumbnail: Flutter cannot render SVG, Wikimedia can.
+      url.searchParams.set('iiurlwidth', '1024');
       url.searchParams.set('origin', '*');
 
       const response = await fetch(url.toString(), {
@@ -77,6 +79,8 @@ export class HybridSearchAdapter implements SearchPort {
               title?: string;
               imageinfo?: Array<{
                 url?: string;
+                thumburl?: string;
+                mime?: string;
                 width?: number;
                 height?: number;
                 extmetadata?: {
@@ -96,10 +100,11 @@ export class HybridSearchAdapter implements SearchPort {
         const info = page.imageinfo?.[0];
         if (!info?.url) continue;
 
-        const rawFileUrl = info.url;
+        // Prefer the 1024px raster thumbnail (works for SVG sources too).
+        const rawFileUrl = info.thumburl ?? info.url;
         const cleanUrl = rawFileUrl.split('?')[0] ?? '';
         const ext = cleanUrl.split('.').pop()?.toLowerCase();
-        if (!ext || !['jpg', 'jpeg', 'png', 'svg', 'webp'].includes(ext)) {
+        if (!ext || !['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
           continue;
         }
 

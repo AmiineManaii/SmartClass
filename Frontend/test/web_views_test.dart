@@ -24,6 +24,7 @@ import 'package:smartclass/features/exams/presentation/pages/secure_exam_page.da
 import 'package:smartclass/features/exams/presentation/pages/exam_ai_score_page.dart';
 import 'package:smartclass/features/courses/presentation/pages/course_reader_page.dart';
 import 'package:smartclass/features/courses/application/providers/courses_provider.dart';
+import 'package:smartclass/features/courses/domain/entities/course_entry.dart';
 import 'package:smartclass/features/courses/domain/entities/generated_course.dart';
 
 Widget _buildDesktopTestHarness(
@@ -338,9 +339,9 @@ void main() {
 
       expect(find.byType(StudentDashboardView), findsOneWidget);
       expect(find.text('Rejoindre une classe'), findsOneWidget);
-      expect(find.text('SÉRIE ACTIVE'), findsOneWidget);
-      expect(find.text('OBJECTIF HEBDO'), findsOneWidget);
-      expect(find.text('MODULES INSCRITS'), findsOneWidget);
+      expect(find.text('MES CLASSES'), findsOneWidget);
+      expect(find.text('CAMARADES'), findsOneWidget);
+      expect(find.text('ENSEIGNANTS'), findsOneWidget);
       expect(find.text('TUTEUR IA'), findsOneWidget);
     });
 
@@ -352,16 +353,35 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(
-        _buildDesktopTestHarness(const AiAssistantPage()),
+        _buildDesktopTestHarness(
+          const AiAssistantPage(),
+          overrides: [
+            myCoursesProvider.overrideWith(
+              (ref) async => const [
+                CourseEntry(
+                  id: 'group_l3',
+                  name: 'Licence 3 Informatique',
+                  level: 'L3',
+                  status: 'PUBLISHED',
+                  memberCount: 32,
+                  teacherCount: 4,
+                  myRole: 'STUDENT',
+                  department: 'Informatique',
+                ),
+              ],
+            ),
+          ],
+        ),
       );
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.byType(AiAssistantPage), findsOneWidget);
       expect(find.text('Tuteur IA Interactif'), findsOneWidget);
-      expect(find.text('Aligné L3'), findsOneWidget);
-      expect(find.text('Fiches & Notions Clés'), findsOneWidget);
-      expect(find.text('Générer un QCM d\'entraînement ⚡'), findsOneWidget);
-      expect(find.text('Envie de vous tester ?'), findsOneWidget);
+      expect(find.text('Aligné classe'), findsOneWidget);
+      expect(find.text('Ma classe'), findsOneWidget);
+      expect(find.text('Outils IA disponibles'), findsOneWidget);
+      expect(find.text('Licence 3 Informatique'), findsWidgets);
     });
 
     testWidgets(

@@ -5,17 +5,17 @@ import { ConsoleEmailAdapter } from '../../src/modules/auth/infrastructure/conso
 import { ServiceUnavailableError } from '../../src/shared/errors/app-error.js';
 import type { AiGatewayPort } from '../../src/modules/ai-assistant/domain/ai-gateway.port.js';
 
-// Hermetic gateway: the real Unsloth state varies per machine, so
+// Hermetic gateway: the real Ollama state varies per machine, so
 // generation tests run against a drained fake (deterministic 503).
 const downGateway: AiGatewayPort = {
   chatCompletion: async () => {
     throw new ServiceUnavailableError(
-      'The local AI model is currently unreachable. Start it in Unsloth Desktop and retry.',
+      'The local AI model is currently unreachable. Start Ollama and retry.',
     );
   },
   streamCompletion: async () => {
     throw new ServiceUnavailableError(
-      'The local AI model is currently unreachable. Start it in Unsloth Desktop and retry.',
+      'The local AI model is currently unreachable. Start Ollama and retry.',
     );
   },
   checkHealth: async () => ({ available: false, model: 'test-model', latencyMs: null }),
@@ -197,7 +197,7 @@ describe('Integration: AI course generation (local LLM gateway)', () => {
       .field('format', 'resume')
       .attach('file', Buffer.from(pdf, 'latin1'), 'ancien-cours.pdf');
 
-    // No Unsloth Desktop in CI: extraction succeeded, gateway is down.
+    // No Ollama in CI: extraction succeeded, gateway is down.
     expect(valid.status).toBe(503);
     expect(valid.body.error.code).toBe('SERVICE_UNAVAILABLE');
   });

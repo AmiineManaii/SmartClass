@@ -87,7 +87,7 @@ class _FakeSections extends CourseSectionRemoteDataSource {
   }
 
   @override
-  Future<Map<String, dynamic>> generateSectionImage({
+  Future<SectionImageJob> startSectionImageJob({
     required String courseId,
     required String sectionKey,
     String kind = 'FIGURE',
@@ -98,11 +98,13 @@ class _FakeSections extends CourseSectionRemoteDataSource {
         message: 'ComfyUI is not wired yet',
       );
     }
-    return {
-      'imageUrl': 'http://localhost:8188/img.png',
-      'prompt': 'prompt',
-      'provider': 'comfyui',
-    };
+    return const SectionImageJob(
+      id: 'job-1',
+      status: SectionImageJobStatus.succeeded,
+      imageUrl: 'http://localhost:8188/img.png',
+      prompt: 'prompt',
+      provider: 'comfyui',
+    );
   }
 }
 
@@ -157,8 +159,9 @@ Future<void> _pumpBuilder(
 ProviderContainer _container({_FakeSections? sections}) {
   final container = ProviderContainer(
     overrides: [
-      courseSectionRemoteDataSourceProvider
-          .overrideWithValue(sections ?? _FakeSections()),
+      courseSectionRemoteDataSourceProvider.overrideWithValue(
+        sections ?? _FakeSections(),
+      ),
       aiCourseRemoteDataSourceProvider.overrideWithValue(_StreamAi()),
     ],
   );
@@ -167,23 +170,22 @@ ProviderContainer _container({_FakeSections? sections}) {
 }
 
 void main() {
-  testWidgets('renders the sections with status chips and the gate banner',
-      (tester) async {
+  testWidgets('renders the sections with status chips and the gate banner', (
+    tester,
+  ) async {
     await _pumpBuilder(tester, _container());
 
     expect(find.text('SECTION 01'), findsOneWidget);
     expect(find.text('SECTION 02'), findsOneWidget);
     expect(find.text('À générer'), findsNWidgets(2));
-    expect(
-      find.textContaining('2 section(s) restante(s)'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('2 section(s) restante(s)'), findsOneWidget);
     expect(find.text('Chapitre sec-1'), findsOneWidget);
     expect(find.text('notion-a'), findsNWidgets(2));
   });
 
-  testWidgets('generate then validate flips chips and shows the snack',
-      (tester) async {
+  testWidgets('generate then validate flips chips and shows the snack', (
+    tester,
+  ) async {
     await _pumpBuilder(tester, _container());
 
     await tester.tap(find.text('Générer').first);
@@ -199,14 +201,12 @@ void main() {
 
     expect(find.text('Validée'), findsOneWidget);
     expect(find.textContaining('Plus que 1'), findsOneWidget);
-    expect(
-      find.textContaining('1 section(s) restante(s)'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('1 section(s) restante(s)'), findsOneWidget);
   });
 
-  testWidgets('load failure shows the retry view which recovers',
-      (tester) async {
+  testWidgets('load failure shows the retry view which recovers', (
+    tester,
+  ) async {
     final sections = _FakeSections(fail: true);
     await _pumpBuilder(tester, _container(sections: sections));
 
@@ -220,26 +220,46 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('SECTION 01'), findsOneWidget);
-    expect(find.text('Impossible de charger les sections du cours.'), findsNothing);
+    expect(
+      find.text('Impossible de charger les sections du cours.'),
+      findsNothing,
+    );
   });
 
-  testWidgets('the image stub answers "coming soon" instead of failing',
-      (tester) async {
+  testWidgets('the image action offers ComfyUI and web search', (tester) async {
+    await _pumpBuilder(tester, _container());
+
+    await tester.tap(find.byTooltip('Illustration de la section').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Illustration de la section'), findsOneWidget);
+    expect(find.textContaining('ComfyUI'), findsOneWidget);
+    expect(find.text('Chercher 5 images sur le web'), findsOneWidget);
+  });
+
+  testWidgets('the ComfyUI 503 points the teacher to web search', (
+    tester,
+  ) async {
     final sections = _FakeSections()..imageUnavailable = true;
     await _pumpBuilder(tester, _container(sections: sections));
 
     await tester.tap(find.byTooltip('Illustration de la section').first);
     await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('ComfyUI'));
+    await tester.pumpAndSettle();
 
-    expect(find.textContaining('bientôt disponible'), findsOneWidget);
+    expect(find.textContaining('ComfyUI est indisponible'), findsOneWidget);
   });
 
-  testWidgets('a generated illustration shows the image explanation caption',
-      (tester) async {
+  testWidgets('a generated illustration shows the image explanation caption', (
+    tester,
+  ) async {
     final sections = _FakeSections();
     await _pumpBuilder(tester, _container(sections: sections));
 
     await tester.tap(find.byTooltip('Illustration de la section').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('ComfyUI'));
     await tester.pumpAndSettle();
 
     expect(find.text('Illustration IA'), findsOneWidget);
@@ -253,5 +273,6 @@ void main() {
     );
     expect(find.text('prompt'), findsOneWidget);
     expect(find.text('comfyui'), findsOneWidget);
+    expect(find.text('Insérer dans la section'), findsOneWidget);
   });
 }

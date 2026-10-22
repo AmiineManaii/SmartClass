@@ -29,6 +29,7 @@ import { GetInvitationStatusUseCase } from './application/get-invitation-status.
 import { JoinClassUseCase } from './application/join-class.use-case.js';
 import { LeaveClassUseCase } from './application/leave-class.use-case.js';
 import { CreateVirtualClassroomUseCase } from './application/create-virtual-classroom.use-case.js';
+import { AddMySubjectUseCase } from './application/add-my-subject.use-case.js';
 import { GroupsController } from './presentation/groups.controller.js';
 import { createGroupsRouter } from './presentation/groups.routes.js';
 
@@ -70,6 +71,7 @@ export const createGroupsModule = (options: GroupsModuleOptions = {}): GroupsMod
   const joinClassUseCase = new JoinClassUseCase(groupRepository, auditService);
   const leaveClassUseCase = new LeaveClassUseCase(groupRepository, auditService);
   const createVirtualClassroomUseCase = new CreateVirtualClassroomUseCase(groupRepository, auditService);
+  const addMySubjectUseCase = new AddMySubjectUseCase(groupRepository);
 
   const controller = new GroupsController(
     listGroupsUseCase,
@@ -92,6 +94,7 @@ export const createGroupsModule = (options: GroupsModuleOptions = {}): GroupsMod
     joinClassUseCase,
     leaveClassUseCase,
     createVirtualClassroomUseCase,
+    addMySubjectUseCase,
   );
 
   let authenticateMiddleware = options.authenticateMiddleware;

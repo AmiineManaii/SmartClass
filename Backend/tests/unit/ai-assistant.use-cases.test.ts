@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { buildCoursePrompt, COURSE_PROMPT_VERSION, maxTokensForLevel, shouldOfferTools } from '../../src/modules/ai-assistant/domain/course-prompt.js';
-import { GenerateCourseUseCase } from '../../src/modules/ai-assistant/application/generate-course.use-case.js';
+import {
+  DEFAULT_EXTRAS,
+  GenerateCourseUseCase,
+  extrasForMode,
+} from '../../src/modules/ai-assistant/application/generate-course.use-case.js';
 import { ImprovePdfUseCase } from '../../src/modules/ai-assistant/application/improve-pdf.use-case.js';
 import { UnpdfTextExtractor } from '../../src/modules/ai-assistant/infrastructure/pdf-text-extractor.adapter.js';
 import { htmlToText } from '../../src/modules/ai-assistant/infrastructure/native-url-fetcher.adapter.js';
@@ -157,6 +161,26 @@ describe('Unit: course prompt builder (versioned)', () => {
     expect(withoutTools.system).toContain('aucun outil externe');
     expect(withoutTools.system).toContain('n\'émet aucun appel d\'outil');
     expect(withoutTools.system).not.toContain('tu as accès à web_search');
+  });
+});
+
+describe('Unit: source-aware extras', () => {
+  it('enables web search for URL imports and thinking + search for old documents', () => {
+    expect(extrasForMode('url')).toEqual({ ...DEFAULT_EXTRAS, webSearch: true });
+    expect(extrasForMode('text')).toEqual({ ...DEFAULT_EXTRAS, thinking: true, webSearch: true });
+  });
+
+  it('keeps topic generation fast by default', () => {
+    expect(extrasForMode('topic')).toEqual(DEFAULT_EXTRAS);
+  });
+
+  it('lets explicit teacher values override the source defaults', () => {
+    expect(extrasForMode('text', { thinking: false, webSearch: false })).toEqual(DEFAULT_EXTRAS);
+    expect(extrasForMode('url', { webSearch: false })).toEqual(DEFAULT_EXTRAS);
+    expect(extrasForMode('topic', { examples: false, mermaid: false })).toMatchObject({
+      examples: false,
+      mermaid: false,
+    });
   });
 });
 

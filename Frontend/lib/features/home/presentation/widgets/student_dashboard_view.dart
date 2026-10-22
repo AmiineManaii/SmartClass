@@ -8,13 +8,11 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../application/providers/student_dashboard_provider.dart';
 import '../../domain/entities/student_assignment.dart';
 import '../../domain/entities/student_class_membership.dart';
-import '../../domain/entities/student_course_progress.dart';
 import '../../domain/entities/today_live_session.dart';
 import 'no_class_notice.dart';
 import '../../../../core/widgets/smart_loader.dart';
 import 'student_ai_studio_card.dart';
 import 'student_assignments_section.dart';
-import 'student_courses_section.dart';
 import 'student_greeting_header.dart';
 import 'student_imminent_live_card.dart';
 
@@ -108,7 +106,10 @@ class StudentDashboardView extends ConsumerWidget {
                           } catch (e) {
                             setState(() {
                               isLoading = false;
-                              errorMessage = e.toString().replaceFirst('ApiException: ', '');
+                              errorMessage = e.toString().replaceFirst(
+                                'ApiException: ',
+                                '',
+                              );
                             });
                           }
                         },
@@ -196,13 +197,15 @@ class StudentDashboardView extends ConsumerWidget {
             ref.invalidate(myGroupsProvider);
             ref.invalidate(studentClassMembershipProvider);
             ref.invalidate(studentTodayLiveProvider);
-            ref.invalidate(studentEnrolledCoursesProvider);
+            ref.invalidate(dashboardClassesProvider);
             ref.invalidate(studentAssignmentsProvider);
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.symmetric(
-              horizontal: isDesktop ? 36 : (context.screenWidth >= 600 ? 32 : 20),
+              horizontal: isDesktop
+                  ? 36
+                  : (context.screenWidth >= 600 ? 32 : 20),
               vertical: isDesktop ? 24 : 8,
             ),
             child: Center(
@@ -248,20 +251,17 @@ class StudentDashboardView extends ConsumerWidget {
                             )
                           : _EnrolledContent(
                               membership: membership,
-                              onLeaveClass: () => _confirmLeaveClass(
-                                context,
-                                ref,
-                                membership,
-                              ),
+                              onLeaveClass: () =>
+                                  _confirmLeaveClass(context, ref, membership),
                               onJoinLive: () =>
                                   context.push('/videoconference'),
                               onCourseSummaryTap: () =>
                                   context.push('/ai-revision'),
-                              onPracticeQuizTap: () =>
-                                  context.push('/ai-quiz'),
-                              onViewAllCourses: () =>
-                                  context.push('/courses'),
-                              onCourseTap: (_) => context.push('/courses'),
+                              onPracticeQuizTap: () => context.push('/ai-quiz'),
+                              onViewAllCourses: () => context.push('/courses'),
+                              onCourseTap: (id) => id.isEmpty
+                                  ? context.push('/courses')
+                                  : context.push('/groups/$id'),
                               onHistoryTap: () => context.push('/exams'),
                               onAssignmentAction: (assignmentId) {
                                 if (assignmentId.contains('qcm')) {
@@ -313,7 +313,7 @@ class _EnrolledContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final live = ref.watch(studentTodayLiveProvider);
-    final courses = ref.watch(studentEnrolledCoursesProvider);
+    final classes = ref.watch(dashboardClassesProvider);
     final assignments = ref.watch(studentAssignmentsProvider);
     final isDesktop = context.screenWidth >= 1024;
 
@@ -328,7 +328,8 @@ class _EnrolledContent extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 live.when(
-                  data: (session) => _LiveSection(session: session, onJoin: onJoinLive),
+                  data: (session) =>
+                      _LiveSection(session: session, onJoin: onJoinLive),
                   loading: () => const SizedBox.shrink(),
                   error: (_, _) => const SizedBox.shrink(),
                 ),
@@ -337,11 +338,11 @@ class _EnrolledContent extends ConsumerWidget {
                   onPracticeQuizTap: onPracticeQuizTap,
                 ),
                 const SizedBox(height: 24),
-                courses.when(
-                  data: (list) => _CoursesSection(
-                    courses: list,
+                classes.when(
+                  data: (list) => _RealClassesSection(
+                    classes: list,
                     onViewAll: onViewAllCourses,
-                    onCourseTap: onCourseTap,
+                    onClassTap: onCourseTap,
                   ),
                   loading: () => const SizedBox.shrink(),
                   error: (_, _) => const SizedBox.shrink(),
@@ -383,10 +384,7 @@ class _EnrolledContent extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _EnrolledClassCard(
-          membership: membership,
-          onLeaveClass: onLeaveClass,
-        ),
+        _EnrolledClassCard(membership: membership, onLeaveClass: onLeaveClass),
         const SizedBox(height: 16),
         live.when(
           data: (session) => _LiveSection(session: session, onJoin: onJoinLive),
@@ -398,11 +396,11 @@ class _EnrolledContent extends ConsumerWidget {
           onPracticeQuizTap: onPracticeQuizTap,
         ),
         const SizedBox(height: 24),
-        courses.when(
-          data: (list) => _CoursesSection(
-            courses: list,
+        classes.when(
+          data: (list) => _RealClassesSection(
+            classes: list,
             onViewAll: onViewAllCourses,
-            onCourseTap: onCourseTap,
+            onClassTap: onCourseTap,
           ),
           loading: () => const SizedBox.shrink(),
           error: (_, _) => const SizedBox.shrink(),
@@ -513,7 +511,7 @@ class _EnrolledClassCard extends StatelessWidget {
   }
 }
 
-class _DesktopGreetingAndStatsHeader extends StatelessWidget {
+class _DesktopGreetingAndStatsHeader extends ConsumerWidget {
   final AuthState? user;
   final VoidCallback onJoinTap;
 
@@ -523,12 +521,33 @@ class _DesktopGreetingAndStatsHeader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final displayName = user?.displayName?.trim().isNotEmpty == true
         ? user!.displayName!.trim()
-        : 'Ahmed Mohsen';
+        : context.tr('student_greeting_default');
+
+    // Real data — no mock. Zero counts while loading / on error are honest.
+    final classes = ref.watch(dashboardClassesProvider).valueOrNull ?? const [];
+    final memberships = classes
+        .map((c) => (c['memberCount'] as num?)?.toInt() ?? 0)
+        .fold<int>(0, (a, b) => a + b);
+    final teachers = classes
+        .map((c) => (c['teacherCount'] as num?)?.toInt() ?? 0)
+        .fold<int>(0, (a, b) => a + b);
+    final membership = ref.watch(studentClassMembershipProvider).valueOrNull;
+
+    final subtitleParts = <String>[
+      if (membership != null && membership.name.isNotEmpty) membership.name,
+      if (membership?.institution != null &&
+          membership!.institution!.isNotEmpty)
+        membership.institution!,
+    ];
+    final subtitle = subtitleParts.isEmpty
+        ? context.tr('no_class_title')
+        : subtitleParts.join(' • ');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -573,12 +592,17 @@ class _DesktopGreetingAndStatsHeader extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            'Bonjour $displayName',
+                            context.tr(
+                              'student_greeting',
+                              args: {'name': displayName},
+                            ),
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
                               letterSpacing: -0.4,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -586,44 +610,48 @@ class _DesktopGreetingAndStatsHeader extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         const Text('👋', style: TextStyle(fontSize: 22)),
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFDCFCE7),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF15803D),
-                                  shape: BoxShape.circle,
-                                ),
+                        if (membership != null) ...[
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withValues(
+                                alpha: 0.12,
                               ),
-                              const SizedBox(width: 5),
-                              const Text(
-                                'Synchronisé ENT',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF15803D),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primary,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 5),
+                                Text(
+                                  context.tr('role_student'),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      'Licence 3 Informatique • Faculté des Sciences & Technologies Numériques',
+                      subtitle,
                       style: TextStyle(
                         fontSize: 12.5,
                         color: isDark
@@ -647,7 +675,9 @@ class _DesktopGreetingAndStatsHeader extends StatelessWidget {
                         vertical: 12,
                       ),
                       side: BorderSide(
-                        color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+                        color: isDark
+                            ? Colors.white24
+                            : const Color(0xFFCBD5E1),
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -686,39 +716,48 @@ class _DesktopGreetingAndStatsHeader extends StatelessWidget {
         ),
         const SizedBox(height: 18),
 
-        // 2. 4 Modern Motivation & Stats Cards
+        // 2. Real stats cards (no fabricated engagement data)
         Row(
           children: [
             Expanded(
               child: _StatMetricCard(
-                emoji: '🔥',
-                title: 'SÉRIE ACTIVE',
-                value: '5 jours consécutifs',
-                subtext: 'Objectif 7j • +1 aujourd\'hui',
-                accentColor: const Color(0xFFF97316),
-                progress: 5 / 7,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: _StatMetricCard(
-                icon: Icons.verified_rounded,
-                title: 'OBJECTIF HEBDO',
-                value: '85% atteint',
-                subtext: '17 / 20 h complétées',
-                accentColor: const Color(0xFF6366F1),
-                progress: 0.85,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: _StatMetricCard(
                 icon: Icons.menu_book_rounded,
-                title: 'MODULES INSCRITS',
-                value: '4 cours actifs',
-                subtext: '2 devoirs à rendre',
+                title: 'MES CLASSES',
+                value: context.tr(
+                  'dashboard_classes_count',
+                  args: {'count': '${classes.length}'},
+                ),
+                subtext: subtitle,
                 accentColor: const Color(0xFF2563EB),
-                progress: 0.60,
+                progress: classes.isEmpty ? 0 : 1,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: _StatMetricCard(
+                icon: Icons.people_alt_rounded,
+                title: 'CAMARADES',
+                value: context.tr(
+                  'dashboard_members_count',
+                  args: {'count': '$memberships'},
+                ),
+                subtext: context.tr('dashboard_real_data'),
+                accentColor: const Color(0xFF6366F1),
+                progress: memberships == 0 ? 0 : 1,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: _StatMetricCard(
+                icon: Icons.co_present_rounded,
+                title: 'ENSEIGNANTS',
+                value: context.tr(
+                  'dashboard_teachers_count',
+                  args: {'count': '$teachers'},
+                ),
+                subtext: context.tr('dashboard_real_data'),
+                accentColor: const Color(0xFF0F9D78),
+                progress: teachers == 0 ? 0 : 1,
               ),
             ),
             const SizedBox(width: 14),
@@ -726,10 +765,10 @@ class _DesktopGreetingAndStatsHeader extends StatelessWidget {
               child: _StatMetricCard(
                 icon: Icons.auto_awesome_rounded,
                 title: 'TUTEUR IA',
-                value: 'Prêt pour réviser ✨',
-                subtext: 'SmartMentor actif 24/7',
+                value: context.tr('dashboard_tutor_ready'),
+                subtext: context.tr('dashboard_tutor_sub'),
                 accentColor: const Color(0xFF10B981),
-                progress: 1.0,
+                progress: 1,
               ),
             ),
           ],
@@ -740,7 +779,6 @@ class _DesktopGreetingAndStatsHeader extends StatelessWidget {
 }
 
 class _StatMetricCard extends StatelessWidget {
-  final String? emoji;
   final IconData? icon;
   final String title;
   final String value;
@@ -749,7 +787,6 @@ class _StatMetricCard extends StatelessWidget {
   final double progress;
 
   const _StatMetricCard({
-    this.emoji,
     this.icon,
     required this.title,
     required this.value,
@@ -795,9 +832,7 @@ class _StatMetricCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
-                child: emoji != null
-                    ? Text(emoji!, style: const TextStyle(fontSize: 18))
-                    : Icon(icon, color: accentColor, size: 20),
+                child: Icon(icon, color: accentColor, size: 20),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -859,13 +894,36 @@ class _StatMetricCard extends StatelessWidget {
   }
 }
 
-class _DailyScheduleCard extends StatelessWidget {
+class _DailyScheduleCard extends ConsumerWidget {
   const _DailyScheduleCard();
 
+  Color _kindColor(ColorScheme colorScheme, String? kind) {
+    switch (kind) {
+      case 'CM':
+        return colorScheme.primary;
+      case 'TD':
+        return colorScheme.secondary;
+      case 'TP':
+        return colorScheme.tertiary;
+      default:
+        return colorScheme.primary;
+    }
+  }
+
+  ({int h, int m}) _parseTime(String? value) {
+    final parts = (value ?? '').split(':');
+    final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
+    return (h: h, m: m);
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final async = ref.watch(studentDayTimetableProvider);
+    final events = async.valueOrNull ?? const <Map<String, dynamic>>[];
+    final now = TimeOfDay.now();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -913,7 +971,10 @@ class _DailyScheduleCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  '3 séances',
+                  context.tr(
+                    'dashboard_sessions_count',
+                    args: {'count': '${events.length}'},
+                  ),
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: colorScheme.onPrimaryFixed,
                     fontWeight: FontWeight.bold,
@@ -924,32 +985,74 @@ class _DailyScheduleCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _ScheduleSlot(
-            time: '08:30 - 10:30',
-            subject: 'Algorithmique Avancée',
-            location: 'Salle B104 • Amphi',
-            color: colorScheme.primary,
-            isCurrent: false,
-          ),
-          const SizedBox(height: 10),
-          _ScheduleSlot(
-            time: '14:00 - 16:00',
-            subject: 'Mathématiques & Algèbre',
-            location: 'Session Live Virtuelle 🔴',
-            color: colorScheme.error,
-            isCurrent: true,
-          ),
-          const SizedBox(height: 10),
-          _ScheduleSlot(
-            time: '16:30 - 18:00',
-            subject: 'Atelier de Tutorat IA',
-            location: 'Studio IA & Quiz',
-            color: colorScheme.secondary,
-            isCurrent: false,
-          ),
+          if (async.isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          else if (events.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.event_available_rounded,
+                    size: 18,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      context.tr('dashboard_no_sessions'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...events.asMap().entries.expand((entry) {
+              final i = entry.key;
+              final e = entry.value;
+              final start = _parseTime(e['start'] as String?);
+              final end = _parseTime(e['end'] as String?);
+              final startMinutes = start.h * 60 + start.m;
+              final endMinutes = end.h * 60 + end.m;
+              final nowMinutes = now.hour * 60 + now.minute;
+              final isCurrent =
+                  nowMinutes >= startMinutes && nowMinutes < endMinutes;
+              final teacher =
+                  (e['teacher'] is Map && (e['teacher'] as Map)['name'] != null)
+                  ? '${(e['teacher'] as Map)['name']}'
+                  : '';
+              final room = e['room']?.toString() ?? '';
+              final subtitle = [
+                if (teacher.isNotEmpty) teacher,
+                if (room.isNotEmpty) room,
+                if (e['kind'] != null) '${e['kind']}',
+              ].join(' • ');
+              final slot = _ScheduleSlot(
+                time: '${e['start'] ?? ''} - ${e['end'] ?? ''}',
+                subject: '${e['title'] ?? ''}',
+                location: isCurrent
+                    ? '${context.tr('dashboard_live_now')} 🔴'
+                    : subtitle,
+                color: _kindColor(colorScheme, e['kind'] as String?),
+                isCurrent: isCurrent,
+              );
+              return i == 0 ? [slot] : [const SizedBox(height: 10), slot];
+            }),
           const SizedBox(height: 12),
           InkWell(
-            onTap: () => context.push('/exams'),
+            onTap: () => context.push('/videoconference'),
             borderRadius: BorderRadius.circular(8),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1043,7 +1146,9 @@ class _ScheduleSlot extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         color: isCurrent ? color : colorScheme.onSurfaceVariant,
-                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+                        fontWeight: isCurrent
+                            ? FontWeight.bold
+                            : FontWeight.w500,
                       ),
                     ),
                   ],
@@ -1085,29 +1190,396 @@ class _LiveSection extends StatelessWidget {
   }
 }
 
-class _CoursesSection extends StatelessWidget {
-  final List<StudentCourseProgress> courses;
+/// Student's real classes (`GET /api/v1/groups/mine`) rendered as animated
+/// 3D course cards. Title = class name, tags = department/level/status.
+/// No mock data: an empty list shows the honest empty state.
+class _RealClassesSection extends StatelessWidget {
+  final List<Map<String, dynamic>> classes;
   final VoidCallback onViewAll;
-  final ValueChanged<String> onCourseTap;
+  final ValueChanged<String> onClassTap;
 
-  const _CoursesSection({
-    required this.courses,
+  const _RealClassesSection({
+    required this.classes,
     required this.onViewAll,
-    required this.onCourseTap,
+    required this.onClassTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        StudentCoursesSection(
-          courses: courses,
-          onViewAll: onViewAll,
-          onCourseTap: onCourseTap,
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                Text(
+                  context.tr('my_courses'),
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  context.tr(
+                    'enrolled_count',
+                    args: {'count': classes.length.toString()},
+                  ),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            InkWell(
+              onTap: onViewAll,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      context.tr('view_all'),
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colorScheme.secondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 18,
+                      color: colorScheme.secondary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
+        if (classes.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.menu_book_outlined,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    context.tr('no_courses'),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          for (int i = 0; i < classes.length; i++) ...[
+            _AnimatedClassCard(
+              index: i,
+              data: classes[i],
+              onTap: () => onClassTap((classes[i]['id'] as String?) ?? ''),
+            ),
+            if (i < classes.length - 1) const SizedBox(height: 12),
+          ],
       ],
+    );
+  }
+}
+
+/// Course card with a staggered entrance animation and a 3D hover tilt.
+class _AnimatedClassCard extends StatefulWidget {
+  final int index;
+  final Map<String, dynamic> data;
+  final VoidCallback onTap;
+
+  const _AnimatedClassCard({
+    required this.index,
+    required this.data,
+    required this.onTap,
+  });
+
+  @override
+  State<_AnimatedClassCard> createState() => _AnimatedClassCardState();
+}
+
+class _AnimatedClassCardState extends State<_AnimatedClassCard>
+    with SingleTickerProviderStateMixin {
+  Offset _tilt = Offset.zero;
+  bool _hovered = false;
+  late final AnimationController _entry;
+
+  @override
+  void initState() {
+    super.initState();
+    _entry = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
+    Future<void>.delayed(Duration(milliseconds: 70 * widget.index), () {
+      if (mounted) _entry.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _entry.dispose();
+    super.dispose();
+  }
+
+  void _onHover(Offset localPosition, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+    final dx = ((localPosition.dx / size.width) - 0.5).clamp(-0.5, 0.5);
+    final dy = ((localPosition.dy / size.height) - 0.5).clamp(-0.5, 0.5);
+    setState(() => _tilt = Offset(dx, dy));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final name = (widget.data['name'] as String?)?.trim();
+    final title = (name == null || name.isEmpty) ? '—' : name;
+    final department = (widget.data['department'] as String?)?.trim();
+    final level = (widget.data['level'] as String?)?.trim();
+    final status = (widget.data['status'] as String?)?.trim() ?? 'PUBLISHED';
+    final memberCount = (widget.data['memberCount'] as num?)?.toInt() ?? 0;
+    final teacherCount = (widget.data['teacherCount'] as num?)?.toInt() ?? 0;
+    final isPublished = status == 'PUBLISHED';
+
+    final levelKey = switch (level) {
+      'LICENCE' => 'level_licence',
+      'MASTER' => 'level_master',
+      'DOCTORAT' => 'level_doctorat',
+      _ => null,
+    };
+    final levelLabel = levelKey != null ? context.tr(levelKey) : (level ?? '');
+
+    final tags = <Widget>[
+      if (department != null && department.isNotEmpty)
+        _ClassTag(
+          label: department,
+          icon: Icons.account_balance_rounded,
+          colorScheme: colorScheme,
+        ),
+      if (levelLabel.isNotEmpty)
+        _ClassTag(
+          label: levelLabel,
+          icon: Icons.school_rounded,
+          colorScheme: colorScheme,
+        ),
+      _ClassTag(
+        label: context.tr(isPublished ? 'in_progress' : 'drafts'),
+        icon: isPublished
+            ? Icons.play_circle_outline_rounded
+            : Icons.edit_note_rounded,
+        colorScheme: colorScheme,
+        accent: isPublished ? colorScheme.primary : colorScheme.tertiary,
+      ),
+      _ClassTag(
+        label: context.tr(
+          'courses_students_count',
+          args: {'count': '$memberCount'},
+        ),
+        icon: Icons.people_alt_outlined,
+        colorScheme: colorScheme,
+      ),
+      _ClassTag(
+        label: context.tr(
+          'courses_teachers_count',
+          args: {'count': '$teacherCount'},
+        ),
+        icon: Icons.co_present_rounded,
+        colorScheme: colorScheme,
+      ),
+    ];
+
+    final tiltX = (_tilt.dy * -0.14);
+    final tiltY = (_tilt.dx * 0.14);
+
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: _entry, curve: Curves.easeOut),
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.08),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: _entry, curve: Curves.easeOutCubic)),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() {
+            _hovered = false;
+            _tilt = Offset.zero;
+          }),
+          onHover: (event) {
+            final size = context.size;
+            if (size != null) _onHover(event.localPosition, size);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            transformAlignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.0015)
+              ..rotateX(tiltX)
+              ..rotateY(tiltY)
+              ..scaleByDouble(
+                _hovered ? 1.012 : 1.0,
+                _hovered ? 1.012 : 1.0,
+                1.0,
+                1.0,
+              ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: widget.onTap,
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        colorScheme.surfaceContainerLowest,
+                        colorScheme.surfaceContainerLow,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: _hovered
+                          ? colorScheme.primary.withValues(alpha: 0.5)
+                          : colorScheme.outlineVariant.withValues(alpha: 0.4),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.shadow.withValues(
+                          alpha: _hovered ? 0.16 : 0.05,
+                        ),
+                        blurRadius: _hovered ? 24 : 10,
+                        offset: Offset(0, _hovered ? 12 : 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  colorScheme.primary,
+                                  colorScheme.secondary,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              Icons.menu_book_rounded,
+                              color: colorScheme.onPrimary,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 18,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Wrap(spacing: 8, runSpacing: 8, children: tags),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClassTag extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final ColorScheme colorScheme;
+  final Color? accent;
+
+  const _ClassTag({
+    required this.label,
+    required this.icon,
+    required this.colorScheme,
+    this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = accent ?? colorScheme.onSurfaceVariant;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(9999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

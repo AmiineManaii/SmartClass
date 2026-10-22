@@ -5,6 +5,7 @@ import type { CourseSectionRepositoryPort } from '../../courses/domain/course-se
 import type { CourseSection } from '../../courses/domain/course-section.entity.js';
 import type { CourseRepositoryPort } from '../../courses/domain/course-repository.port.js';
 import type { AiGatewayPort, GenerateDifficulty, GenerateLevel } from '../domain/ai-gateway.port.js';
+import { FETCH_URL_TOOL, WEB_SEARCH_TOOL } from '../domain/ai-tools.js';
 import { buildSectionPrompt, COURSE_PROMPT_VERSION } from '../domain/course-prompt.js';
 import { loadOwnedCourse } from './course-access.js';
 import type { SectionMemoryService } from './section-memory.service.js';
@@ -106,7 +107,11 @@ export class GenerateSectionUseCase {
         .filter((section) => section.content?.trim())
         .map((section) => section.title),
       memory,
-      extras: dto.extras,
+      extras: {
+        examples: dto.extras?.examples ?? true,
+        mermaid: dto.extras?.mermaid ?? true,
+      },
+      toolsOffered: true,
     });
 
     // Captured BEFORE the save: repository implementations may return the
@@ -122,7 +127,8 @@ export class GenerateSectionUseCase {
         user: prompt.user,
         maxTokens: Math.min(SECTION_MAX_TOKENS, env.AI_MAX_TOKENS),
         temperature: env.AI_TEMPERATURE,
-        thinking: false, // sections are short: keep time-to-first-token low
+        thinking: true,
+        tools: [WEB_SEARCH_TOOL, FETCH_URL_TOOL],
       },
       (delta) => {
         content += delta;
