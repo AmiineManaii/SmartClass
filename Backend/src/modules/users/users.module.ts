@@ -16,8 +16,13 @@ import { PrismaAuditService, type AuditServicePort } from '../../shared/audit/au
 import { UsersController } from './presentation/users.controller.js';
 import { createUsersRouter } from './presentation/users.routes.js';
 
+import type { ExportDataPort } from './domain/export-data.port.js';
+import { PrismaExportDataAdapter } from './infrastructure/prisma-export-data.adapter.js';
+import { ExportUserDataUseCase } from './application/export-user-data.use-case.js';
+
 export interface UsersModuleOptions {
   userDirectory?: UserDirectoryPort;
+  exportDataPort?: ExportDataPort;
   authRepository?: AuthRepositoryPort;
   tokenService?: TokenServicePort;
   auditService?: AuditServicePort;
@@ -50,11 +55,14 @@ export const createUsersModule = (options: UsersModuleOptions = {}): UsersModule
   );
   const setUserRoleUseCase = new SetUserRoleUseCase(authRepository);
   const updateTeacherApprovalUseCase = new UpdateTeacherApprovalUseCase(authRepository, auditService);
+  const exportDataPort = options.exportDataPort ?? new PrismaExportDataAdapter();
+  const exportUserDataUseCase = new ExportUserDataUseCase(exportDataPort);
   const controller = new UsersController(
     listUsersUseCase,
     setMyRoleUseCase,
     setUserRoleUseCase,
     updateTeacherApprovalUseCase,
+    exportUserDataUseCase,
   );
 
   let authenticateMiddleware = options.authenticateMiddleware;

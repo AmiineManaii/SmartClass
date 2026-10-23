@@ -318,4 +318,9 @@ class AdminRepositoryImpl implements AdminRepository {
   Future<void> updateTeacherApproval(String userId, String status) async {
     await _remote.updateTeacherApproval(userId, status);
   }
+
+  @override
+  Future<void> updateUserRole(String userId, String role) async {
+    await _remote.updateUserRole(userId, role);
+  }
 }

@@ -29,6 +29,12 @@ export const createUsersRouter = (options: UsersRouterOptions): Router => {
 
   // NOTE: registered before '/:id/role' so 'me' never matches the id param
   // (uuid validation would reject it with a confusing 422 otherwise).
+  router.get(
+    '/me/export',
+    authenticateMiddleware,
+    controller.exportData,
+  );
+
   router.patch(
     '/me/role',
     authenticateMiddleware,

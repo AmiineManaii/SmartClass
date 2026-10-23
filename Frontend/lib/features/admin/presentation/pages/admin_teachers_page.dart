@@ -13,7 +13,7 @@ import '../../domain/entities/managed_class.dart';
 import '../../domain/repositories/admin_repository.dart';
 import '../widgets/admin_person_avatar.dart';
 import '../widgets/admin_search_field.dart';
-import '../views/web_admin_users_view.dart';
+import '../views/web_admin_teachers_view.dart';
 import '../../../../core/widgets/smart_loader.dart';
 
 /// Global teacher directory (GET /api/v1/users?role=TEACHER) with
@@ -218,9 +218,9 @@ class _AdminTeachersPageState extends ConsumerState<AdminTeachersPage> {
       ref.invalidate(adminTeachersProvider(null));
       if (!mounted) return;
       if (status == 'APPROVED') {
-        context.showSuccessToast('Compte enseignant validé avec succès');
+        context.showSuccessToast(context.tr('admin_toast_teacher_approved_short'));
       } else {
-        context.showInfoToast('Compte enseignant refusé');
+        context.showInfoToast(context.tr('admin_toast_teacher_rejected_short'));
       }
     } catch (e) {
       if (!mounted) return;
@@ -231,7 +231,7 @@ class _AdminTeachersPageState extends ConsumerState<AdminTeachersPage> {
   @override
   Widget build(BuildContext context) {
     if (context.isDesktop) {
-      return const WebAdminUsersPage();
+      return const WebAdminTeachersView();
     }
 
     final theme = Theme.of(context);
@@ -403,17 +403,17 @@ class _TeacherRow extends StatelessWidget {
     if (isPending) {
       badgeBg = Colors.amber.withValues(alpha: 0.15);
       badgeText = Colors.amber.shade900;
-      badgeLabel = 'En attente';
+      badgeLabel = context.tr('admin_badge_pending');
       badgeIcon = Icons.hourglass_top_rounded;
     } else if (isRejected) {
       badgeBg = Colors.red.withValues(alpha: 0.12);
       badgeText = Colors.red.shade800;
-      badgeLabel = 'Rejeté';
+      badgeLabel = context.tr('admin_badge_rejected');
       badgeIcon = Icons.cancel_outlined;
     } else {
       badgeBg = Colors.green.withValues(alpha: 0.12);
       badgeText = Colors.green.shade800;
-      badgeLabel = 'Approuvé';
+      badgeLabel = context.tr('admin_badge_approved');
       badgeIcon = Icons.check_circle_outline_rounded;
     }
 
@@ -491,14 +491,14 @@ class _TeacherRow extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.check_circle_rounded, color: Colors.green),
               iconSize: 22,
-              tooltip: 'Valider le professeur',
+              tooltip: context.tr('admin_validate_accreditation_tooltip'),
               onPressed: onApprove,
               visualDensity: VisualDensity.compact,
             ),
             IconButton(
               icon: const Icon(Icons.cancel_rounded, color: Colors.red),
               iconSize: 22,
-              tooltip: 'Refuser le professeur',
+              tooltip: context.tr('admin_reject_tooltip'),
               onPressed: onReject,
               visualDensity: VisualDensity.compact,
             ),
@@ -506,14 +506,14 @@ class _TeacherRow extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.replay_rounded, color: Colors.green),
               iconSize: 22,
-              tooltip: 'Réapprouver',
+              tooltip: context.tr('admin_btn_reapprove'),
               onPressed: onApprove,
               visualDensity: VisualDensity.compact,
             ),
           ] else ...[
             IconButton(
               icon: Icon(Icons.block_rounded, size: 18, color: Colors.grey.shade600),
-              tooltip: 'Suspendre / Révoquer',
+              tooltip: context.tr('admin_btn_suspend_revoke'),
               onPressed: onReject,
               visualDensity: VisualDensity.compact,
             ),

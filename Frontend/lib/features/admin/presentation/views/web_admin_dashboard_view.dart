@@ -1,35 +1,80 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/extensions/extensions.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../application/providers/admin_providers.dart';
+import '../../domain/entities/admin_overview.dart';
+import '../../domain/entities/fraud_report.dart';
+import '../../domain/entities/managed_class.dart';
 import '../widgets/web_admin_scaffold.dart';
 
 typedef WebAdminDashboardView = WebAdminDashboardPage;
 
-class WebAdminDashboardPage extends ConsumerWidget {
+class WebAdminDashboardPage extends ConsumerStatefulWidget {
   const WebAdminDashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WebAdminDashboardPage> createState() =>
+      _WebAdminDashboardPageState();
+}
+
+class _WebAdminDashboardPageState extends ConsumerState<WebAdminDashboardPage> {
+  bool _filterUntreatedOnly = false;
+
+  @override
+  Widget build(BuildContext context) {
     final overviewAsync = ref.watch(adminOverviewProvider);
     final overview = overviewAsync.valueOrNull;
 
     final stats = overview?.stats;
-    String findStat(String id, String fallback) {
-      if (stats == null) return fallback;
+    AdminStat? findStat(String id) {
+      if (stats == null) return null;
       try {
-        return stats.firstWhere((s) => s.id == id).value;
+        return stats.firstWhere((s) => s.id == id);
       } catch (_) {
-        return fallback;
+        return null;
       }
     }
 
-    final totalStudents = findStat('students', '1250');
-    final totalTeachers = findStat('teachers', '48');
-    final totalGroups = findStat('classes', '18');
-    final pendingFrauds = findStat('frauds', '3');
+    final studentStat = findStat('students');
+    final teacherStat = findStat('teachers');
+    final groupStat = findStat('classes');
+    final fraudStat = findStat('frauds');
+
+    final totalStudents = studentStat?.value ?? '0';
+    final newStudents = studentStat?.badgeArgs['count'] ?? '0';
+
+    final totalTeachers = teacherStat?.value ?? '0';
+    final teacherActivePct = teacherStat?.badgeArgs['pct'] ?? '0';
+
+    final totalGroups = groupStat?.value ?? '0';
+    final newGroups = groupStat?.badgeArgs['count'] ?? '0';
+
+    final pendingFrauds = fraudStat?.value ?? '0';
+
+    final fraudReportsAsync = ref.watch(adminFraudReportsProvider);
+    final allFraudReports =
+        fraudReportsAsync.valueOrNull?.reports ?? const <FraudReport>[];
+    final displayedReports = _filterUntreatedOnly
+        ? allFraudReports
+            .where((r) => r.status == FraudStatus.untreated)
+            .toList()
+        : allFraudReports;
+
+    final classesAsync = ref.watch(adminClassesProvider);
+    final classes = classesAsync.valueOrNull ?? const <AdminClassSummary>[];
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final textPrimary = isDark ? Colors.white : AppTheme.onSurface;
+    final textSecondary =
+        isDark ? const Color(0xFF94A3B8) : AppTheme.onSurfaceVariant;
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : const Color(0xFFE2E8F0);
+    final innerBg =
+        isDark ? const Color(0xFF1E293B) : AppTheme.surfaceContainerLow;
 
     return WebAdminScaffold(
       activePath: 'tableau-de-bord',
@@ -61,15 +106,15 @@ class WebAdminDashboardPage extends ConsumerWidget {
                               color: AppTheme.primary.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.circle,
+                                const Icon(Icons.circle,
                                     color: AppTheme.primary, size: 7),
-                                SizedBox(width: 6),
+                                const SizedBox(width: 6),
                                 Text(
-                                  'SUPERVISION ACADÉMIQUE',
-                                  style: TextStyle(
+                                  context.tr('admin_supervision_badge'),
+                                  style: const TextStyle(
                                     color: AppTheme.primary,
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
@@ -80,10 +125,10 @@ class WebAdminDashboardPage extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(width: 10),
-                          const Text(
-                            '•  Session Hiver-Printemps',
+                          Text(
+                            context.tr('admin_winter_spring_session'),
                             style: TextStyle(
-                              color: AppTheme.onSurfaceVariant,
+                              color: textSecondary,
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
@@ -91,20 +136,20 @@ class WebAdminDashboardPage extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Tableau de Bord Administrateur',
+                      Text(
+                        context.tr('admin_dashboard_title'),
                         style: TextStyle(
-                          color: AppTheme.onSurface,
+                          color: textPrimary,
                           fontSize: 28,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.5,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
-                        'Vue d\'ensemble et supervision de l\'établissement académique • Année 2024-2025',
+                      Text(
+                        context.tr('admin_dashboard_subtitle'),
                         style: TextStyle(
-                          color: AppTheme.onSurfaceVariant,
+                          color: textSecondary,
                           fontSize: 13,
                         ),
                       ),
@@ -117,15 +162,17 @@ class WebAdminDashboardPage extends ConsumerWidget {
                 Row(
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () => ref.invalidate(adminOverviewProvider),
+                      onPressed: () {
+                        ref.invalidate(adminOverviewProvider);
+                        ref.invalidate(adminFraudReportsProvider);
+                        ref.invalidate(adminClassesProvider);
+                      },
                       icon: const Icon(Icons.sync_rounded, size: 18),
-                      label: const Text('Actualiser les données'),
+                      label: Text(context.tr('admin_refresh_data')),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.onSurface,
-                        backgroundColor: AppTheme.surfaceContainerLowest,
-                        side: BorderSide(
-                          color: AppTheme.outlineVariant.withValues(alpha: 0.5),
-                        ),
+                        foregroundColor: textPrimary,
+                        backgroundColor: cardBg,
+                        side: BorderSide(color: borderColor),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -137,13 +184,9 @@ class WebAdminDashboardPage extends ConsumerWidget {
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
-                      onPressed: () {
-                        context.showInfoToast(
-                          'Génération du rapport d\'audit PDF en cours...',
-                        );
-                      },
-                      icon: const Icon(Icons.file_download_outlined, size: 18),
-                      label: const Text('Exporter le rapport'),
+                      onPressed: () => context.go('/admin/reports'),
+                      icon: const Icon(Icons.analytics_outlined, size: 18),
+                      label: Text(context.tr('admin_reports_audits')),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
                         foregroundColor: Colors.white,
@@ -172,7 +215,7 @@ class WebAdminDashboardPage extends ConsumerWidget {
                 // Card 1: Effectif Total
                 Expanded(
                   child: _buildMetricCard(
-                    title: 'EFFECTIF TOTAL',
+                    title: context.tr('admin_metric_headcount'),
                     value: totalStudents,
                     icon: Icons.school_rounded,
                     iconColor: AppTheme.primary,
@@ -181,15 +224,15 @@ class WebAdminDashboardPage extends ConsumerWidget {
                       alignment: WrapAlignment.spaceBetween,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Row(
+                        Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.trending_up_rounded,
+                            const Icon(Icons.trending_up_rounded,
                                 color: AppTheme.success, size: 16),
-                            SizedBox(width: 4),
+                            const SizedBox(width: 4),
                             Text(
-                              '+8.4%',
-                              style: TextStyle(
+                              context.tr('admin_this_month_students', args: {'count': newStudents}),
+                              style: const TextStyle(
                                 color: AppTheme.success,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -197,9 +240,23 @@ class WebAdminDashboardPage extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        CustomPaint(
-                          size: const Size(40, 16),
-                          painter: _SparklinePainter(color: AppTheme.success),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.success.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            context.tr('admin_real_time'),
+                            style: const TextStyle(
+                              color: AppTheme.success,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -210,7 +267,7 @@ class WebAdminDashboardPage extends ConsumerWidget {
                 // Card 2: Corps Enseignant
                 Expanded(
                   child: _buildMetricCard(
-                    title: 'CORPS ENSEIGNANT',
+                    title: context.tr('admin_metric_faculty'),
                     value: totalTeachers,
                     icon: Icons.assignment_ind_rounded,
                     iconColor: AppTheme.secondary,
@@ -219,10 +276,10 @@ class WebAdminDashboardPage extends ConsumerWidget {
                       alignment: WrapAlignment.spaceBetween,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Text(
-                          'Enseignants actifs',
+                        Text(
+                          context.tr('admin_active_teachers_label'),
                           style: TextStyle(
-                            color: AppTheme.onSurfaceVariant,
+                            color: textSecondary,
                             fontSize: 11,
                           ),
                         ),
@@ -235,9 +292,9 @@ class WebAdminDashboardPage extends ConsumerWidget {
                             color: AppTheme.primaryFixed,
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            '100% assignés',
-                            style: TextStyle(
+                          child: Text(
+                            context.tr('admin_active_pct', args: {'pct': teacherActivePct}),
+                            style: const TextStyle(
                               color: AppTheme.onPrimaryFixed,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -253,7 +310,7 @@ class WebAdminDashboardPage extends ConsumerWidget {
                 // Card 3: Groupes Pédagogiques
                 Expanded(
                   child: _buildMetricCard(
-                    title: 'GROUPES PÉDAGOGIQUES',
+                    title: context.tr('admin_metric_groups'),
                     value: totalGroups,
                     icon: Icons.hub_rounded,
                     iconColor: AppTheme.secondary,
@@ -262,10 +319,10 @@ class WebAdminDashboardPage extends ConsumerWidget {
                       alignment: WrapAlignment.spaceBetween,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Text(
-                          'Classes gérées',
+                        Text(
+                          context.tr('admin_active_classes_label'),
                           style: TextStyle(
-                            color: AppTheme.onSurfaceVariant,
+                            color: textSecondary,
                             fontSize: 11,
                           ),
                         ),
@@ -278,9 +335,9 @@ class WebAdminDashboardPage extends ConsumerWidget {
                             color: AppTheme.secondaryFixed,
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            'Actif',
-                            style: TextStyle(
+                          child: Text(
+                            context.tr('admin_created_count', args: {'count': newGroups}),
+                            style: const TextStyle(
                               color: AppTheme.onSecondaryFixed,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -298,16 +355,20 @@ class WebAdminDashboardPage extends ConsumerWidget {
                   child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF1F0), // Soft Coral Alert Card
+                      color: isDark
+                          ? const Color(0xFF1E1522)
+                          : const Color(0xFFFFF1F0),
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: AppTheme.error.withValues(alpha: 0.15),
+                        color: AppTheme.error.withValues(alpha: isDark ? 0.35 : 0.15),
                       ),
-                      boxShadow: const [
+                      boxShadow: [
                         BoxShadow(
-                          color: Color(0x0A000000),
+                          color: isDark
+                              ? Colors.black.withValues(alpha: 0.25)
+                              : const Color(0x0A000000),
                           blurRadius: 10,
-                          offset: Offset(0, 3),
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
@@ -317,10 +378,10 @@ class WebAdminDashboardPage extends ConsumerWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Expanded(
+                            Expanded(
                               child: Text(
-                                'INTÉGRITÉ & FRAUDE',
-                                style: TextStyle(
+                                context.tr('admin_metric_integrity'),
+                                style: const TextStyle(
                                   color: AppTheme.error,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
@@ -332,7 +393,9 @@ class WebAdminDashboardPage extends ConsumerWidget {
                               width: 38,
                               height: 38,
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: isDark
+                                    ? const Color(0xFF3B1219)
+                                    : Colors.white,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
@@ -357,9 +420,9 @@ class WebAdminDashboardPage extends ConsumerWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text(
-                              'En attente',
-                              style: TextStyle(
+                            Text(
+                              context.tr('admin_pending_status'),
+                              style: const TextStyle(
                                 color: AppTheme.error,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -372,9 +435,9 @@ class WebAdminDashboardPage extends ConsumerWidget {
                           alignment: WrapAlignment.spaceBetween,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            const Text(
-                              'Action requise sous 24h',
-                              style: TextStyle(
+                            Text(
+                              context.tr('admin_action_24h'),
+                              style: const TextStyle(
                                 color: AppTheme.error,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w500,
@@ -382,9 +445,9 @@ class WebAdminDashboardPage extends ConsumerWidget {
                             ),
                             InkWell(
                               onTap: () => context.go('/admin/frauds'),
-                              child: const Text(
-                                'Traiter >',
-                                style: TextStyle(
+                              child: Text(
+                                context.tr('admin_handle_action'),
+                                style: const TextStyle(
                                   color: AppTheme.error,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
@@ -414,16 +477,16 @@ class WebAdminDashboardPage extends ConsumerWidget {
                   child: Container(
                     padding: const EdgeInsets.all(22),
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceContainerLowest,
+                      color: cardBg,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: AppTheme.outlineVariant.withValues(alpha: 0.35),
-                      ),
-                      boxShadow: const [
+                      border: Border.all(color: borderColor),
+                      boxShadow: [
                         BoxShadow(
-                          color: Color(0x0A1D2338),
+                          color: isDark
+                              ? Colors.black.withValues(alpha: 0.25)
+                              : const Color(0x0A1D2338),
                           blurRadius: 10,
-                          offset: Offset(0, 3),
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
@@ -435,22 +498,22 @@ class WebAdminDashboardPage extends ConsumerWidget {
                           alignment: WrapAlignment.spaceBetween,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            const Column(
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Derniers incidents de fraude signalés',
+                                  context.tr('admin_recent_fraud_incidents'),
                                   style: TextStyle(
-                                    color: AppTheme.onSurface,
+                                    color: textPrimary,
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                const SizedBox(height: 2),
                                 Text(
-                                  'Surveillance biométrique et comportementale SmartClass IA',
+                                  context.tr('admin_biometric_surveillance'),
                                   style: TextStyle(
-                                    color: AppTheme.onSurfaceVariant,
+                                    color: textSecondary,
                                     fontSize: 11,
                                   ),
                                 ),
@@ -459,14 +522,22 @@ class WebAdminDashboardPage extends ConsumerWidget {
                             Container(
                               padding: const EdgeInsets.all(3),
                               decoration: BoxDecoration(
-                                color: AppTheme.surfaceContainerLow,
+                                color: innerBg,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  _buildTabPill('Tous', false),
-                                  _buildTabPill('Non traités (3)', true),
+                                  _buildTabPill(
+                                    context.tr('admin_filter_all_count', args: {'count': allFraudReports.length.toString()}),
+                                    !_filterUntreatedOnly,
+                                    () => setState(() => _filterUntreatedOnly = false),
+                                  ),
+                                  _buildTabPill(
+                                    context.tr('admin_filter_untreated_count', args: {'count': pendingFrauds}),
+                                    _filterUntreatedOnly,
+                                    () => setState(() => _filterUntreatedOnly = true),
+                                  ),
                                 ],
                               ),
                             ),
@@ -476,83 +547,140 @@ class WebAdminDashboardPage extends ConsumerWidget {
                         const SizedBox(height: 18),
 
                         // Incidents List / Table
-                        _buildIncidentRow(
-                          initials: 'SM',
-                          avatarColor: Colors.blue.shade100,
-                          avatarTextColor: Colors.blue.shade900,
-                          name: 'Salma M.',
-                          code: '#ETU-8921 • L3 Info',
-                          exam: 'QCM Mathématiques',
-                          examPeriod: 'Semestre 6',
-                          severity: 'Critique',
-                          severityColor: AppTheme.error,
-                          diagnostic: 'Perte focus x5, Copier-coller',
-                          actionLabel: 'Sanctionner',
-                          onAction: () => context.go('/admin/frauds'),
-                        ),
-                        const Divider(height: 22, color: AppTheme.surfaceContainer),
+                        if (displayedReports.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 36,
+                              horizontal: 20,
+                            ),
+                            alignment: Alignment.center,
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.verified_user_outlined,
+                                  size: 44,
+                                  color: AppTheme.success.withValues(alpha: 0.8),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _filterUntreatedOnly
+                                      ? context.tr('admin_no_untreated_fraud')
+                                      : context.tr('admin_no_fraud_recorded'),
+                                  style: TextStyle(
+                                    color: textPrimary,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _filterUntreatedOnly
+                                      ? context.tr('admin_all_reports_handled')
+                                      : context.tr('admin_all_exams_compliant'),
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ...displayedReports.take(4).map((report) {
+                            final initials = report.studentName.isNotEmpty
+                                ? report.studentName
+                                    .split(' ')
+                                    .where((p) => p.isNotEmpty)
+                                    .map((p) => p[0])
+                                    .take(2)
+                                    .join()
+                                    .toUpperCase()
+                                : 'ET';
+                            final isCritical =
+                                report.severity == FraudSeverity.critical;
+                            final severityLabel = isCritical
+                                ? context.tr('admin_severity_critical')
+                                : context.tr('admin_severity_medium');
+                            final severityColor = isCritical
+                                ? AppTheme.error
+                                : Colors.amber.shade800;
+                            final code = [
+                              if (report.studentId.isNotEmpty)
+                                '#${report.studentId}',
+                              if (report.studentClass.isNotEmpty)
+                                report.studentClass,
+                            ].join(' • ');
 
-                        _buildIncidentRow(
-                          initials: 'YB',
-                          avatarColor: Colors.purple.shade100,
-                          avatarTextColor: Colors.purple.shade900,
-                          name: 'Yassine B.',
-                          code: '#ETU-4102 • M1 Info',
-                          exam: 'Algorithmique Avancée',
-                          examPeriod: 'Théorie des Graphes',
-                          severity: 'Moyen',
-                          severityColor: Colors.amber.shade800,
-                          diagnostic: 'Double écran & Flux IP',
-                          actionLabel: 'Contrôler',
-                          onAction: () => context.go('/admin/frauds'),
-                        ),
-                        const Divider(height: 22, color: AppTheme.surfaceContainer),
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildIncidentRow(
+                                  initials: initials,
+                                  avatarColor:
+                                      AppTheme.primary.withValues(alpha: 0.12),
+                                  avatarTextColor: AppTheme.primary,
+                                  name: report.studentName.isNotEmpty
+                                      ? report.studentName
+                                      : context.tr('admin_student_fallback'),
+                                  code: code.isNotEmpty
+                                      ? code
+                                      : context.tr('admin_exam_session'),
+                                  exam: report.title.isNotEmpty
+                                      ? report.title
+                                      : context.tr('admin_evaluation_fallback'),
+                                  examPeriod: report.subtitle.isNotEmpty
+                                      ? report.subtitle
+                                      : report.time,
+                                  severity: severityLabel,
+                                  severityColor: severityColor,
+                                  diagnostic: report.findings.isNotEmpty
+                                      ? report.findings.join(', ')
+                                      : (report.reason ?? context.tr('admin_auto_ai_detection')),
+                                  actionLabel:
+                                      report.status == FraudStatus.untreated
+                                          ? context.tr('admin_take_charge')
+                                          : context.tr('admin_consult'),
+                                  onAction: () => context.go('/admin/frauds'),
+                                ),
+                                Divider(
+                                  height: 22,
+                                  color: borderColor,
+                                ),
+                              ],
+                            );
+                          }),
 
-                        _buildIncidentRow(
-                          initials: 'KT',
-                          avatarColor: Colors.grey.shade200,
-                          avatarTextColor: Colors.grey.shade800,
-                          name: 'Karim T.',
-                          code: '#ETU-3329 • L3 Info',
-                          exam: 'Bases de Données',
-                          examPeriod: 'Architecture NoSQL',
-                          severity: 'Classé sans suite',
-                          severityColor: AppTheme.outline,
-                          diagnostic: 'Coupure Wi-Fi justifiée',
-                          actionLabel: 'Dossier',
-                          onAction: () => context.go('/admin/frauds'),
-                        ),
-
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 12),
 
                         // Footer CTA
                         Wrap(
                           alignment: WrapAlignment.spaceBetween,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            const Text(
-                              'Intégrité académique certifiée par consensus IA',
+                            Text(
+                              context.tr('admin_certified_ai_consensus'),
                               style: TextStyle(
-                                color: AppTheme.outline,
+                                color: textSecondary,
                                 fontSize: 11,
                               ),
                             ),
                             InkWell(
                               onTap: () => context.go('/admin/frauds'),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    'Voir tous les rapports d\'intégrité (15)',
+                                    context.tr('admin_view_all_integrity_reports', args: {'count': allFraudReports.length.toString()}),
                                     style: TextStyle(
-                                      color: AppTheme.primary,
+                                      color: isDark ? const Color(0xFF818CF8) : AppTheme.primary,
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  SizedBox(width: 4),
+                                  const SizedBox(width: 4),
                                   Icon(Icons.arrow_forward_rounded,
-                                      color: AppTheme.primary, size: 14),
+                                      color: isDark ? const Color(0xFF818CF8) : AppTheme.primary, size: 14),
                                 ],
                               ),
                             ),
@@ -571,16 +699,16 @@ class WebAdminDashboardPage extends ConsumerWidget {
                   child: Container(
                     padding: const EdgeInsets.all(22),
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceContainerLowest,
+                      color: cardBg,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: AppTheme.outlineVariant.withValues(alpha: 0.35),
-                      ),
-                      boxShadow: const [
+                      border: Border.all(color: borderColor),
+                      boxShadow: [
                         BoxShadow(
-                          color: Color(0x0A1D2338),
+                          color: isDark
+                              ? Colors.black.withValues(alpha: 0.25)
+                              : const Color(0x0A1D2338),
                           blurRadius: 10,
-                          offset: Offset(0, 3),
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
@@ -591,22 +719,22 @@ class WebAdminDashboardPage extends ConsumerWidget {
                           alignment: WrapAlignment.spaceBetween,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            const Column(
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Activité récente du système',
+                                  context.tr('admin_recent_system_activity'),
                                   style: TextStyle(
-                                    color: AppTheme.onSurface,
+                                    color: textPrimary,
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                const SizedBox(height: 2),
                                 Text(
-                                  'Sessions & plannings du jour',
+                                  context.tr('admin_active_cohorts_promos'),
                                   style: TextStyle(
-                                    color: AppTheme.onSurfaceVariant,
+                                    color: textSecondary,
                                     fontSize: 11,
                                   ),
                                 ),
@@ -618,13 +746,13 @@ class WebAdminDashboardPage extends ConsumerWidget {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: AppTheme.surfaceContainerLow,
+                                color: innerBg,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Text(
-                                'Aujourd\'hui',
+                              child: Text(
+                                context.tr('admin_live_badge'),
                                 style: TextStyle(
-                                  color: AppTheme.onSurfaceVariant,
+                                  color: textSecondary,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -635,79 +763,95 @@ class WebAdminDashboardPage extends ConsumerWidget {
 
                         const SizedBox(height: 18),
 
-                        // Timeline Items
-                        _buildTimelineItem(
-                          time: '08:00 — 10:00',
-                          title: 'CM Développement Mobile & Cross-Platform',
-                          subtitle: 'Salle 102 • Prof. Amine M. (34/35 présents)',
-                          statusLabel: 'Appel validé',
-                          statusColor: AppTheme.success,
-                          statusBg: AppTheme.tertiaryFixed.withValues(alpha: 0.3),
-                          isCurrent: false,
-                        ),
-                        const SizedBox(height: 14),
+                        // Real Classes / System Activity
+                        if (classes.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            alignment: Alignment.center,
+                            child: Column(
+                              children: [
+                                const Icon(Icons.school_outlined,
+                                    size: 36, color: AppTheme.outline),
+                                const SizedBox(height: 8),
+                                Text(
+                                  context.tr('admin_no_cohort_configured'),
+                                  style: TextStyle(
+                                    color: textPrimary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ...classes.take(3).map((cls) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: _buildTimelineItem(
+                                time: cls.promoTag,
+                                title: cls.title,
+                                subtitle: cls.referent.isNotEmpty
+                                    ? context.tr('admin_referent_with_students', args: {
+                                        'name': cls.referent,
+                                        'count': cls.students.toString(),
+                                      })
+                                    : context.tr('admin_students_enrolled_count', args: {
+                                        'count': cls.students.toString(),
+                                      }),
+                                statusLabel: cls.statusActive
+                                    ? context.tr('admin_status_active')
+                                    : context.tr('admin_status_draft'),
+                                statusColor: cls.statusActive
+                                    ? AppTheme.success
+                                    : AppTheme.outline,
+                                statusBg: (cls.statusActive
+                                        ? AppTheme.success
+                                        : AppTheme.outline)
+                                    .withValues(alpha: 0.15),
+                                isCurrent: cls.statusActive,
+                              ),
+                            );
+                          }),
 
-                        _buildTimelineItem(
-                          time: '10:15 — 12:15',
-                          title: 'TP Bases de Données Réparties',
-                          subtitle: 'Salle 204 • Dr. Sarah Benali',
-                          statusLabel: 'En cours',
-                          statusColor: AppTheme.secondary,
-                          statusBg: AppTheme.secondaryFixed.withValues(alpha: 0.5),
-                          isCurrent: true,
-                        ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 10),
 
-                        _buildTimelineItem(
-                          time: '13:45 — 15:45',
-                          title: 'TD Architecture Réseaux & Sécurité',
-                          subtitle: 'Amphi B • Prof. L. Valette',
-                          statusLabel: 'À venir',
-                          statusColor: AppTheme.outline,
-                          statusBg: AppTheme.surfaceContainerLow,
-                          isCurrent: false,
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // IA Telemetry Health Box (Stitch Design)
+                        // Status Box
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: AppTheme.surfaceContainerLow,
+                            color: innerBg,
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: AppTheme.outlineVariant.withValues(alpha: 0.3),
-                            ),
+                            border: Border.all(color: borderColor),
                           ),
-                          child: const Wrap(
+                          child: Wrap(
                             alignment: WrapAlignment.spaceBetween,
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.circle,
+                                  const Icon(Icons.circle,
                                       color: AppTheme.success, size: 9),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Surveillance IA SmartClass',
+                                        context.tr('admin_services_db'),
                                         style: TextStyle(
-                                          color: AppTheme.onSurface,
+                                          color: textPrimary,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                       Text(
-                                        'Moteur télémétrique opérationnel',
+                                        context.tr('admin_live_sync'),
                                         style: TextStyle(
-                                          color: AppTheme.onSurfaceVariant,
+                                          color: textSecondary,
                                           fontSize: 10,
                                         ),
                                       ),
@@ -715,12 +859,19 @@ class WebAdminDashboardPage extends ConsumerWidget {
                                   ),
                                 ],
                               ),
-                              Text(
-                                '42ms Latence',
-                                style: TextStyle(
-                                  color: AppTheme.success,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.success.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  context.tr('admin_operational'),
+                                  style: const TextStyle(
+                                    color: AppTheme.success,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],
@@ -741,27 +892,25 @@ class WebAdminDashboardPage extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceContainerLowest,
+                color: cardBg,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: AppTheme.outlineVariant.withValues(alpha: 0.35),
-                ),
+                border: Border.all(color: borderColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.bolt_rounded,
+                          const Icon(Icons.bolt_rounded,
                               color: AppTheme.primary, size: 20),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Text(
-                            'Actions rapides & Opérations en masse',
+                            context.tr('admin_quick_actions_supervision'),
                             style: TextStyle(
-                              color: AppTheme.onSurface,
+                              color: textPrimary,
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
                             ),
@@ -769,9 +918,9 @@ class WebAdminDashboardPage extends ConsumerWidget {
                         ],
                       ),
                       Text(
-                        'Raccourcis administratifs certifiés',
+                        context.tr('admin_certified_shortcuts'),
                         style: TextStyle(
-                          color: AppTheme.outline,
+                          color: textSecondary,
                           fontSize: 11,
                         ),
                       ),
@@ -785,7 +934,7 @@ class WebAdminDashboardPage extends ConsumerWidget {
                           onPressed: () => context.go('/admin/classes/new'),
                           icon: const Icon(Icons.add_circle_outline_rounded,
                               size: 18),
-                          label: const Text('Créer une nouvelle classe'),
+                          label: Text(context.tr('admin_create_new_class_btn')),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.primaryContainer,
                             foregroundColor: Colors.white,
@@ -799,16 +948,12 @@ class WebAdminDashboardPage extends ConsumerWidget {
                       const SizedBox(width: 14),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () {
-                            context.showSuccessToast('Import CSV activé.');
-                          },
-                          icon: const Icon(Icons.upload_file_rounded, size: 18),
-                          label: const Text('Importer des comptes CSV'),
+                          onPressed: () => context.go('/admin/classes'),
+                          icon: const Icon(Icons.school_outlined, size: 18),
+                          label: Text(context.tr('admin_manage_classes_promos')),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: AppTheme.onSurface,
-                            side: const BorderSide(
-                              color: AppTheme.surfaceContainerHighest,
-                            ),
+                            foregroundColor: textPrimary,
+                            side: BorderSide(color: borderColor),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -822,12 +967,10 @@ class WebAdminDashboardPage extends ConsumerWidget {
                           onPressed: () => context.go('/admin/planning'),
                           icon:
                               const Icon(Icons.calendar_month_rounded, size: 18),
-                          label: const Text('Générer plannings auto'),
+                          label: Text(context.tr('admin_timetable_rooms')),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: AppTheme.onSurface,
-                            side: const BorderSide(
-                              color: AppTheme.surfaceContainerHighest,
-                            ),
+                            foregroundColor: textPrimary,
+                            side: BorderSide(color: borderColor),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -838,14 +981,12 @@ class WebAdminDashboardPage extends ConsumerWidget {
                       const SizedBox(width: 14),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () {
-                            context.showInfoToast('Audit de sécurité initialisé.');
-                          },
+                          onPressed: () => context.go('/admin/frauds'),
                           icon: const Icon(Icons.shield_outlined,
                               color: AppTheme.error, size: 18),
-                          label: const Text(
-                            'Déclencher audit sécurité',
-                            style: TextStyle(color: AppTheme.error),
+                          label: Text(
+                            context.tr('admin_surveillance_frauds'),
+                            style: const TextStyle(color: AppTheme.error),
                           ),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
@@ -877,19 +1018,28 @@ class WebAdminDashboardPage extends ConsumerWidget {
     required Color iconBg,
     required Widget footerWidget,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final textPrimary = isDark ? Colors.white : AppTheme.onSurface;
+    final textSecondary =
+        isDark ? const Color(0xFF94A3B8) : AppTheme.onSurfaceVariant;
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : const Color(0xFFE2E8F0);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerLowest,
+        color: cardBg,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppTheme.outlineVariant.withValues(alpha: 0.35),
-        ),
-        boxShadow: const [
+        border: Border.all(color: borderColor),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x0A1D2338),
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.25)
+                : const Color(0x0A1D2338),
             blurRadius: 10,
-            offset: Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -902,8 +1052,8 @@ class WebAdminDashboardPage extends ConsumerWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: AppTheme.onSurfaceVariant,
+                  style: TextStyle(
+                    color: textSecondary,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.6,
@@ -924,8 +1074,8 @@ class WebAdminDashboardPage extends ConsumerWidget {
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(
-              color: AppTheme.onSurface,
+            style: TextStyle(
+              color: textPrimary,
               fontSize: 28,
               fontWeight: FontWeight.w800,
             ),
@@ -937,28 +1087,39 @@ class WebAdminDashboardPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildTabPill(String title, bool isSelected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.white : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: isSelected
-            ? const [
-                BoxShadow(
-                  color: Color(0x14000000),
-                  blurRadius: 4,
-                  offset: Offset(0, 1),
-                ),
-              ]
-            : null,
-      ),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: isSelected ? AppTheme.primary : AppTheme.onSurfaceVariant,
-          fontSize: 11,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+  Widget _buildTabPill(String title, bool isSelected, VoidCallback onTap) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? const Color(0xFF2563EB) : Colors.white)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected
+              ? const [
+                  BoxShadow(
+                    color: Color(0x14000000),
+                    blurRadius: 4,
+                    offset: Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isSelected
+                ? (isDark ? Colors.white : AppTheme.primary)
+                : (isDark
+                    ? const Color(0xFF94A3B8)
+                    : AppTheme.onSurfaceVariant),
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -978,6 +1139,14 @@ class WebAdminDashboardPage extends ConsumerWidget {
     required String actionLabel,
     required VoidCallback onAction,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.onSurface;
+    final textSecondary =
+        isDark ? const Color(0xFF94A3B8) : AppTheme.onSurfaceVariant;
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.1)
+        : const Color(0xFFE2E8F0);
+
     return Row(
       children: [
         CircleAvatar(
@@ -1000,16 +1169,16 @@ class WebAdminDashboardPage extends ConsumerWidget {
             children: [
               Text(
                 name,
-                style: const TextStyle(
-                  color: AppTheme.onSurface,
+                style: TextStyle(
+                  color: textPrimary,
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 code,
-                style: const TextStyle(
-                  color: AppTheme.onSurfaceVariant,
+                style: TextStyle(
+                  color: textSecondary,
                   fontSize: 11,
                 ),
               ),
@@ -1023,16 +1192,16 @@ class WebAdminDashboardPage extends ConsumerWidget {
             children: [
               Text(
                 exam,
-                style: const TextStyle(
-                  color: AppTheme.onSurface,
+                style: TextStyle(
+                  color: textPrimary,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 examPeriod,
-                style: const TextStyle(
-                  color: AppTheme.onSurfaceVariant,
+                style: TextStyle(
+                  color: textSecondary,
                   fontSize: 10,
                 ),
               ),
@@ -1063,8 +1232,8 @@ class WebAdminDashboardPage extends ConsumerWidget {
               Text(
                 diagnostic,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppTheme.onSurfaceVariant,
+                style: TextStyle(
+                  color: textSecondary,
                   fontSize: 11,
                 ),
               ),
@@ -1074,6 +1243,8 @@ class WebAdminDashboardPage extends ConsumerWidget {
         OutlinedButton(
           onPressed: onAction,
           style: OutlinedButton.styleFrom(
+            foregroundColor: isDark ? const Color(0xFF818CF8) : AppTheme.primary,
+            side: BorderSide(color: borderColor),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             minimumSize: Size.zero,
             shape: RoundedRectangleBorder(
@@ -1082,8 +1253,8 @@ class WebAdminDashboardPage extends ConsumerWidget {
           ),
           child: Text(
             actionLabel,
-            style: const TextStyle(
-              color: AppTheme.primary,
+            style: TextStyle(
+              color: isDark ? const Color(0xFF818CF8) : AppTheme.primary,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -1102,6 +1273,11 @@ class WebAdminDashboardPage extends ConsumerWidget {
     required Color statusBg,
     required bool isCurrent,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? Colors.white : AppTheme.onSurface;
+    final textSecondary =
+        isDark ? const Color(0xFF94A3B8) : AppTheme.onSurfaceVariant;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1150,16 +1326,16 @@ class WebAdminDashboardPage extends ConsumerWidget {
               const SizedBox(height: 2),
               Text(
                 title,
-                style: const TextStyle(
-                  color: AppTheme.onSurface,
+                style: TextStyle(
+                  color: textPrimary,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 subtitle,
-                style: const TextStyle(
-                  color: AppTheme.onSurfaceVariant,
+                style: TextStyle(
+                  color: textSecondary,
                   fontSize: 10,
                 ),
               ),
@@ -1171,30 +1347,3 @@ class WebAdminDashboardPage extends ConsumerWidget {
   }
 }
 
-class _SparklinePainter extends CustomPainter {
-  final Color color;
-
-  _SparklinePainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final path = Path()
-      ..moveTo(0, size.height * 0.8)
-      ..lineTo(size.width * 0.25, size.height * 0.55)
-      ..lineTo(size.width * 0.5, size.height * 0.65)
-      ..lineTo(size.width * 0.75, size.height * 0.3)
-      ..lineTo(size.width, size.height * 0.1);
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}

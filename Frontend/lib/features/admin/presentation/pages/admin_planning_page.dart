@@ -9,6 +9,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../application/providers/admin_providers.dart';
 import '../../domain/entities/managed_class.dart';
 import '../../domain/entities/timetable.dart';
+import '../views/web_admin_planning_view.dart';
 
 class AdminPlanningPage extends ConsumerStatefulWidget {
   const AdminPlanningPage({super.key});
@@ -41,6 +42,10 @@ class _AdminPlanningPageState extends ConsumerState<AdminPlanningPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (context.isDesktop) {
+      return const WebAdminPlanningView();
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final classesAsync = ref.watch(adminClassesProvider);

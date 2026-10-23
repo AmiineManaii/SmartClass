@@ -130,6 +130,22 @@ class ApiClient {
         ));
   }
 
+  Future<List<int>> getBytes(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    bool authenticated = true,
+  }) async {
+    final res = await _guard(() => _dio.get<List<int>>(
+          path,
+          queryParameters: queryParameters,
+          options: Options(
+            responseType: ResponseType.bytes,
+            extra: {'authenticated': authenticated},
+          ),
+        ));
+    return res.data ?? <int>[];
+  }
+
   Future<Response<T>> post<T>(
     String path, {
     Object? data,

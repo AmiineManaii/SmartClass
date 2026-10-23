@@ -12,6 +12,8 @@ import { userSortableFields } from './users.validation.js';
 
 import type { UpdateTeacherApprovalUseCase } from '../application/update-teacher-approval.use-case.js';
 import type { TeacherApprovalStatus } from '../../auth/index.js';
+import type { ExportUserDataUseCase } from '../application/export-user-data.use-case.js';
+import { PdfExportGenerator } from '../infrastructure/pdf-export-generator.js';
 
 interface ListUsersValidatedQuery {
   role?: 'TEACHER' | 'STUDENT' | 'ADMIN';
@@ -27,6 +29,8 @@ export class UsersController {
     private readonly setMyRoleUseCase: SetMyRoleUseCase,
     private readonly setUserRoleUseCase: SetUserRoleUseCase,
     private readonly updateTeacherApprovalUseCase?: UpdateTeacherApprovalUseCase,
+    private readonly exportUserDataUseCase?: ExportUserDataUseCase,
+    private readonly pdfExportGenerator: PdfExportGenerator = new PdfExportGenerator(),
   ) {}
 
   public listUsers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -110,6 +114,49 @@ export class UsersController {
       res.status(200).json({
         data: result,
       });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public exportData = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      if (!this.exportUserDataUseCase) {
+        throw new Error('ExportUserDataUseCase not configured');
+      }
+
+      const format = (req.query.format as string)?.toLowerCase() === 'pdf' ? 'pdf' : 'json';
+      const data = await this.exportUserDataUseCase.execute({
+        userId: req.user.id,
+        role: (req.user.role as Role) ?? null,
+      });
+
+      const safeLastName = (data.user.lastName || 'user').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safeFirstName = (data.user.firstName || 'export').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const dateStr = new Date().toISOString().slice(0, 10);
+
+      if (format === 'pdf') {
+        const pdfBuffer = await this.pdfExportGenerator.generatePdf(data);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="smartclass_export_${safeLastName}_${safeFirstName}_${dateStr}.pdf"`,
+        );
+        res.setHeader('Content-Length', pdfBuffer.length);
+        res.status(200).send(pdfBuffer);
+        return;
+      }
+
+      // JSON format
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="smartclass_export_${safeLastName}_${safeFirstName}_${dateStr}.json"`,
+      );
+      res.status(200).json(data);
     } catch (err) {
       next(err);
     }

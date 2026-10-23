@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/extensions/extensions.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/smart_loader.dart';
+import '../../application/providers/admin_providers.dart';
+import '../../domain/entities/fraud_report.dart';
 import '../widgets/web_admin_scaffold.dart';
 
 typedef WebAdminReportsView = WebAdminReportsPage;
@@ -16,79 +20,10 @@ class WebAdminReportsPage extends ConsumerStatefulWidget {
 }
 
 class _WebAdminReportsPageState extends ConsumerState<WebAdminReportsPage> {
-  String _selectedDossierId = 'FR-402';
+  String? _selectedDossierId;
+  String _activeFilter = 'all'; // 'all' | 'UNTREATED' | 'IN_PROGRESS' | 'CLOSED'
   final _decisionController = TextEditingController();
-
-  final List<Map<String, dynamic>> _alerts = [
-    {
-      'id': 'FR-402',
-      'name': 'Salma Mansouri',
-      'code': '#ETU-8921',
-      'exam': 'Algorithmique S1',
-      'promo': 'Informatique 3A',
-      'time': '12 Oct 2026, 10:45',
-      'type': 'Perte de focus (x5)',
-      'desc': 'Plein écran quitté, double écran suspect',
-      'icon': Icons.tab_unselected_rounded,
-      'riskScore': 94,
-      'riskLabel': 'Critique',
-      'riskColor': AppTheme.error,
-      'room': 'Salle Exam-Alpha-04',
-      'angle': '-48°',
-      'confidence': '98.2%',
-    },
-    {
-      'id': 'FR-401',
-      'name': 'Yassine Berrada',
-      'code': '#ETU-4102',
-      'exam': 'Théorie des Graphes',
-      'promo': 'Maths & Info 2A',
-      'time': '12 Oct 2026, 09:12',
-      'type': 'Multi-visages',
-      'desc': '2 personnes face à la webcam',
-      'icon': Icons.people_outline_rounded,
-      'riskScore': 78,
-      'riskLabel': 'Élevé',
-      'riskColor': Color(0xFF6B21A8),
-      'room': 'Salle Exam-Beta-02',
-      'angle': '0°',
-      'confidence': '95.4%',
-    },
-    {
-      'id': 'FR-398',
-      'name': 'Karim Tazi',
-      'code': '#ETU-3329',
-      'exam': 'Architecture NoSQL',
-      'promo': 'Génie Logiciel 3A',
-      'time': '11 Oct 2026, 16:30',
-      'type': 'Rupture de flux',
-      'desc': 'Reconnexion sur IP externe',
-      'icon': Icons.wifi_off_rounded,
-      'riskScore': 45,
-      'riskLabel': 'Modéré',
-      'riskColor': Color(0xFF1E40AF),
-      'room': 'Amphi C',
-      'angle': '0°',
-      'confidence': '88.0%',
-    },
-    {
-      'id': 'FR-395',
-      'name': 'Leila Amrani',
-      'code': '#ETU-6743',
-      'exam': 'Probabilités & Stats',
-      'promo': 'Master M1 Data',
-      'time': '10 Oct 2026, 14:15',
-      'type': 'Presse-papiers',
-      'desc': 'Copier-coller massif via invite IA',
-      'icon': Icons.content_paste_rounded,
-      'riskScore': 82,
-      'riskLabel': 'Élevé',
-      'riskColor': Color(0xFF6B21A8),
-      'room': 'Salle 204',
-      'angle': '0°',
-      'confidence': '97.1%',
-    },
-  ];
+  bool _updating = false;
 
   @override
   void dispose() {
@@ -96,12 +31,142 @@ class _WebAdminReportsPageState extends ConsumerState<WebAdminReportsPage> {
     super.dispose();
   }
 
+  void _onFilterChanged(String filter) {
+    setState(() => _activeFilter = filter);
+    final status = filter == 'all' ? null : filter;
+    ref.read(adminFraudReportsProvider.notifier).loadInitial(status: status);
+  }
+
+  Future<void> _updateStatus(FraudReport report, FraudStatus newStatus, {String? resolution}) async {
+    if (_updating) return;
+    setState(() => _updating = true);
+    try {
+      await ref.read(adminRepositoryProvider).updateFraudReport(
+            report.id,
+            status: newStatus,
+            resolution: resolution,
+          );
+      ref.invalidate(adminFraudReportsProvider);
+      ref.invalidate(adminFraudSummaryProvider);
+      ref.invalidate(adminOverviewProvider);
+      if (mounted) {
+        context.showSuccessToast(context.tr('admin_toast_dossier_updated'));
+      }
+    } catch (_) {
+      if (mounted) {
+        context.showErrorToast(context.tr('admin_toast_dossier_update_fail'));
+      }
+    } finally {
+      if (mounted) setState(() => _updating = false);
+    }
+  }
+
+  void _showResolutionDialog(FraudReport report) {
+    _decisionController.clear();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.tr('admin_dialog_close_dossier_title')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(context.tr('admin_dialog_dossier_of', args: {'name': report.studentName, 'title': report.title})),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _decisionController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: context.tr('admin_dialog_decision_hint'),
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(context.tr('cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _updateStatus(
+                report,
+                FraudStatus.closed,
+                resolution: _decisionController.text.trim(),
+              );
+            },
+            child: Text(context.tr('admin_btn_confirm_closure')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _severityColor(FraudSeverity s) {
+    switch (s) {
+      case FraudSeverity.critical:
+        return const Color(0xFFEF4444);
+      case FraudSeverity.medium:
+        return const Color(0xFFF59E0B);
+      case FraudSeverity.closed:
+        return const Color(0xFF10B981);
+    }
+  }
+
+  String _severityLabel(FraudSeverity s, BuildContext context) {
+    switch (s) {
+      case FraudSeverity.critical:
+        return context.tr('admin_severity_critical');
+      case FraudSeverity.medium:
+        return context.tr('admin_severity_medium');
+      case FraudSeverity.closed:
+        return context.tr('admin_severity_closed');
+    }
+  }
+
+  String _statusLabel(FraudStatus s, BuildContext context) {
+    switch (s) {
+      case FraudStatus.untreated:
+        return context.tr('admin_status_untreated');
+      case FraudStatus.ongoing:
+        return context.tr('admin_status_in_progress');
+      case FraudStatus.closed:
+        return context.tr('admin_status_closed');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final dossier = _alerts.firstWhere(
-      (a) => a['id'] == _selectedDossierId,
-      orElse: () => _alerts.first,
-    );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : const Color(0xFFE2E8F0);
+
+    final reportsAsync = ref.watch(adminFraudReportsProvider);
+    final summaryAsync = ref.watch(adminFraudSummaryProvider);
+
+    final reportsState = reportsAsync.valueOrNull;
+    final reports = reportsState?.reports ?? const [];
+    final summary = summaryAsync.valueOrNull;
+
+    if (_selectedDossierId == null && reports.isNotEmpty) {
+      _selectedDossierId = reports.first.id;
+    }
+
+    final selectedReport = reports.isNotEmpty
+        ? reports.firstWhere(
+            (r) => r.id == _selectedDossierId,
+            orElse: () => reports.first,
+          )
+        : null;
+
+    final unresolvedCount = summary?.unresolved ?? 0;
+    final inProgressCount = summary?.inProgress ?? 0;
+    final resolvedCount = summary?.resolvedThisMonth ?? 0;
 
     return WebAdminScaffold(
       activePath: 'rapports-de-fraude',
@@ -111,19 +176,22 @@ class _WebAdminReportsPageState extends ConsumerState<WebAdminReportsPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ==========================================
-            // 1. BREADCRUMBS & TOP HEADER
+            // 1. TOP HEADER & BREADCRUMBS
             // ==========================================
             Wrap(
               alignment: WrapAlignment.spaceBetween,
               crossAxisAlignment: WrapCrossAlignment.center,
-              runSpacing: 12,
+              runSpacing: 10,
               spacing: 12,
               children: [
-                const Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'SUPERVISION ACADÉMIQUE',
+                    const Icon(Icons.shield_rounded,
+                        size: 16, color: AppTheme.primary),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'ESPACE ADMINISTRATION',
                       style: TextStyle(
                         color: AppTheme.primary,
                         fontSize: 11,
@@ -131,209 +199,107 @@ class _WebAdminReportsPageState extends ConsumerState<WebAdminReportsPage> {
                         letterSpacing: 0.6,
                       ),
                     ),
-                    Text('  /  ',
-                        style: TextStyle(color: AppTheme.outlineVariant)),
                     Text(
-                      'SÉCURITÉ & EXAMENS',
+                      '  /  ',
                       style: TextStyle(
-                        color: AppTheme.onSurfaceVariant,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                        color: isDark ? const Color(0xFF475569) : AppTheme.outlineVariant,
                       ),
                     ),
-                    Text('  /  ',
-                        style: TextStyle(color: AppTheme.outlineVariant)),
                     Text(
-                      'AUDIT D\'INTÉGRITÉ',
+                      context.tr('admin_reports_breadcrumb_current'),
                       style: TextStyle(
-                        color: AppTheme.secondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                        color: isDark ? const Color(0xFFCBD5E1) : AppTheme.secondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.file_download_outlined, size: 17),
-                      label: const Text('Exporter l\'audit (PDF/CSV)'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.primary,
-                        side: const BorderSide(
-                            color: AppTheme.surfaceContainerHighest),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    ref.invalidate(adminFraudReportsProvider);
+                    ref.invalidate(adminFraudSummaryProvider);
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: Text(context.tr('admin_refresh_button')),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isDark ? Colors.white : AppTheme.primary,
+                    backgroundColor: cardBg,
+                    side: BorderSide(color: borderColor),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    ElevatedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.gavel_rounded, size: 17),
-                      label: const Text('Session d\'arbitrage'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryContainer,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 18, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
 
-            const Text(
-              'Rapports de Fraude & Intégrité des Examens',
-              style: TextStyle(
-                color: AppTheme.onSurface,
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Supervision télémétrique anti-triche assistée par consensus IA, analyse biométrique faciale et journaux d\'infractions en temps réel.',
-              style: TextStyle(
-                color: AppTheme.onSurfaceVariant,
-                fontSize: 13,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.tr('admin_reports_heading'),
+                  style: TextStyle(
+                    color: isDark ? Colors.white : AppTheme.onSurface,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  context.tr('admin_reports_sub'),
+                  style: TextStyle(
+                    color: isDark
+                        ? const Color(0xFF94A3B8)
+                        : AppTheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ),
 
             const SizedBox(height: 24),
 
             // ==========================================
-            // 2. 4 METRIC STATS ROW
+            // 2. METRIC CARDS
             // ==========================================
             Row(
               children: [
                 Expanded(
-                  child: _buildMetricCard(
-                    statusDot: AppTheme.error,
-                    title: 'Non traités',
-                    badge: '3 critiques',
-                    badgeBg: const Color(0xFFFFDAD6),
-                    badgeColor: AppTheme.error,
-                    value: '03',
-                    subtitle: 'dossiers en attente d\'arbitrage',
-                    footnote: '3 alertes rouges nécessitant clôture',
-                    footnoteColor: AppTheme.error,
+                  child: _buildKpiCard(
+                    isDark: isDark,
+                    title: context.tr('admin_kpi_untreated'),
+                    value: '$unresolvedCount',
+                    badge: context.tr('admin_kpi_badge_action_req'),
+                    badgeColor: const Color(0xFFEF4444),
+                    icon: Icons.warning_amber_rounded,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 18),
                 Expanded(
-                  child: _buildMetricCard(
-                    statusDot: AppTheme.secondary,
-                    title: 'En cours d\'examen',
-                    badge: '2 en cours',
-                    badgeBg: AppTheme.secondaryFixed,
-                    badgeColor: AppTheme.secondary,
-                    value: '02',
-                    subtitle: 'auditions planifiées',
-                    footnote: 'Commissions de discipline convoquées',
-                    footnoteColor: AppTheme.onSurfaceVariant,
+                  child: _buildKpiCard(
+                    isDark: isDark,
+                    title: context.tr('admin_kpi_in_arbitration'),
+                    value: '$inProgressCount',
+                    badge: context.tr('admin_kpi_badge_instructing'),
+                    badgeColor: const Color(0xFFF59E0B),
+                    icon: Icons.pending_actions_rounded,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 18),
                 Expanded(
-                  child: _buildMetricCard(
-                    statusDot: AppTheme.success,
-                    title: 'Clôturés',
-                    badge: '12 archivés',
-                    badgeBg: AppTheme.tertiaryFixed.withValues(alpha: 0.35),
-                    badgeColor: AppTheme.success,
-                    value: '12',
-                    subtitle: 'sanctions / classements',
-                    footnote: '100% avec horodatage scellé',
-                    footnoteColor: AppTheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceContainerLowest,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppTheme.outlineVariant.withValues(alpha: 0.35),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: [
-                            const Text(
-                              'Taux d\'intégrité',
-                              style: TextStyle(
-                                color: AppTheme.onSurfaceVariant,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppTheme.tertiaryFixed
-                                    .withValues(alpha: 0.35),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text(
-                                '↗ +0.4%',
-                                style: TextStyle(
-                                  color: AppTheme.success,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              '98.8%',
-                              style: TextStyle(
-                                color: AppTheme.onSurface,
-                                fontSize: 26,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            CustomPaint(
-                              size: const Size(60, 20),
-                              painter: _SparklinePainter(color: AppTheme.success),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Sur 2 450 épreuves passées ce trimestre',
-                          style: TextStyle(
-                            color: AppTheme.onSurfaceVariant,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: _buildKpiCard(
+                    isDark: isDark,
+                    title: context.tr('admin_kpi_resolved_this_month'),
+                    value: '$resolvedCount',
+                    badge: context.tr('admin_kpi_badge_closed'),
+                    badgeColor: const Color(0xFF10B981),
+                    icon: Icons.check_circle_outline_rounded,
                   ),
                 ),
               ],
@@ -342,1073 +308,520 @@ class _WebAdminReportsPageState extends ConsumerState<WebAdminReportsPage> {
             const SizedBox(height: 24),
 
             // ==========================================
-            // 3. FILTER BAR
+            // 3. FILTER TABS
+            // ==========================================
             Wrap(
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 12,
-              runSpacing: 10,
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Container(
-                  width: 320,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppTheme.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.search_rounded,
-                          size: 18, color: AppTheme.outline),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          decoration: InputDecoration(
-                            hintText:
-                                'Rechercher des étudiants, classes, cours...',
-                            hintStyle: TextStyle(
-                                color: AppTheme.outline, fontSize: 12),
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _buildDropdownBadge('Gravité : Tous niveaux'),
-                _buildDropdownBadge('Type d\'incident : Tous'),
-                _buildDropdownBadge('Période : Ce semestre (S1 2026)'),
-                IconButton(
-                  onPressed: () {},
-                  icon: const Icon(Icons.sync_rounded,
-                      color: AppTheme.onSurfaceVariant),
-                ),
+                _buildFilterTab(context.tr('admin_filter_all_alerts'), 'all', isDark),
+                _buildFilterTab(context.tr('admin_filter_untreated_count', args: {'count': unresolvedCount.toString()}), 'UNTREATED', isDark),
+                _buildFilterTab(context.tr('admin_filter_in_progress_count', args: {'count': inProgressCount.toString()}), 'IN_PROGRESS', isDark),
+                _buildFilterTab(context.tr('admin_filter_closed_count', args: {'count': resolvedCount.toString()}), 'CLOSED', isDark),
               ],
             ),
 
             const SizedBox(height: 20),
 
             // ==========================================
-            // 4. MAIN SPLIT (TABLE + DOSSIER ARBITRAGE)
+            // 4. MAIN SPLIT: REPORTS LIST & DETAILS
             // ==========================================
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left Table: Alertes Actives (55%)
-                Expanded(
-                  flex: 55,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceContainerLowest,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppTheme.outlineVariant.withValues(alpha: 0.35),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Ribbon
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
+            reportsAsync.isLoading
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 60),
+                    child: Center(child: SmartLoader.medium()),
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // List of Reports (60%)
+                      Expanded(
+                        flex: 60,
+                        child: Container(
                           decoration: BoxDecoration(
-                            color: AppTheme.surfaceContainerLow,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(15),
-                            ),
-                          ),
-                          child: Wrap(
-                            alignment: WrapAlignment.spaceBetween,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            runSpacing: 8,
-                            spacing: 8,
-                            children: [
-                              Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 8,
-                                runSpacing: 4,
-                                children: [
-                                  const Icon(Icons.shield_outlined,
-                                      color: AppTheme.primary, size: 18),
-                                  const Text(
-                                    'Registre des Alertes Actives',
-                                    style: TextStyle(
-                                      color: AppTheme.onSurface,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFFDAD6),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text(
-                                      '4 requêtes prioritaires',
-                                      style: TextStyle(
-                                        color: AppTheme.error,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.circle,
-                                      color: AppTheme.tertiaryFixed, size: 7),
-                                  SizedBox(width: 5),
-                                  Text(
-                                    'Vue synchronisée',
-                                    style: TextStyle(
-                                      color: AppTheme.onSurfaceVariant,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: borderColor),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                    alpha: isDark ? 0.3 : 0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
                               ),
                             ],
                           ),
-                        ),
-
-                        // Columns Header
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                          decoration: const BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(
-                                  color: AppTheme.surfaceContainer),
-                            ),
-                          ),
-                          child: const Row(
-                            children: [
-                              SizedBox(width: 26),
-                              Expanded(
-                                flex: 4,
-                                child: Text('DOSSIER / ÉTUDIANT',
-                                    style: TextStyle(
-                                        color: AppTheme.onSurfaceVariant,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold)),
-                              ),
-                              Expanded(
-                                flex: 4,
-                                child: Text('ÉPREUVE',
-                                    style: TextStyle(
-                                        color: AppTheme.onSurfaceVariant,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold)),
-                              ),
-                              Expanded(
-                                flex: 5,
-                                child: Text('TYPE D\'INFRACTION',
-                                    style: TextStyle(
-                                        color: AppTheme.onSurfaceVariant,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold)),
-                              ),
-                              Expanded(
-                                flex: 3,
-                                child: Text('INDICE DE RISQUE',
-                                    style: TextStyle(
-                                        color: AppTheme.onSurfaceVariant,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold)),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Table Rows
-                        ..._alerts.map((alert) {
-                          final isSelected =
-                              _selectedDossierId == alert['id'];
-
-                          return InkWell(
-                            onTap: () => setState(
-                                () => _selectedDossierId = alert['id']),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 14),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? AppTheme.primary.withValues(alpha: 0.05)
-                                    : Colors.transparent,
-                                border: const Border(
-                                  bottom: BorderSide(
-                                      color: AppTheme.surfaceContainer),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    isSelected
-                                        ? Icons.check_box_rounded
-                                        : Icons.check_box_outline_blank_rounded,
-                                    size: 18,
-                                    color: isSelected
-                                        ? AppTheme.primaryContainer
-                                        : AppTheme.outline,
-                                  ),
-                                  const SizedBox(width: 8),
-
-                                  // Student
-                                  Expanded(
-                                    flex: 4,
+                          child: reports.isEmpty
+                              ? Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 50, horizontal: 20),
+                                  child: Center(
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
                                       children: [
+                                        const Icon(
+                                          Icons.verified_user_rounded,
+                                          size: 40,
+                                          color: Color(0xFF10B981),
+                                        ),
+                                        const SizedBox(height: 12),
                                         Text(
-                                          alert['name'],
-                                          style: const TextStyle(
-                                            color: AppTheme.onSurface,
-                                            fontSize: 13,
+                                          context.tr('admin_no_fraud_reports'),
+                                          style: TextStyle(
+                                            fontSize: 15,
                                             fontWeight: FontWeight.bold,
+                                            color: isDark
+                                                ? Colors.white
+                                                : AppTheme.onSurface,
                                           ),
                                         ),
+                                        const SizedBox(height: 4),
                                         Text(
-                                          'Matr. ${alert['code']}',
-                                          style: const TextStyle(
-                                            color: AppTheme.onSurfaceVariant,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                        Text(
-                                          '#${alert['id']}',
-                                          style: const TextStyle(
-                                            color: AppTheme.secondary,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // Exam
-                                  Expanded(
-                                    flex: 4,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          alert['exam'],
-                                          style: const TextStyle(
-                                            color: AppTheme.onSurface,
+                                          context.tr('admin_all_exams_compliant'),
+                                          style: TextStyle(
                                             fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        Text(
-                                          alert['promo'],
-                                          style: const TextStyle(
-                                            color: AppTheme.onSurfaceVariant,
-                                            fontSize: 10,
-                                          ),
-                                        ),
-                                        Text(
-                                          alert['time'],
-                                          style: const TextStyle(
-                                            color: AppTheme.outline,
-                                            fontSize: 10,
+                                            color: isDark
+                                                ? const Color(0xFF94A3B8)
+                                                : AppTheme.onSurfaceVariant,
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
+                                )
+                              : ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: reports.length,
+                                  separatorBuilder: (_, _) =>
+                                      Divider(height: 1, color: borderColor),
+                                  itemBuilder: (context, index) {
+                                    final report = reports[index];
+                                    final isSelected =
+                                        _selectedDossierId == report.id;
+                                    final sevColor =
+                                        _severityColor(report.severity);
 
-                                  // Infraction
-                                  Expanded(
-                                    flex: 5,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
+                                    return InkWell(
+                                      onTap: () => setState(
+                                          () => _selectedDossierId = report.id),
+                                      child: Container(
+                                        color: isSelected
+                                            ? (isDark
+                                                ? const Color(0xFF1E293B)
+                                                : const Color(0xFFEEF2FF))
+                                            : Colors.transparent,
+                                        padding: const EdgeInsets.all(16),
+                                        child: Row(
                                           children: [
-                                            Icon(alert['icon'],
-                                                size: 13,
-                                                color: alert['riskColor']),
-                                            const SizedBox(width: 4),
+                                            Container(
+                                              width: 38,
+                                              height: 38,
+                                              decoration: BoxDecoration(
+                                                color: sevColor.withValues(
+                                                    alpha: 0.12),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: Icon(
+                                                Icons.warning_rounded,
+                                                color: sevColor,
+                                                size: 20,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 14),
                                             Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Text(
+                                                        report.studentName,
+                                                        style: TextStyle(
+                                                          fontSize: 13.5,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color: isDark
+                                                              ? Colors.white
+                                                              : AppTheme
+                                                                  .onSurface,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        '• ${report.time}',
+                                                        style: const TextStyle(
+                                                          fontSize: 11,
+                                                          color:
+                                                              Color(0xFF64748B),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    '${report.title} — ${report.subtitle}',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: isDark
+                                                          ? const Color(
+                                                              0xFF94A3B8)
+                                                          : AppTheme
+                                                              .onSurfaceVariant,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: sevColor.withValues(
+                                                    alpha: 0.12),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
                                               child: Text(
-                                                alert['type'],
-                                                overflow: TextOverflow.ellipsis,
+                                                _severityLabel(report.severity, context)
+                                                    .toUpperCase(),
                                                 style: TextStyle(
-                                                  color: alert['riskColor'],
-                                                  fontSize: 11,
+                                                  color: sevColor,
+                                                  fontSize: 10,
                                                   fontWeight: FontWeight.bold,
                                                 ),
                                               ),
                                             ),
                                           ],
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          alert['desc'],
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: AppTheme.onSurfaceVariant,
-                                            fontSize: 11,
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 24),
+
+                      // Inspector Panel (40%)
+                      Expanded(
+                        flex: 40,
+                        child: Container(
+                          padding: const EdgeInsets.all(22),
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: borderColor),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                    alpha: isDark ? 0.3 : 0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: selectedReport == null
+                              ? Center(
+                                  child: Text(context.tr('admin_select_an_alert')),
+                                )
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.assignment_late_outlined,
+                                          color: _severityColor(
+                                              selectedReport.severity),
+                                          size: 22,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            selectedReport.studentName,
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : AppTheme.onSurface,
+                                            ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ),
+                                    const SizedBox(height: 16),
+                                    Divider(color: borderColor),
+                                    const SizedBox(height: 12),
+                                    _buildDetailRow(
+                                        context.tr('admin_col_exam'), selectedReport.title, isDark),
+                                    const SizedBox(height: 10),
+                                    _buildDetailRow(context.tr('admin_col_class'),
+                                        selectedReport.studentClass, isDark),
+                                    const SizedBox(height: 10),
+                                    _buildDetailRow(context.tr('admin_col_status'),
+                                        _statusLabel(selectedReport.status, context), isDark),
+                                    const SizedBox(height: 10),
+                                    _buildDetailRow(context.tr('admin_col_severity'),
+                                        _severityLabel(selectedReport.severity, context), isDark),
+                                    const SizedBox(height: 16),
 
-                                  // Score
-                                  Expanded(
-                                    flex: 3,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: (alert['riskColor'] as Color)
-                                            .withValues(alpha: 0.12),
-                                        borderRadius:
-                                            BorderRadius.circular(8),
+                                    if (selectedReport.findings.isNotEmpty) ...[
+                                      Text(
+                                        context.tr('admin_findings_detected'),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDark
+                                              ? Colors.white
+                                              : AppTheme.onSurface,
+                                        ),
                                       ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            alert['riskLabel'],
-                                            style: TextStyle(
-                                              color: alert['riskColor'],
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                                      const SizedBox(height: 8),
+                                      ...selectedReport.findings.map(
+                                        (f) => Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 4),
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.circle,
+                                                size: 5,
+                                                color: Color(0xFFEF4444),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  f,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: isDark
+                                                        ? const Color(0xFFCBD5E1)
+                                                        : AppTheme.onSurfaceVariant,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          Text(
-                                            '${alert['riskScore']}/100',
-                                            style: TextStyle(
-                                              color: alert['riskColor'],
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                    ],
+
+                                    if (selectedReport.resolution != null &&
+                                        selectedReport.resolution!.isNotEmpty) ...[
+                                      Text(
+                                        context.tr('admin_resolution_administrative'),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDark
+                                              ? Colors.white
+                                              : AppTheme.onSurface,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? const Color(0xFF1E293B)
+                                              : const Color(0xFFF1F5F9),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          selectedReport.resolution!,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: isDark
+                                                ? const Color(0xFFCBD5E1)
+                                                : AppTheme.onSurface,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                    ],
+
+                                    // Action buttons
+                                    if (selectedReport.status != FraudStatus.closed) ...[
+                                      Row(
+                                        children: [
+                                          if (selectedReport.status == FraudStatus.untreated)
+                                            Expanded(
+                                              child: OutlinedButton(
+                                                onPressed: _updating
+                                                    ? null
+                                                    : () => _updateStatus(
+                                                          selectedReport,
+                                                          FraudStatus.ongoing,
+                                                        ),
+                                                child: Text(context.tr('admin_btn_take_charge')),
+                                              ),
+                                            ),
+                                          if (selectedReport.status == FraudStatus.untreated)
+                                            const SizedBox(width: 10),
+                                          Expanded(
+                                            child: FilledButton(
+                                              style: FilledButton.styleFrom(
+                                                backgroundColor:
+                                                    const Color(0xFF10B981),
+                                              ),
+                                              onPressed: _updating
+                                                  ? null
+                                                  : () => _showResolutionDialog(
+                                                      selectedReport),
+                                              child: Text(context.tr('admin_btn_close_case')),
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 20),
-
-                // Right Panel: Dossier d'Arbitrage #FR-402 (45% - Stitch Design)
-                Expanded(
-                  flex: 45,
-                  child: Container(
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceContainerLowest,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: AppTheme.outlineVariant.withValues(alpha: 0.35),
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0C1D2338),
-                          blurRadius: 14,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Dossier Header
-                        Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          runSpacing: 8,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFDAD6),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Text(
-                                'Non Traité • Critique',
-                                style: TextStyle(
-                                  color: AppTheme.error,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Dossier #${dossier['id']}',
-                                  style: const TextStyle(
-                                    color: AppTheme.onSurface,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                IconButton(
-                                  icon: const Icon(Icons.print_outlined,
-                                      size: 18),
-                                  onPressed: () {},
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 14),
-
-                        // Student Profile & Anomaly Score
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: AppTheme.surfaceContainerLow,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundColor: AppTheme.primaryFixed,
-                                child: Text(
-                                  (dossier['name'] as String)
-                                      .split(' ')
-                                      .map((s) => s.isNotEmpty ? s[0] : '')
-                                      .join(),
-                                  style: const TextStyle(
-                                    color: AppTheme.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      dossier['name'],
-                                      style: const TextStyle(
-                                        color: AppTheme.onSurface,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(
-                                      '${dossier['promo']} • ${dossier['room']}',
-                                      style: const TextStyle(
-                                        color: AppTheme.onSurfaceVariant,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Matricule : ${dossier['code']}',
-                                      style: const TextStyle(
-                                        color: AppTheme.outline,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  const Text(
-                                    'INDICE ANOMALIE IA',
-                                    style: TextStyle(
-                                      color: AppTheme.error,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.baseline,
-                                    textBaseline: TextBaseline.alphabetic,
-                                    children: [
-                                      Text(
-                                        '${dossier['riskScore']}',
-                                        style: const TextStyle(
-                                          color: AppTheme.error,
-                                          fontSize: 26,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                      const Text(
-                                        ' /100',
-                                        style: TextStyle(
-                                          color: AppTheme.outline,
-                                          fontSize: 12,
-                                        ),
-                                      ),
                                     ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Preuves biométriques & Captures (3 instantanés)
-                        Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          runSpacing: 8,
-                          children: [
-                            const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.camera_alt_outlined,
-                                    size: 16, color: AppTheme.primary),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Preuves biométriques & Captures',
-                                  style: TextStyle(
-                                    color: AppTheme.onSurface,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            TextButton(
-                              onPressed: () {},
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                minimumSize: Size.zero,
-                              ),
-                              child: const Text(
-                                'Télécharger l\'archive ZIP',
-                                style: TextStyle(
-                                  color: AppTheme.primary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // Two Proof Cards Side-by-side (Stitch Design)
-                        Row(
-                          children: [
-                            // Proof 1: Webcam Head Turned
-                            Expanded(
-                              child: Container(
-                                constraints: const BoxConstraints(minHeight: 124),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.85),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: AppTheme.error.withValues(alpha: 0.6),
-                                  ),
-                                ),
-                                padding: const EdgeInsets.all(8),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.error,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'Tête détournée (${dossier['angle']})',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    const Center(
-                                      child: Icon(Icons.face_retouching_off,
-                                          color: Colors.white54, size: 28),
-                                    ),
-                                    Wrap(
-                                      alignment:
-                                          WrapAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          WrapCrossAlignment.center,
-                                      runSpacing: 4,
-                                      children: [
-                                        Text(
-                                          'Confiance ${dossier['confidence']}',
-                                          style: const TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 9,
-                                          ),
-                                        ),
-                                        const Text(
-                                          'Instantané #1',
-                                          style: TextStyle(
-                                            color: Colors.white38,
-                                            fontSize: 9,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
                                   ],
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-
-                            // Proof 2: Browser Screen Capture
-                            Expanded(
-                              child: Container(
-                                constraints: const BoxConstraints(minHeight: 124),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1E293B),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: AppTheme.error.withValues(alpha: 0.6),
-                                  ),
-                                ),
-                                padding: const EdgeInsets.all(8),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.error,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: const Text(
-                                        'Non Autorisé • Alt+Tab',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    const Text(
-                                      'chatgpt.com/c/68...\nRequête: "Résoudre algo tri..."',
-                                      style: TextStyle(
-                                        color: Color(0xFF38BDF8),
-                                        fontSize: 9,
-                                        fontFamily: 'monospace',
-                                      ),
-                                    ),
-                                    const Text(
-                                      'Page d\'IA conversationnelle ouverte',
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 9,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Chronologie Télémétrique de la Session
-                        const Text(
-                          'Chronologie Télémétrique de la Session',
-                          style: TextStyle(
-                            color: AppTheme.onSurface,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildTimelineRow('10:00:00',
-                            'Début de l\'épreuve (Biométrie validée 99.8%)', AppTheme.success),
-                        _buildTimelineRow('10:32:15',
-                            'Avertissement acoustique (Bruit suspect 28 dB)', Colors.amber.shade800),
-                        _buildTimelineRow('10:45:12',
-                            'Décrochage visuel majeur (>14 secondes)', AppTheme.error),
-                        _buildTimelineRow('10:45:18',
-                            'Infraction critique confirmée (Alt+Tab vers IA)', AppTheme.error),
-
-                        const SizedBox(height: 16),
-
-                        // Formulaire d'Arbitrage & Décision
-                        const Text(
-                          'Arbitrage & Décision Disciplinaire',
-                          style: TextStyle(
-                            color: AppTheme.onSurface,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: _decisionController,
-                          maxLines: 2,
-                          decoration: InputDecoration(
-                            hintText:
-                                'Saisir la notification de décision transmise au jury d\'examen et à l\'étudiant...',
-                            hintStyle: const TextStyle(
-                                color: AppTheme.outline, fontSize: 11),
-                            filled: true,
-                            fillColor: AppTheme.surfaceContainerLow,
-                            contentPadding: const EdgeInsets.all(10),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // Sanction Button
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            context.showErrorToast(
-                              'Sanction appliquée : Note 0/20 & Épreuve annulée.',
-                            );
-                          },
-                          icon: const Icon(Icons.cancel_outlined,
-                              color: Colors.white, size: 16),
-                          label: const Text(
-                            'Sanctionner & Annuler l\'épreuve (Note 0/20)',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.error,
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () {},
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Commission disciplinaire',
-                                  style: TextStyle(
-                                    color: AppTheme.primary,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () {},
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Classer sans suite',
-                                  style: TextStyle(
-                                    color: AppTheme.outline,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // ==========================================
-            // 5. FOOTER COMPLIANCE BANNER
-            // ==========================================
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: AppTheme.outlineVariant.withValues(alpha: 0.35),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const Icon(Icons.lock_person_outlined,
-                            color: AppTheme.success, size: 20),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Text(
-                                'Conformité RGPD & Intégrité Académique',
-                                style: TextStyle(
-                                  color: AppTheme.onSurface,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                'Données biométriques chiffrées de bout en bout • Journaux scellés par certificat SHA-256 inviolable.',
-                                style: TextStyle(
-                                  color: AppTheme.onSurfaceVariant,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppTheme.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'Audit Hash: 9f82...da31',
-                          style: TextStyle(
-                            color: AppTheme.outline,
-                            fontSize: 10,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Délai de recours : 48h ouvrées',
-                        style: TextStyle(
-                          color: AppTheme.onSurfaceVariant,
-                          fontSize: 11,
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMetricCard({
-    required Color statusDot,
+  Widget _buildDetailRow(String label, String value, bool isDark) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: isDark ? const Color(0xFF94A3B8) : AppTheme.onSurfaceVariant,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : AppTheme.onSurface,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterTab(String label, String tabKey, bool isDark) {
+    final isSelected = _activeFilter == tabKey;
+    return InkWell(
+      onTap: () => _onFilterChanged(tabKey),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF2563EB)
+              : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected
+                ? Colors.white
+                : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKpiCard({
+    required bool isDark,
     required String title,
-    required String badge,
-    required Color badgeBg,
-    required Color badgeColor,
     required String value,
-    required String subtitle,
-    required String footnote,
-    required Color footnoteColor,
+    required String badge,
+    required Color badgeColor,
+    required IconData icon,
   }) {
+    final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : const Color(0xFFE2E8F0);
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerLowest,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.outlineVariant.withValues(alpha: 0.35),
-        ),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 6,
-            runSpacing: 4,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.circle, color: statusDot, size: 7),
-                  const SizedBox(width: 6),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: AppTheme.onSurfaceVariant,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  badge,
-                  style: TextStyle(
-                    color: badgeColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                value,
+                title,
                 style: const TextStyle(
-                  color: AppTheme.onSurface,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF64748B),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  subtitle,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.onSurfaceVariant,
-                    fontSize: 11,
-                  ),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: badgeColor.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
                 ),
+                child: Icon(icon, color: badgeColor, size: 18),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            footnote,
-            overflow: TextOverflow.ellipsis,
+            value,
             style: TextStyle(
-              color: footnoteColor,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white : AppTheme.onSurface,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDropdownBadge(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.surfaceContainerHighest),
-      ),
-      child: Row(
-        children: [
-          Text(text,
-              style: const TextStyle(
-                  color: AppTheme.onSurface,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500)),
-          const SizedBox(width: 6),
-          const Icon(Icons.arrow_drop_down,
-              size: 18, color: AppTheme.outline),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimelineRow(String time, String event, Color dotColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          Icon(Icons.circle, color: dotColor, size: 7),
-          const SizedBox(width: 8),
-          Text(
-            time,
-            style: const TextStyle(
-              color: AppTheme.primary,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: badgeColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(6),
             ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
             child: Text(
-              event,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppTheme.onSurface,
-                fontSize: 11,
+              badge,
+              style: TextStyle(
+                color: badgeColor,
+                fontSize: 10.5,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
@@ -1416,32 +829,4 @@ class _WebAdminReportsPageState extends ConsumerState<WebAdminReportsPage> {
       ),
     );
   }
-}
-
-class _SparklinePainter extends CustomPainter {
-  final Color color;
-
-  _SparklinePainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final path = Path()
-      ..moveTo(0, size.height * 0.7)
-      ..lineTo(size.width * 0.25, size.height * 0.5)
-      ..lineTo(size.width * 0.5, size.height * 0.6)
-      ..lineTo(size.width * 0.75, size.height * 0.25)
-      ..lineTo(size.width, size.height * 0.1);
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

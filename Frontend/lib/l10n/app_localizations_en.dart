@@ -2784,4 +2784,1141 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get password_strength_excellent => 'Strength: Excellent';
+
+  @override
+  String get admin_supervision_badge => 'ACADEMIC SUPERVISION';
+
+  @override
+  String get admin_winter_spring_session => '•  Winter-Spring Term';
+
+  @override
+  String get admin_dashboard_title => 'Administrator Dashboard';
+
+  @override
+  String get admin_dashboard_subtitle =>
+      'Overview and supervision of the academic institution • Live data';
+
+  @override
+  String get admin_refresh_data => 'Refresh data';
+
+  @override
+  String get admin_reports_audits => 'Reports & Audits';
+
+  @override
+  String get admin_metric_headcount => 'TOTAL HEADCOUNT';
+
+  @override
+  String admin_this_month_students(Object count) {
+    return '+$count this month';
+  }
+
+  @override
+  String get admin_real_time => 'Real time';
+
+  @override
+  String get admin_metric_faculty => 'TEACHING FACULTY';
+
+  @override
+  String get admin_active_teachers_label => 'Active teachers';
+
+  @override
+  String admin_active_pct(Object pct) {
+    return '$pct% active';
+  }
+
+  @override
+  String get admin_metric_groups => 'PEDAGOGICAL GROUPS';
+
+  @override
+  String get admin_active_classes_label => 'Active classes';
+
+  @override
+  String admin_created_count(Object count) {
+    return '+$count created';
+  }
+
+  @override
+  String get admin_metric_integrity => 'INTEGRITY & FRAUD';
+
+  @override
+  String get admin_pending_status => 'Pending';
+
+  @override
+  String get admin_action_24h => 'Action required within 24h';
+
+  @override
+  String get admin_handle_action => 'Handle >';
+
+  @override
+  String get admin_recent_fraud_incidents => 'Latest reported fraud incidents';
+
+  @override
+  String get admin_biometric_surveillance =>
+      'SmartClass AI biometric & behavioral surveillance';
+
+  @override
+  String admin_filter_all_count(Object count) {
+    return 'All ($count)';
+  }
+
+  @override
+  String admin_filter_untreated_count(Object count) {
+    return 'Untreated ($count)';
+  }
+
+  @override
+  String get admin_no_untreated_fraud => 'No untreated fraud incidents';
+
+  @override
+  String get admin_no_fraud_recorded => 'No fraud incidents recorded';
+
+  @override
+  String get admin_all_reports_handled =>
+      'All reports have been addressed by the administration.';
+
+  @override
+  String get admin_all_exams_compliant =>
+      'All monitored exams and sessions comply with academic regulations.';
+
+  @override
+  String get admin_student_fallback => 'Student';
+
+  @override
+  String get admin_exam_session => 'Exam session';
+
+  @override
+  String get admin_evaluation_fallback => 'Assessment';
+
+  @override
+  String get admin_auto_ai_detection => 'Automated AI detection';
+
+  @override
+  String get admin_take_charge => 'Take in charge';
+
+  @override
+  String get admin_consult => 'View';
+
+  @override
+  String get admin_certified_ai_consensus =>
+      'Academic integrity certified by AI consensus';
+
+  @override
+  String admin_view_all_integrity_reports(Object count) {
+    return 'View all integrity reports ($count)';
+  }
+
+  @override
+  String get admin_recent_system_activity => 'Recent system activity';
+
+  @override
+  String get admin_active_cohorts_promos => 'Active cohorts & promotions';
+
+  @override
+  String get admin_live_badge => 'Live';
+
+  @override
+  String get admin_no_cohort_configured => 'No cohorts configured';
+
+  @override
+  String get admin_services_db => 'Services & Database';
+
+  @override
+  String get admin_live_sync => 'Live synchronization';
+
+  @override
+  String get admin_operational => 'Operational';
+
+  @override
+  String get admin_quick_actions_supervision => 'Quick Actions & Supervision';
+
+  @override
+  String get admin_certified_shortcuts => 'Certified administrative shortcuts';
+
+  @override
+  String get admin_create_new_class_btn => 'Create a new class';
+
+  @override
+  String get admin_manage_classes_promos => 'Manage classes & cohorts';
+
+  @override
+  String get admin_timetable_rooms => 'Timetables & Classrooms';
+
+  @override
+  String get admin_surveillance_frauds => 'Surveillance & Fraud';
+
+  @override
+  String get admin_severity_critical => 'Critical';
+
+  @override
+  String get admin_severity_medium => 'Medium';
+
+  @override
+  String get admin_status_active => 'Active';
+
+  @override
+  String get admin_status_draft => 'Draft';
+
+  @override
+  String admin_referent_with_students(Object count, Object name) {
+    return 'Ref. $name • $count students';
+  }
+
+  @override
+  String admin_students_enrolled_count(Object count) {
+    return '$count students enrolled';
+  }
+
+  @override
+  String get admin_classes_breadcrumb_cat => 'ADMINISTRATION';
+
+  @override
+  String get admin_classes_breadcrumb_current => 'Class Management';
+
+  @override
+  String get admin_realtime_synced_data => 'Real-time synchronized data';
+
+  @override
+  String get admin_classes_page_heading => 'Class & Cohort Management';
+
+  @override
+  String get admin_classes_page_desc =>
+      'View, organize and configure cohorts, student headcounts and teacher assignments.';
+
+  @override
+  String get admin_refresh_button => 'Refresh';
+
+  @override
+  String get admin_create_class_button => 'Create a class';
+
+  @override
+  String get admin_kpi_classes_promos => 'CLASSES & COHORTS';
+
+  @override
+  String admin_kpi_classes_count(Object count) {
+    return '$count Classes';
+  }
+
+  @override
+  String get admin_kpi_classes_badge => 'Active';
+
+  @override
+  String get admin_kpi_students_enrollment => 'STUDENT ENROLLMENTS';
+
+  @override
+  String admin_kpi_students_count(Object count) {
+    return '$count Students';
+  }
+
+  @override
+  String get admin_kpi_students_badge => 'Total enrolled';
+
+  @override
+  String get admin_kpi_faculty => 'TEACHING FACULTY';
+
+  @override
+  String admin_kpi_faculty_count(Object count) {
+    return '$count Teachers';
+  }
+
+  @override
+  String get admin_kpi_faculty_badge => 'Faculty corps';
+
+  @override
+  String get admin_search_classes_placeholder =>
+      'Search a class (name, department)...';
+
+  @override
+  String get admin_level_filter_all => 'Level: All';
+
+  @override
+  String admin_level_filter_prefix(Object level) {
+    return 'Level: $level';
+  }
+
+  @override
+  String get admin_unable_load_classes => 'Unable to load classes.';
+
+  @override
+  String get admin_no_classes_found => 'No classes found';
+
+  @override
+  String get admin_no_classes_hint =>
+      'Create a first class to start organizing cohorts.';
+
+  @override
+  String get admin_col_class_name => 'CLASS NAME';
+
+  @override
+  String get admin_col_level_dept => 'LEVEL & DEPARTMENT';
+
+  @override
+  String get admin_col_headcount => 'STUDENT HEADCOUNT';
+
+  @override
+  String get admin_col_faculty => 'TEACHING FACULTY';
+
+  @override
+  String get admin_col_status => 'STATUS';
+
+  @override
+  String get admin_col_actions => 'ACTIONS';
+
+  @override
+  String get admin_unattached_promo => 'Unattached';
+
+  @override
+  String admin_students_count_label(Object count) {
+    return '$count students';
+  }
+
+  @override
+  String admin_students_enrolled_tag(Object count) {
+    return '$count enrolled';
+  }
+
+  @override
+  String admin_teachers_count_label(Object count) {
+    return '$count teacher(s)';
+  }
+
+  @override
+  String get admin_status_published => 'Published';
+
+  @override
+  String get admin_manage_students_tooltip => 'Manage students';
+
+  @override
+  String get admin_assign_teachers_tooltip => 'Assign teachers';
+
+  @override
+  String get admin_menu_edit => 'Edit';
+
+  @override
+  String get admin_menu_delete => 'Delete';
+
+  @override
+  String get admin_confirm_delete_title => 'Delete class';
+
+  @override
+  String admin_confirm_delete_msg(Object name) {
+    return 'Are you sure you want to delete class $name?';
+  }
+
+  @override
+  String get admin_teachers_breadcrumb_cat => 'ADMINISTRATION';
+
+  @override
+  String get admin_teachers_breadcrumb_current =>
+      'Teaching Faculty & Professors';
+
+  @override
+  String get admin_teachers_page_heading => 'Teacher & Faculty Management';
+
+  @override
+  String get admin_teachers_page_desc =>
+      'Supervise faculty, validate accreditations, assign courses and promote administrators.';
+
+  @override
+  String get admin_kpi_total_teachers => 'TOTAL TEACHERS';
+
+  @override
+  String get admin_kpi_badge_faculty => 'Faculty corps';
+
+  @override
+  String get admin_kpi_approved_accreditations => 'APPROVED ACCREDITATIONS';
+
+  @override
+  String get admin_kpi_badge_verified_profiles => 'Verified profiles';
+
+  @override
+  String get admin_kpi_pending_accreditation => 'PENDING ACCREDITATION';
+
+  @override
+  String get admin_kpi_badge_to_handle => 'To handle';
+
+  @override
+  String get admin_kpi_badge_up_to_date => 'Up to date';
+
+  @override
+  String get admin_kpi_assigned_teachers => 'ASSIGNED TEACHERS';
+
+  @override
+  String get admin_kpi_badge_active_in_class => 'Active in class';
+
+  @override
+  String admin_filter_all_label(Object count) {
+    return 'All ($count)';
+  }
+
+  @override
+  String admin_filter_validated_label(Object count) {
+    return 'Validated ($count)';
+  }
+
+  @override
+  String admin_filter_pending_label(Object count) {
+    return 'Pending ($count)';
+  }
+
+  @override
+  String admin_filter_rejected_label(Object count) {
+    return 'Rejected ($count)';
+  }
+
+  @override
+  String get admin_search_teachers_placeholder =>
+      'Search teacher, subject, email...';
+
+  @override
+  String get admin_col_teacher => 'TEACHER';
+
+  @override
+  String get admin_col_specialty_courses => 'SPECIALTY & COURSES';
+
+  @override
+  String get admin_col_accreditation => 'ACCREDITATION';
+
+  @override
+  String get admin_col_dedicated_actions => 'DEDICATED ACTIONS';
+
+  @override
+  String get admin_no_teachers_found =>
+      'No teachers found matching these criteria.';
+
+  @override
+  String get admin_unassigned_teacher => 'Unassigned';
+
+  @override
+  String get admin_promote_admin_tooltip => 'Promote to Administrator role';
+
+  @override
+  String get admin_btn_admin => 'Admin';
+
+  @override
+  String get admin_assign_class_tooltip => 'Assign to a class';
+
+  @override
+  String get admin_validate_accreditation_tooltip => 'Validate accreditation';
+
+  @override
+  String get admin_reject_tooltip => 'Reject';
+
+  @override
+  String get admin_badge_approved => 'Approved';
+
+  @override
+  String get admin_badge_pending => 'Pending';
+
+  @override
+  String get admin_badge_rejected => 'Rejected';
+
+  @override
+  String get admin_inspector_teacher_title => 'PROFESSOR DETAILS';
+
+  @override
+  String get admin_inspector_accreditation_status => 'Accreditation status';
+
+  @override
+  String get admin_inspector_specialty => 'Specialty';
+
+  @override
+  String get admin_inspector_general => 'General';
+
+  @override
+  String get admin_inspector_hourly_load => 'Hourly workload';
+
+  @override
+  String get admin_inspector_unspecified => 'Unspecified';
+
+  @override
+  String get admin_inspector_email_verified => 'Email verified';
+
+  @override
+  String get admin_inspector_quick_actions => 'Quick Actions';
+
+  @override
+  String get admin_btn_promote_admin => 'Promote to Administrator';
+
+  @override
+  String get admin_btn_assign_to_class => 'Assign to class';
+
+  @override
+  String get admin_btn_validate_accreditation => 'Validate accreditation';
+
+  @override
+  String get admin_btn_suspend_reject => 'Suspend / Reject';
+
+  @override
+  String admin_dialog_promote_title(Object name) {
+    return 'Promote $name to Administrator?';
+  }
+
+  @override
+  String get admin_dialog_promote_desc =>
+      'This role grants unlimited access to the management console, headcounts, courses and academic sanctions.';
+
+  @override
+  String get admin_btn_confirm_promotion => 'Confirm promotion';
+
+  @override
+  String admin_toast_promoted_success(Object name) {
+    return '$name was successfully promoted to Administrator.';
+  }
+
+  @override
+  String get admin_toast_promote_fail =>
+      'Promotion failed: role not editable or permission required.';
+
+  @override
+  String get admin_dialog_assign_title => 'Assign to class';
+
+  @override
+  String get admin_dialog_assign_class_label => 'TARGET CLASS';
+
+  @override
+  String get admin_dialog_subject_label => 'SUBJECT / TAUGHT COURSE';
+
+  @override
+  String get admin_dialog_subject_hint => 'e.g. Mathematics, Algorithms...';
+
+  @override
+  String get admin_dialog_hours_label => 'WEEKLY WORKLOAD';
+
+  @override
+  String get admin_dialog_hours_hint => 'e.g. 4h / week';
+
+  @override
+  String get admin_btn_save_assignment => 'Save assignment';
+
+  @override
+  String admin_toast_assign_success(Object name) {
+    return 'Teacher $name successfully assigned to class.';
+  }
+
+  @override
+  String get admin_toast_assign_fail => 'Error during class assignment.';
+
+  @override
+  String get admin_students_breadcrumb_cat => 'ADMINISTRATION';
+
+  @override
+  String get admin_students_breadcrumb_current => 'Directory & Cohorts';
+
+  @override
+  String get admin_students_page_heading => 'Student & Cohort Management';
+
+  @override
+  String get admin_students_page_desc =>
+      'View student headcounts, manage class assignments and supervise accounts.';
+
+  @override
+  String get admin_kpi_total_students => 'TOTAL STUDENTS';
+
+  @override
+  String get admin_kpi_badge_enrolled => 'Enrolled headcount';
+
+  @override
+  String get admin_kpi_in_cohort => 'ENROLLED IN COHORT';
+
+  @override
+  String get admin_kpi_badge_assigned => 'Assigned to class';
+
+  @override
+  String get admin_kpi_unassigned => 'WITHOUT ASSIGNED CLASS';
+
+  @override
+  String get admin_kpi_badge_to_assign => 'To assign';
+
+  @override
+  String get admin_kpi_badge_all_assigned => 'All assigned';
+
+  @override
+  String get admin_kpi_verified_accounts => 'VERIFIED ACCOUNTS';
+
+  @override
+  String get admin_kpi_badge_verified_email => 'Verified email';
+
+  @override
+  String admin_dropdown_all_promos(Object count) {
+    return 'All cohorts ($count classes)';
+  }
+
+  @override
+  String get admin_search_students_placeholder =>
+      'Search student, email, ID...';
+
+  @override
+  String get admin_col_student => 'STUDENT';
+
+  @override
+  String get admin_col_class_cohort => 'CLASS & COHORT';
+
+  @override
+  String get admin_col_account_status => 'ACCOUNT STATUS';
+
+  @override
+  String get admin_no_students_found =>
+      'No students found matching these criteria.';
+
+  @override
+  String get admin_unassigned_badge => 'Unassigned';
+
+  @override
+  String get admin_badge_verified => 'Verified';
+
+  @override
+  String get admin_badge_unverified => 'Unverified';
+
+  @override
+  String get admin_btn_change => 'Change';
+
+  @override
+  String get admin_btn_assign => 'Assign';
+
+  @override
+  String get admin_tooltip_change_class => 'Change class';
+
+  @override
+  String get admin_tooltip_assign_class => 'Assign to class';
+
+  @override
+  String get admin_tooltip_remove_class => 'Remove from class';
+
+  @override
+  String get admin_inspector_student_title => 'STUDENT RECORD';
+
+  @override
+  String get admin_inspector_current_class => 'Current class';
+
+  @override
+  String get admin_inspector_level_cycle => 'Level / Cycle';
+
+  @override
+  String get admin_inspector_cohort_assignment => 'Cohort Assignment';
+
+  @override
+  String get admin_btn_transfer_class => 'Transfer class';
+
+  @override
+  String get admin_btn_assign_class => 'Assign to class';
+
+  @override
+  String get admin_btn_remove_from_class => 'Remove from class';
+
+  @override
+  String admin_dialog_assign_student_title(Object name) {
+    return 'Assign $name to a class';
+  }
+
+  @override
+  String get admin_btn_confirm_assignment => 'Confirm assignment';
+
+  @override
+  String admin_toast_student_assigned_success(Object name) {
+    return '$name was successfully assigned to class.';
+  }
+
+  @override
+  String get admin_toast_student_assign_fail => 'Error assigning student.';
+
+  @override
+  String get admin_dialog_remove_title => 'Remove from class';
+
+  @override
+  String admin_dialog_remove_msg(Object name) {
+    return 'Do you want to remove $name from their current class? The student will be set to unassigned status without a cohort.';
+  }
+
+  @override
+  String get admin_btn_remove => 'Remove';
+
+  @override
+  String admin_toast_student_removed(Object name) {
+    return '$name was removed from class.';
+  }
+
+  @override
+  String get admin_toast_student_remove_fail => 'Error removing student.';
+
+  @override
+  String get admin_breadcrumb_classes => 'Classes';
+
+  @override
+  String get admin_breadcrumb_new_class => 'New class';
+
+  @override
+  String get admin_breadcrumb_edit_class => 'Edit class';
+
+  @override
+  String get admin_btn_return_classes => 'Back to classes';
+
+  @override
+  String get admin_class_create_heading => 'Create a new class';
+
+  @override
+  String get admin_class_edit_heading => 'Edit class';
+
+  @override
+  String get admin_class_create_sub =>
+      'Configure the academic cohort, target headcount and mentor teacher with real-time sync.';
+
+  @override
+  String get admin_step1_badge => 'STEP 1';
+
+  @override
+  String get admin_step1_title => 'Academic Identity & Degree';
+
+  @override
+  String get admin_step1_subtitle =>
+      'Official name, study level and department attachment';
+
+  @override
+  String get admin_class_name_example => 'e.g. CS Bachelor Year 3 - Group A';
+
+  @override
+  String get admin_study_level_label => 'ACADEMIC STUDY LEVEL';
+
+  @override
+  String get admin_department_label => 'MAJOR & ATTACHED DEPARTMENT';
+
+  @override
+  String get admin_custom_department_hint =>
+      'Or enter a new custom major / department...';
+
+  @override
+  String get admin_step2_badge => 'STEP 2';
+
+  @override
+  String get admin_step2_title => 'Mentor Teacher & Target Capacity';
+
+  @override
+  String get admin_step2_subtitle => 'Pedagogical assignment and class sizing';
+
+  @override
+  String get admin_teacher_referent_label => 'MENTOR TEACHER (OPTIONAL)';
+
+  @override
+  String get admin_teacher_loading => 'Loading teachers...';
+
+  @override
+  String get admin_teacher_error => 'Error loading teachers';
+
+  @override
+  String get admin_no_referent_option => 'No mentor teacher (assign later)';
+
+  @override
+  String get admin_group_capacity_label => 'GROUP INTAKE CAPACITY';
+
+  @override
+  String get admin_students_max_label => 'max students';
+
+  @override
+  String get admin_presets_label => 'University presets:';
+
+  @override
+  String get admin_step3_badge => 'OPTIONAL';
+
+  @override
+  String get admin_step3_title => 'Description & Collaborative Modules';
+
+  @override
+  String get admin_step3_subtitle =>
+      'Overview and activation of interactive services';
+
+  @override
+  String get admin_description_label_title => 'ACADEMIC DESCRIPTION';
+
+  @override
+  String get admin_description_placeholder =>
+      'Cohort objectives, prerequisites, pedagogical notes...';
+
+  @override
+  String get admin_smartclass_services_label =>
+      'SMARTCLASS SERVICES & INTEGRATIONS';
+
+  @override
+  String get admin_service_forum_title => 'Discussion forum';
+
+  @override
+  String get admin_service_forum_sub => 'Discussion among students';
+
+  @override
+  String get admin_service_ent_title => 'ENT synchronization';
+
+  @override
+  String get admin_service_ent_sub => 'Schedules and courses auto';
+
+  @override
+  String get admin_live_preview_header => 'LIVE PREVIEW';
+
+  @override
+  String get admin_dept_unspecified_session => 'Unspecified major • 2026-2027';
+
+  @override
+  String admin_dept_specified_session(Object dept) {
+    return '$dept • 2026-2027 Session';
+  }
+
+  @override
+  String get admin_referent_teacher_title => 'Mentor Teacher';
+
+  @override
+  String get admin_referent_unassigned => 'Unassigned';
+
+  @override
+  String get admin_capacity_label_preview => 'Intake capacity';
+
+  @override
+  String admin_capacity_students_ratio(Object capacity) {
+    return '0 / $capacity students';
+  }
+
+  @override
+  String get admin_chip_forum_active => 'Forum active';
+
+  @override
+  String get admin_chip_ent_synced => 'ENT synced';
+
+  @override
+  String get admin_validation_criteria_title => 'VALIDATION CRITERIA';
+
+  @override
+  String get admin_criterion_name => 'Cohort name provided';
+
+  @override
+  String get admin_criterion_level => 'Study level selected';
+
+  @override
+  String get admin_criterion_dept => 'Major or department associated';
+
+  @override
+  String get admin_criterion_capacity => 'Valid intake capacity (> 0)';
+
+  @override
+  String get admin_btn_save_changes => 'Save changes';
+
+  @override
+  String get admin_btn_save_draft => 'Save as draft';
+
+  @override
+  String get admin_toast_class_updated => 'Class updated successfully.';
+
+  @override
+  String get admin_toast_class_draft_saved => 'Class saved as draft.';
+
+  @override
+  String get admin_toast_class_created => 'Class created successfully.';
+
+  @override
+  String get admin_cycle_licence => 'Bachelor Cycle (LMD)';
+
+  @override
+  String get admin_cycle_master => 'Master & Specialization Cycle';
+
+  @override
+  String get admin_cycle_doctorat => 'Doctoral Cycle & PhD';
+
+  @override
+  String get admin_planning_breadcrumb_current => 'Timetable & Planning';
+
+  @override
+  String get admin_planning_heading => 'Weekly Class Schedule';
+
+  @override
+  String get admin_planning_sub =>
+      'View and adjust course timetable grid, rooms and teachers per class.';
+
+  @override
+  String get admin_prev_week_tooltip => 'Previous week';
+
+  @override
+  String get admin_next_week_tooltip => 'Next week';
+
+  @override
+  String get admin_today_btn => 'Today';
+
+  @override
+  String get admin_selected_class_label => 'Selected class:';
+
+  @override
+  String admin_hours_planned(Object hours) {
+    return '$hours scheduled';
+  }
+
+  @override
+  String get admin_unable_load_planning => 'Unable to load schedule.';
+
+  @override
+  String get admin_first_create_class_planning =>
+      'Create a class first to manage its schedule.';
+
+  @override
+  String get admin_no_courses_this_week => 'No courses scheduled this week.';
+
+  @override
+  String get admin_no_courses_day => 'No classes';
+
+  @override
+  String get admin_reports_breadcrumb_current =>
+      'Anti-Fraud & Integrity Monitoring';
+
+  @override
+  String get admin_reports_heading => 'Integrity Audit & Fraud Reports';
+
+  @override
+  String get admin_reports_sub =>
+      'Supervise telemetric alerts generated during online exams and enforce administrative actions.';
+
+  @override
+  String get admin_kpi_untreated => 'UNTREATED';
+
+  @override
+  String get admin_kpi_badge_action_req => 'Action required';
+
+  @override
+  String get admin_kpi_in_arbitration => 'UNDER REVIEW';
+
+  @override
+  String get admin_kpi_badge_instructing => 'Under investigation';
+
+  @override
+  String get admin_kpi_resolved_this_month => 'RESOLVED THIS MONTH';
+
+  @override
+  String get admin_kpi_badge_closed => 'Closed';
+
+  @override
+  String get admin_dialog_close_dossier_title => 'Close case dossier';
+
+  @override
+  String admin_dialog_dossier_of(Object name, Object title) {
+    return 'Case file of: $name ($title)';
+  }
+
+  @override
+  String get admin_dialog_decision_hint =>
+      'Specify decision or eventual sanctions...';
+
+  @override
+  String get admin_btn_confirm_closure => 'Confirm closure';
+
+  @override
+  String get admin_toast_dossier_updated => 'Case status updated.';
+
+  @override
+  String get admin_toast_dossier_update_fail => 'Unable to update case.';
+
+  @override
+  String admin_enrolled_count(Object count) {
+    return '$count enrolled';
+  }
+
+  @override
+  String get admin_student_assign_notice =>
+      'The student will immediately receive timetables and assignments associated with this class.';
+
+  @override
+  String get admin_choose_cohort_assign => 'Choose target cohort / class:';
+
+  @override
+  String get admin_no_classes_available =>
+      'No class available. Create a class first.';
+
+  @override
+  String admin_student_label(Object name) {
+    return 'Student: $name';
+  }
+
+  @override
+  String admin_teacher_label(Object name) {
+    return 'Teacher: $name';
+  }
+
+  @override
+  String get admin_col_assigned_class => 'ASSIGNED CLASS';
+
+  @override
+  String admin_toast_accreditation_approved(Object name) {
+    return 'Accreditation for $name approved.';
+  }
+
+  @override
+  String admin_toast_accreditation_rejected(Object name) {
+    return 'Accreditation for $name rejected.';
+  }
+
+  @override
+  String get admin_toast_update_error => 'Error during update.';
+
+  @override
+  String get admin_select_class_cohort => 'Select class / cohort:';
+
+  @override
+  String get admin_weekly_hours_label => 'Weekly hours volume:';
+
+  @override
+  String admin_hours_per_week(Object hours) {
+    return '${hours}h / week';
+  }
+
+  @override
+  String get admin_planning_lunch => 'LUNCH';
+
+  @override
+  String get admin_planning_room_undefined => 'Room not defined';
+
+  @override
+  String get admin_filter_all_alerts => 'All alerts';
+
+  @override
+  String admin_filter_in_progress_count(Object count) {
+    return 'In progress ($count)';
+  }
+
+  @override
+  String admin_filter_closed_count(Object count) {
+    return 'Closed ($count)';
+  }
+
+  @override
+  String get admin_no_fraud_reports => 'No fraud report';
+
+  @override
+  String get admin_select_an_alert => 'Select an alert';
+
+  @override
+  String get admin_findings_detected => 'Detected anomalies:';
+
+  @override
+  String get admin_resolution_administrative => 'Administrative resolution:';
+
+  @override
+  String get admin_btn_take_charge => 'Take charge';
+
+  @override
+  String get admin_btn_close_case => 'Close case';
+
+  @override
+  String get admin_severity_closed => 'Closed';
+
+  @override
+  String get admin_status_in_progress => 'In progress';
+
+  @override
+  String get admin_status_closed => 'Closed';
+
+  @override
+  String get admin_users_breadcrumb_cat => 'ADMINISTRATION';
+
+  @override
+  String get admin_users_breadcrumb_current => 'Directory & Roles';
+
+  @override
+  String get admin_users_page_heading => 'User Management';
+
+  @override
+  String get admin_users_page_desc =>
+      'View directory headcounts, validate teacher accreditations and supervise accounts.';
+
+  @override
+  String get admin_kpi_enrolled_students => 'ENROLLED STUDENTS';
+
+  @override
+  String get admin_kpi_student_headcount => 'Student headcount';
+
+  @override
+  String admin_tab_students_count(Object count) {
+    return 'Students ($count)';
+  }
+
+  @override
+  String get admin_no_users_match_filter => 'No users match this filter.';
+
+  @override
+  String get admin_toast_teacher_approved =>
+      'Teacher account validated successfully.';
+
+  @override
+  String get admin_toast_teacher_updated => 'Teacher account updated.';
+
+  @override
+  String get admin_status_assigned => 'Assigned';
+
+  @override
+  String get admin_step_1_badge => 'STEP 1';
+
+  @override
+  String get admin_step_2_badge => 'STEP 2';
+
+  @override
+  String get admin_step_3_badge => 'OPTIONAL';
+
+  @override
+  String get admin_live_preview => 'LIVE PREVIEW';
+
+  @override
+  String admin_assign_students_desc(Object title) {
+    return 'Assign enrolled students to $title';
+  }
+
+  @override
+  String admin_assign_teachers_desc(Object title) {
+    return 'Assign teachers and subjects to $title';
+  }
+
+  @override
+  String get admin_loading_classes => 'Loading classes...';
+
+  @override
+  String get admin_loading_students => 'Loading students...';
+
+  @override
+  String get admin_toast_teacher_approved_short =>
+      'Teacher account validated successfully';
+
+  @override
+  String get admin_toast_teacher_rejected_short => 'Teacher account rejected';
+
+  @override
+  String get admin_btn_reapprove => 'Re-approve';
+
+  @override
+  String get admin_btn_suspend_revoke => 'Suspend / Revoke';
+
+  @override
+  String get admin_col_exam => 'Exam';
+
+  @override
+  String get admin_col_class => 'Class';
+
+  @override
+  String get admin_col_severity => 'Severity';
+
+  @override
+  String get admin_col_user => 'USER';
+
+  @override
+  String get admin_col_academic_email => 'ACADEMIC EMAIL';
+
+  @override
+  String get admin_col_role_class => 'ROLE & CLASS';
+
+  @override
+  String get admin_select_a_user => 'Select a user';
+
+  @override
+  String get admin_label_role => 'Role';
+
+  @override
+  String get admin_label_assignment => 'Assignment';
+
+  @override
+  String get admin_label_pedagogical_accreditation =>
+      'Pedagogical accreditation';
+
+  @override
+  String get admin_btn_validate => 'Validate';
+
+  @override
+  String get admin_btn_suspend => 'Suspend';
 }

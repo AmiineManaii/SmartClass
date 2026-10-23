@@ -5,6 +5,14 @@ void downloadJsonFile(String filename, String content) {
   downloadJsonFileImpl(filename, content);
 }
 
+void downloadBytesFile(String filename, List<int> bytes, String mimeType) {
+  downloadBytesFileImpl(filename, bytes, mimeType);
+}
+
+void openPdfInNewTab(List<int> bytes, {String title = 'Document SmartClass'}) {
+  openPdfInNewTabImpl(bytes, title);
+}
+
 void printOfficialTranscript({
   required String studentName,
   required String studentId,

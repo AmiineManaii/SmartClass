@@ -14,3 +14,16 @@ export {
   type AssignableRole,
 } from './application/set-my-role.use-case.js';
 export { SetUserRoleUseCase, type SetUserRoleResult } from './application/set-user-role.use-case.js';
+export { ExportUserDataUseCase, type ExportUserDataInput } from './application/export-user-data.use-case.js';
+export type {
+  ExportDataPort,
+  UserExportData,
+  ExportProfile,
+  ExportGroupMembership,
+  ExportTeacherAssignment,
+  ExportCourse,
+  ExportAuditEntry,
+  ExportTimetableSlot,
+} from './domain/export-data.port.js';
+export { PdfExportGenerator } from './infrastructure/pdf-export-generator.js';
+

@@ -84,6 +84,9 @@ abstract class AdminRepository {
 
   /// PATCH /api/v1/users/:id/teacher-approval
   Future<void> updateTeacherApproval(String userId, String status);
+
+  /// PATCH /api/v1/users/:id/role
+  Future<void> updateUserRole(String userId, String role);
 }
 
 /// Filière in use with its class count.

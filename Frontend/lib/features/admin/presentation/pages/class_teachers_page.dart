@@ -192,42 +192,44 @@ class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => context.pop(),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.tr('admin_assign_teachers'),
-              style: theme.textTheme.headlineSmall,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            detailAsync.when(
-              data: (detail) => Text(
-                detail?.title ?? '',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+      appBar: context.isDesktop
+          ? null
+          : AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                onPressed: () => context.pop(),
               ),
-              loading: () => const SizedBox.shrink(),
-              error: (_, _) => const SizedBox.shrink(),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.tr('admin_assign_teachers'),
+                    style: theme.textTheme.headlineSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  detailAsync.when(
+                    data: (detail) => Text(
+                      detail?.title ?? '',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, _) => const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+              actions: const [
+                Padding(
+                  padding: EdgeInsets.only(right: 12),
+                  child: CircleAvatar(
+                    radius: 16,
+                    child: Icon(Icons.person_rounded, size: 18),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: CircleAvatar(
-              radius: 16,
-              child: Icon(Icons.person_rounded, size: 18),
-            ),
-          ),
-        ],
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -235,15 +237,80 @@ class _ClassTeachersPageState extends ConsumerState<ClassTeachersPage> {
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(
-                  horizontal: context.screenWidth >= 600 ? 32 : 20,
-                  vertical: 8,
+                  horizontal: context.isDesktop
+                      ? 36
+                      : (context.screenWidth >= 600 ? 32 : 20),
+                  vertical: context.isDesktop ? 24 : 8,
                 ),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 640),
+                    constraints: BoxConstraints(
+                      maxWidth: context.isDesktop ? 860 : 640,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (context.isDesktop) ...[
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back_rounded,
+                                    size: 20),
+                                onPressed: () => context.go('/admin/classes'),
+                              ),
+                              const SizedBox(width: 8),
+                              InkWell(
+                                onTap: () => context.go('/admin/classes'),
+                                child: Text(
+                                  context.tr('admin_nav_classes'),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: colorScheme.outline,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '  /  ',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.outline,
+                                ),
+                              ),
+                              detailAsync.when(
+                                data: (detail) => Text(
+                                  detail?.title ?? '',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                loading: () => const SizedBox.shrink(),
+                                error: (_, _) => const SizedBox.shrink(),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr('admin_assign_teachers'),
+                                style: theme.textTheme.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              detailAsync.when(
+                                data: (detail) => Text(
+                                  context.tr('admin_assign_teachers_desc', args: {'title': detail?.title ?? ''}),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                loading: () => const SizedBox.shrink(),
+                                error: (_, _) => const SizedBox.shrink(),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                        ],
                         detailAsync.when(
                           data: (detail) => _CoverageCard(
                             className: detail?.title ?? '',

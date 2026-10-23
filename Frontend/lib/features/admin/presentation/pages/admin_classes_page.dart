@@ -261,11 +261,11 @@ class _AdminClassesPageState extends ConsumerState<AdminClassesPage> {
                     ),
                     const SizedBox(height: 16),
                     classesAsync.when(
-                      loading: () => const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 32),
+                      loading: () => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 32),
                         child: Center(
                           child: SmartLoader.medium(
-                            message: 'Chargement des classes...',
+                            message: context.tr('admin_loading_classes'),
                           ),
                         ),
                       ),

@@ -18,10 +18,9 @@ import '../../../../core/widgets/smart_loader.dart';
 /// - Step capsule badge ("ÉTAPE 1 SUR 3 • Personnalisation de votre espace d'apprentissage").
 /// - Segmented 3-pill progress bar.
 /// - Big centered headline & academic description.
-/// - 3 detailed role cards in a responsive row:
+/// - 2 detailed role cards in a responsive row:
 ///   1. Étudiant (Apprenant, graduation icon, 4 checklist items, immediate access).
 ///   2. Enseignant (Pédagogique, presenter icon, 4 checklist items, cohort management).
-///   3. Administrateur (Direction, security shield, 4 checklist items, accreditation required).
 /// - Bottom disclaimer banner with Retour and Continuer buttons.
 /// - Footer with copyright and legal links.
 class WebRoleSelectionView extends ConsumerStatefulWidget {
@@ -46,13 +45,7 @@ class _WebRoleSelectionViewState extends ConsumerState<WebRoleSelectionView>
   void initState() {
     super.initState();
     final role = ref.read(authStateProvider).valueOrNull?.role;
-    if (role == 'teacher') {
-      _selectedRole = 'teacher';
-    } else if (role == 'admin') {
-      _selectedRole = 'admin';
-    } else {
-      _selectedRole = 'student';
-    }
+    _selectedRole = (role == 'teacher') ? 'teacher' : 'student';
 
     _animController = AnimationController(
       vsync: this,
@@ -90,85 +83,8 @@ class _WebRoleSelectionViewState extends ConsumerState<WebRoleSelectionView>
     context.showErrorToast(message);
   }
 
-  void _showAdminAccreditationDialog() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E2438) : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEEF2FF),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.admin_panel_settings_rounded,
-                color: Color(0xFF2D3E8C),
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Accréditation requise',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: const Text(
-          'Les comptes de Direction et d\'Administration sont strictement provisionnés par l\'administrateur référent de votre établissement ou via synchronisation ENT/LDAP.\n\nPour continuer votre découverte de SmartClass, nous vous invitons à sélectionner le profil Enseignant ou Étudiant.',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 14,
-            height: 1.45,
-            color: Color(0xFF454651),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              setState(() => _selectedRole = 'student');
-              _handleConfirm();
-            },
-            child: const Text('Choisir Étudiant'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF2D3E8C),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              setState(() => _selectedRole = 'teacher');
-              _handleConfirm();
-            },
-            child: const Text('Choisir Enseignant'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _handleConfirm() async {
     if (_saving) return;
-
-    if (_selectedRole == 'admin') {
-      _showAdminAccreditationDialog();
-      return;
-    }
 
     setState(() => _saving = true);
 
@@ -418,35 +334,37 @@ class _WebRoleSelectionViewState extends ConsumerState<WebRoleSelectionView>
                           ),
                           const SizedBox(height: 36),
 
-                          // ── 3 Role Cards Row ──
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              final isNarrow = constraints.maxWidth < 920;
-                              if (isNarrow) {
-                                return Column(
-                                  children: [
-                                    _buildStudentCard(isDark),
-                                    const SizedBox(height: 20),
-                                    _buildTeacherCard(isDark),
-                                    const SizedBox(height: 20),
-                                    _buildAdminCard(isDark),
-                                  ],
-                                );
-                              }
+                          // ── 2 Role Cards Row ──
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 860),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final isNarrow = constraints.maxWidth < 680;
+                                if (isNarrow) {
+                                  return Column(
+                                    children: [
+                                      _buildStudentCard(isDark),
+                                      const SizedBox(height: 20),
+                                      _buildTeacherCard(isDark),
+                                    ],
+                                  );
+                                }
 
-                              return IntrinsicHeight(
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    Expanded(child: _buildStudentCard(isDark)),
-                                    const SizedBox(width: 22),
-                                    Expanded(child: _buildTeacherCard(isDark)),
-                                    const SizedBox(width: 22),
-                                    Expanded(child: _buildAdminCard(isDark)),
-                                  ],
-                                ),
-                              );
-                            },
+                                return IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(
+                                          child: _buildStudentCard(isDark)),
+                                      const SizedBox(width: 24),
+                                      Expanded(
+                                          child: _buildTeacherCard(isDark)),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                           const SizedBox(height: 24),
 
@@ -683,39 +601,6 @@ class _WebRoleSelectionViewState extends ConsumerState<WebRoleSelectionView>
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // CARD 3: ADMINISTRATEUR
-  // ---------------------------------------------------------------------------
-  Widget _buildAdminCard(bool isDark) {
-    const roleId = 'admin';
-    final isSelected = _selectedRole == roleId;
-    final isHovered = _hoveredRole == roleId;
-
-    return _buildBaseRoleCard(
-      roleId: roleId,
-      isSelected: isSelected,
-      isHovered: isHovered,
-      isDark: isDark,
-      badgeText: 'Direction & Supervision',
-      badgeIcon: Icons.shield_outlined,
-      badgeSelectedBg: const Color(0xFF2D3E8C),
-      badgeSelectedFg: Colors.white,
-      roleIcon: Icons.admin_panel_settings_rounded,
-      title: 'Administrateur',
-      subtitle: 'DIRECTION & RÉFÉRENT ENT',
-      description:
-          'Gérez l\'établissement, la sécurité des épreuves et l\'ensemble des utilisateurs.',
-      bulletPoints: const [
-        'Gestion centralisée des comptes étudiants et enseignants',
-        'Création de classes, affectations et gestion des emplois du temps',
-        'Surveillance anti-fraude aux examens & télémétrie certifiée',
-        'Synchronisation ENT / LDAP et conformité RGPD intégrée',
-      ],
-      footerLeftIcon: Icons.badge_outlined,
-      footerLeftIconColor: const Color(0xFF2D3E8C),
-      footerLeftText: 'Accréditation requise',
-    );
-  }
 
   // ---------------------------------------------------------------------------
   // BASE ROLE CARD BUILDER

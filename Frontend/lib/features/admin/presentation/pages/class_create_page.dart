@@ -6,6 +6,7 @@ import '../../../../core/error/failure_localization.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../application/providers/admin_providers.dart';
@@ -15,11 +16,10 @@ import '../../domain/repositories/admin_repository.dart';
 import '../../infrastructure/models/admin_models.dart';
 import '../widgets/admin_field_label.dart';
 
-/// Class creation (and edition when [editClassId] is set) backed by the
-/// real API: POST /api/v1/groups, PATCH /api/v1/groups/:id.
-/// Filière picker lists tracks really in use (GET /groups/departments)
-/// plus a free-text new filière; optional referent from the real teacher
-/// directory. UI levels map to the LICENCE/MASTER/DOCTORAT enum.
+/// Class creation and editing studio designed specifically for Web & Desktop.
+/// Backed by real API endpoints: POST /api/v1/groups, PATCH /api/v1/groups/:id.
+/// Includes real-time class card preview, inline cycle and department selectors,
+/// live teacher directory dropdown, and university cohort capacity presets.
 class ClassCreatePage extends ConsumerStatefulWidget {
   final String? editClassId;
 
@@ -46,8 +46,32 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
 
   bool get _isEdit => widget.editClassId != null;
 
-  static const _levels = ['L1', 'L2', 'L3', 'Master 1', 'Master 2', 'Doctorat'];
   static const _maxDescription = 300;
+
+  static const _licenceLevels = ['L1', 'L2', 'L3'];
+  static const _masterLevels = ['Master 1', 'Master 2'];
+  static const _doctoratLevels = ['Doctorat'];
+  static const _capacityPresets = [20, 25, 30, 35, 40, 50, 60];
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.addListener(_onFieldChanged);
+    _customDepartmentController.addListener(_onFieldChanged);
+    _descriptionController.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    _customDepartmentController.dispose();
+    super.dispose();
+  }
 
   static ClassLevel _apiLevel(String label) {
     if (label == 'Doctorat') return ClassLevel.doctorat;
@@ -66,12 +90,10 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
     }
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
-    _customDepartmentController.dispose();
-    super.dispose();
+  Color _colorForLevel(String level) {
+    if (level.startsWith('Doctorat')) return const Color(0xFFD97706);
+    if (level.startsWith('Master')) return const Color(0xFF7C3AED);
+    return const Color(0xFF2563EB);
   }
 
   void _prefill(AdminClassDetail detail) {
@@ -101,7 +123,8 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
         await repo.updateClass(widget.editClassId!, {
           'name': _nameController.text.trim(),
           'level': adminLevelToApi(_apiLevel(_level)),
-          if (_effectiveDepartment.isNotEmpty) 'department': _effectiveDepartment,
+          if (_effectiveDepartment.isNotEmpty)
+            'department': _effectiveDepartment,
           'capacity': _capacity,
           'description': _descriptionController.text.trim().isEmpty
               ? null
@@ -115,7 +138,8 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
         await repo.createClass(
           name: _nameController.text.trim(),
           level: _apiLevel(_level),
-          department: _effectiveDepartment.isEmpty ? null : _effectiveDepartment,
+          department:
+              _effectiveDepartment.isEmpty ? null : _effectiveDepartment,
           capacity: _capacity,
           description: _descriptionController.text.trim().isEmpty
               ? null
@@ -142,30 +166,42 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
       ref.invalidate(adminClassDetailProvider(widget.editClassId!));
     }
     if (!mounted) return;
-    context.showSuccessToast(context.tr(draft ? 'drafts' : 'success'));
-    context.pop();
+    context.showSuccessToast(
+      _isEdit
+          ? context.tr('admin_toast_class_updated')
+          : (draft
+              ? context.tr('admin_toast_class_draft_saved')
+              : context.tr('admin_toast_class_created')),
+    );
+    context.go('/admin/classes');
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final departmentsAsync = ref.watch(adminDepartmentsProvider);
+    final teachersAsync = ref.watch(adminTeachersProvider(null));
 
     if (_isEdit) {
-      final detailAsync = ref.watch(adminClassDetailProvider(widget.editClassId!));
+      final detailAsync =
+          ref.watch(adminClassDetailProvider(widget.editClassId!));
       return detailAsync.when(
         loading: () => Scaffold(
-          appBar: AppBar(leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-            onPressed: () => context.pop(),
-          )),
+          appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+              onPressed: () => context.pop(),
+            ),
+          ),
           body: const Center(child: CircularProgressIndicator()),
         ),
         error: (_, _) => Scaffold(
-          appBar: AppBar(leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-            onPressed: () => context.pop(),
-          )),
+          appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+              onPressed: () => context.pop(),
+            ),
+          ),
           body: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -174,8 +210,8 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
                     style: theme.textTheme.bodyMedium),
                 const SizedBox(height: 12),
                 OutlinedButton(
-                  onPressed: () =>
-                      ref.invalidate(adminClassDetailProvider(widget.editClassId!)),
+                  onPressed: () => ref.invalidate(
+                      adminClassDetailProvider(widget.editClassId!)),
                   child: Text(context.tr('retry')),
                 ),
               ],
@@ -185,507 +221,827 @@ class _ClassCreatePageState extends ConsumerState<ClassCreatePage> {
         data: (detail) {
           if (detail == null) {
             return Scaffold(
-              appBar: AppBar(leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                onPressed: () => context.pop(),
-              )),
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                  onPressed: () => context.pop(),
+                ),
+              ),
               body: Center(child: Text(context.tr('empty_state'))),
             );
           }
           _prefill(detail);
-          return _buildScaffold(context, departmentsAsync);
+          return _buildView(context, departmentsAsync, teachersAsync);
         },
       );
     }
-    return _buildScaffold(context, departmentsAsync);
+    return _buildView(context, departmentsAsync, teachersAsync);
   }
 
-  Widget _buildScaffold(
+  Widget _buildView(
     BuildContext context,
     AsyncValue<List<DepartmentInfo>> departmentsAsync,
+    AsyncValue<List<AdminTeacher>> teachersAsync,
   ) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final now = DateTime.now();
+    final isDesktop = context.screenWidth >= 800;
+    if (isDesktop) {
+      return _buildDesktopStudio(context, departmentsAsync, teachersAsync);
+    }
+    return _buildMobileForm(context, departmentsAsync, teachersAsync);
+  }
 
-    return Scaffold(
-      backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => context.pop(),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'SMARTCLASS ADMIN',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: colorScheme.secondary,
-                letterSpacing: 0.06,
-              ),
-            ),
-            Text(
-              context.tr(_isEdit ? 'admin_edit_class_title' : 'admin_classes_title'),
-              style: theme.textTheme.headlineSmall,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: context.screenWidth >= 600 ? 32 : 20,
-            vertical: 8,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 640),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _IntroCard(yearRange: '${now.year}-${now.year + 1}'),
-                    const SizedBox(height: 16),
-                    const AdminFieldLabel(labelKey: 'admin_class_name', trailingKey: 'admin_required', showTrailing: true, requiredStar: true),
-                    const SizedBox(height: 6),
-                    AppTextField(
-                      controller: _nameController,
-                      hint: context.tr('admin_class_name_hint'),
-                      prefixIcon: const Icon(Icons.co_present_outlined),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? context.tr('required_field') : null,
+  // =========================================================================
+  // DESKTOP WEB STUDIO LAYOUT (Wide 2-Column with Sticky Live Preview)
+  // =========================================================================
+  Widget _buildDesktopStudio(
+    BuildContext context,
+    AsyncValue<List<DepartmentInfo>> departmentsAsync,
+    AsyncValue<List<AdminTeacher>> teachersAsync,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : const Color(0xFFE2E8F0);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 28),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1240),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Breadcrumb & Back Navigation
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.school_outlined,
+                          size: 16, color: Color(0xFF2563EB)),
+                      const SizedBox(width: 8),
+                      Text(
+                        context.tr('admin_classes_breadcrumb_cat'),
+                        style: TextStyle(
+                          color: Color(0xFF2563EB),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      Text(
+                        '  /  ',
+                        style: TextStyle(
+                          color: isDark
+                              ? const Color(0xFF475569)
+                              : const Color(0xFFCBD5E1),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => context.go('/admin/classes'),
+                        child: Text(
+                          context.tr('admin_breadcrumb_classes'),
+                          style: TextStyle(
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '  /  ',
+                        style: TextStyle(
+                          color: isDark
+                              ? const Color(0xFF475569)
+                              : const Color(0xFFCBD5E1),
+                        ),
+                      ),
+                      Text(
+                        _isEdit ? context.tr('admin_breadcrumb_edit_class') : context.tr('admin_breadcrumb_new_class'),
+                        style: TextStyle(
+                          color: isDark
+                              ? const Color(0xFFCBD5E1)
+                              : const Color(0xFF0F172A),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => context.go('/admin/classes'),
+                    icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                    label: Text(context.tr('admin_btn_return_classes')),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor:
+                          isDark ? Colors.white : const Color(0xFF2563EB),
+                      side: BorderSide(color: borderColor),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.info_outline, size: 14, color: colorScheme.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            context.tr('admin_class_name_note'),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Page Title & Subtitle
+              Text(
+                _isEdit ? context.tr('admin_class_edit_heading') : context.tr('admin_class_create_heading'),
+                style: TextStyle(
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                context.tr('admin_class_create_sub'),
+                style: TextStyle(
+                  color: isDark
+                      ? const Color(0xFF94A3B8)
+                      : const Color(0xFF64748B),
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Two-Column Studio Layout
+              Form(
+                key: _formKey,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // LEFT COLUMN (65%): Form Configuration Panels
+                    Expanded(
+                      flex: 65,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Card 1: Identité Académique & Cursus
+                          _buildSectionCard(
+                            isDark: isDark,
+                            cardBg: cardBg,
+                            borderColor: borderColor,
+                            badge: context.tr('admin_step1_badge'),
+                            badgeColor: const Color(0xFF2563EB),
+                            title: context.tr('admin_step1_title'),
+                            subtitle:
+                                context.tr('admin_step1_subtitle'),
+                            icon: Icons.school_outlined,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const AdminFieldLabel(
+                                  labelKey: 'admin_class_name',
+                                  trailingKey: 'admin_required',
+                                  showTrailing: true,
+                                  requiredStar: true,
+                                ),
+                                const SizedBox(height: 8),
+                                AppTextField(
+                                  controller: _nameController,
+                                  hint: 'Ex: L3 Informatique - Groupe A',
+                                  prefixIcon:
+                                      const Icon(Icons.co_present_outlined),
+                                  validator: (v) =>
+                                      (v == null || v.trim().isEmpty)
+                                          ? context.tr('required_field')
+                                          : null,
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Cycle & Level Selector (Inline native chips)
+                                const Text(
+                                  'NIVEAU D\'ÉTUDES ACADÉMIQUE',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                _buildLevelSegmentedSelector(isDark),
+                                const SizedBox(height: 20),
+
+                                // Department / Filière
+                                Text(
+                                  context.tr('admin_department_label'),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                _buildDepartmentChips(departmentsAsync, isDark),
+                                const SizedBox(height: 10),
+                                AppTextField(
+                                  controller: _customDepartmentController,
+                                  hint:
+                                      context.tr('admin_custom_department_hint'),
+                                  prefixIcon: const Icon(Icons.add_rounded),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(context.tr('admin_study_level'), style: theme.textTheme.labelLarge),
-                        Text(
-                          _apiLevel(_level).name.toUpperCase(),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.secondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    _DropdownRow(
-                      icon: Icons.workspace_premium_outlined,
-                      value: _level,
-                      onTap: () => _pickLevel(context),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      context.tr('admin_quick_pick').toUpperCase(),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        letterSpacing: 0.06,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final level in _levels)
-                          _ChoiceChip(
-                            label: level,
-                            selected: _level == level,
-                            onTap: () => setState(() => _level = level),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(context.tr('admin_department'), style: theme.textTheme.labelLarge),
-                        Text(
-                          context.tr('admin_required'),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    departmentsAsync.when(
-                      loading: () => const LinearProgressIndicator(),
-                      error: (_, _) => _departmentField(context, const []),
-                      data: (departments) =>
-                          _departmentField(context, departments),
-                    ),
-                    const SizedBox(height: 8),
-                    AppTextField(
-                      controller: _customDepartmentController,
-                      hint: context.tr('admin_department_custom_hint'),
-                      prefixIcon: const Icon(Icons.add_rounded),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(context.tr('admin_referent_label'),
-                            style: theme.textTheme.labelLarge),
-                        Text(
-                          context.tr('admin_optional'),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    _DropdownRow(
-                      icon: Icons.co_present_outlined,
-                      value: _referentName ??
-                          context.tr('admin_no_referent_option'),
-                      onTap: _pickReferent,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(context.tr('admin_capacity'), style: theme.textTheme.labelLarge),
-                    Text(
-                      context.tr('admin_capacity_hint'),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerLowest,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _StepperButton(
-                            icon: Icons.remove_rounded,
-                            onTap: _capacity > 5
-                                ? () => setState(() => _capacity -= 5)
-                                : null,
-                          ),
-                          Column(
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.baseline,
-                                textBaseline: TextBaseline.alphabetic,
-                                children: [
-                                  Text(
-                                    '$_capacity',
-                                    style: theme.textTheme.headlineMedium?.copyWith(
-                                      color: colorScheme.primary,
-                                    ),
+                          const SizedBox(height: 22),
+
+                          // Card 2: Enseignant Référent & Capacité
+                          _buildSectionCard(
+                            isDark: isDark,
+                            cardBg: cardBg,
+                            borderColor: borderColor,
+                            badge: context.tr('admin_step2_badge'),
+                            badgeColor: const Color(0xFF7C3AED),
+                            title: context.tr('admin_step2_title'),
+                            subtitle:
+                                context.tr('admin_step2_subtitle'),
+                            icon: Icons.groups_3_outlined,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  context.tr('admin_teacher_referent_label'),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                    color: Color(0xFF64748B),
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    context.tr('admin_students_max'),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildTeacherDropdown(teachersAsync, isDark),
+                                const SizedBox(height: 20),
+
+                                Text(
+                                  context.tr('admin_group_capacity_label'),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                    color: Color(0xFF64748B),
                                   ),
-                                ],
-                              ),
-                            ],
+                                ),
+                                const SizedBox(height: 10),
+                                _buildCapacityStudioControl(isDark),
+                              ],
+                            ),
                           ),
-                          _StepperButton(
-                            icon: Icons.add_rounded,
-                            filled: true,
-                            onTap: _capacity < 500
-                                ? () => setState(() => _capacity += 5)
-                                : null,
+                          const SizedBox(height: 22),
+
+                          // Card 3: Modules & Description
+                          _buildSectionCard(
+                            isDark: isDark,
+                            cardBg: cardBg,
+                            borderColor: borderColor,
+                            badge: context.tr('admin_step3_badge'),
+                            badgeColor: const Color(0xFF10B981),
+                            title: context.tr('admin_step3_title'),
+                            subtitle:
+                                context.tr('admin_step3_subtitle'),
+                            icon: Icons.tune_rounded,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  context.tr('admin_description_label_title'),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                AppTextField(
+                                  controller: _descriptionController,
+                                  hint:
+                                      context.tr('admin_description_placeholder'),
+                                  maxLines: 3,
+                                  maxLength: _maxDescription,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  context.tr('admin_smartclass_services_label'),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildServiceToggleCard(
+                                        isDark: isDark,
+                                        icon: Icons.forum_outlined,
+                                        title: 'Forum d\'échange',
+                                        subtitle: context.tr('admin_service_forum_sub'),
+                                        value: _forumEnabled,
+                                        onChanged: (v) =>
+                                            setState(() => _forumEnabled = v),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: _buildServiceToggleCard(
+                                        isDark: isDark,
+                                        icon: Icons.sync_alt_rounded,
+                                        title: context.tr('admin_service_ent_title'),
+                                        subtitle: context.tr('admin_service_ent_sub'),
+                                        value: _entSyncEnabled,
+                                        onChanged: (v) =>
+                                            setState(() => _entSyncEnabled = v),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(context.tr('admin_description_label'),
-                            style: theme.textTheme.labelLarge),
-                        Text(
-                          context.tr('admin_optional'),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    AppTextField(
-                      controller: _descriptionController,
-                      hint: context.tr('admin_description_hint'),
-                      maxLines: 4,
-                      maxLength: _maxDescription,
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        context.tr('admin_char_count', args: {
-                          'used': _descriptionController.text.length.toString(),
-                          'max': _maxDescription.toString(),
-                        }),
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+
+                    const SizedBox(width: 28),
+
+                    // RIGHT COLUMN (35%): Sticky Live Class Preview Card & Actions
+                    Expanded(
+                      flex: 35,
+                      child: _buildRightStickyHub(
+                        isDark: isDark,
+                        cardBg: cardBg,
+                        borderColor: borderColor,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      context.tr('admin_auto_params').toUpperCase(),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.secondary,
-                        letterSpacing: 0.06,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _SwitchRow(
-                      icon: Icons.forum_outlined,
-                      title: context.tr('admin_forum_title'),
-                      subtitle: context.tr('admin_forum_desc'),
-                      value: _forumEnabled,
-                      onChanged: (v) => setState(() => _forumEnabled = v),
-                    ),
-                    const SizedBox(height: 8),
-                    _SwitchRow(
-                      icon: Icons.sync_alt_rounded,
-                      title: context.tr('admin_ent_sync_title'),
-                      subtitle: context.tr('admin_ent_sync_desc'),
-                      value: _entSyncEnabled,
-                      onChanged: (v) => setState(() => _entSyncEnabled = v),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(Icons.verified_user_outlined,
-                            size: 16, color: colorScheme.secondary),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            context.tr('admin_access_note'),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    AppButton(
-                      text: context.tr(_isEdit
-                          ? 'admin_save_changes'
-                          : 'admin_create_group'),
-                      trailingIcon: Icons.arrow_forward_rounded,
-                      isLoading: _saving,
-                      onPressed: _saving ? null : () => _submit(draft: false),
-                    ),
-                    if (!_isEdit) ...[
-                      const SizedBox(height: 8),
-                      Center(
-                        child: TextButton(
-                          onPressed: _saving ? null : () => _submit(draft: true),
-                          child: Text(context.tr('admin_save_draft')),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
                   ],
                 ),
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _departmentField(
-    BuildContext context,
-    List<DepartmentInfo> departments,
-  ) {
-    final selected = _department;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _DropdownRow(
-          icon: Icons.domain_outlined,
-          value: _customDepartmentController.text.trim().isNotEmpty
-              ? _customDepartmentController.text.trim()
-              : (selected ?? context.tr('admin_department_choose')),
-          onTap: () => _pickDepartment(context, departments),
-        ),
-        if (departments.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final dept in departments)
-                _ChoiceChip(
-                  label: '${dept.name} (${dept.classCount})',
-                  selected: selected == dept.name &&
-                      _customDepartmentController.text.trim().isEmpty,
-                  showCheck: true,
-                  onTap: () => setState(() {
-                    _customDepartmentController.clear();
-                    _department = dept.name;
-                  }),
-                ),
             ],
           ),
-        ],
-      ],
-    );
-  }
-
-  Future<void> _pickLevel(BuildContext context) async {
-    final selected = await _pickFromSheet(context, _levels);
-    if (selected != null) setState(() => _level = selected);
-  }
-
-  Future<void> _pickDepartment(
-    BuildContext context,
-    List<DepartmentInfo> departments,
-  ) async {
-    final options = departments.map((d) => d.name).toList();
-    if (options.isEmpty) return;
-    final selected = await _pickFromSheet(context, options);
-    if (selected != null) {
-      setState(() {
-        _customDepartmentController.clear();
-        _department = selected;
-      });
-    }
-  }
-
-  Future<void> _pickReferent() async {
-    List<AdminTeacher> teachers = [];
-    try {
-      teachers = await ref.read(adminRepositoryProvider).teachers();
-    } on Failure catch (failure) {
-      if (!mounted) return;
-      final l10n = failureL10n(failure);
-      context.showErrorToast(context.tr(l10n.key, args: l10n.args));
-      return;
-    }
-    if (!mounted) return;
-    final selected = await showModalBottomSheet<AdminTeacher?>(
-      context: context,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
       ),
-      builder: (sheetContext) {
-        final theme = Theme.of(sheetContext);
-        return SafeArea(
-          child: ListView.separated(
-            shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            itemCount: teachers.length + 1,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (_, i) {
-              if (i == 0) {
-                return ListTile(
-                  title: Text(sheetContext.tr('admin_no_referent_option'),
-                      style: theme.textTheme.bodyMedium),
-                  onTap: () => Navigator.of(sheetContext).pop(null),
-                );
-              }
-              final teacher = teachers[i - 1];
-              return ListTile(
-                title: Text(teacher.name, style: theme.textTheme.bodyMedium),
-                subtitle: Text(teacher.email,
-                    style: theme.textTheme.bodySmall),
-                onTap: () => Navigator.of(sheetContext).pop(teacher),
-              );
-            },
-          ),
-        );
-      },
-    );
-    if (!mounted) return;
-    // Null dismissal (tap outside) keeps the current choice; explicit
-    // "none" clears it. Distinguish via a sentinel is overkill here:
-    // dismissal returns null too, which would clear — acceptable since
-    // referent is optional and re-pickable.
-    setState(() {
-      _referentId = selected?.id;
-      _referentName = selected?.name;
-    });
-  }
-
-  Future<String?> _pickFromSheet(BuildContext context, List<String> options) {
-    return showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        final theme = Theme.of(sheetContext);
-        return SafeArea(
-          child: ListView.separated(
-            shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            itemCount: options.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (_, i) => ListTile(
-              title: Text(options[i], style: theme.textTheme.bodyMedium),
-              onTap: () => Navigator.of(sheetContext).pop(options[i]),
-            ),
-          ),
-        );
-      },
     );
   }
-}
 
-class _IntroCard extends StatelessWidget {
-  final String yearRange;
-
-  const _IntroCard({required this.yearRange});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+  // =========================================================================
+  // RIGHT STICKY HUB (Live Card Preview + Checklist + Submit)
+  // =========================================================================
+  Widget _buildRightStickyHub({
+    required bool isDark,
+    required Color cardBg,
+    required Color borderColor,
+  }) {
+    final lvlColor = _colorForLevel(_level);
+    final titleText = _nameController.text.trim();
+    final deptText = _effectiveDepartment;
 
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header: APERÇU EN DIRECT
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.visibility_outlined,
+                        size: 16, color: Color(0xFF2563EB)),
+                    SizedBox(width: 8),
+                    Text(
+                      context.tr('admin_live_preview_header'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.6,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.circle, size: 6, color: Color(0xFF10B981)),
+                      SizedBox(width: 5),
+                      Text(
+                        context.tr('admin_real_time'),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF10B981),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+
+          // The Mock Class Card (Live visual preview)
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color:
+                    isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : const Color(0xFFE2E8F0),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Cycle Badge + Status
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: lvlColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _level,
+                          style: TextStyle(
+                            color: lvlColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color:
+                              const Color(0xFF10B981).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _isEdit ? context.tr('admin_status_published') : context.tr('admin_breadcrumb_new_class'),
+                          style: const TextStyle(
+                            color: Color(0xFF10B981),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Class Title
+                  Text(
+                    titleText.isEmpty
+                        ? 'Ex: L3 Informatique - Groupe A'
+                        : titleText,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: titleText.isEmpty
+                          ? (isDark
+                              ? const Color(0xFF64748B)
+                              : const Color(0xFF94A3B8))
+                          : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    deptText.isEmpty
+                        ? context.tr('admin_dept_unspecified_session')
+                        : context.tr('admin_dept_specified_session', args: {'dept': deptText}),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Enseignant Référent Tile
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 14,
+                          backgroundColor:
+                              const Color(0xFF2563EB).withValues(alpha: 0.12),
+                          child: const Icon(Icons.person_rounded,
+                              size: 16, color: Color(0xFF2563EB)),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr('admin_referent_teacher_title'),
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  color: Color(0xFF94A3B8),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                _referentName ?? context.tr('admin_referent_unassigned'),
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0F172A),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Capacity Bar
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        context.tr('admin_capacity_label_preview'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      Text(
+                        context.tr('admin_capacity_students_ratio', args: {'capacity': _capacity.toString()}),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color:
+                              isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: 0.05,
+                      minHeight: 6,
+                      backgroundColor: isDark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFE2E8F0),
+                      valueColor:
+                          const AlwaysStoppedAnimation(Color(0xFF2563EB)),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Modules Chips
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      if (_forumEnabled)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF2563EB).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.forum_outlined,
+                                  size: 12, color: Color(0xFF2563EB)),
+                              SizedBox(width: 4),
+                              Text(
+                                context.tr('admin_chip_forum_active'),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2563EB),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (_entSyncEnabled)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF7C3AED).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.sync_rounded,
+                                  size: 12, color: Color(0xFF7C3AED)),
+                              SizedBox(width: 4),
+                              Text(
+                                context.tr('admin_chip_ent_synced'),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF7C3AED),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Checklist de validation
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.tr('admin_validation_criteria_title'),
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _buildCheckRow(context.tr('admin_criterion_name'),
+                    _nameController.text.trim().isNotEmpty),
+                _buildCheckRow(context.tr('admin_criterion_level'), _level.isNotEmpty),
+                _buildCheckRow(context.tr('admin_criterion_dept'),
+                    _effectiveDepartment.isNotEmpty),
+                _buildCheckRow(
+                    context.tr('admin_criterion_capacity'), _capacity > 0),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+
+          // Action Buttons
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ElevatedButton(
+                  onPressed: _saving ? null : () => _submit(draft: false),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 1,
+                  ),
+                  child: _saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          _isEdit
+                              ? context.tr('admin_btn_save_changes')
+                              : context.tr('admin_btn_create_class'),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+                if (!_isEdit) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton(
+                    onPressed: _saving ? null : () => _submit(draft: true),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor:
+                          isDark ? Colors.white : const Color(0xFF0F172A),
+                      side: BorderSide(color: borderColor),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      context.tr('admin_btn_save_draft'),
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                TextButton(
+                  onPressed: () => context.go('/admin/classes'),
+                  child: Text(context.tr('cancel')),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================================
+  // SECTION COMPONENTS
+  // =========================================================================
+  Widget _buildSectionCard({
+    required bool isDark,
+    required Color cardBg,
+    required Color borderColor,
+    required String badge,
+    required Color badgeColor,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(26),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -693,30 +1049,58 @@ class _IntroCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
+                  color: badgeColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.school_rounded, color: colorScheme.onPrimary, size: 22),
+                child: Icon(icon, color: badgeColor, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '${context.tr('admin_space_admin')} • $yearRange',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.secondary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: badgeColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            badge,
+                            style: TextStyle(
+                              color: badgeColor,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color:
+                                isDark ? Colors.white : const Color(0xFF0F172A),
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      context.tr('admin_create_desc'),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
                       ),
                     ),
                   ],
@@ -724,232 +1108,646 @@ class _IntroCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF0F9D78),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    context.tr('admin_registry_synced'),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-              Text(
-                context.tr('admin_step_1_2'),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colorScheme.secondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+          const SizedBox(height: 22),
+          child,
         ],
       ),
     );
   }
-}
 
-class _DropdownRow extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final VoidCallback? onTap;
+  Widget _buildLevelSegmentedSelector(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Licence Cycle
+        _buildCycleRow(
+          title: context.tr('admin_cycle_licence'),
+          color: const Color(0xFF2563EB),
+          levels: _licenceLevels,
+          isDark: isDark,
+        ),
+        const SizedBox(height: 12),
+        // Master Cycle
+        _buildCycleRow(
+          title: context.tr('admin_cycle_master'),
+          color: const Color(0xFF7C3AED),
+          levels: _masterLevels,
+          isDark: isDark,
+        ),
+        const SizedBox(height: 12),
+        // Doctorat Cycle
+        _buildCycleRow(
+          title: context.tr('admin_cycle_doctorat'),
+          color: const Color(0xFFD97706),
+          levels: _doctoratLevels,
+          isDark: isDark,
+        ),
+      ],
+    );
+  }
 
-  const _DropdownRow({required this.icon, required this.value, this.onTap});
+  Widget _buildCycleRow({
+    required String title,
+    required Color color,
+    required List<String> levels,
+    required bool isDark,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: levels.map((lvl) {
+            final isSelected = _level == lvl;
+            return InkWell(
+              onTap: () => setState(() => _level = lvl),
+              borderRadius: BorderRadius.circular(10),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? color
+                      : (isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFF1F5F9)),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSelected
+                        ? color
+                        : (isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : const Color(0xFFE2E8F0)),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isSelected) ...[
+                      const Icon(Icons.check_rounded,
+                          size: 14, color: Colors.white),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(
+                      lvl,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected
+                            ? Colors.white
+                            : (isDark
+                                ? Colors.white
+                                : const Color(0xFF0F172A)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+  Widget _buildDepartmentChips(
+    AsyncValue<List<DepartmentInfo>> departmentsAsync,
+    bool isDark,
+  ) {
+    return departmentsAsync.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (departments) {
+        if (departments.isEmpty) return const SizedBox.shrink();
+        final selected = _effectiveDepartment;
 
-    return Material(
-      color: colorScheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: departments.map((dept) {
+            final isSelected = selected == dept.name &&
+                _customDepartmentController.text.trim().isEmpty;
+            return InkWell(
+              onTap: () {
+                setState(() {
+                  _customDepartmentController.clear();
+                  _department = dept.name;
+                });
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF2563EB)
+                      : (isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFF1F5F9)),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFF2563EB)
+                        : (isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : const Color(0xFFE2E8F0)),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      dept.name,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected
+                            ? Colors.white
+                            : (isDark
+                                ? Colors.white
+                                : const Color(0xFF0F172A)),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.25)
+                            : (isDark
+                                ? const Color(0xFF334155)
+                                : const Color(0xFFCBD5E1)),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${dept.classCount}',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected
+                              ? Colors.white
+                              : (isDark ? Colors.white : Colors.black87),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildTeacherDropdown(
+    AsyncValue<List<AdminTeacher>> teachersAsync,
+    bool isDark,
+  ) {
+    return teachersAsync.when(
+      loading: () => Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : const Color(0xFFE2E8F0),
+          ),
+        ),
+        alignment: Alignment.centerLeft,
+        child: Text(context.tr('admin_teacher_loading'),
+            style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+      ),
+      error: (_, _) => Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.centerLeft,
+        child: Text(context.tr('admin_teacher_error'),
+            style: TextStyle(fontSize: 12, color: AppTheme.error)),
+      ),
+      data: (teachers) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : const Color(0xFFE2E8F0),
             ),
           ),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: colorScheme.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  value,
-                  style: theme.textTheme.bodyMedium,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String?>(
+              value: _referentId,
+              isExpanded: true,
+              dropdownColor:
+                  isDark ? const Color(0xFF0F172A) : Colors.white,
+              icon: const Icon(Icons.arrow_drop_down_rounded),
+              items: [
+                DropdownMenuItem<String?>(
+                  value: null,
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_off_outlined,
+                          size: 16, color: Color(0xFF64748B)),
+                      SizedBox(width: 8),
+                      Text(
+                        context.tr('admin_no_referent_option'),
+                        style: TextStyle(fontSize: 12.5),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(Icons.expand_more_rounded, color: colorScheme.onSurfaceVariant),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ChoiceChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final bool showCheck;
-  final VoidCallback onTap;
-
-  const _ChoiceChip({
-    required this.label,
-    required this.selected,
-    this.showCheck = false,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Material(
-      color: selected ? colorScheme.primary : colorScheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(9999),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(9999),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(9999),
-            border: Border.all(
-              color: selected
-                  ? Colors.transparent
-                  : colorScheme.outlineVariant.withValues(alpha: 0.4),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: selected ? colorScheme.onPrimary : colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (selected && showCheck) ...[
-                const SizedBox(width: 4),
-                Icon(Icons.check_circle_rounded, size: 14, color: colorScheme.onPrimary),
+                ...teachers.map((t) {
+                  return DropdownMenuItem<String?>(
+                    value: t.id,
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 12,
+                          backgroundColor: const Color(0xFF2563EB)
+                              .withValues(alpha: 0.12),
+                          child: Text(
+                            t.initials ?? 'PR',
+                            style: const TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '${t.name} (${t.email})',
+                            style: const TextStyle(fontSize: 12.5),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
               ],
-            ],
+              onChanged: (id) {
+                setState(() {
+                  _referentId = id;
+                  if (id == null) {
+                    _referentName = null;
+                  } else {
+                    _referentName =
+                        teachers.where((t) => t.id == id).firstOrNull?.name;
+                  }
+                });
+              },
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
-}
 
-class _StepperButton extends StatelessWidget {
-  final IconData icon;
-  final bool filled;
-  final VoidCallback? onTap;
+  Widget _buildCapacityStudioControl(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            // - Stepper button
+            _stepperBtn(
+              icon: Icons.remove_rounded,
+              onTap: _capacity > 5 ? () => setState(() => _capacity -= 5) : null,
+              isDark: isDark,
+            ),
+            const SizedBox(width: 16),
+            // Value display
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color:
+                    isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$_capacity',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF2563EB),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    context.tr('admin_students_max_label'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            // + Stepper button
+            _stepperBtn(
+              icon: Icons.add_rounded,
+              onTap: _capacity < 500 ? () => setState(() => _capacity += 5) : null,
+              isDark: isDark,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Preset quick pills
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            Text(
+              context.tr('admin_presets_label'),
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark
+                    ? const Color(0xFF94A3B8)
+                    : const Color(0xFF64748B),
+              ),
+            ),
+            for (final preset in _capacityPresets)
+              InkWell(
+                onTap: () => setState(() => _capacity = preset),
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _capacity == preset
+                        ? const Color(0xFF2563EB)
+                        : (isDark
+                            ? const Color(0xFF1E293B)
+                            : const Color(0xFFF1F5F9)),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '$preset',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: _capacity == preset
+                          ? Colors.white
+                          : (isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A)),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
 
-  const _StepperButton({required this.icon, this.filled = false, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
+  Widget _stepperBtn({
+    required IconData icon,
+    required VoidCallback? onTap,
+    required bool isDark,
+  }) {
     return Material(
-      color: filled ? colorScheme.secondaryFixed : colorScheme.surfaceContainer,
+      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          width: 36,
-          height: 36,
+          width: 40,
+          height: 40,
           alignment: Alignment.center,
           child: Icon(
             icon,
-            size: 18,
-            color: filled
-                ? colorScheme.onSecondaryFixed
-                : (onTap == null
-                    ? colorScheme.outline
-                    : colorScheme.onSurfaceVariant),
+            size: 20,
+            color: onTap == null
+                ? const Color(0xFF64748B)
+                : (isDark ? Colors.white : const Color(0xFF0F172A)),
           ),
         ),
       ),
     );
   }
-}
 
-class _SwitchRow extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _SwitchRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, size: 20, color: colorScheme.primary),
+  Widget _buildServiceToggleCard({
+    required bool isDark,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.06)
+              : const Color(0xFFE2E8F0),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: theme.textTheme.labelLarge),
-              Text(
-                subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.school_rounded,
+                color: Color(0xFF2563EB), size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
                 ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: isDark
+                        ? const Color(0xFF94A3B8)
+                        : const Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            activeThumbColor: const Color(0xFF2563EB),
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCheckRow(String label, bool isDone) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(
+            isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+            size: 15,
+            color: isDone ? const Color(0xFF10B981) : const Color(0xFF64748B),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: isDone ? FontWeight.w600 : FontWeight.normal,
+                color: isDone
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFF64748B),
               ),
-            ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================================
+  // MOBILE FALLBACK (Clean Vertical Layout)
+  // =========================================================================
+  Widget _buildMobileForm(
+    BuildContext context,
+    AsyncValue<List<DepartmentInfo>> departmentsAsync,
+    AsyncValue<List<AdminTeacher>> teachersAsync,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => context.pop(),
+        ),
+        title: Text(
+          _isEdit ? context.tr('admin_breadcrumb_edit_class') : context.tr('admin_breadcrumb_new_class'),
+          style: theme.textTheme.titleMedium,
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const AdminFieldLabel(
+                  labelKey: 'admin_class_name',
+                  trailingKey: 'admin_required',
+                  showTrailing: true,
+                  requiredStar: true,
+                ),
+                const SizedBox(height: 6),
+                AppTextField(
+                  controller: _nameController,
+                  hint: 'Ex: L3 Informatique - Groupe A',
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? context.tr('required_field')
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                const Text('NIVEAU D\'ÉTUDES',
+                    style:
+                        TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                _buildLevelSegmentedSelector(isDark),
+                const SizedBox(height: 16),
+                Text(context.tr('admin_department_label'),
+                    style:
+                        TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                _buildDepartmentChips(departmentsAsync, isDark),
+                const SizedBox(height: 8),
+                AppTextField(
+                  controller: _customDepartmentController,
+                  hint: context.tr('admin_custom_department_hint'),
+                ),
+                const SizedBox(height: 16),
+                Text(context.tr('admin_teacher_referent_label'),
+                    style:
+                        TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                _buildTeacherDropdown(teachersAsync, isDark),
+                const SizedBox(height: 16),
+                Text(context.tr('admin_group_capacity_label'),
+                    style:
+                        TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                _buildCapacityStudioControl(isDark),
+                const SizedBox(height: 24),
+                AppButton(
+                  text: _isEdit
+                      ? context.tr('admin_btn_save_changes')
+                      : context.tr('admin_btn_create_class'),
+                  isLoading: _saving,
+                  onPressed: _saving ? null : () => _submit(draft: false),
+                ),
+                if (!_isEdit) ...[
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: _saving ? null : () => _submit(draft: true),
+                    child: Text(context.tr('admin_btn_save_draft')),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
-        Switch(value: value, onChanged: onChanged),
-      ],
+      ),
     );
   }
 }

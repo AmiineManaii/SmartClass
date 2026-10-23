@@ -255,4 +255,15 @@ class AdminRemoteDataSource {
     );
     return apiEnvelope(res);
   }
+
+  Future<Map<String, dynamic>> updateUserRole(
+    String userId,
+    String role,
+  ) async {
+    final res = await _client.patch<dynamic>(
+      '$_base/users/$userId/role',
+      data: {'role': role},
+    );
+    return apiEnvelope(res);
+  }
 }

@@ -390,7 +390,7 @@ class MainScaffold extends ConsumerWidget {
     final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
     final role = ref.watch(authStateProvider).valueOrNull?.role;
 
-    if (isDesktop && role != 'admin') {
+    if (isDesktop) {
       return WebMainScaffold(body: child, role: role);
     }
 

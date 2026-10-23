@@ -19,6 +19,32 @@ void downloadJsonFileImpl(String filename, String content) {
   }
 }
 
+void downloadBytesFileImpl(String filename, List<int> bytes, String mimeType) {
+  try {
+    final blob = html.Blob([bytes], mimeType);
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement(href: url)
+      ..setAttribute('download', filename)
+      ..style.display = 'none';
+    html.document.body?.children.add(anchor);
+    anchor.click();
+    anchor.remove();
+    html.Url.revokeObjectUrl(url);
+  } catch (_) {
+    // Fallback
+  }
+}
+
+void openPdfInNewTabImpl(List<int> bytes, String title) {
+  try {
+    final blob = html.Blob([bytes], 'application/pdf');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.window.open(url, '_blank');
+  } catch (_) {
+    // Fallback
+  }
+}
+
 void printOfficialTranscriptImpl({
   required String studentName,
   required String studentId,

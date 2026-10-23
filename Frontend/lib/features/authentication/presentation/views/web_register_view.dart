@@ -31,7 +31,7 @@ class _WebRegisterPageState extends ConsumerState<WebRegisterPage>
 
   bool _obscurePassword = true;
   bool _acceptTerms = true;
-  String _selectedRole = 'student'; // 'student' | 'teacher' | 'admin'
+  String _selectedRole = 'student'; // 'student' | 'teacher'
   bool _isLoading = false;
 
   late AnimationController _pulseController;
@@ -778,7 +778,6 @@ class _WebRegisterPageState extends ConsumerState<WebRegisterPage>
     final roles = [
       {'role': 'student', 'label': isFr ? 'Étudiant' : 'Student'},
       {'role': 'teacher', 'label': isFr ? 'Enseignant' : 'Teacher'},
-      {'role': 'admin', 'label': isFr ? 'Administrateur' : 'Administrator'},
     ];
 
     final activeIndex = roles.indexWhere((r) => r['role'] == _selectedRole);

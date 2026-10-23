@@ -11,7 +11,7 @@ import '../../domain/entities/admin_person.dart';
 import '../../domain/entities/managed_class.dart';
 import '../widgets/admin_person_avatar.dart';
 import '../widgets/admin_search_field.dart';
-import '../views/web_admin_users_view.dart';
+import '../views/web_admin_students_view.dart';
 import '../../../../core/widgets/smart_loader.dart';
 
 /// Global student directory (GET /api/v1/users?role=STUDENT) with
@@ -148,7 +148,7 @@ class _AdminStudentsPageState extends ConsumerState<AdminStudentsPage> {
   @override
   Widget build(BuildContext context) {
     if (context.isDesktop) {
-      return const WebAdminUsersPage();
+      return const WebAdminStudentsView();
     }
 
     final theme = Theme.of(context);
@@ -213,11 +213,11 @@ class _AdminStudentsPageState extends ConsumerState<AdminStudentsPage> {
                     ),
                     const SizedBox(height: 12),
                     studentsAsync.when(
-                      loading: () => const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 32),
+                      loading: () => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 32),
                         child: Center(
                           child: SmartLoader.medium(
-                            message: 'Chargement des étudiants...',
+                            message: context.tr('admin_loading_students'),
                           ),
                         ),
                       ),

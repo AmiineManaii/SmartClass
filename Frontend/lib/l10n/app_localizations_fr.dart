@@ -2802,4 +2802,1155 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get password_strength_excellent => 'Force : Excellente';
+
+  @override
+  String get admin_supervision_badge => 'SUPERVISION ACADÉMIQUE';
+
+  @override
+  String get admin_winter_spring_session => '•  Session Hiver-Printemps';
+
+  @override
+  String get admin_dashboard_title => 'Tableau de Bord Administrateur';
+
+  @override
+  String get admin_dashboard_subtitle =>
+      'Vue d\'ensemble et supervision de l\'établissement académique • Données en direct';
+
+  @override
+  String get admin_refresh_data => 'Actualiser les données';
+
+  @override
+  String get admin_reports_audits => 'Rapports & Audits';
+
+  @override
+  String get admin_metric_headcount => 'EFFECTIF TOTAL';
+
+  @override
+  String admin_this_month_students(Object count) {
+    return '+$count ce mois';
+  }
+
+  @override
+  String get admin_real_time => 'Temps réel';
+
+  @override
+  String get admin_metric_faculty => 'CORPS ENSEIGNANT';
+
+  @override
+  String get admin_active_teachers_label => 'Enseignants actifs';
+
+  @override
+  String admin_active_pct(Object pct) {
+    return '$pct% actifs';
+  }
+
+  @override
+  String get admin_metric_groups => 'GROUPES PÉDAGOGIQUES';
+
+  @override
+  String get admin_active_classes_label => 'Classes actives';
+
+  @override
+  String admin_created_count(Object count) {
+    return '+$count créées';
+  }
+
+  @override
+  String get admin_metric_integrity => 'INTÉGRITÉ & FRAUDE';
+
+  @override
+  String get admin_pending_status => 'En attente';
+
+  @override
+  String get admin_action_24h => 'Action requise sous 24h';
+
+  @override
+  String get admin_handle_action => 'Traiter >';
+
+  @override
+  String get admin_recent_fraud_incidents =>
+      'Derniers incidents de fraude signalés';
+
+  @override
+  String get admin_biometric_surveillance =>
+      'Surveillance biométrique et comportementale SmartClass IA';
+
+  @override
+  String admin_filter_all_count(Object count) {
+    return 'Tous ($count)';
+  }
+
+  @override
+  String admin_filter_untreated_count(Object count) {
+    return 'Non traités ($count)';
+  }
+
+  @override
+  String get admin_no_untreated_fraud => 'Aucun incident de fraude non traité';
+
+  @override
+  String get admin_no_fraud_recorded => 'Aucun incident de fraude enregistré';
+
+  @override
+  String get admin_all_reports_handled =>
+      'Tous les signalements ont été traités par l\'administration.';
+
+  @override
+  String get admin_all_exams_compliant =>
+      'Tous les examens et sessions surveillés sont conformes aux règles académiques.';
+
+  @override
+  String get admin_student_fallback => 'Étudiant';
+
+  @override
+  String get admin_exam_session => 'Session d\'examen';
+
+  @override
+  String get admin_evaluation_fallback => 'Évaluation';
+
+  @override
+  String get admin_auto_ai_detection => 'Détection automatique IA';
+
+  @override
+  String get admin_take_charge => 'Prendre en charge';
+
+  @override
+  String get admin_consult => 'Consulter';
+
+  @override
+  String get admin_certified_ai_consensus =>
+      'Intégrité académique certifiée par consensus IA';
+
+  @override
+  String admin_view_all_integrity_reports(Object count) {
+    return 'Voir tous les rapports d\'intégrité ($count)';
+  }
+
+  @override
+  String get admin_recent_system_activity => 'Activité récente du système';
+
+  @override
+  String get admin_active_cohorts_promos => 'Cohortes & promotions actives';
+
+  @override
+  String get admin_live_badge => 'En direct';
+
+  @override
+  String get admin_no_cohort_configured => 'Aucune cohorte configurée';
+
+  @override
+  String get admin_services_db => 'Services & Base de données';
+
+  @override
+  String get admin_live_sync => 'Synchronisation en direct';
+
+  @override
+  String get admin_operational => 'Opérationnel';
+
+  @override
+  String get admin_quick_actions_supervision => 'Actions rapides & Supervision';
+
+  @override
+  String get admin_certified_shortcuts => 'Raccourcis administratifs certifiés';
+
+  @override
+  String get admin_create_new_class_btn => 'Créer une nouvelle classe';
+
+  @override
+  String get admin_manage_classes_promos => 'Gérer les classes & promotions';
+
+  @override
+  String get admin_timetable_rooms => 'Emplois du temps & Salles';
+
+  @override
+  String get admin_surveillance_frauds => 'Surveillance & Fraudes';
+
+  @override
+  String get admin_severity_critical => 'Critique';
+
+  @override
+  String get admin_severity_medium => 'Moyen';
+
+  @override
+  String get admin_status_active => 'Active';
+
+  @override
+  String get admin_status_draft => 'Brouillon';
+
+  @override
+  String admin_referent_with_students(Object count, Object name) {
+    return 'Réf. $name • $count étudiants';
+  }
+
+  @override
+  String admin_students_enrolled_count(Object count) {
+    return '$count étudiants inscrits';
+  }
+
+  @override
+  String get admin_classes_breadcrumb_cat => 'ESPACE ADMINISTRATION';
+
+  @override
+  String get admin_classes_breadcrumb_current => 'Gestion des Classes';
+
+  @override
+  String get admin_realtime_synced_data =>
+      'Données synchronisées en temps réel';
+
+  @override
+  String get admin_classes_page_heading => 'Gestion des Classes & Cohortes';
+
+  @override
+  String get admin_classes_page_desc =>
+      'Consultez, organisez et configurez les promotions, effectifs d\'étudiants et affectations d\'enseignants.';
+
+  @override
+  String get admin_refresh_button => 'Actualiser';
+
+  @override
+  String get admin_create_class_button => 'Créer une classe';
+
+  @override
+  String get admin_kpi_classes_promos => 'CLASSES & PROMOTIONS';
+
+  @override
+  String admin_kpi_classes_count(Object count) {
+    return '$count Classes';
+  }
+
+  @override
+  String get admin_kpi_classes_badge => 'Actives';
+
+  @override
+  String get admin_kpi_students_enrollment => 'INSCRIPTIONS ÉTUDIANTS';
+
+  @override
+  String admin_kpi_students_count(Object count) {
+    return '$count Étudiants';
+  }
+
+  @override
+  String get admin_kpi_students_badge => 'Total inscrits';
+
+  @override
+  String get admin_kpi_faculty => 'CORPS ENSEIGNANT';
+
+  @override
+  String admin_kpi_faculty_count(Object count) {
+    return '$count Enseignants';
+  }
+
+  @override
+  String get admin_kpi_faculty_badge => 'Corps professoral';
+
+  @override
+  String get admin_search_classes_placeholder =>
+      'Rechercher une classe (nom, filière)...';
+
+  @override
+  String get admin_level_filter_all => 'Niveau : Tous';
+
+  @override
+  String admin_level_filter_prefix(Object level) {
+    return 'Niveau : $level';
+  }
+
+  @override
+  String get admin_unable_load_classes => 'Impossible de charger les classes.';
+
+  @override
+  String get admin_no_classes_found => 'Aucune classe trouvée';
+
+  @override
+  String get admin_no_classes_hint =>
+      'Créez une première classe pour commencer à organiser les cohortes.';
+
+  @override
+  String get admin_col_class_name => 'NOM DE LA CLASSE';
+
+  @override
+  String get admin_col_level_dept => 'NIVEAU & DÉPARTEMENT';
+
+  @override
+  String get admin_col_headcount => 'EFFECTIF ÉTUDIANTS';
+
+  @override
+  String get admin_col_faculty => 'CORPS ENSEIGNANT';
+
+  @override
+  String get admin_col_status => 'STATUT';
+
+  @override
+  String get admin_col_actions => 'ACTIONS';
+
+  @override
+  String get admin_unattached_promo => 'Non rattaché';
+
+  @override
+  String admin_students_count_label(Object count) {
+    return '$count étudiants';
+  }
+
+  @override
+  String admin_students_enrolled_tag(Object count) {
+    return '$count inscrit(s)';
+  }
+
+  @override
+  String admin_teachers_count_label(Object count) {
+    return '$count enseignant(s)';
+  }
+
+  @override
+  String get admin_status_published => 'Publiée';
+
+  @override
+  String get admin_manage_students_tooltip => 'Gérer les étudiants';
+
+  @override
+  String get admin_assign_teachers_tooltip => 'Affecter des enseignants';
+
+  @override
+  String get admin_menu_edit => 'Modifier';
+
+  @override
+  String get admin_menu_delete => 'Supprimer';
+
+  @override
+  String get admin_confirm_delete_title => 'Supprimer la classe';
+
+  @override
+  String admin_confirm_delete_msg(Object name) {
+    return 'Voulez-vous vraiment supprimer la classe $name ?';
+  }
+
+  @override
+  String get admin_teachers_breadcrumb_cat => 'ESPACE ADMINISTRATION';
+
+  @override
+  String get admin_teachers_breadcrumb_current =>
+      'Corps Professoral & Enseignants';
+
+  @override
+  String get admin_teachers_page_heading => 'Gestion des Enseignants & Profs';
+
+  @override
+  String get admin_teachers_page_desc =>
+      'Supervisez le corps professoral, validez les accréditations, affectez les cours et promouvez des administrateurs.';
+
+  @override
+  String get admin_kpi_total_teachers => 'TOTAL ENSEIGNANTS';
+
+  @override
+  String get admin_kpi_badge_faculty => 'Corps professoral';
+
+  @override
+  String get admin_kpi_approved_accreditations => 'ACCRÉDITATIONS VALIDÉES';
+
+  @override
+  String get admin_kpi_badge_verified_profiles => 'Profils vérifiés';
+
+  @override
+  String get admin_kpi_pending_accreditation => 'EN ATTENTE D\'ACCRÉDITATION';
+
+  @override
+  String get admin_kpi_badge_to_handle => 'À traiter';
+
+  @override
+  String get admin_kpi_badge_up_to_date => 'À jour';
+
+  @override
+  String get admin_kpi_assigned_teachers => 'ENSEIGNANTS ASSIGNÉS';
+
+  @override
+  String get admin_kpi_badge_active_in_class => 'Actifs en cours';
+
+  @override
+  String admin_filter_all_label(Object count) {
+    return 'Tous ($count)';
+  }
+
+  @override
+  String admin_filter_validated_label(Object count) {
+    return 'Validés ($count)';
+  }
+
+  @override
+  String admin_filter_pending_label(Object count) {
+    return 'En attente ($count)';
+  }
+
+  @override
+  String admin_filter_rejected_label(Object count) {
+    return 'Refusés ($count)';
+  }
+
+  @override
+  String get admin_search_teachers_placeholder =>
+      'Rechercher enseignant, matière, email...';
+
+  @override
+  String get admin_col_teacher => 'ENSEIGNANT';
+
+  @override
+  String get admin_col_specialty_courses => 'SPÉCIALITÉ & COURS';
+
+  @override
+  String get admin_col_accreditation => 'ACCRÉDITATION';
+
+  @override
+  String get admin_col_dedicated_actions => 'ACTIONS DÉDIÉES';
+
+  @override
+  String get admin_no_teachers_found =>
+      'Aucun enseignant trouvé pour ces critères.';
+
+  @override
+  String get admin_unassigned_teacher => 'Non affecté';
+
+  @override
+  String get admin_promote_admin_tooltip => 'Promouvoir au rôle Administrateur';
+
+  @override
+  String get admin_btn_admin => 'Admin';
+
+  @override
+  String get admin_assign_class_tooltip => 'Affecter à une classe';
+
+  @override
+  String get admin_validate_accreditation_tooltip => 'Valider l\'accréditation';
+
+  @override
+  String get admin_reject_tooltip => 'Rejeter';
+
+  @override
+  String get admin_badge_approved => 'Validé';
+
+  @override
+  String get admin_badge_pending => 'En attente';
+
+  @override
+  String get admin_badge_rejected => 'Refusé';
+
+  @override
+  String get admin_inspector_teacher_title => 'DÉTAILS DU PROFESSEUR';
+
+  @override
+  String get admin_inspector_accreditation_status => 'Statut accréditation';
+
+  @override
+  String get admin_inspector_specialty => 'Spécialité';
+
+  @override
+  String get admin_inspector_general => 'Général';
+
+  @override
+  String get admin_inspector_hourly_load => 'Charge horaire';
+
+  @override
+  String get admin_inspector_unspecified => 'Non spécifiée';
+
+  @override
+  String get admin_inspector_email_verified => 'Email vérifié';
+
+  @override
+  String get admin_inspector_quick_actions => 'Actions Rapides';
+
+  @override
+  String get admin_btn_promote_admin => 'Promouvoir Administrateur';
+
+  @override
+  String get admin_btn_assign_to_class => 'Affecter à une classe';
+
+  @override
+  String get admin_btn_validate_accreditation => 'Valider l\'accréditation';
+
+  @override
+  String get admin_btn_suspend_reject => 'Suspendre / Rejeter';
+
+  @override
+  String admin_dialog_promote_title(Object name) {
+    return 'Promouvoir $name Administrateur ?';
+  }
+
+  @override
+  String get admin_dialog_promote_desc =>
+      'Ce rôle confère un accès illimité à la console de gestion, aux effectifs, aux cours et aux sanctions académiques.';
+
+  @override
+  String get admin_btn_confirm_promotion => 'Confirmer la promotion';
+
+  @override
+  String admin_toast_promoted_success(Object name) {
+    return '$name a été promu Administrateur avec succès.';
+  }
+
+  @override
+  String get admin_toast_promote_fail =>
+      'Échec de la promotion: rôle non modifiable ou permission requise.';
+
+  @override
+  String get admin_dialog_assign_title => 'Affecter à une classe';
+
+  @override
+  String get admin_dialog_assign_class_label => 'CLASSE CIBLE';
+
+  @override
+  String get admin_dialog_subject_label => 'MATIÈRE / COURS ENSEIGNÉ';
+
+  @override
+  String get admin_dialog_subject_hint => 'Ex: Mathématiques, Algorithmique...';
+
+  @override
+  String get admin_dialog_hours_label => 'CHARGE HORAIRE HEBDOMADAIRE';
+
+  @override
+  String get admin_dialog_hours_hint => 'Ex: 4h / semaine';
+
+  @override
+  String get admin_btn_save_assignment => 'Enregistrer l\'affectation';
+
+  @override
+  String admin_toast_assign_success(Object name) {
+    return 'Enseignant $name affecté à la classe avec succès.';
+  }
+
+  @override
+  String get admin_toast_assign_fail =>
+      'Erreur lors de l\'affectation à la classe.';
+
+  @override
+  String get admin_students_breadcrumb_cat => 'ESPACE ADMINISTRATION';
+
+  @override
+  String get admin_students_breadcrumb_current => 'Annuaire & Cohortes';
+
+  @override
+  String get admin_students_page_heading =>
+      'Gestion des Étudiants & Promotions';
+
+  @override
+  String get admin_students_page_desc =>
+      'Consultez les effectifs étudiants, gérez les affectations aux classes et supervisez les comptes.';
+
+  @override
+  String get admin_kpi_total_students => 'TOTAL ÉTUDIANTS';
+
+  @override
+  String get admin_kpi_badge_enrolled => 'Effectif inscrit';
+
+  @override
+  String get admin_kpi_in_cohort => 'INSCRITS EN COHORTE';
+
+  @override
+  String get admin_kpi_badge_assigned => 'Affectés en classe';
+
+  @override
+  String get admin_kpi_unassigned => 'SANS CLASSE ASSIGNÉE';
+
+  @override
+  String get admin_kpi_badge_to_assign => 'À affecter';
+
+  @override
+  String get admin_kpi_badge_all_assigned => 'Tous assignés';
+
+  @override
+  String get admin_kpi_verified_accounts => 'COMPTES VÉRIFIÉS';
+
+  @override
+  String get admin_kpi_badge_verified_email => 'Email vérifié';
+
+  @override
+  String admin_dropdown_all_promos(Object count) {
+    return 'Toutes les promotions ($count classes)';
+  }
+
+  @override
+  String get admin_search_students_placeholder =>
+      'Rechercher étudiant, email, matricule...';
+
+  @override
+  String get admin_col_student => 'ÉTUDIANT';
+
+  @override
+  String get admin_col_class_cohort => 'CLASSE & COHORTE';
+
+  @override
+  String get admin_col_account_status => 'STATUT COMPTE';
+
+  @override
+  String get admin_no_students_found =>
+      'Aucun étudiant trouvé pour ces critères.';
+
+  @override
+  String get admin_unassigned_badge => 'Non assigné';
+
+  @override
+  String get admin_badge_verified => 'Vérifié';
+
+  @override
+  String get admin_badge_unverified => 'Non vérifié';
+
+  @override
+  String get admin_btn_change => 'Changer';
+
+  @override
+  String get admin_btn_assign => 'Affecter';
+
+  @override
+  String get admin_tooltip_change_class => 'Changer de classe';
+
+  @override
+  String get admin_tooltip_assign_class => 'Affecter à une classe';
+
+  @override
+  String get admin_tooltip_remove_class => 'Retirer de la classe';
+
+  @override
+  String get admin_inspector_student_title => 'DOSSIER ÉTUDIANT';
+
+  @override
+  String get admin_inspector_current_class => 'Classe actuelle';
+
+  @override
+  String get admin_inspector_level_cycle => 'Niveau / Cycle';
+
+  @override
+  String get admin_inspector_cohort_assignment => 'Affectation de Cohorte';
+
+  @override
+  String get admin_btn_transfer_class => 'Transférer de classe';
+
+  @override
+  String get admin_btn_assign_class => 'Assigner à une classe';
+
+  @override
+  String get admin_btn_remove_from_class => 'Retirer de la classe';
+
+  @override
+  String admin_dialog_assign_student_title(Object name) {
+    return 'Affecter $name à une classe';
+  }
+
+  @override
+  String get admin_btn_confirm_assignment => 'Confirmer l\'affectation';
+
+  @override
+  String admin_toast_student_assigned_success(Object name) {
+    return '$name a été assigné(e) à la classe avec succès.';
+  }
+
+  @override
+  String get admin_toast_student_assign_fail =>
+      'Erreur lors de l\'affectation de l\'étudiant.';
+
+  @override
+  String get admin_dialog_remove_title => 'Retirer de la classe';
+
+  @override
+  String admin_dialog_remove_msg(Object name) {
+    return 'Voulez-vous retirer $name de sa classe actuelle ? L\'étudiant sera placé en statut libre sans cohorte.';
+  }
+
+  @override
+  String get admin_btn_remove => 'Retirer';
+
+  @override
+  String admin_toast_student_removed(Object name) {
+    return '$name a été retiré(e) de la classe.';
+  }
+
+  @override
+  String get admin_toast_student_remove_fail =>
+      'Erreur lors du retrait de l\'étudiant.';
+
+  @override
+  String get admin_breadcrumb_classes => 'Classes';
+
+  @override
+  String get admin_breadcrumb_new_class => 'Nouvelle classe';
+
+  @override
+  String get admin_breadcrumb_edit_class => 'Modifier la classe';
+
+  @override
+  String get admin_btn_return_classes => 'Retour aux classes';
+
+  @override
+  String get admin_class_create_heading => 'Créer une nouvelle classe';
+
+  @override
+  String get admin_class_edit_heading => 'Modifier la classe';
+
+  @override
+  String get admin_class_create_sub =>
+      'Configurez la cohorte académique, son effectif cible et son enseignant référent avec synchronisation en temps réel.';
+
+  @override
+  String get admin_step1_badge => 'ÉTAPE 1';
+
+  @override
+  String get admin_step1_title => 'Identité Académique & Cursus';
+
+  @override
+  String get admin_step1_subtitle =>
+      'Nom officiel, niveau d\'études et rattachement de la filière';
+
+  @override
+  String get admin_class_name_example => 'Ex: L3 Informatique - Groupe A';
+
+  @override
+  String get admin_study_level_label => 'NIVEAU D\'ÉTUDES ACADÉMIQUE';
+
+  @override
+  String get admin_department_label => 'FILIÈRE & DÉPARTEMENT DE RATTACHEMENT';
+
+  @override
+  String get admin_custom_department_hint =>
+      'Ou saisir une nouvelle filière / département personnalisé...';
+
+  @override
+  String get admin_step2_badge => 'ÉTAPE 2';
+
+  @override
+  String get admin_step2_title => 'Enseignant Référent & Effectif Cible';
+
+  @override
+  String get admin_step2_subtitle =>
+      'Affectation pédagogique et dimensionnement de la classe';
+
+  @override
+  String get admin_teacher_referent_label => 'ENSEIGNANT RÉFÉRENT (OPTIONNEL)';
+
+  @override
+  String get admin_teacher_loading => 'Chargement des enseignants...';
+
+  @override
+  String get admin_teacher_error => 'Erreur lors du chargement des enseignants';
+
+  @override
+  String get admin_no_referent_option =>
+      'Aucun enseignant référent (assigner ultérieurement)';
+
+  @override
+  String get admin_group_capacity_label => 'CAPACITÉ D\'ACCUEIL DU GROUPE';
+
+  @override
+  String get admin_students_max_label => 'étudiants max';
+
+  @override
+  String get admin_presets_label => 'Préréglages universitaires :';
+
+  @override
+  String get admin_step3_badge => 'OPTIONNEL';
+
+  @override
+  String get admin_step3_title => 'Description & Modules Collaboratifs';
+
+  @override
+  String get admin_step3_subtitle =>
+      'Présentation et activation des services interactifs';
+
+  @override
+  String get admin_description_label_title => 'DESCRIPTION ACADÉMIQUE';
+
+  @override
+  String get admin_description_placeholder =>
+      'Objectifs de la cohorte, prérequis, remarques pédagogiques...';
+
+  @override
+  String get admin_smartclass_services_label =>
+      'SERVICES & INTÉGRATIONS SMARTCLASS';
+
+  @override
+  String get admin_service_forum_title => 'Forum d\'échange';
+
+  @override
+  String get admin_service_forum_sub => 'Discussion entre étudiants';
+
+  @override
+  String get admin_service_ent_title => 'Synchronisation ENT';
+
+  @override
+  String get admin_service_ent_sub => 'Plannings et cours auto';
+
+  @override
+  String get admin_live_preview_header => 'APERÇU EN DIRECT';
+
+  @override
+  String get admin_dept_unspecified_session =>
+      'Filière non spécifiée • 2026-2027';
+
+  @override
+  String admin_dept_specified_session(Object dept) {
+    return '$dept • Session 2026-2027';
+  }
+
+  @override
+  String get admin_referent_teacher_title => 'Enseignant Référent';
+
+  @override
+  String get admin_referent_unassigned => 'Non assigné';
+
+  @override
+  String get admin_capacity_label_preview => 'Capacité d\'accueil';
+
+  @override
+  String admin_capacity_students_ratio(Object capacity) {
+    return '0 / $capacity étudiants';
+  }
+
+  @override
+  String get admin_chip_forum_active => 'Forum actif';
+
+  @override
+  String get admin_chip_ent_synced => 'ENT synchronisé';
+
+  @override
+  String get admin_validation_criteria_title => 'CRITÈRES DE VALIDATION';
+
+  @override
+  String get admin_criterion_name => 'Nom de la cohorte renseigné';
+
+  @override
+  String get admin_criterion_level => 'Niveau d\'études sélectionné';
+
+  @override
+  String get admin_criterion_dept => 'Filière ou département associé';
+
+  @override
+  String get admin_criterion_capacity => 'Capacité d\'accueil valide (> 0)';
+
+  @override
+  String get admin_btn_save_changes => 'Enregistrer les modifications';
+
+  @override
+  String get admin_btn_save_draft => 'Enregistrer comme brouillon';
+
+  @override
+  String get admin_toast_class_updated => 'Classe modifiée avec succès.';
+
+  @override
+  String get admin_toast_class_draft_saved =>
+      'Classe enregistrée comme brouillon.';
+
+  @override
+  String get admin_toast_class_created => 'Classe créée avec succès.';
+
+  @override
+  String get admin_cycle_licence => 'Cycle Licence (LMD)';
+
+  @override
+  String get admin_cycle_master => 'Cycle Master & Spécialités';
+
+  @override
+  String get admin_cycle_doctorat => 'Troisième Cycle & Doctorat';
+
+  @override
+  String get admin_planning_breadcrumb_current => 'Emploi du Temps & Planning';
+
+  @override
+  String get admin_planning_heading => 'Planning Hebdomadaire des Classes';
+
+  @override
+  String get admin_planning_sub =>
+      'Consultez et ajustez la grille horaire des cours, salles et enseignants par classe.';
+
+  @override
+  String get admin_prev_week_tooltip => 'Semaine précédente';
+
+  @override
+  String get admin_next_week_tooltip => 'Semaine suivante';
+
+  @override
+  String get admin_today_btn => 'Aujourd\'hui';
+
+  @override
+  String get admin_selected_class_label => 'Classe sélectionnée :';
+
+  @override
+  String admin_hours_planned(Object hours) {
+    return '$hours prévues';
+  }
+
+  @override
+  String get admin_unable_load_planning => 'Impossible de charger le planning.';
+
+  @override
+  String get admin_first_create_class_planning =>
+      'Créez d\'abord une classe pour gérer son planning.';
+
+  @override
+  String get admin_no_courses_this_week =>
+      'Aucun cours programmé cette semaine.';
+
+  @override
+  String get admin_no_courses_day => 'Aucun cours';
+
+  @override
+  String get admin_reports_breadcrumb_current =>
+      'Surveillance Anti-Fraude & Intégrité';
+
+  @override
+  String get admin_reports_heading => 'Audit d\'Intégrité & Rapports de Fraude';
+
+  @override
+  String get admin_reports_sub =>
+      'Supervisez les alertes télémétriques générées lors des examens en ligne et appliquez les sanctions administratives.';
+
+  @override
+  String get admin_kpi_untreated => 'NON TRAITÉS';
+
+  @override
+  String get admin_kpi_badge_action_req => 'Action requise';
+
+  @override
+  String get admin_kpi_in_arbitration => 'EN COURS D\'ARBITRAGE';
+
+  @override
+  String get admin_kpi_badge_instructing => 'En instruction';
+
+  @override
+  String get admin_kpi_resolved_this_month => 'RÉSOLUS CE MOIS';
+
+  @override
+  String get admin_kpi_badge_closed => 'Clôturés';
+
+  @override
+  String get admin_dialog_close_dossier_title => 'Clôturer le dossier';
+
+  @override
+  String admin_dialog_dossier_of(Object name, Object title) {
+    return 'Dossier de : $name ($title)';
+  }
+
+  @override
+  String get admin_dialog_decision_hint =>
+      'Précisez la décision ou les sanctions éventuelles...';
+
+  @override
+  String get admin_btn_confirm_closure => 'Confirmer la clôture';
+
+  @override
+  String get admin_toast_dossier_updated => 'Statut du dossier mis à jour.';
+
+  @override
+  String get admin_toast_dossier_update_fail =>
+      'Impossible de mettre à jour le dossier.';
+
+  @override
+  String admin_enrolled_count(Object count) {
+    return '$count inscrits';
+  }
+
+  @override
+  String get admin_student_assign_notice =>
+      'L\'étudiant recevra immédiatement ses emplois du temps et les devoirs associés à cette classe.';
+
+  @override
+  String get admin_choose_cohort_assign =>
+      'Choisir la promotion / cohorte d\'affectation:';
+
+  @override
+  String get admin_no_classes_available =>
+      'Aucune classe disponible. Créez d\'abord une classe.';
+
+  @override
+  String admin_student_label(Object name) {
+    return 'Étudiant: $name';
+  }
+
+  @override
+  String admin_teacher_label(Object name) {
+    return 'Professeur: $name';
+  }
+
+  @override
+  String get admin_col_assigned_class => 'CLASSE ASSIGNÉE';
+
+  @override
+  String admin_toast_accreditation_approved(Object name) {
+    return 'Accréditation de $name validée.';
+  }
+
+  @override
+  String admin_toast_accreditation_rejected(Object name) {
+    return 'Accréditation de $name refusée.';
+  }
+
+  @override
+  String get admin_toast_update_error => 'Erreur lors de la mise à jour.';
+
+  @override
+  String get admin_select_class_cohort => 'Sélectionner la classe / cohorte:';
+
+  @override
+  String get admin_weekly_hours_label => 'Volume horaire hebdomadaire:';
+
+  @override
+  String admin_hours_per_week(Object hours) {
+    return '${hours}h / semaine';
+  }
+
+  @override
+  String get admin_planning_lunch => 'DÉJEUNER';
+
+  @override
+  String get admin_planning_room_undefined => 'Salle non définie';
+
+  @override
+  String get admin_filter_all_alerts => 'Toutes les alertes';
+
+  @override
+  String admin_filter_in_progress_count(Object count) {
+    return 'En cours ($count)';
+  }
+
+  @override
+  String admin_filter_closed_count(Object count) {
+    return 'Clôturés ($count)';
+  }
+
+  @override
+  String get admin_no_fraud_reports => 'Aucun signalement de fraude';
+
+  @override
+  String get admin_select_an_alert => 'Sélectionnez une alerte';
+
+  @override
+  String get admin_findings_detected => 'Anomalies détectées :';
+
+  @override
+  String get admin_resolution_administrative => 'Résolution administrative :';
+
+  @override
+  String get admin_btn_take_charge => 'Prendre en charge';
+
+  @override
+  String get admin_btn_close_case => 'Clôturer';
+
+  @override
+  String get admin_severity_closed => 'Classé';
+
+  @override
+  String get admin_status_in_progress => 'En cours';
+
+  @override
+  String get admin_status_closed => 'Clôturé';
+
+  @override
+  String get admin_users_breadcrumb_cat => 'ESPACE ADMINISTRATION';
+
+  @override
+  String get admin_users_breadcrumb_current => 'Annuaire & Rôles';
+
+  @override
+  String get admin_users_page_heading => 'Gestion des Utilisateurs';
+
+  @override
+  String get admin_users_page_desc =>
+      'Consultez les effectifs, validez les accréditations d\'enseignants et supervisez les comptes.';
+
+  @override
+  String get admin_kpi_enrolled_students => 'ÉTUDIANTS INSCRITS';
+
+  @override
+  String get admin_kpi_student_headcount => 'Effectif étudiant';
+
+  @override
+  String admin_tab_students_count(Object count) {
+    return 'Étudiants ($count)';
+  }
+
+  @override
+  String get admin_no_users_match_filter =>
+      'Aucun utilisateur ne correspond à ce filtre.';
+
+  @override
+  String get admin_toast_teacher_approved =>
+      'Compte enseignant validé avec succès.';
+
+  @override
+  String get admin_toast_teacher_updated => 'Compte enseignant mis à jour.';
+
+  @override
+  String get admin_status_assigned => 'Assigné';
+
+  @override
+  String get admin_step_1_badge => 'ÉTAPE 1';
+
+  @override
+  String get admin_step_2_badge => 'ÉTAPE 2';
+
+  @override
+  String get admin_step_3_badge => 'OPTIONNEL';
+
+  @override
+  String get admin_live_preview => 'APERÇU EN DIRECT';
+
+  @override
+  String admin_assign_students_desc(Object title) {
+    return 'Affecter des étudiants inscrits à $title';
+  }
+
+  @override
+  String admin_assign_teachers_desc(Object title) {
+    return 'Affecter des enseignants et matières à $title';
+  }
+
+  @override
+  String get admin_loading_classes => 'Chargement des classes...';
+
+  @override
+  String get admin_loading_students => 'Chargement des étudiants...';
+
+  @override
+  String get admin_toast_teacher_approved_short =>
+      'Compte enseignant validé avec succès';
+
+  @override
+  String get admin_toast_teacher_rejected_short => 'Compte enseignant refusé';
+
+  @override
+  String get admin_btn_reapprove => 'Réapprouver';
+
+  @override
+  String get admin_btn_suspend_revoke => 'Suspendre / Révoquer';
+
+  @override
+  String get admin_col_exam => 'Épreuve';
+
+  @override
+  String get admin_col_class => 'Classe';
+
+  @override
+  String get admin_col_severity => 'Gravité';
+
+  @override
+  String get admin_col_user => 'UTILISATEUR';
+
+  @override
+  String get admin_col_academic_email => 'EMAIL ACADÉMIQUE';
+
+  @override
+  String get admin_col_role_class => 'RÔLE & CLASSE';
+
+  @override
+  String get admin_select_a_user => 'Sélectionnez un utilisateur';
+
+  @override
+  String get admin_label_role => 'Rôle';
+
+  @override
+  String get admin_label_assignment => 'Affectation';
+
+  @override
+  String get admin_label_pedagogical_accreditation =>
+      'Accréditation pédagogique';
+
+  @override
+  String get admin_btn_validate => 'Valider';
+
+  @override
+  String get admin_btn_suspend => 'Suspendre';
 }
