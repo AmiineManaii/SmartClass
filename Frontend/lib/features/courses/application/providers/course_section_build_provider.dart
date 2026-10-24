@@ -31,21 +31,27 @@ class CourseSectionBuildState {
     this.error,
     this.course,
     this.sections = const [],
+    this.initializedFromOutline = false,
     this.streamingKey,
     this.streamingText = '',
     this.streamingPhase = '',
     this.streamError,
     this.imageJobs = const {},
+    this.isGeneratingAll = false,
   });
 
   /// Initial fetch in flight.
   final bool loading;
+  final bool isGeneratingAll;
 
   /// Build fetch failure (sections absent → retry view).
   final Object? error;
 
   final CourseBuildCourse? course;
   final List<CourseSectionEntry> sections;
+
+  /// True when sections were materialized from the outline on first call.
+  final bool initializedFromOutline;
 
   /// `sectionKey` currently streaming, null when idle.
   final String? streamingKey;
@@ -85,18 +91,22 @@ class CourseSectionBuildState {
     Object? error,
     CourseBuildCourse? course,
     List<CourseSectionEntry>? sections,
+    bool? initializedFromOutline,
     String? streamingKey,
     String? streamingText,
     String? streamingPhase,
     bool resetStreaming = false,
     Object? streamError,
     Map<String, SectionImageJob>? imageJobs,
+    bool? isGeneratingAll,
   }) {
     return CourseSectionBuildState(
       loading: loading ?? this.loading,
       error: error,
       course: course ?? this.course,
       sections: sections ?? this.sections,
+      initializedFromOutline:
+          initializedFromOutline ?? this.initializedFromOutline,
       streamingKey: resetStreaming ? null : (streamingKey ?? this.streamingKey),
       streamingText: resetStreaming
           ? ''
@@ -106,6 +116,7 @@ class CourseSectionBuildState {
           : (streamingPhase ?? this.streamingPhase),
       streamError: streamError,
       imageJobs: imageJobs ?? this.imageJobs,
+      isGeneratingAll: isGeneratingAll ?? this.isGeneratingAll,
     );
   }
 }
@@ -145,6 +156,7 @@ class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
         loading: false,
         course: data.course,
         sections: data.sections,
+        initializedFromOutline: data.initializedFromOutline,
       );
     } catch (e) {
       if (!mounted || run != _loadRun) return;
@@ -229,8 +241,44 @@ class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
         );
   }
 
+  /// Sequentially generates and validates all pending or unvalidated sections of the outline.
+  Future<void> generateAllRemaining({bool autoValidate = true}) async {
+    if (state.isStreaming || state.isGeneratingAll) return;
+    state = state.copyWith(isGeneratingAll: true);
+
+    try {
+      // Find all sections that are not yet validated or not generated
+      for (final sec in state.sections) {
+        if (!state.isGeneratingAll) break; // cancelled
+        if (sec.status == CourseSectionStatus.validated) continue;
+
+        // Generate the section
+        await generate(
+          sectionKey: sec.sectionKey,
+          regenerate: sec.status == CourseSectionStatus.generated,
+        );
+
+        if (!state.isGeneratingAll) break;
+
+        // Optionally validate immediately so it builds vector memory and draft body
+        if (autoValidate) {
+          try {
+            await validate(sec.sectionKey);
+          } catch (_) {
+            // Continues even if validation fails
+          }
+        }
+      }
+    } finally {
+      if (mounted) {
+        state = state.copyWith(isGeneratingAll: false);
+      }
+    }
+  }
+
   /// Cancels the live generation (SSE `REQUEST_CANCELLED` settles state).
   void cancel() {
+    state = state.copyWith(isGeneratingAll: false);
     _cancel?.cancel();
   }
 

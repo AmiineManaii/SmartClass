@@ -3,21 +3,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_providers.dart';
-import '../../../../core/error/failure_localization.dart';
-import '../../../../core/error/failures.dart';
 import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/network/api_exception.dart';
-import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/smart_loader.dart';
 import '../../application/providers/courses_provider.dart';
 import '../../application/providers/course_generation_job_provider.dart';
-import '../../domain/entities/course_entry.dart';
 import '../../domain/entities/generated_course.dart';
+import '../widgets/course_card.dart';
+import '../widgets/error_state.dart';
+import '../widgets/generated_course_card.dart';
+import '../widgets/generated_list.dart';
+import '../widgets/running_job_banner.dart';
+import '../widgets/staggered_list_item.dart';
+import '../widgets/subject_detail_card.dart';
 
-/// "Mes cours" — real classes of the caller (`GET /api/v1/groups/mine`).
-/// No mock data: empty/error states are honest, progress/leçons are not
-/// shown until the backend course module (📋 planned) exists.
+/// "Cours & Ressources" pour le professeur.
+///
+/// - Section "Mes matières" : cartes matières extraites des classes du prof.
+///   Cliquer sur une matière filtre les cours de cette matière uniquement.
+/// - FAB "+" : choisir classe -> choisir matière (matières du prof pr cette
+///   classe) -> creation avec IA.
+/// - "Cours generes" : liste depuis myGeneratedCoursesProvider, tap -> lecteur.
+/// Les etudiants voient leurs cours publies comme avant.
 class CoursesPage extends ConsumerWidget {
   const CoursesPage({super.key});
 
@@ -39,14 +46,12 @@ class CoursesPage extends ConsumerWidget {
           if (isTeacher)
             IconButton(
               icon: const Icon(Icons.add_rounded),
-              onPressed: () => _showCreateCourseDialog(context),
+              onPressed: () => context.push('/courses/ai-create'),
               tooltip: context.tr('create_course'),
             ),
           IconButton(
             icon: const Icon(Icons.search_rounded),
             onPressed: () {
-              // Server-side course search needs the courses module
-              // (📋 planned): honest "coming soon" until then.
               context.showInfoToast(context.tr('feature_coming_soon'));
             },
             tooltip: context.tr('search'),
@@ -59,6 +64,7 @@ class CoursesPage extends ConsumerWidget {
 
   Widget _buildBody(BuildContext context, WidgetRef ref, bool isTeacher) {
     final selectedFilter = ref.watch(courseFilterProvider);
+    final selectedSubject = ref.watch(selectedSubjectProvider);
     final theme = Theme.of(context);
     final activeFilters = isTeacher ? _filters : const ['all', 'in_progress'];
 
@@ -70,35 +76,41 @@ class CoursesPage extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  height: 40,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: activeFilters.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 8),
-                    itemBuilder: (context, index) {
-                      final filter = activeFilters[index];
-                      final isSelected = filter == selectedFilter;
-                      return FilterChip(
-                        label: Text(context.tr(filter)),
-                        selected: isSelected,
-                        onSelected: (_) =>
-                            ref.read(courseFilterProvider.notifier).state =
-                                filter,
-                        selectedColor: theme.colorScheme.primaryContainer,
-                        labelStyle: theme.textTheme.labelSmall?.copyWith(
-                          color: isSelected
-                              ? theme.colorScheme.onPrimaryContainer
-                              : theme.colorScheme.onSurfaceVariant,
-                        ),
-                      );
-                    },
+                if (isTeacher) ...[
+                  _buildSubjectsSection(context, ref, selectedSubject),
+                  const SizedBox(height: 24),
+                  _buildTeacherGeneratedCourses(context, ref, selectedSubject),
+                ] else ...[
+                  SizedBox(
+                    height: 40,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: activeFilters.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        final filter = activeFilters[index];
+                        final isSelected = filter == selectedFilter;
+                        return FilterChip(
+                          label: Text(context.tr(filter)),
+                          selected: isSelected,
+                          onSelected: (_) =>
+                              ref.read(courseFilterProvider.notifier).state =
+                                  filter,
+                          selectedColor: theme.colorScheme.primaryContainer,
+                          labelStyle: theme.textTheme.labelSmall?.copyWith(
+                            color: isSelected
+                                ? theme.colorScheme.onPrimaryContainer
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                _buildCourseList(context, ref),
-                const SizedBox(height: 24),
-                _buildGeneratedSection(context, ref),
+                  const SizedBox(height: 16),
+                  _buildCourseList(context, ref, selectedSubject),
+                  const SizedBox(height: 24),
+                  _buildGeneratedSection(context, ref),
+                ],
               ],
             ),
           ),
@@ -107,89 +119,230 @@ class CoursesPage extends ConsumerWidget {
     );
   }
 
-  /// Generated-course library below the class list.
-  ///
-  /// Teachers read their own drafts here and validate them (PUBLISHED) so
-  /// students can read them; students (and other roles) read the
-  /// validated courses and open them in the reader.
-  Widget _buildGeneratedSection(BuildContext context, WidgetRef ref) {
-    final role = ref.watch(authStateProvider).valueOrNull?.role;
-    final isTeacher = role == 'teacher' || role == 'admin';
+  /// Mes matières — cartes matières du professeur. Cliquer filtre les cours.
+  Widget _buildSubjectsSection(
+      BuildContext context, WidgetRef ref, String? selectedSubject) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-    if (isTeacher) {
-      final mineAsync = ref.watch(myGeneratedCoursesProvider);
-      final job = ref.watch(courseGenerationJobProvider);
-      final jobBanner = job.status == GenerationJobStatus.running
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _RunningJobBanner(job: job),
-            )
-          : const SizedBox.shrink();
-      return mineAsync.when(
-        loading: () => const Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: SmartLoader.medium(message: 'Chargement des cours...'),
-          ),
-        ),
-        error: (_, _) => jobBanner,
-        data: (courses) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            jobBanner,
-            _GeneratedList(
-              titleKey: 'generated_courses',
-              emptyKey: 'no_generated_courses',
-              courses: courses,
-              showValidate: true,
+            Text(
+              context.tr('ai_my_subjects'),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ],
-        ),
-      );
-    }
-
-    final publishedAsync = ref.watch(publishedCoursesProvider);
-    return publishedAsync.when(
-      loading: () => const Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 24),
-          child: SmartLoader.medium(message: 'Chargement des cours publiés...'),
-        ),
-      ),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (courses) {
-        if (courses.isEmpty) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.tr('published_courses'),
-                style: theme.textTheme.titleLarge?.copyWith(
+            TextButton(
+              onPressed: () =>
+                  ref.read(selectedSubjectProvider.notifier).state = null,
+              child: Text(
+                context.tr('reset_filter'),
+                style: TextStyle(
+                  color: colorScheme.primary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                context.tr('no_published_courses'),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Consumer(
+          builder: (context, ref, _) {
+            final coursesAsync = ref.watch(myCoursesProvider);
+            final generatedAsync = ref.watch(myGeneratedCoursesProvider);
+            return coursesAsync.when(
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+              data: (courses) {
+                final generated =
+                    generatedAsync.valueOrNull ?? const <GeneratedCourse>[];
+                final subjects = <String>{};
+                final classNamesBySubject = <String, List<String>>{};
+                for (final c in courses) {
+                  for (final s in c.subjects) {
+                    if (s.isEmpty) continue;
+                    subjects.add(s);
+                    final names = classNamesBySubject.putIfAbsent(
+                      s,
+                      () => <String>[],
+                    );
+                    if (!names.contains(c.name)) names.add(c.name);
+                  }
+                }
+                if (subjects.isEmpty) return const SizedBox.shrink();
+                final list = subjects.toList()..sort();
+                return SizedBox(
+                  height: 124,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: list.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      final subject = list[index];
+                      final courseCount = generated
+                          .where((g) => g.subject == subject)
+                          .length;
+                      final classNames =
+                          classNamesBySubject[subject] ?? const <String>[];
+                      final isSelected = selectedSubject == subject;
+                      return SubjectDetailCard(
+                        index: index,
+                        subject: subject,
+                        courseCount: courseCount,
+                        classNames: classNames,
+                        isSelected: isSelected,
+                        width: 240,
+                        onTap: () => ref
+                            .read(selectedSubjectProvider.notifier)
+                            .state = isSelected ? null : subject,
+                      );
+                    },
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  /// Section dédiée pour l'enseignant : affiche ses cours créés/générés avec l'IA.
+  /// Si une matière est sélectionnée, seuls les cours de cette matière sont affichés.
+  Widget _buildTeacherGeneratedCourses(
+      BuildContext context, WidgetRef ref, String? selectedSubject) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final mineAsync = ref.watch(myGeneratedCoursesProvider);
+    final job = ref.watch(courseGenerationJobProvider);
+    final jobBanner = job.status == GenerationJobStatus.running
+        ? Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: RunningJobBanner(job: job),
+          )
+        : const SizedBox.shrink();
+
+    return mineAsync.when(
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: SmartLoader.medium(message: 'Chargement des cours...'),
+        ),
+      ),
+      error: (_, _) => jobBanner,
+      data: (courses) {
+        var filtered = courses;
+        if (selectedSubject != null && selectedSubject.isNotEmpty) {
+          filtered = courses
+              .where((c) =>
+                  c.subject != null &&
+                  c.subject!.toLowerCase() == selectedSubject.toLowerCase())
+              .toList();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            jobBanner,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${context.tr('my_courses')} (${filtered.length})',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => context.push('/courses/ai-create'),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: Text(
+                    context.tr('create_action'),
+                    style: TextStyle(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (filtered.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.auto_stories_outlined,
+                      size: 48,
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      selectedSubject != null
+                          ? 'Aucun cours généré pour $selectedSubject'
+                          : 'Aucun cours généré pour le moment',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Créez un cours complet en quelques secondes avec l\'IA.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: () => context.push('/courses/ai-create'),
+                      icon: const Icon(Icons.auto_awesome, size: 16),
+                      label: const Text('Créer avec l\'IA'),
+                      style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: filtered.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                itemBuilder: (context, index) => StaggeredListItem(
+                  index: index,
+                  child: GeneratedCourseCard(
+                    course: filtered[index],
+                    showValidate: true,
+                  ),
                 ),
               ),
-            ],
-          );
-        }
-        return _GeneratedList(
-          titleKey: 'published_courses',
-          emptyKey: 'no_published_courses',
-          courses: courses,
-          showValidate: false,
+          ],
         );
       },
     );
   }
 
-  Widget _buildCourseList(BuildContext context, WidgetRef ref) {
+  Widget _buildCourseList(BuildContext context, WidgetRef ref,
+      String? selectedSubject) {
     final theme = Theme.of(context);
     final coursesAsync = ref.watch(filteredCoursesProvider);
 
@@ -201,30 +354,39 @@ class CoursesPage extends ConsumerWidget {
         ),
       ),
       error: (error, _) =>
-          _ErrorState(onRetry: () => ref.invalidate(myCoursesProvider)),
-      data: (courses) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '${context.tr('my_courses')} (${courses.length})',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
+          ErrorState(onRetry: () => ref.invalidate(myCoursesProvider)),
+      data: (courses) {
+        var filtered = courses;
+        if (selectedSubject != null && selectedSubject.isNotEmpty) {
+          filtered = courses
+              .where((c) => c.subjects.contains(selectedSubject))
+              .toList();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${context.tr('my_courses')} (${filtered.length})',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          if (courses.isEmpty)
-            _buildEmptyState(context)
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: courses.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) =>
-                  _CourseCard(course: courses[index], index: index),
-            ),
-        ],
-      ),
+            const SizedBox(height: 12),
+            if (filtered.isEmpty)
+              _buildEmptyState(context)
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: filtered.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                itemBuilder: (context, index) =>
+                    CourseCard(course: filtered[index], index: index),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -262,707 +424,83 @@ class CoursesPage extends ConsumerWidget {
       ),
     );
   }
-
-  void _showCreateCourseDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _CreateCourseSheet(),
-    );
-  }
 }
 
-class _CourseCard extends StatefulWidget {
-  final CourseEntry course;
-  final int index;
+/// Section "Cours générés" (enseignants : brouillons à valider ; étudiants :
+/// cours publiés à lire). Tapping ouvre le lecteur.
+Widget _buildGeneratedSection(BuildContext context, WidgetRef ref) {
+  final role = ref.watch(authStateProvider).valueOrNull?.role;
+  final isTeacher = role == 'teacher' || role == 'admin';
+  final theme = Theme.of(context);
 
-  const _CourseCard({required this.course, this.index = 0});
-
-  @override
-  State<_CourseCard> createState() => _CourseCardState();
-}
-
-class _CourseCardState extends State<_CourseCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _entry;
-  late final Animation<double> _fade;
-  late final Animation<Offset> _slide;
-  bool _hovered = false;
-  Offset _tilt = Offset.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _entry = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 520),
-    );
-    _fade = CurvedAnimation(parent: _entry, curve: Curves.easeOutCubic);
-    _slide = Tween<Offset>(
-      begin: const Offset(0, 0.12),
-      end: Offset.zero,
-    ).animate(_fade);
-    Future<void>.delayed(Duration(milliseconds: 70 * widget.index), () {
-      if (mounted) _entry.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _entry.dispose();
-    super.dispose();
-  }
-
-  void _onHover(Offset localPosition, Size size) {
-    if (size.width <= 0 || size.height <= 0) return;
-    final dx = ((localPosition.dx / size.width) - 0.5).clamp(-0.5, 0.5);
-    final dy = ((localPosition.dy / size.height) - 0.5).clamp(-0.5, 0.5);
-    setState(() => _tilt = Offset(dx, dy));
-  }
-
-  String _levelLabel(BuildContext context) {
-    final key = switch (widget.course.level) {
-      'LICENCE' => 'level_licence',
-      'MASTER' => 'level_master',
-      'DOCTORAT' => 'level_doctorat',
-      _ => '',
-    };
-    return key.isEmpty ? widget.course.level : context.tr(key);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final course = widget.course;
-    final tiltX = -_tilt.dy * 0.10;
-    final tiltY = _tilt.dx * 0.10;
-
-    final tags = <Widget>[
-      _ClassTag(
-        icon: Icons.school_rounded,
-        label: _levelLabel(context),
-        color: colorScheme.primary,
-      ),
-      if (course.department != null && course.department!.isNotEmpty)
-        _ClassTag(
-          icon: Icons.account_balance_rounded,
-          label: course.department!,
-          color: colorScheme.secondary,
-        ),
-      _ClassTag(
-        icon: course.isPublished
-            ? Icons.play_circle_outline_rounded
-            : Icons.edit_note_rounded,
-        label: context.tr(course.isPublished ? 'in_progress' : 'drafts'),
-        color: course.isPublished ? colorScheme.primary : colorScheme.tertiary,
-      ),
-      if (course.myRole != 'STUDENT')
-        _ClassTag(
-          icon: Icons.badge_outlined,
-          label: context.tr(
-            course.myRole == 'REFERENT' ? 'role_referent' : 'role_teacher',
-          ),
-          color: colorScheme.secondary,
-        ),
-      _ClassTag(
-        icon: Icons.people_alt_rounded,
-        label: context.tr(
-          'courses_students_count',
-          args: {'count': '${course.memberCount}'},
-        ),
-        color: colorScheme.onSurfaceVariant,
-      ),
-      _ClassTag(
-        icon: Icons.co_present_rounded,
-        label: context.tr(
-          'courses_teachers_count',
-          args: {'count': '${course.teacherCount}'},
-        ),
-        color: colorScheme.onSurfaceVariant,
-      ),
-    ];
-
-    return FadeTransition(
-      opacity: _fade,
-      child: SlideTransition(
-        position: _slide,
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit: (_) => setState(() {
-            _hovered = false;
-            _tilt = Offset.zero;
-          }),
-          onHover: (event) {
-            final size = context.size;
-            if (size != null) _onHover(event.localPosition, size);
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            curve: Curves.easeOut,
-            transformAlignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.0015)
-              ..rotateX(tiltX)
-              ..rotateY(tiltY)
-              ..scaleByDouble(
-                _hovered ? 1.012 : 1.0,
-                _hovered ? 1.012 : 1.0,
-                1.0,
-                1.0,
-              ),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: _hovered
-                    ? colorScheme.primary.withValues(alpha: 0.35)
-                    : colorScheme.outlineVariant.withValues(alpha: 0.35),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: colorScheme.shadow.withValues(
-                    alpha: _hovered ? 0.12 : 0.04,
-                  ),
-                  offset: Offset(0, _hovered ? 10 : 2),
-                  blurRadius: _hovered ? 22 : 6,
-                ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => context.push('/groups/${course.id}'),
-                borderRadius: BorderRadius.circular(18),
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 46,
-                            height: 46,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  colorScheme.primary,
-                                  colorScheme.secondary,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(13),
-                            ),
-                            child: Icon(
-                              Icons.menu_book_rounded,
-                              color: colorScheme.onPrimary,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Text(
-                              course.name,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          AnimatedSlide(
-                            duration: const Duration(milliseconds: 160),
-                            offset: Offset(_hovered ? 0.15 : 0, 0),
-                            child: Icon(
-                              Icons.arrow_forward_rounded,
-                              size: 18,
-                              color: _hovered
-                                  ? colorScheme.primary
-                                  : colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Wrap(spacing: 6, runSpacing: 6, children: tags),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ClassTag extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _ClassTag({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (label.trim().isEmpty) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Generated-course list (drafts to validate for teachers, published
-/// courses to read for students). Tapping a card opens the reader.
-class _GeneratedList extends StatelessWidget {
-  final String titleKey;
-  final String emptyKey;
-  final List<GeneratedCourse> courses;
-  final bool showValidate;
-
-  const _GeneratedList({
-    required this.titleKey,
-    required this.emptyKey,
-    required this.courses,
-    required this.showValidate,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${context.tr(titleKey)} (${courses.length})',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (courses.isEmpty)
-          Text(
-            context.tr(emptyKey),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+  if (isTeacher) {
+    final mineAsync = ref.watch(myGeneratedCoursesProvider);
+    final job = ref.watch(courseGenerationJobProvider);
+    final jobBanner = job.status == GenerationJobStatus.running
+        ? Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: RunningJobBanner(job: job),
           )
-        else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: courses.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (context, index) => _GeneratedCourseCard(
-              course: courses[index],
-              showValidate: showValidate,
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _GeneratedCourseCard extends ConsumerWidget {
-  final GeneratedCourse course;
-  final bool showValidate;
-
-  const _GeneratedCourseCard({
-    required this.course,
-    required this.showValidate,
-  });
-
-  void _showFailure(BuildContext context, Object error) {
-    final Failure failure = error is ApiException
-        ? apiExceptionToFailure(error)
-        : error as Failure;
-    final l10n = failureL10n(failure);
-    context.showErrorToast(context.tr(l10n.key, args: l10n.args));
-  }
-
-  Future<void> _validate(BuildContext context, WidgetRef ref) async {
-    try {
-      await ref.read(generatedCoursesDataSourceProvider).publish(course.id);
-      ref
-        ..invalidate(myGeneratedCoursesProvider)
-        ..invalidate(publishedCoursesProvider);
-      if (!context.mounted) return;
-      context.showSuccessToast(context.tr('published'));
-    } catch (e) {
-      if (!context.mounted) return;
-      _showFailure(context, e);
-    }
-  }
-
-  Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.tr('delete')),
-        content: Text(context.tr('delete_course_confirm')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(context.tr('cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(context.tr('delete')),
+        : const SizedBox.shrink();
+    return mineAsync.when(
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: SmartLoader.medium(message: 'Chargement des cours...'),
+        ),
+      ),
+      error: (_, _) => jobBanner,
+      data: (courses) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          jobBanner,
+          GeneratedList(
+            titleKey: 'generated_courses',
+            emptyKey: 'no_generated_courses',
+            courses: courses,
+            showValidate: true,
           ),
         ],
       ),
     );
-    if (confirmed != true || !context.mounted) return;
-    try {
-      await ref
-          .read(generatedCoursesDataSourceProvider)
-          .deleteCourse(course.id);
-      ref
-        ..invalidate(myGeneratedCoursesProvider)
-        ..invalidate(publishedCoursesProvider);
-      if (!context.mounted) return;
-      context.showInfoToast(context.tr('course_deleted'));
-    } catch (e) {
-      if (!context.mounted) return;
-      _showFailure(context, e);
-    }
   }
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final subtitle = [
-      if (course.subject != null && course.subject!.isNotEmpty) course.subject!,
-      course.authorName,
-    ].join(' • ');
-
-    return InkWell(
-      onTap: () => context.push('/courses/${course.id}'),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: colorScheme.shadow.withValues(alpha: 0.04),
-              offset: const Offset(0, 1),
-              blurRadius: 4,
-            ),
-          ],
-        ),
-        child: Column(
+  final publishedAsync = ref.watch(publishedCoursesProvider);
+  return publishedAsync.when(
+    loading: () => const Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: SmartLoader.medium(message: 'Chargement des cours publiés...'),
+      ),
+    ),
+    error: (_, _) => const SizedBox.shrink(),
+    data: (courses) {
+      if (courses.isEmpty) {
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Chip(
-                  label: Text(
-                    context.tr(course.isPublished ? 'published' : 'draft'),
-                  ),
-                  backgroundColor:
-                      (course.isPublished
-                              ? colorScheme.primary
-                              : colorScheme.tertiary)
-                          .withValues(alpha: 0.1),
-                  labelStyle: theme.textTheme.labelSmall?.copyWith(
-                    color: course.isPublished
-                        ? colorScheme.primary
-                        : colorScheme.tertiary,
-                  ),
-                  side: BorderSide.none,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 0,
-                  ),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                const Spacer(),
-                if (showValidate && course.isDraft)
-                  TextButton.icon(
-                    onPressed: () => _validate(context, ref),
-                    icon: const Icon(Icons.verified_outlined, size: 18),
-                    label: Text(context.tr('validate_course')),
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                if (showValidate)
-                  IconButton(
-                    icon: Icon(
-                      Icons.delete_outline_rounded,
-                      size: 20,
-                      color: colorScheme.error,
-                    ),
-                    tooltip: context.tr('delete'),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _delete(context, ref),
-                  ),
-              ],
+            Text(
+              context.tr('published_courses'),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              course.title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
+              context.tr('no_published_courses'),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (subtitle.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Slim banner shown in "Mes cours" while a background generation runs
-/// (started from the creator page, which the teacher may have left).
-/// The finished course lands in the drafts below automatically.
-class _RunningJobBanner extends ConsumerWidget {
-  final GenerationJobState job;
-
-  const _RunningJobBanner({required this.job});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final minutes = job.elapsedSec ~/ 60;
-    final seconds = (job.elapsedSec % 60).toString().padLeft(2, '0');
-    final tokens = job.chars ~/ 4;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: colorScheme.secondaryContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          SmartLoader.small(
-            customSize: 18,
-            color: colorScheme.onSecondaryContainer,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              '${context.tr('generation_running')} $tokens tokens • $minutes:$seconds',
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: colorScheme.onSecondaryContainer,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () =>
-                ref.read(courseGenerationJobProvider.notifier).cancel(),
-            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-            child: Text(context.tr('cancel')),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  final VoidCallback onRetry;
-
-  const _ErrorState({required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(48),
-        child: Column(
-          children: [
-            Icon(
-              Icons.cloud_off_outlined,
-              size: 64,
-              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              context.tr('server_error'),
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            AppButton(
-              text: context.tr('retry'),
-              onPressed: onRetry,
-              isFullWidth: false,
-              variant: AppButtonVariant.outlined,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CreateCourseSheet extends ConsumerStatefulWidget {
-  @override
-  ConsumerState<_CreateCourseSheet> createState() => _CreateCourseSheetState();
-}
-
-class _CreateCourseSheetState extends ConsumerState<_CreateCourseSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.center,
-            child: Text(
-              context.tr('create_course'),
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextFormField(
-                  controller: _titleController,
-                  decoration: InputDecoration(
-                    labelText: context.tr('course_title'),
-                    hintText: context.tr('course_title'),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return context.tr('required_field');
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _descriptionController,
-                  decoration: InputDecoration(
-                    labelText: context.tr('course_description'),
-                    alignLabelWithHint: true,
-                  ),
-                  maxLines: 4,
-                  maxLength: 500,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppButton(
-                        text: context.tr('cancel'),
-                        onPressed: () => Navigator.pop(context),
-                        variant: AppButtonVariant.outlined,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: AppButton(
-                        text: context.tr('create'),
-                        onPressed: _createCourse,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _createCourse() {
-    if (_formKey.currentState!.validate()) {
-      Navigator.pop(context);
-      context.showSuccessToast(context.tr('course_created'));
-    }
-  }
+        );
+      }
+      return GeneratedList(
+        titleKey: 'published_courses',
+        emptyKey: 'no_published_courses',
+        courses: courses,
+        showValidate: false,
+      );
+    },
+  );
 }

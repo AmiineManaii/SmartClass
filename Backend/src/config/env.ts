@@ -39,9 +39,9 @@ const envSchema = z.object({
   SMTP_FROM: z.string().default('SmartClass <faroukmessay006@gmail.com>'),
   // Local LLM gateway (Ollama, OpenAI-compatible API).
   AI_BASE_URL: z.string().default('http://host.docker.internal:11434'),
-  AI_MODEL: z.string().default('gemma4:e4b'),
+  AI_MODEL: z.string().default('hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1'),
   // Fallback Ollama model when the primary model is unreachable or errors.
-  AI_FALLBACK_MODEL: z.string().default('qwen2.5:3b'),
+  AI_FALLBACK_MODEL: z.string().default('hf.co/unsloth/Qwen3.5-9B-GGUF:UD-Q2_K_XL'),
   AI_API_KEY: z.string().optional().default(''),
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(300000),
   AI_STATUS_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
@@ -58,7 +58,7 @@ const envSchema = z.object({
   // Local embedding server (Ollama, RG27 — no third-party LLM APIs).
   // EmbeddingGemma outputs 768-dim vectors (course_passages.embedding).
   EMBEDDING_BASE_URL: z.string().default('http://host.docker.internal:11434'),
-  EMBEDDING_MODEL: z.string().default('embeddinggemma'),
+  EMBEDDING_MODEL: z.string().default('embeddinggemma-2'),
   EMBEDDING_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
   // Optional Ollama official API key for cloud search/inference upgrade.
   OLLAMA_API_KEY: z.string().optional().default(''),
@@ -72,6 +72,10 @@ const envSchema = z.object({
   // COMFYUI_BASE_URL. Use your LAN IP when testing from a device (ComfyUI
   // must then listen on 0.0.0.0).
   COMFYUI_PUBLIC_URL: z.string().optional().default(''),
+  // SearxNG instance for web image search (inside Docker: http://searxng:8080 or http://localhost:8080)
+  SEARXNG_URL: z.string().default('http://searxng:8080'),
+  // Model for search prompt reformulation (sam860/lucy:1.7b)
+  OLLAMA_REFORMULATE_MODEL: z.string().default('sam860/lucy:1.7b'),
 });
 
 export type Env = z.infer<typeof envSchema>;

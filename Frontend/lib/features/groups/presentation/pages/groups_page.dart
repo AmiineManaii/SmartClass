@@ -126,6 +126,12 @@ class GroupsPage extends ConsumerWidget {
                 level: level,
                 memberCount: memberCount,
                 role: roleLabel,
+                subjects: (group['mySubjects'] as List?)
+                    ?.whereType<String>()
+                    .toList(),
+                mySubject: ((group['mySubjects'] as List?) ?? const [])
+                    .whereType<String>()
+                    .firstOrNull,
                 onTap: () =>
                     context.push('/groups/$groupId', extra: groupName),
                 onInvite: canInvite

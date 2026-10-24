@@ -192,6 +192,7 @@ describe('Unit: OpenAICompatibleGateway', () => {
     ]);
     expect(seen.tool_choice).toBe('auto');
     expect(seen.chat_template_kwargs).toMatchObject({ enable_thinking: true });
+    expect(seen.reasoning_effort).toBe('high');
     expect(seen).not.toHaveProperty('enable_tools');
     expect(seen).not.toHaveProperty('tool_servers');
     expect(seen).not.toHaveProperty('auto_execute_tools');
@@ -211,6 +212,7 @@ describe('Unit: OpenAICompatibleGateway', () => {
     const gateway = new OpenAICompatibleGateway({ baseUrl });
     await gateway.chatCompletion({ ...input, thinking: false });
     expect(seen.chat_template_kwargs).toMatchObject({ enable_thinking: false });
+    expect(seen.reasoning_effort).toBe('none');
     expect(seen).not.toHaveProperty('tools');
   });
 

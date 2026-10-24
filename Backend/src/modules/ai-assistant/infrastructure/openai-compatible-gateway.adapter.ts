@@ -87,16 +87,20 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
   }
 
   /**
-   * Ollama OpenAI-compatible payload: `chat_template_kwargs.enable_thinking`
-   * toggles chain-of-thought on thinking-capable models. Ollama ignores
-   * fields it does not know, so the flag is harmless on other models.
+   * Ollama exposes chain-of-thought control through `reasoning_effort`
+   * (`none` disables it, `low|medium|high` enables it). Qwen3.x otherwise
+   * always thinks, burning the token budget before emitting content, so
+   * `reasoning_effort` is the reliable switch. `chat_template_kwargs` is
+   * still sent for gateways that read it; unknown fields are ignored.
    * Tool calls use the standard OpenAI `tools` / `tool_calls` protocol and
    * are executed by this adapter loop.
    */
   private thinkingParams(thinking: boolean | undefined): Record<string, unknown> {
     const env = getEnv();
+    const enabled = thinking ?? env.AI_ENABLE_THINKING;
     return {
-      chat_template_kwargs: { enable_thinking: thinking ?? env.AI_ENABLE_THINKING },
+      reasoning_effort: enabled ? 'high' : 'none',
+      chat_template_kwargs: { enable_thinking: enabled },
     };
   }
 
@@ -616,14 +620,19 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
         }
         const body = (await response.json().catch(() => null)) as { data?: Array<{ id: string }> } | null;
         if (body?.data && Array.isArray(body.data)) {
-          const ids = body.data.map((m) => m.id);
-          const hasPrimary = ids.some((id) => id === this.model || id.toLowerCase().includes('gemma'));
-          const hasFallback = ids.some((id) => id === this.fallbackModel || id.toLowerCase().includes('qwen'));
-          if (hasPrimary) {
-            detectedModel = ids.find((id) => id === this.model || id.toLowerCase().includes('gemma')) ?? this.model;
-          } else if (hasFallback) {
-            detectedModel = ids.find((id) => id === this.fallbackModel || id.toLowerCase().includes('qwen')) ?? this.fallbackModel;
-          } else if (ids.length > 0 && ids[0]) {
+          // Ignore embedding-only models (e.g. embeddinggemma-2) so the
+          // "gemma" substring can never be mistaken for a chat model.
+          const ids = body.data
+            .map((m) => m.id)
+            .filter((id) => !id.toLowerCase().includes('embedding'));
+          const normalize = (id: string): string => id.replace(/:latest$/, '');
+          const primary = ids.find((id) => normalize(id) === normalize(this.model));
+          const fallback = ids.find((id) => normalize(id) === normalize(this.fallbackModel));
+          if (primary) {
+            detectedModel = primary;
+          } else if (fallback) {
+            detectedModel = fallback;
+          } else if (ids[0]) {
             detectedModel = ids[0];
           }
         }

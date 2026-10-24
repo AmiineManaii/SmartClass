@@ -565,7 +565,7 @@ Bearer JWT, rôles backend `TEACHER/STUDENT/ADMIN` ↔ app `teacher/student/admi
 
 ```
 lib/core/network/
-  api_config.dart            # baseUrl (--dart-define=API_BASE_URL, défaut :3000), timeouts, clés storage
+  api_config.dart            # baseUrl (app .env API_BASE_URL, override --dart-define), timeouts, clés storage
   api_client.dart            # Dio + X-Request-Id + Bearer + refresh single-flight + retry 401
   api_exception.dart         # ApiException → Failure (codes stables du contrat)
   token_storage.dart         # SharedPreferences (access + refresh)
@@ -750,3 +750,96 @@ lib/features/authentication/
 
 *Dernière mise à jour : 2026-10-22*
 *Version : 1.9.4*
+
+---
+
+## 19. Lecteur de cours — zéro donnée mockée (v2.0)
+
+### Règle absolue : aucun mock dans Presentation
+
+Le lecteur de cours (`/courses/:courseId`) n'affiche **aucune donnée fabriquée** :
+- ❌ Pas de vidéo player factice (play, scrubber, timecode, vitesse, sous-titres)
+- ❌ Pas de flashcards en dur (Fiches (4), questions/réponses hardcodées)
+- ❌ Pas de points clés IA avec timestamps fictifs (04:12, 12:45, 28:30)
+- ❌ Pas de badge "98% fidélité" ni "En direct"
+- ❌ Pas de badge "IA Active" dans l'AppBar
+- ❌ Pas de "CHAP. 3" en dur
+- ✅ Tout provient de l'API via les providers Riverpod
+
+### Structure du lecteur (fichiers < 200 lignes chacun)
+
+```
+lib/features/courses/presentation/pages/
+  course_reader_page.dart      (~100 lines) : ConsumerWidget, observe generatedCourseProvider
+  course_reader_body.dart      (~200 lines) : ConsumerStatefulWidget, meta + sommaire + contenu + sections + actions
+
+lib/features/courses/presentation/widgets/
+  course_section_card.dart     (~150 lines) : carte section (statut, générer, régénérer, valider, image)
+  course_image_search_dialog.dart (~150 lines) : dialog 5 images web par section
+  course_reader_actions.dart   (~100 lines) : barre actions modérateur (Valider/Dépublier/Supprimer/Raffiner)
+  course_reader_error.dart     (~50 lines)  : état d'erreur avec retry
+```
+
+### Flux de construction par sections (RG4/RG27)
+
+Pour un cours en **DRAFT**, le panneau de construction affiche chacun des 3 états suivants :
+
+| État | Condition | Affichage | Action |
+|------|-----------|-----------|--------|
+| **Aucun plan** | `initializedFromOutline == false` et `sections.isEmpty` | "Aucun plan n'a encore été généré" | Bouton "Générer directement sans plan" → `/courses/ai-create` |
+| **Plan prêt** | `initializedFromOutline == true` et `sections.isEmpty` | "Plan détecté : les chapitres sont prêts à être construits" | Bouton "Construire par sections" → `/courses/:courseId/build` |
+| **Sections existantes** | `sections.isNotEmpty` | Panneau avec statut de chaque section (À générer / À valider / Validée) | Générer, Régénérer, Valider, Chercher des images |
+
+Le provider `CourseSectionBuildState` expose `initializedFromOutline` (renseigné par `GET /ai/courses/:id/build` via `CourseBuildData.initializedFromOutline`) pour savoir si un outline existe déjà.
+
+Pour un cours en **DRAFT**, le panneau de construction affiche chaque section avec son statut :
+
+| Statut | Signification | Actions disponibles |
+|--------|---------------|---------------------|
+| `PENDING` | À générer | Générer |
+| `GENERATED` | Généré par l'IA | Valider, Régénérer |
+| `VALIDATED` | Validé par l'enseignant | Régénérer (avec confirmation) |
+
+Chaque section a aussi :
+- **Chercher des images** : `POST /ai/courses/sections/image/search` (5 candidats web)
+- **Insérer une image** : `POST /ai/courses/sections/image/apply`
+- **Génération image ComfyUI** : job asynchrone, poll toutes les 2 s (timeout 7 min)
+
+### Mémoire IA (vector recall)
+
+Le backend implémente `SectionMemoryPort` → `PrismaSectionMemoryAdapter` (pgvector) :
+- **Remember** : à la validation d'une section, le contenu est indexé en vector (scopé `authorId`)
+- **Recall** : lors de la génération d'une section, le modèle reçoit le contexte des cours antérieurs validés de l'auteur
+- **UI** : phase `memory` affichée pendant le stream ("Rappel de vos cours antérieurs…"), puis `generating`
+
+### Règles de découpage widgets (PROJECT_CONTEXT §7)
+
+- **Un fichier = une responsabilité** (SRP)
+- **Max ~200 lignes par fichier** ; si une page dépasse, la diviser en widgets dédiés
+- **Pas de logique métier dans Presentation** : uniquement appel providers + affichage
+- **Tous les widgets réutilisables** dans `features/courses/presentation/widgets/`
+- **i18n obligatoire** : `context.tr()` partout, aucun texte hardcodé
+- **Extensions** : `context.tr()`, `context.showSuccessToast()`, `context.showErrorToast()`, `context.showInfoToast()` depuis `core/extensions/extensions.dart`
+
+### Endpoints utilisés par le lecteur
+
+| Méthode | Path | Usage |
+|---------|------|-------|
+| GET | `/api/v1/courses/:id` | Contenu complet du cours (Markdown) |
+| GET | `/ai/courses/:id/build` | Métadonnées + sections (statuts PENDING/GENERATED/VALIDATED) |
+| POST | `/ai/courses/sections/generate` | Générer une section (SSE) |
+| POST | `/ai/courses/sections/regenerate` | Régénérer une section (SSE) |
+| POST | `/ai/courses/sections/validate` | Valider une section (+ mémoire vectorielle) |
+| POST | `/ai/courses/sections/image/search` | 5 images web candidates |
+| POST | `/ai/courses/sections/image/jobs` | Démarrer job ComfyUI |
+| GET | `/ai/courses/sections/image/jobs/:jobId` | Poller statut job |
+| POST | `/ai/courses/sections/image/apply` | Insérer image dans section |
+
+### État des sections et publication
+
+- Un cours DRAFT ne peut **pas** être publié tant qu'une section n'est pas VALIDATED (409 `SECTIONS_NOT_VALIDATED`)
+- Une fois toutes les sections VALIDATED, le cours peut être publié
+- La validation d'une section insère son contenu dans la mémoire vectorielle de l'auteur
+
+*Dernière mise à jour : 2026-10-24*
+*Version : 2.0.1*

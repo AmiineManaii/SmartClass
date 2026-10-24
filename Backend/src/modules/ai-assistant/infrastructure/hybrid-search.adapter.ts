@@ -40,13 +40,29 @@ export class HybridSearchAdapter implements SearchPort {
   }
 
   /**
-   * Search Wikimedia Commons and open educational repositories for authentic diagrams,
+   * Search SearxNG (primary), Wikimedia Commons, or DuckDuckGo for authentic diagrams,
    * scientific schematics, historical photos, and verified educational visuals.
    */
   public async searchImages(query: string, limit: number = 5): Promise<ImageSearchResult[]> {
     const trimmed = query.trim();
     if (!trimmed) return [];
 
+    const env = getEnv();
+
+    // 1. Priorité à SearxNG (notre moteur local dédié, multi-sources)
+    if (env.SEARXNG_URL) {
+      try {
+        const searxImages = await this.searchSearxngImages(trimmed, limit, env.SEARXNG_URL);
+        if (searxImages.length > 0) {
+          logger.info({ query: trimmed, count: searxImages.length }, 'Educational image search completed (SearxNG)');
+          return searxImages;
+        }
+      } catch (err) {
+        logger.warn({ query: trimmed, error: (err as Error).message }, 'SearxNG image search failed, trying fallbacks');
+      }
+    }
+
+    // 2. Wikimedia Commons
     try {
       const url = new URL('https://commons.wikimedia.org/w/api.php');
       url.searchParams.set('action', 'query');
@@ -68,64 +84,182 @@ export class HybridSearchAdapter implements SearchPort {
 
       if (!response.ok) {
         logger.warn({ status: response.status, query: trimmed }, 'Wikimedia Commons search returned non-200');
-        return [];
-      }
-
-      const data = (await response.json()) as {
-        query?: {
-          pages?: Record<
-            string,
-            {
-              title?: string;
-              imageinfo?: Array<{
-                url?: string;
-                thumburl?: string;
-                mime?: string;
-                width?: number;
-                height?: number;
-                extmetadata?: {
-                  ImageDescription?: { value?: string };
-                };
-              }>;
-            }
-          >;
+      } else {
+        const data = (await response.json()) as {
+          query?: {
+            pages?: Record<
+              string,
+              {
+                title?: string;
+                imageinfo?: Array<{
+                  url?: string;
+                  thumburl?: string;
+                  mime?: string;
+                  width?: number;
+                  height?: number;
+                  extmetadata?: {
+                    ImageDescription?: { value?: string };
+                  };
+                }>;
+              }
+            >;
+          };
         };
-      };
 
-      const pages = Object.values(data.query?.pages ?? {});
-      const results: ImageSearchResult[] = [];
+        const pages = Object.values(data.query?.pages ?? {});
+        const results: ImageSearchResult[] = [];
 
-      for (const page of pages) {
-        if (results.length >= limit) break;
-        const info = page.imageinfo?.[0];
-        if (!info?.url) continue;
+        for (const page of pages) {
+          if (results.length >= limit) break;
+          const info = page.imageinfo?.[0];
+          if (!info?.url) continue;
 
-        // Prefer the 1024px raster thumbnail (works for SVG sources too).
-        const rawFileUrl = info.thumburl ?? info.url;
-        const cleanUrl = rawFileUrl.split('?')[0] ?? '';
-        const ext = cleanUrl.split('.').pop()?.toLowerCase();
-        if (!ext || !['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
-          continue;
+          // Prefer the 1024px raster thumbnail (works for SVG sources too).
+          const rawFileUrl = info.thumburl ?? info.url;
+          const cleanUrl = rawFileUrl.split('?')[0] ?? '';
+          const ext = cleanUrl.split('.').pop()?.toLowerCase();
+          if (!ext || !['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+            continue;
+          }
+
+          const rawTitle = page.title?.replace(/^File:/, '').replace(/\.[^.]+$/, '').replace(/_/g, ' ') ?? '';
+          const rawDesc = info.extmetadata?.ImageDescription?.value ?? rawTitle;
+          const cleanDesc = rawDesc.replace(/<[^>]+>/g, '').trim().slice(0, 160);
+
+          results.push({
+            title: rawTitle,
+            url: cleanUrl,
+            caption: cleanDesc || rawTitle,
+            source: 'wikimedia',
+            width: info.width,
+            height: info.height,
+          });
         }
 
-        const rawTitle = page.title?.replace(/^File:/, '').replace(/\.[^.]+$/, '').replace(/_/g, ' ') ?? '';
-        const rawDesc = info.extmetadata?.ImageDescription?.value ?? rawTitle;
-        const cleanDesc = rawDesc.replace(/<[^>]+>/g, '').trim().slice(0, 160);
+        if (results.length > 0) {
+          logger.info({ query: trimmed, count: results.length }, 'Educational image search completed (Wikimedia)');
+          return results;
+        }
+      }
+    } catch (error) {
+      logger.warn({ query: trimmed, error: (error as Error).message }, 'Wikimedia image search failed');
+    }
 
-        results.push({
-          title: rawTitle,
-          url: cleanUrl,
-          caption: cleanDesc || rawTitle,
-          source: 'wikimedia',
-          width: info.width,
-          height: info.height,
+    // 3. Fallback: Recherche d'images via DuckDuckGo Images
+    try {
+      const ddgImages = await this.searchDuckDuckGoImages(trimmed, limit);
+      if (ddgImages.length > 0) {
+        logger.info({ query: trimmed, count: ddgImages.length }, 'Image search completed (DuckDuckGo Images)');
+        return ddgImages;
+      }
+    } catch (err) {
+      logger.warn({ query: trimmed, error: (err as Error).message }, 'DuckDuckGo image search failed');
+    }
+
+    return [];
+  }
+
+  /**
+   * Recherche d'images via SearxNG (JSON format).
+   */
+  public async searchSearxngImages(query: string, limit: number, searxngBaseUrl: string): Promise<ImageSearchResult[]> {
+    const baseUrl = searxngBaseUrl.replace(/\/+$/, '');
+    const url = `${baseUrl}/search?q=${encodeURIComponent(query)}&categories=images&format=json`;
+
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': USER_AGENT,
+      },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      throw new Error(`SearxNG HTTP ${response.status}`);
+    }
+
+    const data = (await response.json()) as {
+      results?: Array<{
+        title?: string;
+        img_src?: string;
+        url?: string;
+        thumbnail_src?: string;
+        width?: number;
+        height?: number;
+      }>;
+    };
+
+    const results = Array.isArray(data.results) ? data.results : [];
+    const images: ImageSearchResult[] = [];
+    const seen = new Set<string>();
+
+    for (const item of results) {
+      const imgUrl = item.img_src || item.url || item.thumbnail_src;
+      if (!imgUrl || !imgUrl.startsWith('http') || seen.has(imgUrl)) continue;
+
+      seen.add(imgUrl);
+      images.push({
+        title: item.title?.replace(/<[^>]+>/g, '').trim() || 'Illustration web',
+        url: imgUrl,
+        caption: item.title?.replace(/<[^>]+>/g, '').trim() || 'Image trouvée sur le web',
+        source: 'web',
+        width: item.width,
+        height: item.height,
+      });
+
+      if (images.length >= limit) break;
+    }
+
+    return images;
+  }
+
+  /**
+   * Recherche directe d'images réelles sur le Web via DuckDuckGo Images.
+   */
+  private async searchDuckDuckGoImages(query: string, limit: number): Promise<ImageSearchResult[]> {
+    try {
+      // 1. Obtenir le vqd token de DuckDuckGo
+      const tokenRes = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(query)}&iax=images&ia=images`, {
+        headers: { 'User-Agent': USER_AGENT },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!tokenRes.ok) return [];
+      const tokenHtml = await tokenRes.text();
+      const vqdMatch = tokenHtml.match(/vqd=["']?([^&"'\s]+)/);
+      if (!vqdMatch || !vqdMatch[1]) return [];
+      const vqd = vqdMatch[1];
+
+      // 2. Requête vers l'API JSON images de DuckDuckGo
+      const imgRes = await fetch(`https://duckduckgo.com/i.js?q=${encodeURIComponent(query)}&o=json&vqd=${vqd}&p=1`, {
+        headers: {
+          'User-Agent': USER_AGENT,
+          'Accept': 'application/json',
+          'Referer': 'https://duckduckgo.com/',
+        },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!imgRes.ok) return [];
+
+      const imgData = (await imgRes.json()) as {
+        results?: Array<{ title?: string; image?: string; thumbnail?: string; width?: number; height?: number }>;
+      };
+
+      const images: ImageSearchResult[] = [];
+      for (const item of imgData.results ?? []) {
+        if (images.length >= limit) break;
+        const imgUrl = item.image || item.thumbnail;
+        if (!imgUrl || !imgUrl.startsWith('http')) continue;
+        images.push({
+          title: item.title?.replace(/<[^>]+>/g, '').trim() || 'Illustration web',
+          url: imgUrl,
+          caption: item.title?.replace(/<[^>]+>/g, '').trim() || 'Image trouvée sur le web',
+          source: 'web',
+          width: item.width,
+          height: item.height,
         });
       }
-
-      logger.info({ query: trimmed, count: results.length }, 'Educational image search completed');
-      return results;
-    } catch (error) {
-      logger.warn({ query: trimmed, error: (error as Error).message }, 'Image search failed');
+      return images;
+    } catch {
       return [];
     }
   }

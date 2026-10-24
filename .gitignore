@@ -15,6 +15,9 @@ coverage/
 .env.local
 *.local
 
+# Flutter app config (build asset, non-secret dev values)
+!Frontend/.env
+
 # IDE & Editor files
 .vscode/
 .idea/

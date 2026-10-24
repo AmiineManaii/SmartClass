@@ -81,6 +81,9 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
 
   /// Proposed course outline before full text generation.
   CourseOutline? _outline;
+  
+  /// Whether the current outline has been saved as a draft.
+  bool _outlineSaved = false;
   bool _generatingOutline = false;
   bool _savingPlan = false;
   final _scrollController = ScrollController();
@@ -97,9 +100,19 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
   }
 
   void _showFailure(Object error) {
-    final Failure failure = error is ApiException
-        ? apiExceptionToFailure(error)
-        : error as Failure;
+    if (error is ApiException) {
+      // Afficher le message d'erreur spécifique du backend
+      String message = error.message;
+      if (error.code != null) {
+        message = '[${error.code}] $message';
+      }
+      if (error.details.isNotEmpty) {
+        message += '\nDétails: ${error.details.join(', ')}';
+      }
+      context.showErrorToast(message);
+      return;
+    }
+    final Failure failure = error as Failure;
     final l10n = failureL10n(failure);
     context.showErrorToast(context.tr(l10n.key, args: l10n.args));
   }
@@ -188,13 +201,43 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
       );
 
       if (!mounted) return;
-      setState(() {
-        _outline = outline;
-        _generatingOutline = false;
-      });
-      context.showSuccessToast(
-        'Plan proposé en ~3s ! Vous pouvez réordonner ou modifier les chapitres avant la rédaction.',
-      );
+
+      // Sauvegarde automatique immédiate dans les brouillons
+      try {
+        final draftTitle = outline.title.isEmpty ? subject : outline.title;
+        await ref.read(generatedCoursesDataSourceProvider).saveDraft(
+          title: draftTitle,
+          subject: subject.isEmpty ? null : subject,
+          content:
+              '# $draftTitle\n\n> Plan validé : les chapitres sont rédigés un par un dans le constructeur de sections.',
+          level: _level,
+          difficulty: _difficulty,
+          format: _format,
+          outline: outline,
+        );
+        ref.invalidate(myGeneratedCoursesProvider);
+        if (mounted) {
+          setState(() {
+            _outline = outline;
+            _outlineSaved = true;
+            _generatingOutline = false;
+          });
+          context.showSuccessToast(
+            'Plan généré en ~3s et enregistré dans vos brouillons !',
+          );
+        }
+      } catch (saveError) {
+        if (mounted) {
+          setState(() {
+            _outline = outline;
+            _outlineSaved = false;
+            _generatingOutline = false;
+          });
+          context.showSuccessToast(
+            'Plan proposé en ~3s ! Vous pouvez réordonner ou modifier les chapitres.',
+          );
+        }
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _generatingOutline = false);
@@ -278,7 +321,10 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
           );
       ref.invalidate(myGeneratedCoursesProvider);
       if (!mounted) return;
-      setState(() => _savingPlan = false);
+      setState(() {
+        _savingPlan = false;
+        _outlineSaved = true; // Outline is now saved with the draft
+      });
       await context.push('/courses/${saved.id}/build');
     } catch (e) {
       if (!mounted) return;
@@ -428,24 +474,6 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
     setState(() {});
   }
 
-  void _applyQuickTemplate({
-    required String subject,
-    required String level,
-    required String difficulty,
-    required bool mermaid,
-    required bool examples,
-  }) {
-    setState(() {
-      _mode = 'topic';
-      _topicController.text = subject;
-      _level = level;
-      _difficulty = difficulty;
-      _exMermaid = mermaid;
-      _exExamples = examples;
-    });
-    context.showInfoToast('Modèle "$subject" appliqué au studio IA');
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -590,13 +618,17 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _buildConfigForm(context, isDesktop: false, job: job),
-                        const SizedBox(height: 20),
-                        _buildStudioCanvas(
-                          context,
-                          isDesktop: false,
-                          job: job,
-                          displayed: displayed,
-                        ),
+                        if (displayed != null ||
+                            _outline != null ||
+                            job.status == GenerationJobStatus.running) ...[
+                          const SizedBox(height: 20),
+                          _buildStudioCanvas(
+                            context,
+                            isDesktop: false,
+                            job: job,
+                            displayed: displayed,
+                          ),
+                        ],
                       ],
                     ),
             ),
@@ -1040,33 +1072,62 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: colorScheme.tertiaryContainer.withValues(alpha: 0.15),
+              color: _outlineSaved
+                  ? colorScheme.tertiaryContainer.withValues(alpha: 0.15)
+                  : colorScheme.secondaryContainer.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: colorScheme.tertiary.withValues(alpha: 0.3),
+                color: _outlineSaved
+                    ? colorScheme.tertiary.withValues(alpha: 0.5)
+                    : colorScheme.outlineVariant.withValues(alpha: 0.3),
               ),
             ),
             child: Row(
               children: [
                 Icon(
-                  Icons.schema_rounded,
-                  color: colorScheme.tertiary,
+                  _outlineSaved ? Icons.save_rounded : Icons.schedule_rounded,
+                  color: _outlineSaved ? colorScheme.tertiary : colorScheme.secondary,
                   size: 20,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    'Plan proposé interactif actif dans le canevas de droite.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _outlineSaved
+                            ? 'Plan sauvegardé dans le brouillon'
+                            : 'Plan non sauvegardé — cliquez "Construire section par section" pour sauvegarder',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: _outlineSaved
+                              ? colorScheme.tertiary
+                              : colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        _outlineSaved
+                            ? 'Le plan est sauvegardé dans le brouillon et prêt pour la construction par sections.'
+                            : 'Les modifications du plan ne seront pas conservées tant qu\'il n\'est pas sauvegardé.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                TextButton(
-                  onPressed: () => setState(() => _outline = null),
-                  child: const Text('Modifier les options'),
-                ),
+                if (!_outlineSaved)
+                  TextButton.icon(
+                    onPressed: _buildSectionBySection,
+                    icon: const Icon(Icons.save_rounded, size: 16),
+                    label: const Text('Sauvegarder le plan'),
+                  )
+                else
+                  TextButton(
+                    onPressed: () => setState(() => _outline = null),
+                    child: const Text('Modifier les options'),
+                  ),
               ],
             ),
           ),
@@ -1137,6 +1198,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
     required String? displayed,
   }) {
     final running = job.status == GenerationJobStatus.running;
+    final hasError = job.status == GenerationJobStatus.error;
 
     // 1. Proposed Outline state
     if (_outline != null) {
@@ -1149,6 +1211,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
         building: _savingPlan,
         onRegenerateOutline: _generateOutline,
         onCancel: () => setState(() => _outline = null),
+        outlineSaved: _outlineSaved,
       );
     }
 
@@ -1163,7 +1226,16 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
       );
     }
 
-    // 3. Finished result state
+    // 3. Error state - afficher l'erreur inline
+    if (hasError) {
+      return _GenerationErrorCard(
+        error: job.error,
+        onRetry: () => _generate(useOutline: _outline != null),
+        onCancel: () => ref.read(courseGenerationJobProvider.notifier).reset(),
+      );
+    }
+
+    // 4. Finished result state
     if (displayed != null) {
       if (_editing) {
         return _EditorCard(
@@ -1196,166 +1268,8 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
       );
     }
 
-    // 4. Idle state: Studio Inspiration Canvas with 3 quick-start templates
-    return _buildStudioInspirationCanvas(context);
-  }
-
-  Widget _buildStudioInspirationCanvas(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.35),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.shadow.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: colorScheme.secondaryFixed,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.auto_stories_rounded,
-                  color: colorScheme.onSecondaryFixed,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Canevas de Prévisualisation & Modèles Clés-en-Main',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Choisissez un modèle académique ci-dessous ou générez votre cours personnalisé à gauche.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Divider(height: 1),
-          const SizedBox(height: 20),
-
-          // Template 1: Bases de Données & SQL
-          _QuickTemplateCard(
-            title: 'Bases de Données Relationnelles & Requêtes SQL Avancées',
-            description:
-                'Modélisation relationnelle, formes normales, transactions ACID et optimisation d\'index pour L3 Informatique.',
-            badge: 'Licence 3 • Informatique',
-            levelLabel: 'Cours complet',
-            difficultyLabel: 'Moyenne',
-            icon: Icons.storage_rounded,
-            iconColor: colorScheme.primary,
-            onApply: () => _applyQuickTemplate(
-              subject:
-                  'Introduction aux bases de données relationnelles et requêtes SQL avancées pour Licence 3 Informatique avec 4 chapitres, schémas relationnels et exercices corrigés',
-              level: 'detaille',
-              difficulty: 'moyen',
-              mermaid: true,
-              examples: true,
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Template 2: Algèbre Linéaire
-          _QuickTemplateCard(
-            title: 'Algèbre Linéaire & Diagonalisation d\'Endomorphismes',
-            description:
-                'Espaces vectoriels, polynôme caractéristique, sous-espaces propres et applications concrètes.',
-            badge: 'Licence 2 • Mathématiques',
-            levelLabel: 'Cours normal',
-            difficultyLabel: 'Moyenne',
-            icon: Icons.functions_rounded,
-            iconColor: colorScheme.secondary,
-            onApply: () => _applyQuickTemplate(
-              subject:
-                  'Cours complet d\'algèbre linéaire sur la réduction des endomorphismes et la diagonalisation de matrices pour Licence 2',
-              level: 'equilibre',
-              difficulty: 'moyen',
-              mermaid: true,
-              examples: true,
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Template 3: Théorie des Graphes
-          _QuickTemplateCard(
-            title: 'Théorie des Graphes & Algorithmes de Routage',
-            description:
-                'Parcours BFS/DFS, algorithmes de Dijkstra et Floyd-Warshall, coloration et flot maximal.',
-            badge: 'Master 1 • Algorithmique',
-            levelLabel: 'Cours complet',
-            difficultyLabel: 'Difficile',
-            icon: Icons.hub_rounded,
-            iconColor: colorScheme.tertiary,
-            onApply: () => _applyQuickTemplate(
-              subject:
-                  'Théorie des graphes et algorithmes de routage avancés (Dijkstra, A*, Floyd-Warshall) avec diagrammes Mermaid et exercices pour Master 1',
-              level: 'detaille',
-              difficulty: 'difficile',
-              mermaid: true,
-              examples: true,
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Pedagogical Tip Card
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.lightbulb_outline_rounded,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Astuce : Lancez d\'abord "Proposer le plan en 3s" pour ajuster et réordonner les chapitres avant la génération complète.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    // 4. Idle state: no extra canvas on mobile or desktop if no models needed
+    return const SizedBox.shrink();
   }
 }
 
@@ -1961,9 +1875,6 @@ class _LiveProgressCard extends StatelessWidget {
   final int elapsedSec;
   final int liveChars;
   final String preview;
-
-  /// Backend pipeline phase (`extracting` while the PDF is parsed, else
-  /// the model is generating). Shown so 0-token waits read as progress.
   final String phase;
   final VoidCallback onCancel;
 
@@ -1982,9 +1893,6 @@ class _LiveProgressCard extends StatelessWidget {
     final tokens = liveChars ~/ 4;
     final minutes = elapsedSec ~/ 60;
     final seconds = (elapsedSec % 60).toString().padLeft(2, '0');
-    final tail = preview.length > 600
-        ? '…${preview.substring(preview.length - 600)}'
-        : preview;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1996,22 +1904,34 @@ class _LiveProgressCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Header avec statut animé
           Row(
             children: [
-              SmartLoader.small(customSize: 20, color: colorScheme.secondary),
+              _PulsingDot(color: colorScheme.secondary),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  phase == 'extracting'
-                      ? context.tr('phase_extracting')
-                      : context.tr(
-                          'ai_generating_live',
-                          args: {
-                            'tokens': '$tokens',
-                            'time': '$minutes:$seconds',
-                          },
-                        ),
-                  style: theme.textTheme.labelLarge,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      phase == 'extracting'
+                          ? context.tr('phase_extracting')
+                          : context.tr(
+                              'ai_generating_live',
+                              args: {
+                                'tokens': '$tokens',
+                                'time': '$minutes:$seconds',
+                              },
+                            ),
+                      style: theme.textTheme.labelLarge,
+                    ),
+                    Text(
+                      'IA en train de rédiger...',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               TextButton(
@@ -2021,28 +1941,114 @@ class _LiveProgressCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          const LinearProgressIndicator(minHeight: 4),
-          if (tail.isNotEmpty) ...[
+          // Barre de progression animée
+          LinearProgressIndicator(
+            minHeight: 4,
+            valueColor: AlwaysStoppedAnimation(colorScheme.secondary),
+            backgroundColor: colorScheme.secondary.withValues(alpha: 0.2),
+          ),
+          // Preview live des tokens avec effet typewriter
+          if (preview.isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
-              constraints: const BoxConstraints(maxHeight: 220),
+              constraints: const BoxConstraints(maxHeight: 280),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
-              ),
-              child: SingleChildScrollView(
-                child: Text(
-                  tail,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.3),
                 ),
               ),
+              child: _StreamingPreview(text: preview),
             ),
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Point pulsant pour indiquer l'activité live
+class _PulsingDot extends StatefulWidget {
+  final Color color;
+  const _PulsingDot({required this.color});
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) => Opacity(
+        opacity: _animation.value,
+        child: Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: widget.color,
+            shape: BoxShape.circle,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Preview qui affiche le texte en streaming avec auto-scroll
+class _StreamingPreview extends StatelessWidget {
+  final String text;
+  const _StreamingPreview({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          // Auto-scroll vers le bas pour voir les nouveaux tokens
+          reverse: true,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: SelectableText(
+              text,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontFamily: 'monospace',
+                fontSize: 11.5,
+                height: 1.4,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -2246,28 +2252,18 @@ class _AiActionChip extends StatelessWidget {
         ),
       ),
     );
-  }
-}
+  }}
 
-class _QuickTemplateCard extends StatelessWidget {
-  final String title;
-  final String description;
-  final String badge;
-  final String levelLabel;
-  final String difficultyLabel;
-  final IconData icon;
-  final Color iconColor;
-  final VoidCallback onApply;
+/// Carte d'erreur affichée inline quand la génération échoue
+class _GenerationErrorCard extends StatelessWidget {
+  final Object? error;
+  final VoidCallback onRetry;
+  final VoidCallback onCancel;
 
-  const _QuickTemplateCard({
-    required this.title,
-    required this.description,
-    required this.badge,
-    required this.levelLabel,
-    required this.difficultyLabel,
-    required this.icon,
-    required this.iconColor,
-    required this.onApply,
+  const _GenerationErrorCard({
+    required this.error,
+    required this.onRetry,
+    required this.onCancel,
   });
 
   @override
@@ -2275,127 +2271,106 @@ class _QuickTemplateCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    String errorMessage = 'Erreur inconnue';
+    String? errorCode;
+
+    final apiError = error as ApiException?;
+    if (apiError != null) {
+      errorCode = apiError.code ?? '';
+      errorMessage = apiError.message;
+      if (apiError.details.isNotEmpty) {
+        errorMessage += '\nDétails: ${apiError.details.join(', ')}';
+      }
+    } else if (error != null) {
+      errorMessage = error.toString();
+    }
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
+        color: colorScheme.errorContainer,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.35),
-        ),
+        border: Border.all(color: colorScheme.error.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: iconColor, size: 22),
+              Icon(
+                Icons.error_outline_rounded,
+                color: colorScheme.error,
+                size: 28,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        badge,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
                     Text(
-                      title,
-                      style: theme.textTheme.titleSmall?.copyWith(
+                      'Échec de la génération',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: colorScheme.error,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    if (errorCode != null)
+                      Text(
+                        'Code: $errorCode',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onErrorContainer.withValues(alpha: 0.7),
+                        ),
+                      ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            description,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: SelectableText(
+              errorMessage,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontFamily: 'monospace',
+                fontSize: 11,
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          const SizedBox(height: 16),
+          Row(
             children: [
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      levelLabel,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onCancel,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  label: const Text('Annuler'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'Difficulté : $difficultyLabel',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-              FilledButton.tonalIcon(
-                onPressed: onApply,
-                icon: const Icon(Icons.arrow_forward_rounded, size: 14),
-                label: const Text('Utiliser ce modèle'),
-                style: FilledButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  textStyle: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Réessayer'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.error,
+                    foregroundColor: colorScheme.onError,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),

@@ -714,30 +714,34 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       fontWeight: FontWeight.w500,
     );
 
-    return Row(
-      children: [
-        Icon(
-          Icons.home_outlined,
-          size: 14,
-          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-        ),
-        const SizedBox(width: 6),
-        Text(context.tr('nav_dashboard'), style: style),
-        const SizedBox(width: 6),
-        Text('/', style: style),
-        const SizedBox(width: 6),
-        Text(context.tr('nav_my_profile'), style: style),
-        const SizedBox(width: 6),
-        Text('/', style: style),
-        const SizedBox(width: 6),
-        Text(
-          context.tr('account_settings_title'),
-          style: style.copyWith(
-            color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
-            fontWeight: FontWeight.bold,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.home_outlined,
+            size: 14,
+            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
           ),
-        ),
-      ],
+          const SizedBox(width: 6),
+          Text(context.tr('nav_dashboard'), style: style),
+          const SizedBox(width: 6),
+          Text('/', style: style),
+          const SizedBox(width: 6),
+          Text(context.tr('nav_my_profile'), style: style),
+          const SizedBox(width: 6),
+          Text('/', style: style),
+          const SizedBox(width: 6),
+          Text(
+            context.tr('account_settings_title'),
+            style: style.copyWith(
+              color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -761,62 +765,46 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ? const Color(0xFF6B21A8)
             : const Color(0xFF15803D));
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    context.tr('account_settings_title'),
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      letterSpacing: -0.4,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: roleBg,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      roleLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: roleFg,
-                      ),
-                    ),
-                  ),
-                ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 600;
+
+        final titleAndBadge = Wrap(
+          spacing: 10,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              context.tr('account_settings_title'),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                letterSpacing: -0.4,
               ),
-              const SizedBox(height: 6),
-              Text(
-                isTeacher
-                    ? 'Gérez votre identité académique, vos accès de sécurité et configurez vos flux de notifications pour votre espace enseignant.'
-                    : context.tr('account_settings_desc'),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 3,
+              ),
+              decoration: BoxDecoration(
+                color: roleBg,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                roleLabel,
                 style: TextStyle(
-                  fontSize: 13,
-                  color: isDark
-                      ? const Color(0xFF94A3B8)
-                      : const Color(0xFF64748B),
-                  height: 1.4,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: roleFg,
                 ),
               ),
-            ],
-          ),
-        ),
-        Container(
+            ),
+          ],
+        );
+
+        final entBadge = Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: isDark
@@ -841,18 +829,66 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
               ),
               const SizedBox(width: 6),
-              Text(
-                context.tr('ent_sync_status'),
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF15803D),
+              Flexible(
+                child: Text(
+                  context.tr('ent_sync_status'),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF15803D),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-        ),
-      ],
+        );
+
+        final description = Text(
+          isTeacher
+              ? 'Gérez votre identité académique, vos accès de sécurité et configurez vos flux de notifications pour votre espace enseignant.'
+              : context.tr('account_settings_desc'),
+          style: TextStyle(
+            fontSize: 13,
+            color: isDark
+                ? const Color(0xFF94A3B8)
+                : const Color(0xFF64748B),
+            height: 1.4,
+          ),
+        );
+
+        if (isNarrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              titleAndBadge,
+              const SizedBox(height: 8),
+              entBadge,
+              const SizedBox(height: 10),
+              description,
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  titleAndBadge,
+                  const SizedBox(height: 6),
+                  description,
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            entBadge,
+          ],
+        );
+      },
     );
   }
 
@@ -1270,7 +1306,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             isTeacher
@@ -1284,7 +1323,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                   : const Color(0xFF0F172A),
                             ),
                           ),
-                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -1318,7 +1356,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Row(
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           OutlinedButton(
                             style: OutlinedButton.styleFrom(
@@ -1351,7 +1392,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
                           TextButton(
                             onPressed: () {
                               _showSuccessSnackBar(

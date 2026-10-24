@@ -191,6 +191,34 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
     final classes = classesAsync.valueOrNull ?? const <CourseEntry>[];
     final active = _activeClass(classes);
 
+    if (isTeacher) {
+      return Scaffold(
+        backgroundColor: colorScheme.surface,
+        appBar: AppBar(
+          backgroundColor: colorScheme.surface,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+          ),
+          title: Text(
+            context.tr('ai_tutor'),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        body: _TeacherStudioGrid(active: active),
+      );
+    }
+
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
@@ -228,9 +256,9 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  isTeacher ? 'Assistant Pédagogique IA' : 'Tuteur IA Interactif',
-                  style: const TextStyle(
+                const Text(
+                  'Tuteur IA Interactif',
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -316,8 +344,8 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
                           VerticalDivider(
                             width: 1,
                             thickness: 1,
-                            color:
-                                colorScheme.outlineVariant.withValues(alpha: 0.4),
+                            color: colorScheme.outlineVariant
+                                .withValues(alpha: 0.4),
                           ),
                           Expanded(
                             flex: 5,
@@ -443,21 +471,25 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 1.5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        isTeacher ? 'Espace Enseignant' : 'Aligné classe',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSecondaryContainer,
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isTeacher ? 'Espace Enseignant' : 'Aligné classe',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSecondaryContainer,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
@@ -476,12 +508,10 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
             ),
           ),
           if (isTeacher) ...[
-            FilledButton.tonalIcon(
+            IconButton.filledTonal(
               icon: const Icon(Icons.draw_rounded, size: 16),
-              label: const Text('Studio Créateur IA'),
-              style: FilledButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-              ),
+              tooltip: 'Studio Créateur IA',
+              visualDensity: VisualDensity.compact,
               onPressed: () => context.go('/courses/ai-create'),
             ),
             const SizedBox(width: 8),
@@ -963,6 +993,337 @@ class _ChatMessage {
     this.stepTitle,
     this.actions = const [],
   });
+}
+
+/// Vue Tuteur IA pour le professeur : 4 cartes animées (Cours IA, Résumé IA,
+/// Test IA, Examen IA) disposées 2 par ligne.
+class _TeacherStudioGrid extends StatelessWidget {
+  final CourseEntry? active;
+
+  const _TeacherStudioGrid({this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [colorScheme.primary, colorScheme.secondary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(13),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorScheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.auto_awesome_rounded,
+                  color: colorScheme.onPrimary,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr('ai_studio_section_title'),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      context.tr('ai_studio_section_desc'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 14,
+            childAspectRatio: 0.95,
+            children: const [
+              _AnimatedStudioCard(
+                index: 0,
+                icon: Icons.auto_stories_rounded,
+                titleKey: 'ai_card_course',
+                subtitleKey: 'ai_card_course_desc',
+                route: '/courses/ai-create',
+                accent: Color(0xFF122675),
+              ),
+              _AnimatedStudioCard(
+                index: 1,
+                icon: Icons.summarize_rounded,
+                titleKey: 'course_summary',
+                subtitleKey: 'course_summary_desc',
+                route: '/ai-revision',
+                accent: Color(0xFF4056B9),
+              ),
+              _AnimatedStudioCard(
+                index: 2,
+                icon: Icons.quiz_rounded,
+                titleKey: 'ai_card_test',
+                subtitleKey: 'ai_card_test_desc',
+                route: '/ai-quiz',
+                accent: Color(0xFF003627),
+              ),
+              _AnimatedStudioCard(
+                index: 3,
+                icon: Icons.fact_check_rounded,
+                titleKey: 'ai_card_exam',
+                subtitleKey: 'ai_card_exam_desc',
+                route: '/exams',
+                accent: Color(0xFF0F9D78),
+              ),
+            ],
+          ),
+          if (active != null) ...[
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.school_rounded,
+                    size: 16,
+                    color: colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Classe active : ${active!.name}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Carte studio animée : entrée staggered (fade + slide-up) puis
+/// hover scale + glow (shadow colorisé).
+class _AnimatedStudioCard extends StatefulWidget {
+  final int index;
+  final IconData icon;
+  final String titleKey;
+  final String subtitleKey;
+  final String route;
+  final Color accent;
+
+  const _AnimatedStudioCard({
+    required this.index,
+    required this.icon,
+    required this.titleKey,
+    required this.subtitleKey,
+    required this.route,
+    required this.accent,
+  });
+
+  @override
+  State<_AnimatedStudioCard> createState() => _AnimatedStudioCardState();
+}
+
+class _AnimatedStudioCardState extends State<_AnimatedStudioCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _entry;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+  bool _hovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _entry = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fade = CurvedAnimation(
+      parent: _entry,
+      curve: Interval(0, 0.7, curve: Curves.easeOutCubic),
+    );
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.25),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _entry, curve: Curves.easeOutCubic));
+    // Staggered : chaque carte démarre avec un décalage de 140ms.
+    Future<void>.delayed(Duration(milliseconds: 140 * widget.index), () {
+      if (mounted) _entry.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _entry.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(
+        position: _slide,
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: GestureDetector(
+            onTap: () => context.push(widget.route),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              transformAlignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..scaleByDouble(
+                  _hovered ? 1.04 : 1.0,
+                  _hovered ? 1.04 : 1.0,
+                  1.0,
+                  1.0,
+                ),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _hovered
+                      ? widget.accent.withValues(alpha: 0.5)
+                      : theme.colorScheme.outlineVariant.withValues(
+                          alpha: 0.3,
+                        ),
+                  width: _hovered ? 1.4 : 1,
+                ),
+                boxShadow: _hovered
+                    ? [
+                        BoxShadow(
+                          color: widget.accent.withValues(alpha: 0.22),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: theme.colorScheme.shadow.withValues(
+                            alpha: 0.04,
+                          ),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: widget.accent.withValues(
+                            alpha: _hovered ? 0.2 : 0.1,
+                          ),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Icon(
+                          widget.icon,
+                          color: widget.accent,
+                          size: 20,
+                        ),
+                      ),
+                      const Spacer(),
+                      AnimatedSlide(
+                        duration: const Duration(milliseconds: 220),
+                        offset: Offset(_hovered ? 0.1 : 0, 0),
+                        child: Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 16,
+                          color: _hovered
+                              ? widget.accent
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Text(
+                    context.tr(widget.titleKey),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    context.tr(widget.subtitleKey),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 10.5,
+                      height: 1.25,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _TutorBubble extends StatelessWidget {

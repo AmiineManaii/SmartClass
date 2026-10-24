@@ -110,6 +110,7 @@ export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
     courseRepository,
     sectionRepository,
     searchService,
+    gateway,
   );
   const applySectionImageUseCase = new ApplySectionImageUseCase(
     courseRepository,

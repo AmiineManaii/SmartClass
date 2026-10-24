@@ -1,20 +1,21 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Central configuration for the SmartClass backend API.
 ///
 /// Mirrors `Backend/.env.example` (PORT=3000) and `contracts/README.md`:
 /// modules live under `/api/v1`, health probes at the root `/health/*`.
-/// Override at build time: `flutter run --dart-define=API_BASE_URL=...`
+/// The base URL is read from the app `.env` (`API_BASE_URL`) and can be
+/// overridden at build time: `flutter run --dart-define=API_BASE_URL=...`
 class ApiConfig {
   static String get baseUrl {
     const override = String.fromEnvironment('API_BASE_URL');
     if (override.isNotEmpty) return override;
 
-    // Sur Android (émulateur), localhost (127.0.0.1) pointe sur le téléphone lui-même.
-    // 10.0.2.2 est l'IP spéciale pour accéder à l'hôte (PC).
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:3000';
+    if (dotenv.isInitialized) {
+      final fromEnv = dotenv.maybeGet('API_BASE_URL');
+      if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
     }
+
     return 'http://localhost:3000';
   }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/localization/app_localizations.dart';
@@ -18,6 +20,9 @@ class CourseOutlineEditorCard extends StatefulWidget {
   /// Draft-save spinner of [onBuildSections].
   final bool building;
 
+  /// Whether the outline has been saved as a draft.
+  final bool outlineSaved;
+
   const CourseOutlineEditorCard({
     super.key,
     required this.outline,
@@ -28,6 +33,7 @@ class CourseOutlineEditorCard extends StatefulWidget {
     required this.onCancel,
     this.onBuildSections,
     this.building = false,
+    this.outlineSaved = false,
   });
 
   @override
@@ -49,6 +55,82 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
     super.didUpdateWidget(oldWidget);
     if (widget.outline != oldWidget.outline) {
       _currentOutline = widget.outline;
+    }
+  }
+
+  Widget _buildSavedStatusIndicator(ThemeData theme, ColorScheme colorScheme) {
+    if (widget.outlineSaved) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: colorScheme.tertiaryContainer.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: colorScheme.tertiary.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.save_rounded,
+                  size: 12,
+                  color: colorScheme.tertiary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Plan sauvegardé dans le brouillon',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.tertiary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      );
+    } else {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: colorScheme.secondaryContainer.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: colorScheme.secondary.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.schedule_rounded,
+                  size: 12,
+                  color: colorScheme.secondary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Plan non sauvegardé — modifications non conservées',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.secondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      );
     }
   }
 
@@ -534,6 +616,9 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
                 ),
                 const SizedBox(height: 12),
 
+                // Saved status indicator
+                _buildSavedStatusIndicator(theme, colorScheme),
+
                 // Editable Course Title
                 InkWell(
                   onTap: _editTitleAndDesc,
@@ -611,10 +696,13 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Chapters Header Info
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           'Structure du cours',

@@ -3,6 +3,8 @@
 ///
 /// A generation is saved as DRAFT (author + admins only) until validated
 /// (PUBLISHED), after which every authenticated user can read it.
+import 'course_outline.dart';
+
 class GeneratedCourse {
   const GeneratedCourse({
     required this.id,
@@ -15,6 +17,7 @@ class GeneratedCourse {
     required this.authorName,
     this.subject,
     this.content,
+    this.outline,
   });
 
   final String id;
@@ -32,6 +35,9 @@ class GeneratedCourse {
   /// Markdown body — present on detail reads, null on list summaries.
   final String? content;
 
+  /// Teacher-validated outline (plan) persisted for the section build.
+  final CourseOutline? outline;
+
   bool get isDraft => status == 'DRAFT';
   bool get isPublished => status == 'PUBLISHED';
 
@@ -47,6 +53,9 @@ class GeneratedCourse {
       authorId: (json['authorId'] as String?) ?? '',
       authorName: (json['authorName'] as String?) ?? '',
       content: json['content'] as String?,
+      outline: json['outline'] != null
+          ? CourseOutline.fromJson(json['outline'] as Map<String, dynamic>)
+          : null,
     );
   }
 }

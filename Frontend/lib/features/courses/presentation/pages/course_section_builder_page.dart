@@ -197,15 +197,37 @@ class _CourseSectionBuilderPageState
     }
   }
 
-  Future<void> _searchWebImage(CourseSectionEntry section) async {
+  Future<void> _searchWebImage(
+    CourseSectionEntry section, {
+    String? query,
+  }) async {
     if (_imageActionBusy(section.sectionKey)) return;
     setState(() => _imageLoadingKey = section.sectionKey);
     try {
-      final images = await _build.searchSectionImages(section.sectionKey);
+      final queryToUse = query ?? section.keyTopics.join(' ');
+      final images = await _build.searchSectionImages(
+        section.sectionKey,
+        query: queryToUse,
+      );
       if (!mounted) return;
       setState(() => _imageLoadingKey = null);
       if (images.isEmpty) {
-        context.showInfoToast(context.tr('ai_image_search_empty'));
+        // A refined query that still finds nothing is a dead end: keep the
+        // honest one-shot toast instead of looping the dialog forever.
+        if (query != null) {
+          context.showInfoToast(context.tr('ai_image_search_empty'));
+          return;
+        }
+        final retry = await showDialog<_ImageRetry>(
+          context: context,
+          builder: (ctx) => const _NoImageFoundDialog(),
+        );
+        if (!mounted || retry == null) return;
+        if (retry.regenerate) {
+          await _searchWebImage(section);
+        } else if (retry.query != null && retry.query!.isNotEmpty) {
+          await _searchWebImage(section, query: retry.query);
+        }
         return;
       }
       final selected = await showDialog<SectionImageCandidate>(
@@ -527,6 +549,31 @@ class _CourseSectionBuilderPageState
                   ),
                 ),
               ),
+              if (!allValidated) ...[
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: state.isStreaming || state.isGeneratingAll
+                      ? () => notifier.cancel()
+                      : () => notifier.generateAllRemaining(),
+                  icon: Icon(
+                    state.isGeneratingAll
+                        ? Icons.stop_circle_outlined
+                        : Icons.auto_awesome,
+                    size: 16,
+                  ),
+                  label: Text(
+                    state.isGeneratingAll
+                        ? 'Arrêter'
+                        : 'Tout générer',
+                  ),
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: state.isGeneratingAll
+                        ? colorScheme.error
+                        : colorScheme.primary,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -1064,6 +1111,127 @@ class _WebImagePickerDialog extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Result of the "no image found" dialog: either a plain regenerate retry
+/// or a refined query built from the teacher's text input.
+class _ImageRetry {
+  final bool regenerate;
+  final String? query;
+
+  const _ImageRetry.regenerate()
+      : regenerate = true,
+        query = null;
+
+  const _ImageRetry.refine(this.query) : regenerate = false;
+}
+
+/// Shown when the web image search returns no candidate for a section.
+/// Offers two honest escapes: regenerate the search as-is, or refine the
+/// query (e.g. "diagramme base de données") and search again.
+class _NoImageFoundDialog extends StatefulWidget {
+  const _NoImageFoundDialog();
+
+  @override
+  State<_NoImageFoundDialog> createState() => _NoImageFoundDialogState();
+}
+
+class _NoImageFoundDialogState extends State<_NoImageFoundDialog> {
+  final _queryController = TextEditingController();
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      scrollable: true,
+      title: Row(
+        children: [
+          Icon(Icons.image_not_supported_outlined, color: colorScheme.error),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Text(
+              context.tr('ai_image_no_result_title'),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              context.tr('ai_image_search_empty'),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _queryController,
+              decoration: InputDecoration(
+                labelText: context.tr('ai_image_refine_hint'),
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onSubmitted: (value) {
+                final trimmed = value.trim();
+                Navigator.of(context).pop(
+                  trimmed.isEmpty
+                      ? const _ImageRetry.regenerate()
+                      : _ImageRetry.refine(trimmed),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      actionsAlignment: MainAxisAlignment.end,
+      actionsOverflowButtonSpacing: 8,
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.tr('cancel')),
+        ),
+        OutlinedButton.icon(
+          onPressed: () =>
+              Navigator.of(context).pop(const _ImageRetry.regenerate()),
+          icon: const Icon(Icons.refresh_rounded, size: 18),
+          label: Text(context.tr('ai_image_retry_regenerate')),
+        ),
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _queryController,
+          builder: (context, value, _) {
+            final trimmed = value.text.trim();
+            return FilledButton.icon(
+              onPressed: trimmed.isEmpty
+                  ? null
+                  : () => Navigator.of(context).pop(
+                        _ImageRetry.refine(trimmed),
+                      ),
+              icon: const Icon(Icons.travel_explore_rounded, size: 18),
+              label: Text(context.tr('ai_image_retry_refine')),
+            );
+          },
+        ),
+      ],
     );
   }
 }

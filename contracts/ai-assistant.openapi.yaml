@@ -76,7 +76,7 @@ paths:
                         type: boolean
                       model:
                         type: string
-                        example: qwen2.5:3b
+                        example: hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1
                       latencyMs:
                         type:
                           - integer
@@ -84,7 +84,7 @@ paths:
               example:
                 data:
                   available: true
-                  model: qwen2.5:3b
+                  model: hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1
                   latencyMs: 42
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
@@ -513,7 +513,7 @@ paths:
                 example: |
                   data: {"delta":"# Les Arbres AVL"}
 
-                  data: {"done":true,"mode":"topic","level":"equilibre","difficulty":"moyen","format":"resume","model":"qwen2.5:3b","promptVersion":"2026-10-11.v2","truncatedSource":false,"sourceChars":0,"toolsUsed":true,"usage":{"promptTokens":657,"completionTokens":1656}}
+                  data: {"done":true,"mode":"topic","level":"equilibre","difficulty":"moyen","format":"resume","model":"hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1","promptVersion":"2026-10-11.v2","truncatedSource":false,"sourceChars":0,"toolsUsed":true,"usage":{"promptTokens":657,"completionTokens":1656}}
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':
@@ -839,7 +839,7 @@ paths:
                         description: Algorithmes de tri et complexité
                         keyTopics: [Quick sort, Merge sort]
                         estimatedMinutes: 20
-                  model: qwen2.5:3b
+                  model: hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':
@@ -937,7 +937,7 @@ paths:
                   refinedText: Le tri rapide est **instable** ; voir l'exemple ci-dessous.
                   revisedText: Le tri rapide est **instable** ; voir l'exemple ci-dessous.
                   explanation: Ajoute un exemple concret après la définition d'instabilité.
-                  model: qwen2.5:3b
+                  model: hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':
@@ -1152,7 +1152,7 @@ paths:
 
                   data: {"delta":"## Graphes"}
 
-                  data: {"done":true,"section":{"id":"33333333-3333-3333-3333-333333333333","sectionKey":"sec-2","status":"GENERATED"},"model":"qwen2.5:3b","promptVersion":"2026-10-18.v6","writtenBefore":1,"memoryHits":2,"regenerated":false,"usage":{"promptTokens":412,"completionTokens":733}}
+                  data: {"done":true,"section":{"id":"33333333-3333-3333-3333-333333333333","sectionKey":"sec-2","status":"GENERATED"},"model":"hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1","promptVersion":"2026-10-18.v6","writtenBefore":1,"memoryHits":2,"regenerated":false,"usage":{"promptTokens":412,"completionTokens":733}}
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':

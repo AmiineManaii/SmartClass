@@ -18,6 +18,28 @@ services:
       retries: 5
       start_period: 5s
 
+  searxng:
+    image: searxng/searxng:latest
+    container_name: smartclass-searxng
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "1"
+
   api:
     build:
       context: .
@@ -34,6 +56,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      searxng:
+        condition: service_started
     command: >
       sh -c "npm install && npx prisma generate && npx prisma migrate deploy && npm run dev"
     healthcheck:
@@ -45,3 +69,4 @@ services:
 
 volumes:
   pgdata:
+

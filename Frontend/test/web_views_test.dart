@@ -154,7 +154,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.byType(WebAdminClassesPage), findsOneWidget);
-      expect(find.text('Gestion des Classes & Groupes'), findsOneWidget);
+      expect(find.text('Gestion des Classes & Cohortes'), findsOneWidget);
     });
 
     testWidgets('WebAdminReportsPage renders on desktop viewport',
@@ -169,7 +169,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.byType(WebAdminReportsPage), findsOneWidget);
-      expect(find.text('Rapports de Fraude & Intégrité des Examens'), findsOneWidget);
+      expect(find.text('Audit d\'Intégrité & Rapports de Fraude'), findsOneWidget);
     });
 
     testWidgets('WebLoginPage switches roles smoothly when clicking segmented tabs',

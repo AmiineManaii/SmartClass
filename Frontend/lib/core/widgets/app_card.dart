@@ -384,6 +384,8 @@ class AppGroupCard extends StatelessWidget {
   final int memberCount;
   final String? role;
   final String? invitationCode;
+  final List<String>? subjects;
+  final String? mySubject;
   final VoidCallback? onTap;
   final VoidCallback? onInvite;
   final VoidCallback? onLeave;
@@ -394,6 +396,8 @@ class AppGroupCard extends StatelessWidget {
     required this.memberCount,
     this.role,
     this.invitationCode,
+    this.subjects,
+    this.mySubject,
     this.onTap,
     this.onInvite,
     this.onLeave,
@@ -500,6 +504,48 @@ class AppGroupCard extends StatelessWidget {
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                           fontFamily: 'monospace',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                if ((subjects ?? []).isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      ...subjects!.map(
+                        (s) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: (mySubject != null && mySubject == s)
+                                ? colorScheme.primary.withValues(alpha: 0.15)
+                                : colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(8),
+                            border: mySubject != null && mySubject == s
+                                ? Border.all(
+                                    color: colorScheme.primary.withValues(
+                                      alpha: 0.4,
+                                    ),
+                                    width: 0.8,
+                                  )
+                                : null,
+                          ),
+                          child: Text(
+                            s,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: (mySubject != null && mySubject == s)
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurfaceVariant,
+                              fontWeight: (mySubject != null && mySubject == s)
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -620,68 +666,84 @@ class AppExamCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              if (date != null) ...[
-                Icon(
-                  Icons.calendar_today_rounded,
-                  size: 14,
-                  color: colorScheme.onSurfaceVariant,
+              if (date != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calendar_today_rounded,
+                      size: 14,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      date!.formatDate(),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  date!.formatDate(),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+              if (duration != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 14,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${duration!.inMinutes} min',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-              ],
-              if (duration != null) ...[
-                Icon(
-                  Icons.access_time_rounded,
-                  size: 14,
-                  color: colorScheme.onSurfaceVariant,
+              if (questionCount != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.help_outline_rounded,
+                      size: 14,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$questionCount questions',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  '${duration!.inMinutes} min',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+              if (score != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.star_rounded,
+                      size: 14,
+                      color: colorScheme.secondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$score%',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.secondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-              ],
-              if (questionCount != null) ...[
-                Icon(
-                  Icons.help_outline_rounded,
-                  size: 14,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '$questionCount questions',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(width: 16),
-              ],
-              if (score != null) ...[
-                Icon(
-                  Icons.star_rounded,
-                  size: 14,
-                  color: colorScheme.secondary,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '$score%',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.secondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
             ],
           ),
           if (onStart != null) ...[

@@ -24,6 +24,10 @@ final myCoursesProvider = FutureProvider<List<CourseEntry>>((ref) async {
 /// (`ClassStatus = DRAFT | PUBLISHED`): no fake states.
 final courseFilterProvider = StateProvider<String>((ref) => 'all');
 
+/// Currently selected subject filter for the teacher's subject cards.
+/// `null` means all subjects are shown.
+final selectedSubjectProvider = StateProvider<String?>((ref) => null);
+
 final filteredCoursesProvider = Provider<AsyncValue<List<CourseEntry>>>(
   (ref) {
     final selected = ref.watch(courseFilterProvider);

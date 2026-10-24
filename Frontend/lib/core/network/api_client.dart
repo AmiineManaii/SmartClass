@@ -9,7 +9,7 @@ import 'token_storage.dart';
 
 /// Dio-based HTTP client for the SmartClass API.
 ///
-/// - Base URL from [ApiConfig] (`--dart-define=API_BASE_URL`)
+/// - Base URL from [ApiConfig] (app `.env` `API_BASE_URL`, overridable via `--dart-define`)
 /// - `X-Request-Id` on every request (backend request tracking)
 /// - Bearer JWT injected on authenticated calls
 /// - Single-flight access-token refresh + one retry on 401
