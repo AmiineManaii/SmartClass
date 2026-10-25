@@ -9,7 +9,7 @@ import {
   refineSectionBodySchema,
   validateSectionBodySchema,
 } from './ai.validation.js';
-import { pdfUploadMiddleware } from './pdf-upload.middleware.js';
+import { optionalPdfUploadMiddleware, pdfUploadMiddleware } from './pdf-upload.middleware.js';
 
 export interface AiRouterOptions {
   controller: AiController;
@@ -30,7 +30,7 @@ export const createAiRouter = (options: AiRouterOptions): Router => {
   router.post(
     '/courses/generate-outline',
     generateRateLimiter,
-    validate({ body: generateOutlineBodySchema }),
+    optionalPdfUploadMiddleware,
     controller.generateOutline,
   );
 

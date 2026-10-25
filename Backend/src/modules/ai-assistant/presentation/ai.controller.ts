@@ -17,6 +17,7 @@ import type { GenerateSectionImageUseCase } from '../application/generate-sectio
 import type { SearchSectionImagesUseCase } from '../application/search-section-images.use-case.js';
 import type { ApplySectionImageUseCase } from '../application/apply-section-image.use-case.js';
 import type { SectionImageJobService } from '../application/section-image-job.service.js';
+import type { PdfTextExtractorPort } from '../infrastructure/pdf-text-extractor.adapter.js';
 import type {
   GenerateDifficulty,
   GenerateFormat,
@@ -27,6 +28,7 @@ import { ErrorCodes } from '../../../shared/errors/error-codes.js';
 import {
   applySectionImageBodySchema,
   courseBuildParamsSchema,
+  generateOutlineBodySchema,
   generateSectionBodySchema,
   imageSectionBodySchema,
   improvePdfFieldsSchema,
@@ -88,6 +90,7 @@ export class AiController {
     private readonly searchSectionImagesUseCase: SearchSectionImagesUseCase,
     private readonly applySectionImageUseCase: ApplySectionImageUseCase,
     private readonly sectionImageJobService: SectionImageJobService,
+    private readonly pdfExtractor?: PdfTextExtractorPort,
   ) {}
 
   public generateOutline = async (
@@ -96,7 +99,31 @@ export class AiController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const result = await this.generateOutlineUseCase.execute(req.body);
+      const body = { ...req.body };
+      if (req.file && this.pdfExtractor) {
+        try {
+          const { text } = await this.pdfExtractor.extract(req.file.buffer);
+          body.sourceContext = text.slice(0, 50000);
+          if (!body.topic && !body.subject) {
+            body.topic = req.file.originalname
+              .replace(/\.[^/.]+$/, '')
+              .replace(/[_-]+/g, ' ')
+              .trim();
+          }
+        } catch {
+          if (!body.topic && !body.subject) {
+            body.topic = req.file.originalname
+              .replace(/\.[^/.]+$/, '')
+              .replace(/[_-]+/g, ' ')
+              .trim();
+          }
+        }
+      }
+      const parsed = generateOutlineBodySchema.safeParse(body);
+      if (!parsed.success) {
+        throw toValidationError(parsed.error);
+      }
+      const result = await this.generateOutlineUseCase.execute(parsed.data);
       res.status(200).json({
         data: result,
       });
@@ -411,6 +438,7 @@ export class AiController {
         difficulty: parsed.data.difficulty as GenerateDifficulty,
         extras: parsed.data.extras,
         format: parsed.data.format as GenerateFormat,
+        outline: parsed.data.outline,
       });
       res.status(200).json({
         data: result,
@@ -488,6 +516,7 @@ export class AiController {
             difficulty: parsed.data.difficulty as GenerateDifficulty,
             extras: parsed.data.extras,
             format: parsed.data.format as GenerateFormat,
+            outline: parsed.data.outline,
           },
           onDelta,
           onPhase,

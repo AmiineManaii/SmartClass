@@ -216,6 +216,7 @@ export const buildCoursePrompt = (input: CoursePromptInput): CoursePrompt => {
         `--- CONTENU SOURCE ---\n${input.sourceText}\n--- FIN ---`;
       break;
     case 'text':
+    case 'pdf':
       user =
         `Améliore et restructure le cours source ci-dessous (document fourni ` +
         `par l'enseignant : ancien PDF ou notes) en support conforme aux ` +
@@ -284,6 +285,7 @@ export const buildCourseFromOutlinePrompt = (input: {
   extras: GenerateExtras;
   format: GenerateFormat;
   toolsOffered: boolean;
+  sourceText?: string;
 }): CoursePrompt => {
   const base = buildCoursePrompt({
     mode: 'topic',
@@ -308,6 +310,9 @@ export const buildCourseFromOutlinePrompt = (input: {
     `Titre du cours validé : ${input.outline.title}\n` +
     `Public cible : ${input.outline.targetAudience}\n` +
     (input.outline.prerequisites.length > 0 ? `Prérequis : ${input.outline.prerequisites.join(', ')}\n\n` : '\n') +
+    (input.sourceText
+      ? `--- CONTENU DE RÉFÉRENCE SOURCE (PDF / NOTES DE L'ENSEIGNANT) ---\n${input.sourceText}\n--- FIN DU CONTENU SOURCE ---\n\n`
+      : '') +
     `Rédige le cours complet en suivant STRICTEMENT et EXHAUSTIVEMENT le plan validé ci-dessous par l'enseignant. Ne saute aucun chapitre et respecte scrupuleusement cet ordre :\n\n` +
     `--- PLAN VALIDÉ PAR L'ENSEIGNANT ---\n` +
     `${sectionsList}\n` +

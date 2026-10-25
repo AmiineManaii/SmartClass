@@ -7,7 +7,14 @@ import type {
   GenerateLevel,
 } from '../domain/ai-gateway.port.js';
 import { COURSE_TOOLS } from '../domain/ai-tools.js';
-import { buildCoursePrompt, COURSE_PROMPT_VERSION, maxTokensForLevel, shouldOfferTools } from '../domain/course-prompt.js';
+import {
+  buildCourseFromOutlinePrompt,
+  buildCoursePrompt,
+  COURSE_PROMPT_VERSION,
+  maxTokensForLevel,
+  shouldOfferTools,
+  type CourseOutline,
+} from '../domain/course-prompt.js';
 import type { PdfTextExtractorPort } from '../infrastructure/pdf-text-extractor.adapter.js';
 import { extrasForMode } from './generate-course.use-case.js';
 
@@ -17,6 +24,7 @@ export interface ImprovePdfDTO {
   difficulty?: GenerateDifficulty;
   extras?: Partial<GenerateExtras>;
   format: GenerateFormat;
+  outline?: CourseOutline;
 }
 
 export interface ImprovePdfResult {
@@ -53,15 +61,25 @@ export class ImprovePdfUseCase {
       generateImages: extras.generateImages,
       webSearchEnabled: env.AI_ENABLE_WEB_SEARCH,
     });
-    const prompt = buildCoursePrompt({
-      mode: 'text',
-      level: dto.level,
-      difficulty,
-      extras,
-      format: dto.format,
-      sourceText: truncatedSource ? text.slice(0, env.AI_MAX_SOURCE_CHARS) : text,
-      toolsOffered,
-    });
+    const prompt = dto.outline
+      ? buildCourseFromOutlinePrompt({
+          outline: dto.outline,
+          level: dto.level,
+          difficulty,
+          extras,
+          format: dto.format,
+          toolsOffered,
+          sourceText: truncatedSource ? text.slice(0, env.AI_MAX_SOURCE_CHARS) : text,
+        })
+      : buildCoursePrompt({
+          mode: 'text',
+          level: dto.level,
+          difficulty,
+          extras,
+          format: dto.format,
+          sourceText: truncatedSource ? text.slice(0, env.AI_MAX_SOURCE_CHARS) : text,
+          toolsOffered,
+        });
 
     const completion = await this.gateway.chatCompletion({
       system: prompt.system,
@@ -115,15 +133,26 @@ export class ImprovePdfUseCase {
       generateImages: extras.generateImages,
       webSearchEnabled: env.AI_ENABLE_WEB_SEARCH,
     });
-    const prompt = buildCoursePrompt({
-      mode: 'text',
-      level: dto.level,
-      difficulty,
-      extras,
-      format: dto.format,
-      sourceText: truncatedSource ? text.slice(0, env.AI_MAX_SOURCE_CHARS) : text,
-      toolsOffered,
-    });
+    const prompt = dto.outline
+      ? buildCourseFromOutlinePrompt({
+          outline: dto.outline,
+          level: dto.level,
+          difficulty,
+          extras,
+          format: dto.format,
+          toolsOffered,
+          sourceText: truncatedSource ? text.slice(0, env.AI_MAX_SOURCE_CHARS) : text,
+        })
+      : buildCoursePrompt({
+          mode: 'text',
+          level: dto.level,
+          difficulty,
+          extras,
+          format: dto.format,
+          sourceText: truncatedSource ? text.slice(0, env.AI_MAX_SOURCE_CHARS) : text,
+          toolsOffered,
+        });
+
     const usage = await this.gateway.streamCompletion(
       {
         system: prompt.system,

@@ -610,6 +610,10 @@ const Map<String, String> _frTranslations = {
   'ai_outline_generate_all': 'Rédiger tout le cours d\'un coup',
   'ai_outline_generate_direct': 'Générer directement sans plan',
   'ai_outline_empty': 'Le plan doit contenir au moins un chapitre.',
+  'ai_plan_generating_title': 'Plan en cours d\'élaboration',
+  'ai_plan_ready_title': 'Plan de cours prêt !',
+  'ai_plan_ready_subtitle': 'Touchez pour voir et continuer',
+  'ai_plan_open': 'Voir le plan',
   'ai_refine_btn': 'Modifier avec l\'IA',
   'ai_refine_title': 'Révision ciblée par l\'IA',
   'ai_refine_subtitle':
@@ -2209,6 +2213,10 @@ const Map<String, String> _enTranslations = {
   'ai_outline_generate_all': 'Generate the whole course at once',
   'ai_outline_generate_direct': 'Generate directly without outline',
   'ai_outline_empty': 'The outline must contain at least one chapter.',
+  'ai_plan_generating_title': 'Outline in progress',
+  'ai_plan_ready_title': 'Course outline ready!',
+  'ai_plan_ready_subtitle': 'Tap to view and continue',
+  'ai_plan_open': 'View outline',
   'ai_refine_btn': 'Edit with AI',
   'ai_refine_title': 'AI Section Refinement',
   'ai_refine_subtitle':

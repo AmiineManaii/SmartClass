@@ -53,6 +53,29 @@ class _CourseSectionBuilderPageState
   /// Section currently asking ComfyUI for an illustration (button spinner).
   String? _imageLoadingKey;
 
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _sectionKeys = {};
+
+  void _scrollToSection(String sectionKey) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final key = _sectionKeys[sectionKey];
+      if (key?.currentContext != null) {
+        Scrollable.ensureVisible(
+          key!.currentContext!,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOutCubic,
+          alignment: 0.08,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   CourseSectionBuild get _build =>
       ref.read(courseSectionBuildProvider(widget.courseId).notifier);
 
@@ -378,6 +401,12 @@ class _CourseSectionBuilderPageState
       ref.read(provider.notifier).acknowledgeStreamError();
     });
 
+    ref.listen<String?>(provider.select((s) => s.streamingKey), (previous, next) {
+      if (next != null && next != previous) {
+        _scrollToSection(next);
+      }
+    });
+
     final bool allValidated =
         state.sections.isNotEmpty && state.remainingToValidate == 0;
 
@@ -500,86 +529,22 @@ class _CourseSectionBuilderPageState
       );
     }
 
-    final allValidated = state.remainingToValidate == 0;
     final notifier = ref.read(
       courseSectionBuildProvider(widget.courseId).notifier,
     );
 
     return ListView(
+      controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
       children: [
-        // Publication gate banner.
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: allValidated
-                ? colorScheme.secondaryContainer
-                : colorScheme.primaryContainer.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color:
-                  (allValidated ? colorScheme.secondary : colorScheme.primary)
-                      .withValues(alpha: 0.35),
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                allValidated ? Icons.verified_rounded : Icons.rule_rounded,
-                size: 22,
-                color: allValidated
-                    ? colorScheme.onSecondaryContainer
-                    : colorScheme.onPrimaryContainer,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  allValidated
-                      ? context.tr('ai_build_all_validated')
-                      : context.tr(
-                          'ai_build_remaining',
-                          args: {'count': '${state.remainingToValidate}'},
-                        ),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: allValidated
-                        ? colorScheme.onSecondaryContainer
-                        : colorScheme.onPrimaryContainer,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-              if (!allValidated) ...[
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: state.isStreaming || state.isGeneratingAll
-                      ? () => notifier.cancel()
-                      : () => notifier.generateAllRemaining(),
-                  icon: Icon(
-                    state.isGeneratingAll
-                        ? Icons.stop_circle_outlined
-                        : Icons.auto_awesome,
-                    size: 16,
-                  ),
-                  label: Text(
-                    state.isGeneratingAll
-                        ? 'Arrêter'
-                        : 'Tout générer',
-                  ),
-                  style: FilledButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    backgroundColor: state.isGeneratingAll
-                        ? colorScheme.error
-                        : colorScheme.primary,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
+        _buildProgressDashboard(context, state, notifier),
+        const SizedBox(height: 16),
         for (var index = 0; index < state.sections.length; index++) ...[
           _SectionCard(
+            key: _sectionKeys.putIfAbsent(
+              state.sections[index].sectionKey,
+              () => GlobalKey(),
+            ),
             index: index,
             section: state.sections[index],
             state: state,
@@ -598,15 +563,352 @@ class _CourseSectionBuilderPageState
             onImage: () => _chooseImageAction(state.sections[index]),
             onCancel: () => notifier.cancel(),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
         ],
       ],
+    );
+  }
+
+  Widget _buildProgressDashboard(
+    BuildContext context,
+    CourseSectionBuildState state,
+    CourseSectionBuild notifier,
+  ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final total = state.sections.length;
+    final validated = state.validatedCount;
+    final allValidated = total > 0 && state.remainingToValidate == 0;
+    final generated = state.sections
+        .where((s) => s.status == CourseSectionStatus.generated)
+        .length;
+    final pending = state.sections
+        .where((s) => s.status == CourseSectionStatus.pending)
+        .length;
+    final progress = total == 0 ? 0.0 : (validated / total).clamp(0.0, 1.0);
+    final activeStreamingKey = state.streamingKey;
+    final isGenerating = state.isStreaming || state.isGeneratingAll;
+    final activeSection = activeStreamingKey != null
+        ? state.section(activeStreamingKey)
+        : null;
+    final activeIndex = activeSection != null
+        ? state.sections.indexOf(activeSection)
+        : -1;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isGenerating
+            ? colorScheme.primaryContainer.withValues(alpha: 0.35)
+            : (allValidated
+                ? colorScheme.secondaryContainer.withValues(alpha: 0.35)
+                : colorScheme.surface),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isGenerating
+              ? colorScheme.primary.withValues(alpha: 0.55)
+              : (allValidated
+                  ? colorScheme.secondary.withValues(alpha: 0.5)
+                  : colorScheme.outlineVariant.withValues(alpha: 0.45)),
+          width: isGenerating ? 1.5 : 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isGenerating
+                ? colorScheme.primary.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row: Status icon + Description & Action Button
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: isGenerating
+                      ? colorScheme.primary
+                      : (allValidated
+                          ? colorScheme.secondary
+                          : colorScheme.surfaceContainerHighest),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: isGenerating
+                      ? const SmartLoader.small(customSize: 18, color: Colors.white)
+                      : Icon(
+                          allValidated
+                              ? Icons.verified_rounded
+                              : Icons.auto_awesome_rounded,
+                          size: 20,
+                          color: allValidated
+                              ? colorScheme.onSecondary
+                              : colorScheme.primary,
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isGenerating
+                          ? 'Génération en cours...'
+                          : (allValidated
+                              ? 'Cours complet prêt !'
+                              : 'Construction du cours'),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: isGenerating
+                            ? colorScheme.primary
+                            : colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isGenerating && activeSection != null
+                          ? 'Section ${activeIndex + 1}/$total : "${activeSection.title}"'
+                          : (allValidated
+                              ? 'Toutes les sections sont rédigées et validées'
+                              : '$pending section(s) restante(s) à générer'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (isGenerating)
+                FilledButton.icon(
+                  onPressed: () => notifier.cancel(),
+                  icon: const Icon(Icons.stop_rounded, size: 16),
+                  label: const Text('Arrêter'),
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: colorScheme.error,
+                    foregroundColor: colorScheme.onError,
+                  ),
+                )
+              else if (!allValidated)
+                FilledButton.icon(
+                  onPressed: () => notifier.generateAllRemaining(),
+                  icon: const Icon(Icons.bolt_rounded, size: 16),
+                  label: const Text('Tout générer'),
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                  ),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: () => context.push('/courses/${widget.courseId}'),
+                  icon: const Icon(Icons.menu_book_rounded, size: 16),
+                  label: const Text('Lire'),
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: colorScheme.secondary,
+                    foregroundColor: colorScheme.onSecondary,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Progress bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: colorScheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                allValidated ? colorScheme.secondary : colorScheme.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Stats row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStatBadge(
+                icon: Icons.check_circle_rounded,
+                color: Colors.green.shade700,
+                label: '$validated validée(s)',
+              ),
+              if (activeSection != null)
+                _buildStatBadge(
+                  icon: Icons.bolt_rounded,
+                  color: colorScheme.primary,
+                  label: '1 en cours',
+                ),
+              if (generated > 0)
+                _buildStatBadge(
+                  icon: Icons.edit_note_rounded,
+                  color: Colors.amber.shade800,
+                  label: '$generated à relire',
+                ),
+              _buildStatBadge(
+                icon: Icons.hourglass_empty_rounded,
+                color: colorScheme.onSurfaceVariant,
+                label: '$pending en attente',
+              ),
+            ],
+          ),
+          if (total > 0) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 10),
+            // Interactive Stepper Strip
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (var i = 0; i < state.sections.length; i++) ...[
+                    _buildSectionNavChip(
+                      context: context,
+                      index: i,
+                      section: state.sections[i],
+                      isCurrent:
+                          state.streamingKey == state.sections[i].sectionKey,
+                      onTap: () =>
+                          _scrollToSection(state.sections[i].sectionKey),
+                    ),
+                    if (i < state.sections.length - 1)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          size: 16,
+                          color: colorScheme.outlineVariant,
+                        ),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatBadge({
+    required IconData icon,
+    required Color color,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionNavChip({
+    required BuildContext context,
+    required int index,
+    required CourseSectionEntry section,
+    required bool isCurrent,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isValidated = section.status == CourseSectionStatus.validated;
+    final isGenerated = section.status == CourseSectionStatus.generated;
+
+    Color bg;
+    Color fg;
+    Widget iconWidget;
+
+    if (isCurrent) {
+      bg = colorScheme.primary;
+      fg = colorScheme.onPrimary;
+      iconWidget =
+          const SmartLoader.small(customSize: 12, color: Colors.white);
+    } else if (isValidated) {
+      bg = Colors.green.shade50;
+      fg = Colors.green.shade800;
+      iconWidget = Icon(Icons.check_circle_rounded, size: 14, color: fg);
+    } else if (isGenerated) {
+      bg = Colors.amber.shade50;
+      fg = Colors.amber.shade800;
+      iconWidget = Icon(Icons.edit_note_rounded, size: 14, color: fg);
+    } else {
+      bg = colorScheme.surfaceContainerHighest.withValues(alpha: 0.6);
+      fg = colorScheme.onSurfaceVariant;
+      iconWidget = Icon(Icons.hourglass_empty_rounded, size: 13, color: fg);
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isCurrent
+                ? colorScheme.primary
+                : (isValidated
+                    ? Colors.green.shade300
+                    : colorScheme.outlineVariant.withValues(alpha: 0.4)),
+            width: isCurrent ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            iconWidget,
+            const SizedBox(width: 5),
+            Text(
+              'S${index + 1}',
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: fg,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
 class _SectionCard extends StatelessWidget {
   const _SectionCard({
+    super.key,
     required this.index,
     required this.section,
     required this.state,
@@ -628,47 +930,63 @@ class _SectionCard extends StatelessWidget {
   final Future<void> Function() onImage;
   final VoidCallback onCancel;
 
-  Color _statusColor(ColorScheme colors) {
+  Color _statusColor(ColorScheme colors, bool isStreaming) {
+    if (isStreaming) {
+      return colors.primary;
+    }
     switch (section.status) {
       case CourseSectionStatus.validated:
-        return colors.secondaryContainer;
+        return Colors.green.shade50;
       case CourseSectionStatus.generated:
-        return colors.primaryContainer;
+        return const Color(0xFFFEF3C7);
       case CourseSectionStatus.pending:
         return colors.surfaceContainerHighest;
     }
   }
 
-  Color _statusTextColor(ColorScheme colors) {
+  Color _statusTextColor(ColorScheme colors, bool isStreaming) {
+    if (isStreaming) {
+      return colors.onPrimary;
+    }
     switch (section.status) {
       case CourseSectionStatus.validated:
-        return colors.onSecondaryContainer;
+        return Colors.green.shade800;
       case CourseSectionStatus.generated:
-        return colors.onPrimaryContainer;
+        return const Color(0xFF92400E);
       case CourseSectionStatus.pending:
         return colors.onSurfaceVariant;
     }
   }
 
-  IconData _statusIcon() {
+  IconData _statusIcon(bool isStreaming) {
+    if (isStreaming) {
+      return Icons.bolt_rounded;
+    }
     switch (section.status) {
       case CourseSectionStatus.validated:
         return Icons.check_circle_rounded;
       case CourseSectionStatus.generated:
         return Icons.rate_review_outlined;
       case CourseSectionStatus.pending:
-        return Icons.pending_actions_outlined;
+        return Icons.hourglass_empty_rounded;
     }
   }
 
-  String _statusLabel(BuildContext context) {
+  String _statusLabel(
+    BuildContext context, {
+    required bool isStreaming,
+    required bool isNext,
+  }) {
+    if (isStreaming) {
+      return 'EN COURS DE RÉDACTION...';
+    }
     switch (section.status) {
       case CourseSectionStatus.validated:
-        return context.tr('ai_build_status_validated');
+        return 'Validée & Prête';
       case CourseSectionStatus.generated:
-        return context.tr('ai_build_status_generated');
+        return 'Rédigée (À valider)';
       case CourseSectionStatus.pending:
-        return context.tr('ai_build_status_pending');
+        return isNext ? 'Prochaine en attente' : 'En attente';
     }
   }
 
@@ -678,90 +996,135 @@ class _SectionCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final isStreaming = state.streamingKey == section.sectionKey;
     final otherBusy = state.isStreaming && !isStreaming;
+    final isValidated = section.status == CourseSectionStatus.validated;
+    final isGenerated = section.status == CourseSectionStatus.generated;
+    final isPending = section.status == CourseSectionStatus.pending;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
+    final pendingSections = state.sections
+        .where((s) => s.status == CourseSectionStatus.pending)
+        .toList();
+    final isNext = isPending &&
+        pendingSections.isNotEmpty &&
+        pendingSections.first.sectionKey == section.sectionKey;
+
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 300),
+      opacity: (isPending && (otherBusy || state.isGeneratingAll)) ? 0.72 : 1.0,
+      child: Container(
+        decoration: BoxDecoration(
           color: isStreaming
-              ? colorScheme.primary.withValues(alpha: 0.55)
-              : colorScheme.outlineVariant.withValues(alpha: 0.45),
-          width: isStreaming ? 1.5 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+              ? colorScheme.primaryContainer.withValues(alpha: 0.12)
+              : (isValidated
+                  ? Colors.green.withValues(alpha: 0.02)
+                  : colorScheme.surface),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isStreaming
+                ? colorScheme.primary
+                : (isValidated
+                    ? Colors.green.shade400.withValues(alpha: 0.5)
+                    : (isGenerated
+                        ? Colors.amber.shade400.withValues(alpha: 0.6)
+                        : colorScheme.outlineVariant.withValues(alpha: 0.45))),
+            width: isStreaming ? 2.0 : (isValidated ? 1.3 : 1.0),
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header: badge + status chip + duration.
-            Row(
-              children: [
-                Flexible(
-                  child: Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          context.tr(
-                            'ai_build_section_num',
-                            args: {'n': (index + 1).toString().padLeft(2, '0')},
+          boxShadow: [
+            BoxShadow(
+              color: isStreaming
+                  ? colorScheme.primary.withValues(alpha: 0.15)
+                  : Colors.black.withValues(alpha: 0.03),
+              blurRadius: isStreaming ? 12 : 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header: badge + status chip + duration.
+              Row(
+                children: [
+                  Flexible(
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
                           ),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 11,
-                            letterSpacing: 0.5,
-                            color: colorScheme.onPrimaryContainer,
+                          decoration: BoxDecoration(
+                            color: isStreaming
+                                ? colorScheme.primary
+                                : colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _statusColor(colorScheme),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _statusIcon(),
-                              size: 13,
-                              color: _statusTextColor(colorScheme),
+                          child: Text(
+                            context.tr(
+                              'ai_build_section_num',
+                              args: {'n': (index + 1).toString().padLeft(2, '0')},
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _statusLabel(context),
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: _statusTextColor(colorScheme),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11,
+                              letterSpacing: 0.5,
+                              color: isStreaming
+                                  ? colorScheme.onPrimary
+                                  : colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _statusColor(colorScheme, isStreaming),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isStreaming) ...[
+                                const SmartLoader.small(
+                                  customSize: 12,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 5),
+                              ] else ...[
+                                Icon(
+                                  _statusIcon(isStreaming),
+                                  size: 13,
+                                  color: _statusTextColor(
+                                    colorScheme,
+                                    isStreaming,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                              ],
+                              Text(
+                                _statusLabel(
+                                  context,
+                                  isStreaming: isStreaming,
+                                  isNext: isNext,
+                                ),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: _statusTextColor(
+                                    colorScheme,
+                                    isStreaming,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -1007,8 +1370,9 @@ class _SectionCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 /// Five web image candidates, tappable to insert into the section.

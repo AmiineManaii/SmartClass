@@ -136,6 +136,7 @@ export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
     searchSectionImagesUseCase,
     applySectionImageUseCase,
     sectionImageJobService,
+    pdfExtractor,
   );
 
   let authenticateMiddleware = options.authenticateMiddleware;

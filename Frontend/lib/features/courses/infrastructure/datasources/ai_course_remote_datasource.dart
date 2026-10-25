@@ -26,6 +26,8 @@ class AiCourseRemoteDataSource {
     String? subject,
     String? sourceText,
     String? url,
+    List<int>? pdfBytes,
+    String? pdfName,
     bool examples = true,
     bool mermaid = true,
     bool webImages = false,
@@ -34,10 +36,29 @@ class AiCourseRemoteDataSource {
     bool generateImages = false,
   }) async {
     final cleanSubject = subject?.trim();
-    final res = await _client.post<dynamic>(
-      '$_base/ai/courses/generate-outline',
-      receiveTimeout: const Duration(minutes: 3),
-      data: {
+    dynamic requestData;
+    if (pdfBytes != null && pdfName != null) {
+      requestData = FormData.fromMap({
+        'mode': mode,
+        'level': level,
+        'difficulty': difficulty,
+        'format': format,
+        if (cleanSubject != null && cleanSubject.isNotEmpty) ...{
+          'subject': cleanSubject,
+          'topic': cleanSubject,
+        },
+        'file': MultipartFile.fromBytes(pdfBytes, filename: pdfName),
+        'extras': jsonEncode({
+          'examples': examples,
+          'mermaid': mermaid,
+          'webImages': webImages,
+          'webSearch': webSearch,
+          'thinking': thinking,
+          'generateImages': generateImages,
+        }),
+      });
+    } else {
+      requestData = {
         'mode': mode,
         'level': level,
         'difficulty': difficulty,
@@ -59,7 +80,12 @@ class AiCourseRemoteDataSource {
           'thinking': thinking,
           'generateImages': generateImages,
         },
-      },
+      };
+    }
+    final res = await _client.post<dynamic>(
+      '$_base/ai/courses/generate-outline',
+      receiveTimeout: const Duration(minutes: 3),
+      data: requestData,
     );
     final env = apiEnvelope(res);
     final outlineData = env['outline'];

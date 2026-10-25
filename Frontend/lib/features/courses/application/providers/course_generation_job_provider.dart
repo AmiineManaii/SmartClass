@@ -236,12 +236,14 @@ class CourseGenerationJob extends StateNotifier<GenerationJobState> {
               level: params.level,
               difficulty: params.difficulty,
               format: params.format,
+              outline: params.outline,
             );
         _ref.invalidate(myGeneratedCoursesProvider);
         if (!mounted) return;
         state = state.copyWith(courseId: saved.id, savedContent: content);
-      } catch (_) {
-        // Handled by the page (manual retry), nothing to show here.
+      } catch (e) {
+        if (!mounted) return;
+        state = state.copyWith(saveError: e);
       }
     }
 
@@ -391,6 +393,7 @@ class CourseGenerationJob extends StateNotifier<GenerationJobState> {
             level: params.level,
             difficulty: params.difficulty,
             format: params.format,
+            outline: params.outline,
           );
       // Drop the replaced auto-saved draft (best effort: a failure here
       // only leaves one extra draft, never loses content).

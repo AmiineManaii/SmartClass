@@ -13,6 +13,7 @@ import '../../../../core/widgets/app_picker_row.dart';
 import '../../../../core/widgets/smart_loader.dart';
 import '../../application/providers/ai_course_options_provider.dart';
 import '../../application/providers/course_generation_job_provider.dart';
+import '../../application/providers/course_plan_job_provider.dart';
 import '../../application/providers/courses_provider.dart';
 import '../../domain/entities/course_outline.dart';
 import '../widgets/ai_section_refine_dialog.dart';
@@ -84,7 +85,6 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
   
   /// Whether the current outline has been saved as a draft.
   bool _outlineSaved = false;
-  bool _generatingOutline = false;
   bool _savingPlan = false;
   final _scrollController = ScrollController();
 
@@ -143,6 +143,15 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
       setState(() {
         _pdfName = file.name;
         _pdfBytes = bytes;
+        if (_topicController.text.trim().isEmpty) {
+          final clean = file.name
+              .replaceAll(RegExp(r'\.[^/.]+$'), '')
+              .replaceAll(RegExp(r'[_]+'), ' ')
+              .trim();
+          if (clean.isNotEmpty) {
+            _topicController.text = clean;
+          }
+        }
       });
     } catch (_) {
       if (!mounted) return;
@@ -171,78 +180,35 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
     return true;
   }
 
-  /// Rapidly proposes a structured outline in ~3s for the teacher to validate.
+  /// Rapidly proposes a structured outline with background execution & timer.
   Future<void> _generateOutline() async {
     if (!_validateInputs()) return;
     final topic = _topicController.text.trim();
     final url = _urlController.text.trim();
+    final cleanPdfSubject = _pdfName != null
+        ? _pdfName!
+            .replaceAll(RegExp(r'\.[^/.]+$'), '')
+            .replaceAll(RegExp(r'[_]+'), ' ')
+            .trim()
+        : '';
     final subject = switch (_mode) {
-      'pdf' => _pdfName ?? '',
+      'pdf' => topic.isNotEmpty ? topic : (cleanPdfSubject.isNotEmpty ? cleanPdfSubject : (_pdfName ?? '')),
       'url' => url,
       _ => topic,
     };
 
-    setState(() => _generatingOutline = true);
-    try {
-      final remote = ref.read(aiCourseRemoteDataSourceProvider);
-      final outline = await remote.generateOutline(
-        mode: _mode,
-        level: _level,
-        difficulty: _difficulty,
-        format: _format,
-        subject: subject,
-        url: url.isNotEmpty ? url : null,
-        examples: _exExamples,
-        mermaid: _exMermaid,
-        webImages: false,
-        webSearch: false,
-        thinking: false,
-        generateImages: false,
-      );
-
-      if (!mounted) return;
-
-      // Sauvegarde automatique immédiate dans les brouillons
-      try {
-        final draftTitle = outline.title.isEmpty ? subject : outline.title;
-        await ref.read(generatedCoursesDataSourceProvider).saveDraft(
-          title: draftTitle,
-          subject: subject.isEmpty ? null : subject,
-          content:
-              '# $draftTitle\n\n> Plan validé : les chapitres sont rédigés un par un dans le constructeur de sections.',
-          level: _level,
-          difficulty: _difficulty,
-          format: _format,
-          outline: outline,
-        );
-        ref.invalidate(myGeneratedCoursesProvider);
-        if (mounted) {
-          setState(() {
-            _outline = outline;
-            _outlineSaved = true;
-            _generatingOutline = false;
-          });
-          context.showSuccessToast(
-            'Plan généré en ~3s et enregistré dans vos brouillons !',
-          );
-        }
-      } catch (saveError) {
-        if (mounted) {
-          setState(() {
-            _outline = outline;
-            _outlineSaved = false;
-            _generatingOutline = false;
-          });
-          context.showSuccessToast(
-            'Plan proposé en ~3s ! Vous pouvez réordonner ou modifier les chapitres.',
-          );
-        }
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _generatingOutline = false);
-      _showFailure(e);
-    }
+    ref.read(coursePlanJobProvider.notifier).start(
+      mode: _mode,
+      level: _level,
+      difficulty: _difficulty,
+      format: _format,
+      subject: subject,
+      url: url.isNotEmpty ? url : null,
+      pdfBytes: _mode == 'pdf' ? _pdfBytes : null,
+      pdfName: _mode == 'pdf' ? _pdfName : null,
+      examples: _exExamples,
+      mermaid: _exMermaid,
+    );
   }
 
   /// Starts full course background generation (with or without outline).
@@ -253,8 +219,14 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
 
     final topic = _topicController.text.trim();
     final url = _urlController.text.trim();
+    final cleanPdfSubject = _pdfName != null
+        ? _pdfName!
+            .replaceAll(RegExp(r'\.[^/.]+$'), '')
+            .replaceAll(RegExp(r'[_]+'), ' ')
+            .trim()
+        : '';
     final subject = switch (_mode) {
-      'pdf' => _pdfName ?? '',
+      'pdf' => topic.isNotEmpty ? topic : (cleanPdfSubject.isNotEmpty ? cleanPdfSubject : (_pdfName ?? '')),
       'url' => url,
       _ => topic,
     };
@@ -263,7 +235,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
       _validated = false;
       _editedContent = null;
     });
-    await ref
+    final future = ref
         .read(courseGenerationJobProvider.notifier)
         .start(
           GenerationJobParams(
@@ -284,6 +256,16 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
             outline: useOutline ? _outline : null,
           ),
         );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+    await future;
   }
 
   /// Persists the teacher-validated plan as a DRAFT and opens the
@@ -297,13 +279,24 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
     }
 
     final url = _urlController.text.trim();
+    final cleanPdfSubject = _pdfName != null
+        ? _pdfName!
+            .replaceAll(RegExp(r'\.[^/.]+$'), '')
+            .replaceAll(RegExp(r'[_]+'), ' ')
+            .trim()
+        : '';
+    final topic = _topicController.text.trim();
     final subject = switch (_mode) {
-      'pdf' => _pdfName ?? outline.title,
+      'pdf' => topic.isNotEmpty
+          ? topic
+          : (outline.title.isNotEmpty
+              ? outline.title
+              : (cleanPdfSubject.isNotEmpty ? cleanPdfSubject : (_pdfName ?? ''))),
       'url' => url.isEmpty ? outline.title : url,
       _ =>
-        _topicController.text.trim().isEmpty
+        topic.isEmpty
             ? outline.title
-            : _topicController.text.trim(),
+            : topic,
     };
     setState(() => _savingPlan = true);
     try {
@@ -321,6 +314,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
           );
       ref.invalidate(myGeneratedCoursesProvider);
       if (!mounted) return;
+      ref.read(coursePlanJobProvider.notifier).markOutlineSaved(saved.id);
       setState(() {
         _savingPlan = false;
         _outlineSaved = true; // Outline is now saved with the draft
@@ -481,6 +475,49 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
     final job = ref.watch(courseGenerationJobProvider);
     final displayed = _displayedContent(job);
     final isDesktop = context.screenWidth >= 1024;
+    final planJob = ref.watch(coursePlanJobProvider);
+
+    // Synchronize outline from background job if page was re-entered
+    if (_outline == null &&
+        planJob.outline != null &&
+        planJob.status == CoursePlanJobStatus.completed) {
+      _outline = planJob.outline;
+      _outlineSaved = planJob.outlineSaved;
+      if (_topicController.text.trim().isEmpty && planJob.subject.isNotEmpty) {
+        _topicController.text = planJob.subject;
+      }
+    }
+
+    ref.listen<CoursePlanJobStatus>(
+      coursePlanJobProvider.select((s) => s.status),
+      (prev, next) {
+        if (next == CoursePlanJobStatus.error) {
+          final error = ref.read(coursePlanJobProvider).error;
+          if (error != null) _showFailure(error);
+        } else if (next == CoursePlanJobStatus.completed &&
+            prev != CoursePlanJobStatus.completed) {
+          final outline = ref.read(coursePlanJobProvider).outline;
+          if (outline != null) {
+            setState(() {
+              _outline = outline;
+              _outlineSaved = ref.read(coursePlanJobProvider).outlineSaved;
+            });
+            context.showSuccessToast(
+              'Plan généré et enregistré dans vos brouillons !',
+            );
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_scrollController.hasClients) {
+                _scrollController.animateTo(
+                  _scrollController.position.maxScrollExtent,
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.easeOutCubic,
+                );
+              }
+            });
+          }
+        }
+      },
+    );
 
     // Stream failure or manual-save failure surfaces here (the job has no
     // BuildContext of its own). Cancellation goes silently back to idle.
@@ -620,7 +657,8 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                         _buildConfigForm(context, isDesktop: false, job: job),
                         if (displayed != null ||
                             _outline != null ||
-                            job.status == GenerationJobStatus.running) ...[
+                            job.status == GenerationJobStatus.running ||
+                            job.status == GenerationJobStatus.error) ...[
                           const SizedBox(height: 20),
                           _buildStudioCanvas(
                             context,
@@ -647,6 +685,8 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
     final colorScheme = theme.colorScheme;
     final statusAsync = ref.watch(aiModelStatusProvider);
     final running = job.status == GenerationJobStatus.running;
+    final planJob = ref.watch(coursePlanJobProvider);
+    final isGeneratingOutline = planJob.status == CoursePlanJobStatus.running;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -878,6 +918,38 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                 ],
               ),
             ),
+            const SizedBox(height: 12),
+            Text(
+              context.tr('topic_label'),
+              style: theme.textTheme.labelLarge,
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+                ),
+              ),
+              child: TextField(
+                controller: _topicController,
+                maxLines: 2,
+                minLines: 1,
+                style: theme.textTheme.bodyMedium,
+                decoration: InputDecoration(
+                  hintText: 'Titre ou consignes spécifiques (optionnel)',
+                  hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.outline,
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: const EdgeInsets.all(8),
+                ),
+              ),
+            ),
           ],
         ],
 
@@ -1068,7 +1140,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
 
         const SizedBox(height: 20),
 
-        if (_outline != null && isDesktop) ...[
+        if (_outline != null) ...[
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -1085,7 +1157,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
             child: Row(
               children: [
                 Icon(
-                  _outlineSaved ? Icons.save_rounded : Icons.schedule_rounded,
+                  _outlineSaved ? Icons.check_circle_rounded : Icons.schedule_rounded,
                   color: _outlineSaved ? colorScheme.tertiary : colorScheme.secondary,
                   size: 20,
                 ),
@@ -1096,8 +1168,8 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                     children: [
                       Text(
                         _outlineSaved
-                            ? 'Plan sauvegardé dans le brouillon'
-                            : 'Plan non sauvegardé — cliquez "Construire section par section" pour sauvegarder',
+                            ? 'Plan proposé & sauvegardé'
+                            : 'Plan proposé (non sauvegardé)',
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: _outlineSaved
@@ -1106,9 +1178,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                         ),
                       ),
                       Text(
-                        _outlineSaved
-                            ? 'Le plan est sauvegardé dans le brouillon et prêt pour la construction par sections.'
-                            : 'Les modifications du plan ne seront pas conservées tant qu\'il n\'est pas sauvegardé.',
+                        'Consultez et validez le plan ci-dessous avant la génération du cours.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                           fontSize: 11,
@@ -1117,30 +1187,63 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
                     ],
                   ),
                 ),
-                if (!_outlineSaved)
-                  TextButton.icon(
-                    onPressed: _buildSectionBySection,
-                    icon: const Icon(Icons.save_rounded, size: 16),
-                    label: const Text('Sauvegarder le plan'),
-                  )
-                else
-                  TextButton(
-                    onPressed: () => setState(() => _outline = null),
-                    child: const Text('Modifier les options'),
-                  ),
+                TextButton(
+                  onPressed: () {
+                    if (_scrollController.hasClients) {
+                      _scrollController.animateTo(
+                        _scrollController.position.maxScrollExtent,
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeOutCubic,
+                      );
+                    }
+                  },
+                  child: const Text('Voir le plan'),
+                ),
               ],
             ),
           ),
-        ] else if (_outline == null || !isDesktop) ...[
+          const SizedBox(height: 8),
+          FilledButton.icon(
+            onPressed: running ? null : () => _generate(useOutline: true),
+            icon: const Icon(Icons.auto_awesome_rounded, size: 20),
+            label: const Text(
+              'Générer le cours complet depuis ce plan',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
+              minimumSize: const Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () {
+              setState(() => _outline = null);
+              ref.read(coursePlanJobProvider.notifier).reset();
+            },
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Modifier les options ou recommencer'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ] else ...[
           // Primary Outline Validation Button (Recommended: 3s outline preview)
           FilledButton.icon(
-            onPressed: running || _generatingOutline ? null : _generateOutline,
-            icon: _generatingOutline
+            onPressed: running || isGeneratingOutline ? null : _generateOutline,
+            icon: isGeneratingOutline
                 ? const SmartLoader.small(customSize: 18, color: Colors.white)
                 : const Icon(Icons.schema_rounded, size: 20),
             label: Text(
-              _generatingOutline
-                  ? context.tr('ai_outline_generating')
+              isGeneratingOutline
+                  ? '⏱️ Élaboration du plan (${planJob.elapsedSec}s)...'
                   : '💡 Proposer le plan en 3s (Recommandé)',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
@@ -1153,10 +1256,22 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
               ),
             ),
           ),
+          if (isGeneratingOutline) ...[
+            const SizedBox(height: 6),
+            Text(
+              '💡 La génération tourne en tâche de fond. Vous pouvez naviguer ailleurs dans l\'application.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           // Direct generation button (without outline)
           OutlinedButton.icon(
-            onPressed: running || _generatingOutline
+            onPressed: running || isGeneratingOutline
                 ? null
                 : () => _generate(useOutline: false),
             icon: const Icon(Icons.bolt_rounded, size: 18),
@@ -1200,42 +1315,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
     final running = job.status == GenerationJobStatus.running;
     final hasError = job.status == GenerationJobStatus.error;
 
-    // 1. Proposed Outline state
-    if (_outline != null) {
-      return CourseOutlineEditorCard(
-        outline: _outline!,
-        generating: running,
-        onOutlineChanged: (o) => setState(() => _outline = o),
-        onGenerateFullCourse: () => _generate(useOutline: true),
-        onBuildSections: _buildSectionBySection,
-        building: _savingPlan,
-        onRegenerateOutline: _generateOutline,
-        onCancel: () => setState(() => _outline = null),
-        outlineSaved: _outlineSaved,
-      );
-    }
-
-    // 2. Running progress state
-    if (running) {
-      return _LiveProgressCard(
-        elapsedSec: job.elapsedSec,
-        liveChars: job.chars,
-        preview: job.preview,
-        phase: job.phase,
-        onCancel: () => ref.read(courseGenerationJobProvider.notifier).cancel(),
-      );
-    }
-
-    // 3. Error state - afficher l'erreur inline
-    if (hasError) {
-      return _GenerationErrorCard(
-        error: job.error,
-        onRetry: () => _generate(useOutline: _outline != null),
-        onCancel: () => ref.read(courseGenerationJobProvider.notifier).reset(),
-      );
-    }
-
-    // 4. Finished result state
+    // 1. Finished result state (takes precedence once full course is generated)
     if (displayed != null) {
       if (_editing) {
         return _EditorCard(
@@ -1268,7 +1348,48 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
       );
     }
 
-    // 4. Idle state: no extra canvas on mobile or desktop if no models needed
+    // 2. Running progress state (generation in progress)
+    if (running) {
+      return _LiveProgressCard(
+        elapsedSec: job.elapsedSec,
+        liveChars: job.chars,
+        preview: job.preview,
+        phase: job.phase,
+        onCancel: () => ref.read(courseGenerationJobProvider.notifier).cancel(),
+      );
+    }
+
+    // 3. Error state - display error card with retry
+    if (hasError) {
+      return _GenerationErrorCard(
+        error: job.error,
+        onRetry: () => _generate(useOutline: _outline != null),
+        onCancel: () => ref.read(courseGenerationJobProvider.notifier).reset(),
+      );
+    }
+
+    // 4. Proposed Outline state (shown when outline is ready for review before full generation)
+    if (_outline != null) {
+      return CourseOutlineEditorCard(
+        outline: _outline!,
+        generating: running,
+        onOutlineChanged: (o) {
+          setState(() => _outline = o);
+          ref.read(coursePlanJobProvider.notifier).updateOutline(o);
+        },
+        onGenerateFullCourse: () => _generate(useOutline: true),
+        onBuildSections: _buildSectionBySection,
+        building: _savingPlan,
+        onRegenerateOutline: _generateOutline,
+        onCancel: () {
+          setState(() => _outline = null);
+          ref.read(coursePlanJobProvider.notifier).reset();
+        },
+        outlineSaved: _outlineSaved,
+      );
+    }
+
+    // 5. Idle state: no extra canvas on mobile or desktop if no models needed
     return const SizedBox.shrink();
   }
 }

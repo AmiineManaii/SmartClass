@@ -1,4 +1,4 @@
-export type GenerateMode = 'topic' | 'text' | 'url';
+export type GenerateMode = 'topic' | 'text' | 'url' | 'pdf';
 
 export type GenerateLevel = 'concis' | 'equilibre' | 'detaille';
 

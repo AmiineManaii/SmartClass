@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const modeSchema = z.enum(['topic', 'text', 'url']);
+const modeSchema = z.enum(['topic', 'text', 'url', 'pdf']);
 const levelSchema = z.enum(['concis', 'equilibre', 'detaille']);
 const difficultySchema = z.enum(['facile', 'moyen', 'difficile']);
 const formatSchema = z.enum(['resume', 'flashcards', 'carte-mentale']);
@@ -201,6 +201,20 @@ export const fromUrlBodySchema = z
   })
   .strict();
 
+const outlinePreprocess = z.preprocess(
+  (val) => {
+    if (typeof val === 'string') {
+      try {
+        return JSON.parse(val) as unknown;
+      } catch {
+        return val;
+      }
+    }
+    return val;
+  },
+  courseOutlineSchema.optional(),
+);
+
 /// Text fields of the multipart `improve-pdf` body (the file itself is
 /// handled by multer, not Zod).
 export const improvePdfFieldsSchema = z
@@ -209,6 +223,7 @@ export const improvePdfFieldsSchema = z
     difficulty: difficultySchema.default('moyen'),
     format: formatSchema.default('resume'),
     extras: extrasSchema,
+    outline: outlinePreprocess,
   })
   .strict();
 

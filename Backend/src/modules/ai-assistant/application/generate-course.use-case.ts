@@ -42,7 +42,7 @@ export const extrasForMode = (
   const sourceDefaults: Partial<GenerateExtras> =
     mode === 'url'
       ? { webSearch: true }
-      : mode === 'text'
+      : mode === 'text' || mode === 'pdf'
         ? { thinking: true, webSearch: true }
         : {};
   return { ...DEFAULT_EXTRAS, ...sourceDefaults, ...extras };
@@ -217,7 +217,7 @@ export class GenerateCourseUseCase {
       if (!subject && fetched.title) subject = fetched.title;
     }
 
-    if ((dto.mode === 'text' || dto.mode === 'url') && (!sourceText || sourceText.length < 100)) {
+    if ((dto.mode === 'text' || dto.mode === 'url' || dto.mode === 'pdf') && (!sourceText || sourceText.length < 100)) {
       throw new ValidationError('Source content is too short', [
         {
           path: dto.mode === 'url' ? 'url' : 'sourceText',

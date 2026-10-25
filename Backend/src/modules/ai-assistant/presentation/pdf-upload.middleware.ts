@@ -70,3 +70,43 @@ export const pdfUploadMiddleware = (
     next();
   });
 };
+
+/**
+ * Optional PDF upload middleware: if multipart and a `file` field is provided,
+ * validates and populates req.file; if not provided or JSON, passes through without error.
+ */
+export const optionalPdfUploadMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
+  const contentType = req.headers['content-type'] || '';
+  if (!contentType.includes('multipart/form-data')) {
+    next();
+    return;
+  }
+  upload.single('file')(req, res, (error: unknown) => {
+    if (error) {
+      if (error instanceof ValidationError) {
+        next(error);
+        return;
+      }
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code: string }).code === 'LIMIT_FILE_SIZE'
+      ) {
+        next(
+          new ValidationError('PDF file too large', [
+            { path: 'file', message: 'Maximum size is 25 MB' },
+          ]),
+        );
+        return;
+      }
+      next(error);
+      return;
+    }
+    next();
+  });
+};

@@ -47,6 +47,7 @@ import '../features/admin/presentation/pages/class_create_page.dart';
 import '../features/admin/presentation/pages/class_students_page.dart';
 import '../features/admin/presentation/pages/class_teachers_page.dart';
 import '../core/widgets/web_main_scaffold.dart';
+import '../features/courses/presentation/widgets/global_ai_plan_progress_bar.dart';
 
 /// Notifier stable qui force GoRouter à réévaluer `redirect`
 /// sans recréer l'instance (sinon la navigation est réinitialisée).
@@ -644,7 +645,12 @@ class AppProviders extends ConsumerWidget {
           data: MediaQuery.of(
             context,
           ).copyWith(textScaler: TextScaler.linear(config.textScaleFactor)),
-          child: child ?? const SizedBox.shrink(),
+          child: Stack(
+            children: [
+              child ?? const SizedBox.shrink(),
+              const GlobalAiPlanProgressBar(),
+            ],
+          ),
         );
       },
     );
