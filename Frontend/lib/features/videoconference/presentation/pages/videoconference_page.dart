@@ -239,58 +239,27 @@ class _VideoconferencePageState extends ConsumerState<VideoconferencePage>
                 if (isTeacher) ...[
                   const SizedBox(width: 24),
                   ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 320),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF122675),
-                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: const Icon(Icons.videocam_rounded, size: 18),
-                          label: const Text(
-                            'Lancer un direct',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                          onPressed: () => _openScheduleDialog(liveNow: true),
+                    constraints: const BoxConstraints(maxWidth: 250),
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF122675),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(height: 8),
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: Colors.white.withValues(alpha: 0.12),
-                            foregroundColor: Colors.white,
-                            side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.35),
-                              width: 1,
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: const Icon(Icons.calendar_today_rounded, size: 16),
-                          label: const Text(
-                            'Programmer une séance',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                          onPressed: () => _openScheduleDialog(liveNow: false),
+                      ),
+                      icon: const Icon(Icons.calendar_month_rounded, size: 18),
+                      label: const Text(
+                        'Programmer une séance',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
                         ),
-                      ],
+                      ),
+                      onPressed: () => _openScheduleDialog(liveNow: false),
                     ),
                   ),
                 ],
@@ -317,59 +286,26 @@ class _VideoconferencePageState extends ConsumerState<VideoconferencePage>
                 _buildFeatureChipsRow(),
                 if (isTeacher) ...[
                   const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF122675),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: const Icon(Icons.videocam_rounded, size: 17),
-                          label: const Text(
-                            'Lancer un direct',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                          onPressed: () => _openScheduleDialog(liveNow: true),
-                        ),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF122675),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: Colors.white.withValues(alpha: 0.12),
-                            foregroundColor: Colors.white,
-                            side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.35),
-                              width: 1,
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: const Icon(Icons.calendar_today_rounded, size: 15),
-                          label: const Text(
-                            'Programmer',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                          onPressed: () => _openScheduleDialog(liveNow: false),
-                        ),
+                    ),
+                    icon: const Icon(Icons.calendar_month_rounded, size: 16),
+                    label: const Text(
+                      'Programmer une séance',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
                       ),
-                    ],
+                    ),
+                    onPressed: () => _openScheduleDialog(liveNow: false),
                   ),
                 ],
               ],

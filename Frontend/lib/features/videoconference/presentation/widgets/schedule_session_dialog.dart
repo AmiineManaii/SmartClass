@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/widgets/app_button.dart';
 import '../../../courses/application/providers/courses_provider.dart';
 import '../../../courses/domain/entities/course_entry.dart';
 import '../../application/videoconference_providers.dart';
@@ -54,8 +53,8 @@ class ScheduleSessionDialog extends ConsumerStatefulWidget {
           clipBehavior: Clip.antiAlias,
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: 540,
-              maxHeight: screenSize.height * 0.90,
+              maxWidth: isTabletOrDesktop ? 600 : double.infinity,
+              maxHeight: screenSize.height * 0.88,
             ),
             child: ScheduleSessionDialog(
               initialSession: initialSession,
@@ -292,11 +291,10 @@ class _ScheduleSessionDialogState
 
   Widget _buildModeTabs(BuildContext context, bool isDark) {
     return Container(
-      height: 48,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
           width: 1,
@@ -304,113 +302,130 @@ class _ScheduleSessionDialogState
       ),
       child: Row(
         children: [
-          // Live now tab (icon-only, animated)
+          // Live now tab
           Expanded(
-            child: Tooltip(
-              message: 'Direct immédiat (En direct)',
-              child: GestureDetector(
-                onTap: () => setState(() => _isLiveNow = true),
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 240),
-                  curve: Curves.easeOutCubic,
-                  decoration: BoxDecoration(
-                    color: _isLiveNow
-                        ? (isDark ? const Color(0xFF1E293B) : Colors.white)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: _isLiveNow
-                        ? [
-                            BoxShadow(
-                              color: (isDark ? Colors.black : const Color(0xFF0F172A))
-                                  .withValues(alpha: isDark ? 0.35 : 0.08),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  alignment: Alignment.center,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(
-                        Icons.sensors_rounded,
-                        size: 22,
-                        color: _isLiveNow
-                            ? const Color(0xFFEF4444)
-                            : (isDark
-                                ? const Color(0xFF64748B)
-                                : const Color(0xFF94A3B8)),
-                      ),
-                      Positioned(
-                        top: -2,
-                        right: -4,
-                        child: Container(
-                          width: 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEF4444),
-                            shape: BoxShape.circle,
-                            boxShadow: _isLiveNow
-                                ? [
-                                    BoxShadow(
-                                      color: const Color(0xFFEF4444)
-                                          .withValues(alpha: 0.6),
-                                      blurRadius: 4,
-                                      spreadRadius: 1,
-                                    ),
-                                  ]
-                                : null,
+            child: InkWell(
+              onTap: () => setState(() => _isLiveNow = true),
+              borderRadius: BorderRadius.circular(10),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: _isLiveNow
+                      ? (isDark ? const Color(0xFF1E293B) : Colors.white)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: _isLiveNow
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
                           ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(
+                          Icons.sensors_rounded,
+                          size: 19,
+                          color: _isLiveNow
+                              ? const Color(0xFFEF4444)
+                              : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                        ),
+                        if (_isLiveNow)
+                          Positioned(
+                            top: -2,
+                            right: -3,
+                            child: Container(
+                              width: 7,
+                              height: 7,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFEF4444),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Direct instantané',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          fontWeight: _isLiveNow ? FontWeight.w700 : FontWeight.w500,
+                          color: _isLiveNow
+                              ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                              : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
           const SizedBox(width: 4),
-          // Scheduled tab (icon-only, animated)
+          // Scheduled tab
           Expanded(
-            child: Tooltip(
-              message: 'Programmer une séance',
-              child: GestureDetector(
-                onTap: () => setState(() => _isLiveNow = false),
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 240),
-                  curve: Curves.easeOutCubic,
-                  decoration: BoxDecoration(
-                    color: !_isLiveNow
-                        ? (isDark ? const Color(0xFF1E293B) : Colors.white)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: !_isLiveNow
-                        ? [
-                            BoxShadow(
-                              color: (isDark ? Colors.black : const Color(0xFF0F172A))
-                                  .withValues(alpha: isDark ? 0.35 : 0.08),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    !_isLiveNow
-                        ? Icons.calendar_month_rounded
-                        : Icons.calendar_today_outlined,
-                    size: 20,
-                    color: !_isLiveNow
-                        ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF1E3A8A))
-                        : (isDark
-                            ? const Color(0xFF64748B)
-                            : const Color(0xFF94A3B8)),
-                  ),
+            child: InkWell(
+              onTap: () => setState(() => _isLiveNow = false),
+              borderRadius: BorderRadius.circular(10),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: !_isLiveNow
+                      ? (isDark ? const Color(0xFF1E293B) : Colors.white)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: !_isLiveNow
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.calendar_month_rounded,
+                      size: 18,
+                      color: !_isLiveNow
+                          ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8))
+                          : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Programmer séance',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          fontWeight: !_isLiveNow ? FontWeight.w700 : FontWeight.w500,
+                          color: !_isLiveNow
+                              ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                              : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -811,287 +826,423 @@ class _ScheduleSessionDialogState
     );
   }
 
+  Widget _buildClassField(
+    BuildContext context,
+    bool isDark,
+    AsyncValue<List<CourseEntry>> classesAsync,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.tr('field_class'),
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w600,
+            fontSize: 12.5,
+            color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+          ),
+        ),
+        const SizedBox(height: 6),
+        classesAsync.when(
+          data: (classes) {
+            final uniqueClasses = <String, CourseEntry>{};
+            for (final c in classes) {
+              if (c.id.isNotEmpty && !uniqueClasses.containsKey(c.id)) {
+                uniqueClasses[c.id] = c;
+              }
+            }
+            final classList = uniqueClasses.values.toList();
+
+            if (classList.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, color: Colors.amber, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Aucune classe attribuée pour le moment.',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final selectedValue = uniqueClasses.containsKey(_selectedClassId)
+                ? _selectedClassId
+                : null;
+
+            return DropdownButtonFormField<String>(
+              initialValue: selectedValue,
+              dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+              decoration: _buildInputDecoration(
+                context: context,
+                isDark: isDark,
+                hintText: context.tr('select_class'),
+                prefixIcon: const Icon(Icons.school_rounded, size: 18),
+              ),
+              items: classList.map((c) {
+                return DropdownMenuItem<String>(
+                  value: c.id,
+                  child: Text(
+                    '${c.name} (${c.level})',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() {
+                  _selectedClassId = val;
+                  final found = uniqueClasses[val];
+                  if (found != null) {
+                    _selectedClassName = found.name;
+                    if (found.subjects.isNotEmpty &&
+                        _selectedSubject == null) {
+                      _selectedSubject = found.subjects.first;
+                    }
+                    _updateAutoTitle();
+                  }
+                });
+              },
+              validator: (v) => v == null ? context.tr('select_class') : null,
+            );
+          },
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: LinearProgressIndicator(),
+          ),
+          error: (e, _) => Text(
+            _formatErrorMessage(e),
+            style: const TextStyle(color: Colors.red, fontSize: 12),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubjectField(BuildContext context, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.tr('field_subject'),
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w600,
+            fontSize: 12.5,
+            color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          initialValue: _selectedSubject,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 13,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+          decoration: _buildInputDecoration(
+            context: context,
+            isDark: isDark,
+            hintText: context.tr('field_subject'),
+            prefixIcon: const Icon(Icons.book_rounded, size: 18),
+          ),
+          onChanged: (v) {
+            _selectedSubject = v;
+            _updateAutoTitle();
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTitleField(BuildContext context, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.tr('field_title'),
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w600,
+            fontSize: 12.5,
+            color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: _titleController,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+          decoration: _buildInputDecoration(
+            context: context,
+            isDark: isDark,
+            hintText: context.tr('field_title_hint'),
+            prefixIcon: const Icon(Icons.title_rounded, size: 18),
+          ),
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) ? context.tr('field_title') : null,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateField(BuildContext context, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.tr('field_date'),
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w600,
+            fontSize: 12.5,
+            color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+          ),
+        ),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: _selectedDate,
+              firstDate: DateTime.now(),
+              lastDate: DateTime.now().add(const Duration(days: 365)),
+            );
+            if (picked != null) {
+              setState(() => _selectedDate = picked);
+            }
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: InputDecorator(
+            decoration: _buildInputDecoration(
+              context: context,
+              isDark: isDark,
+              hintText: 'Date',
+              prefixIcon: const Icon(Icons.calendar_today_rounded, size: 18),
+            ),
+            child: Text(
+              '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimeField(BuildContext context, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.tr('field_start_time'),
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w600,
+            fontSize: 12.5,
+            color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+          ),
+        ),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: () async {
+            final picked = await showTimePicker(
+              context: context,
+              initialTime: _selectedTime,
+            );
+            if (picked != null) {
+              setState(() => _selectedTime = picked);
+            }
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: InputDecorator(
+            decoration: _buildInputDecoration(
+              context: context,
+              isDark: isDark,
+              hintText: 'Heure',
+              prefixIcon: const Icon(Icons.access_time_rounded, size: 18),
+            ),
+            child: Text(
+              '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStickyFooter(BuildContext context, bool isDark, bool isEditing) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+            width: 1,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              side: BorderSide(
+                color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+              ),
+              foregroundColor: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+            ),
+            onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+            child: Text(
+              context.tr('cancel'),
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: _isLiveNow
+                  ? const Color(0xFFEF4444)
+                  : (isDark ? const Color(0xFF3B82F6) : const Color(0xFF122675)),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: _isLoading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(
+                    isEditing
+                        ? Icons.save_rounded
+                        : (_isLiveNow ? Icons.sensors_rounded : Icons.calendar_month_rounded),
+                    size: 18,
+                  ),
+            label: Text(
+              isEditing
+                  ? context.tr('save_changes')
+                  : (_isLiveNow ? 'Lancer le direct' : 'Programmer la séance'),
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+            onPressed: _isLoading ? null : _handleSubmit,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final classesAsync = ref.watch(myCoursesProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final isEditing = widget.initialSession != null;
+    final isTabletOrDesktop = MediaQuery.of(context).size.width >= 600;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Row
-            Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF122675).withValues(alpha: isDark ? 0.3 : 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    isEditing ? Icons.edit_calendar_rounded : Icons.videocam_rounded,
-                    color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF122675),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    isEditing
-                        ? context.tr('edit_session')
-                        : (_isLiveNow ? 'Lancer un direct' : context.tr('schedule_session')),
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 20),
-                  onPressed: () => Navigator.of(context).pop(),
-                  tooltip: 'Fermer',
-                  style: IconButton.styleFrom(
-                    backgroundColor: isDark
-                        ? const Color(0xFF334155).withValues(alpha: 0.4)
-                        : const Color(0xFFF1F5F9),
-                    padding: const EdgeInsets.all(8),
-                  ),
-                ),
-              ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. Top Decorative Gradient Bar
+        Container(
+          height: 3.5,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: _isLiveNow
+                  ? const [Color(0xFFEF4444), Color(0xFFF59E0B)]
+                  : const [Color(0xFF3B82F6), Color(0xFF6366F1)],
             ),
-            const SizedBox(height: 16),
+          ),
+        ),
 
-            // Mode Tabs (Icon-only without text, animated)
-            if (!isEditing) ...[
-              _buildModeTabs(context, isDark),
-              const SizedBox(height: 12),
-              _buildModeInfoBanner(context, isDark),
-            ],
-
-            // Error banner
-            if (_errorMessage != null)
-              _buildErrorBanner(_errorMessage!, isDark),
-
-            // Class Picker (if not editing)
-            if (!isEditing) ...[
-              Text(
-                context.tr('field_class'),
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
-                ),
-              ),
-              const SizedBox(height: 6),
-              classesAsync.when(
-                data: (classes) {
-                  final uniqueClasses = <String, CourseEntry>{};
-                  for (final c in classes) {
-                    if (c.id.isNotEmpty && !uniqueClasses.containsKey(c.id)) {
-                      uniqueClasses[c.id] = c;
-                    }
-                  }
-                  final classList = uniqueClasses.values.toList();
-
-                  if (classList.isEmpty) {
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.info_outline_rounded, color: Colors.amber, size: 20),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Aucune classe attribuée pour le moment. Vous devez être enseignant d\'une classe pour créer une séance.',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  final selectedValue = uniqueClasses.containsKey(_selectedClassId)
-                      ? _selectedClassId
-                      : null;
-
-                  return DropdownButtonFormField<String>(
-                    initialValue: selectedValue,
-                    dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                    decoration: _buildInputDecoration(
-                      context: context,
-                      isDark: isDark,
-                      hintText: context.tr('select_class'),
-                      prefixIcon: const Icon(Icons.school_rounded, size: 18),
-                    ),
-                    items: classList.map((c) {
-                      return DropdownMenuItem<String>(
-                        value: c.id,
-                        child: Text('${c.name} (${c.level})'),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      setState(() {
-                        _selectedClassId = val;
-                        final found = uniqueClasses[val];
-                        if (found != null) {
-                          _selectedClassName = found.name;
-                          if (found.subjects.isNotEmpty &&
-                              _selectedSubject == null) {
-                            _selectedSubject = found.subjects.first;
-                          }
-                          _updateAutoTitle();
-                        }
-                      });
-                    },
-                    validator: (v) => v == null ? context.tr('select_class') : null,
-                  );
-                },
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: LinearProgressIndicator(),
-                ),
-                error: (e, _) => Text(
-                  _formatErrorMessage(e),
-                  style: const TextStyle(color: Colors.red, fontSize: 12),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Subject field
-            Text(
-              context.tr('field_subject'),
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
-              ),
-            ),
-            const SizedBox(height: 6),
-            TextFormField(
-              initialValue: _selectedSubject,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 13.5,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
-              ),
-              decoration: _buildInputDecoration(
-                context: context,
-                isDark: isDark,
-                hintText: context.tr('field_subject'),
-                prefixIcon: const Icon(Icons.book_rounded, size: 18),
-              ),
-              onChanged: (v) {
-                _selectedSubject = v;
-                _updateAutoTitle();
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Title field
-            Text(
-              context.tr('field_title'),
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
-              ),
-            ),
-            const SizedBox(height: 6),
-            TextFormField(
-              controller: _titleController,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
-              ),
-              decoration: _buildInputDecoration(
-                context: context,
-                isDark: isDark,
-                hintText: context.tr('field_title_hint'),
-                prefixIcon: const Icon(Icons.title_rounded, size: 18),
-              ),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? context.tr('field_title') : null,
-            ),
-            const SizedBox(height: 16),
-
-            // Date & Time (when scheduled)
-            if (!_isLiveNow) ...[
+        // 2. Fixed Header & Mode Tabs
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.tr('field_date'),
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        InkWell(
-                          onTap: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: _selectedDate,
-                              firstDate: DateTime.now(),
-                              lastDate: DateTime.now().add(const Duration(days: 365)),
-                            );
-                            if (picked != null) {
-                              setState(() => _selectedDate = picked);
-                            }
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: InputDecorator(
-                            decoration: _buildInputDecoration(
-                              context: context,
-                              isDark: isDark,
-                              hintText: 'Date',
-                              prefixIcon: const Icon(Icons.calendar_today_rounded, size: 18),
-                            ),
-                            child: Text(
-                              '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 13.5,
-                                color: isDark ? Colors.white : const Color(0xFF0F172A),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: _isLiveNow
+                          ? const Color(0xFFEF4444).withValues(alpha: isDark ? 0.25 : 0.12)
+                          : const Color(0xFF3B82F6).withValues(alpha: isDark ? 0.25 : 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _isLiveNow
+                            ? const Color(0xFFEF4444).withValues(alpha: 0.3)
+                            : const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      isEditing
+                          ? Icons.edit_calendar_rounded
+                          : (_isLiveNow ? Icons.sensors_rounded : Icons.calendar_month_rounded),
+                      color: _isLiveNow
+                          ? const Color(0xFFEF4444)
+                          : (isDark ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8)),
+                      size: 20,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1100,140 +1251,180 @@ class _ScheduleSessionDialogState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          context.tr('field_start_time'),
+                          isEditing
+                              ? context.tr('edit_session')
+                              : (_isLiveNow ? 'Lancer un direct' : context.tr('schedule_session')),
                           style: TextStyle(
                             fontFamily: 'Inter',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        InkWell(
-                          onTap: () async {
-                            final picked = await showTimePicker(
-                              context: context,
-                              initialTime: _selectedTime,
-                            );
-                            if (picked != null) {
-                              setState(() => _selectedTime = picked);
-                            }
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: InputDecorator(
-                            decoration: _buildInputDecoration(
-                              context: context,
-                              isDark: isDark,
-                              hintText: 'Heure',
-                              prefixIcon: const Icon(Icons.access_time_rounded, size: 18),
-                            ),
-                            child: Text(
-                              '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 13.5,
-                                color: isDark ? Colors.white : const Color(0xFF0F172A),
-                              ),
-                            ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _isLiveNow
+                              ? 'Diffusion vidéo en temps réel pour vos étudiants'
+                              : 'Planifiez votre cours à l\'avance dans l\'agenda',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 11.5,
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                           ),
                         ),
                       ],
                     ),
                   ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => Navigator.of(context).pop(),
+                    tooltip: 'Fermer',
+                    style: IconButton.styleFrom(
+                      backgroundColor: isDark
+                          ? const Color(0xFF334155).withValues(alpha: 0.4)
+                          : const Color(0xFFF1F5F9),
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 16),
-            ],
-
-            // Duration Pills
-            Text(
-              context.tr('field_duration'),
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildDurationPills(isDark),
-            const SizedBox(height: 16),
-
-            // Early Access Pills (when scheduled)
-            if (!_isLiveNow) ...[
-              Text(
-                context.tr('field_join_opens_before'),
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
-                ),
-              ),
-              const SizedBox(height: 8),
-              _buildEarlyAccessPills(isDark),
-              const SizedBox(height: 16),
-            ],
-
-            // Chat Enabled Card
-            _buildChatSwitchCard(isDark),
-            const SizedBox(height: 16),
-
-            // Description (optional)
-            Text(
-              context.tr('field_description'),
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
-              ),
-            ),
-            const SizedBox(height: 6),
-            TextFormField(
-              controller: _descriptionController,
-              maxLines: 2,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 13,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
-              ),
-              decoration: _buildInputDecoration(
-                context: context,
-                isDark: isDark,
-                hintText: 'Note ou instructions pour les étudiants (facultatif)',
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Action Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                AppButton(
-                  text: context.tr('cancel'),
-                  variant: AppButtonVariant.outlined,
-                  isFullWidth: false,
-                  onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-                ),
-                const SizedBox(width: 12),
-                AppButton(
-                  text: isEditing
-                      ? context.tr('save_changes')
-                      : (_isLiveNow ? 'Lancer le direct' : 'Programmer'),
-                  leadingIcon: isEditing
-                      ? Icons.save_rounded
-                      : (_isLiveNow ? Icons.sensors_rounded : Icons.calendar_month_rounded),
-                  variant: AppButtonVariant.primary,
-                  isFullWidth: false,
-                  isLoading: _isLoading,
-                  onPressed: _isLoading ? null : _handleSubmit,
-                ),
+              if (!isEditing) ...[
+                const SizedBox(height: 14),
+                _buildModeTabs(context, isDark),
               ],
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+
+        const Divider(height: 1, thickness: 1, color: Color(0x1F94A3B8)),
+
+        // 3. Scrollable Form Body
+        Flexible(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!isEditing) ...[
+                    _buildModeInfoBanner(context, isDark),
+                  ],
+                  if (_errorMessage != null)
+                    _buildErrorBanner(_errorMessage!, isDark),
+
+                  // Class & Subject
+                  if (!isEditing && isTabletOrDesktop) ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 6,
+                          child: _buildClassField(context, isDark, classesAsync),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 5,
+                          child: _buildSubjectField(context, isDark),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    if (!isEditing) ...[
+                      _buildClassField(context, isDark, classesAsync),
+                      const SizedBox(height: 14),
+                      _buildSubjectField(context, isDark),
+                    ] else ...[
+                      _buildSubjectField(context, isDark),
+                    ],
+                  ],
+                  const SizedBox(height: 14),
+
+                  // Title field
+                  _buildTitleField(context, isDark),
+                  const SizedBox(height: 14),
+
+                  // Date & Time (when scheduled)
+                  if (!_isLiveNow) ...[
+                    Row(
+                      children: [
+                        Expanded(child: _buildDateField(context, isDark)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _buildTimeField(context, isDark)),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+
+                  // Duration Pills
+                  Text(
+                    context.tr('field_duration'),
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12.5,
+                      color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  _buildDurationPills(isDark),
+                  const SizedBox(height: 14),
+
+                  // Early Access (when scheduled)
+                  if (!_isLiveNow) ...[
+                    Text(
+                      context.tr('field_join_opens_before'),
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12.5,
+                        color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    _buildEarlyAccessPills(isDark),
+                    const SizedBox(height: 14),
+                  ],
+
+                  // Chat Enabled Switch Card
+                  _buildChatSwitchCard(isDark),
+                  const SizedBox(height: 14),
+
+                  // Description field
+                  Text(
+                    context.tr('field_description'),
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12.5,
+                      color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _descriptionController,
+                    maxLines: 2,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                    decoration: _buildInputDecoration(
+                      context: context,
+                      isDark: isDark,
+                      hintText: 'Note ou instructions pour les étudiants (facultatif)',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // 4. Fixed Sticky Footer
+        _buildStickyFooter(context, isDark, isEditing),
+      ],
     );
   }
 }
