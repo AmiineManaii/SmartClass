@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -75,17 +76,18 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final location = state.matchedLocation;
 
-      // 1. Splash screen obligatoire UNIQUEMENT au tout premier lancement de l'application (cold start)
+      // 1. Splash screen obligatoire UNIQUEMENT au tout premier lancement mobile (cold start)
       if (!hasSeenSplash) {
         if (location == '/splash' || location == '/') return null;
+        if (kIsWeb) return null;
         return '/splash';
       }
 
       final authAsync = ProviderScope.containerOf(
         context,
       ).read(authStateProvider);
-      // Ne jamais rediriger vers /login si l'état est en chargement transitoire (ex: mise à jour en cours)
-      if (authAsync.isLoading && authAsync.valueOrNull == null) {
+      // Ne jamais rediriger vers /login si la session est en cours de restauration ou de chargement
+      if (authAsync.isLoading) {
         return null;
       }
       final auth = authAsync.valueOrNull;
@@ -870,7 +872,7 @@ final authStateProvider =
 /// and skip navigation (see `failureL10n`).
 class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   AuthNotifier(this._ref, {required this.onChanged})
-    : super(const AsyncValue.data(AuthState())) {
+    : super(const AsyncValue.loading()) {
     _restoreSession();
   }
 
@@ -931,33 +933,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   Future<void> _restoreSession() async {
     final tokens = _ref.read(tokenStorageProvider);
     final refreshToken = await tokens.readRefreshToken();
-    if (refreshToken == null || refreshToken.isEmpty) {
-      // In web environments, the refresh token might be held in a hardened httpOnly cookie.
-      try {
-        final user = await _repo.getMe();
-        final profile = await tokens.readAcademicProfile(
-          user.id.isNotEmpty ? user.id : user.email,
-        );
-        _emit(
-          AsyncValue.data(
-            _fromUser(
-              user,
-              authenticated: true,
-              institution: profile['institution'],
-              faculty: profile['faculty'],
-              major: profile['major'],
-              studentId: profile['studentId'],
-              bio: profile['bio'],
-            ),
-          ),
-        );
-      } catch (_) {
-        // No active session cookie
-      }
-      return;
-    }
+
+    // 1. First attempt: validate active session using current tokens / cookies
     try {
-      await _repo.refreshSession(refreshToken: refreshToken);
       final user = await _repo.getMe();
       final profile = await tokens.readAcademicProfile(
         user.id.isNotEmpty ? user.id : user.email,
@@ -975,8 +953,15 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
           ),
         ),
       );
+      return;
     } catch (_) {
+      // Access token may be expired or absent; proceed to refresh if available
+    }
+
+    // 2. Second attempt: rotate session using refresh token if present
+    if (refreshToken != null && refreshToken.isNotEmpty) {
       try {
+        await _repo.refreshSession(refreshToken: refreshToken);
         final user = await _repo.getMe();
         final profile = await tokens.readAcademicProfile(
           user.id.isNotEmpty ? user.id : user.email,
@@ -994,11 +979,15 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
             ),
           ),
         );
+        return;
       } catch (_) {
+        // Refresh token failed or expired: clear stale tokens
         await tokens.clear(keepSavedEmail: true);
-        _emit(const AsyncValue.data(AuthState()));
       }
     }
+
+    // 3. No valid session found
+    _emit(const AsyncValue.data(AuthState()));
   }
 
   /// Called by [ApiClient] when the session can no longer be refreshed.

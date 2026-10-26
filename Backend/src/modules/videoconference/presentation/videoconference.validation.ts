@@ -156,11 +156,11 @@ export type NextSessionQueryInput = z.infer<typeof nextSessionQuerySchema>;
 
 export const sseEventsQuerySchema = z
   .object({
-    sessionId: uuidSchema.optional(),
+    sessionId: uuidSchema.optional().or(z.literal('')).transform((v) => (v && v.length > 0 ? v : undefined)),
     token: z.string().optional(),
     accessToken: z.string().optional(),
   })
-  .strict();
+  .passthrough();
 
 export type SSEEventsQueryInput = z.infer<typeof sseEventsQuerySchema>;
 

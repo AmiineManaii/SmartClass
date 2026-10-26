@@ -123,7 +123,9 @@ class AuthRepositoryImpl implements AuthRepository {
     return _guard(() async {
       final data = await _remote.refresh(refreshToken: refreshToken);
       final session = AuthSessionModel.fromJson(data).toAuthenticatedSession();
-      return _persist(session);
+      final isRemember = await _tokens.isRememberMe();
+      final email = await _tokens.getSavedEmail();
+      return _persist(session, rememberMe: isRemember, email: email);
     });
   }
 

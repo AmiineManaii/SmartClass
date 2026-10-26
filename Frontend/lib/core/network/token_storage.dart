@@ -53,12 +53,18 @@ class TokenStorage {
   Future<void> clear({bool keepSavedEmail = true}) async {
     final prefs = await _prefs;
     final savedEmail = keepSavedEmail ? prefs.getString(savedEmailKey) : null;
+    final rememberMe = keepSavedEmail ? (prefs.getBool(rememberMeKey) ?? false) : false;
     await prefs.remove(ApiConfig.accessTokenKey);
     await prefs.remove(ApiConfig.refreshTokenKey);
-    await prefs.remove(rememberMeKey);
     await prefs.remove(sessionTimestampKey);
-    if (!keepSavedEmail && savedEmail != null) {
+    if (!keepSavedEmail) {
+      await prefs.remove(rememberMeKey);
       await prefs.remove(savedEmailKey);
+    } else {
+      await prefs.setBool(rememberMeKey, rememberMe);
+      if (savedEmail != null) {
+        await prefs.setString(savedEmailKey, savedEmail);
+      }
     }
   }
 
