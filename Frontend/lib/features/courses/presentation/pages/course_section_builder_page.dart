@@ -414,7 +414,13 @@ class _CourseSectionBuilderPageState
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/courses');
+            }
+          },
         ),
         title: Text(
           state.course?.title ?? context.tr('ai_build_title'),

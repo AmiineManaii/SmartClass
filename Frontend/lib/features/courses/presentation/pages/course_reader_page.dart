@@ -39,7 +39,13 @@ class CourseReaderPage extends ConsumerWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
           tooltip: context.tr('back'),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/courses');
+            }
+          },
         ),
         title: Text(
           courseAsync.valueOrNull?.title ?? context.tr('course_details'),
