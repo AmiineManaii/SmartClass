@@ -84,6 +84,29 @@ class ParticipantsSheet extends ConsumerWidget {
               ),
             ),
 
+          // Host Screen Share Permission Switch
+          if (isHost)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: const Color(0xFF1E2638).withValues(alpha: 0.4),
+              child: Row(
+                children: [
+                  const Icon(Icons.present_to_all_rounded, size: 16, color: Color(0xFF38BDF8)),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Autoriser le partage d\'écran des élèves',
+                      style: TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: roomState.allowStudentsScreenShare,
+                    onChanged: (val) => controller.setAllowStudentsScreenShare(val),
+                  ),
+                ],
+              ),
+            ),
+
           // Participants List
           Expanded(
             child: ListView.separated(
@@ -129,6 +152,34 @@ class ParticipantsSheet extends ConsumerWidget {
                           ),
                         ),
                       ],
+                      if (roomState.presenterIdentities.contains(p.identity)) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'Présentateur',
+                            style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                      if (roomState.activeControllerIdentity == p.identity) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF59E0B),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'Contrôle',
+                            style: TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   trailing: Row(
@@ -149,20 +200,71 @@ class ParticipantsSheet extends ConsumerWidget {
                           icon: const Icon(Icons.more_vert_rounded, size: 16, color: Colors.white70),
                           color: const Color(0xFF1E2638),
                           onSelected: (action) {
-                            if (action == 'mute') {
+                            if (action == 'toggle_presenter') {
+                              controller.togglePresenter(p.identity);
+                            } else if (action == 'give_control') {
+                              if (roomState.activeControllerIdentity == p.identity) {
+                                controller.giveAnnotationControl(null);
+                              } else {
+                                controller.giveAnnotationControl(p.identity, targetName: p.name);
+                              }
+                            } else if (action == 'mute') {
                               controller.muteParticipant(p.identity, mute: true);
                             } else if (action == 'kick') {
                               controller.removeParticipant(p.identity, reason: 'Exclu par l\'enseignant');
                             }
                           },
                           itemBuilder: (_) => [
+                            PopupMenuItem(
+                              value: 'toggle_presenter',
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.present_to_all_rounded, size: 15, color: Color(0xFF38BDF8)),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    roomState.presenterIdentities.contains(p.identity)
+                                        ? 'Retirer rôle Présentateur'
+                                        : 'Nommer Présentateur',
+                                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'give_control',
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.handshake_rounded, size: 15, color: Color(0xFFF59E0B)),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    roomState.activeControllerIdentity == p.identity
+                                        ? 'Retirer la main'
+                                        : 'Donner la main (Annotation)',
+                                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(height: 1),
                             const PopupMenuItem(
                               value: 'mute',
-                              child: Text('Couper le micro', style: TextStyle(color: Colors.white, fontSize: 12)),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.mic_off_rounded, size: 15, color: Colors.orange),
+                                  SizedBox(width: 8),
+                                  Text('Couper le micro', style: TextStyle(color: Colors.white, fontSize: 12)),
+                                ],
+                              ),
                             ),
                             const PopupMenuItem(
                               value: 'kick',
-                              child: Text('Exclure de la session', style: TextStyle(color: Colors.red, fontSize: 12)),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.block_rounded, size: 15, color: Colors.redAccent),
+                                  SizedBox(width: 8),
+                                  Text('Exclure de la session', style: TextStyle(color: Colors.red, fontSize: 12)),
+                                ],
+                              ),
                             ),
                           ],
                         ),

@@ -7,10 +7,17 @@
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
     <application
         android:label="smartclass"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <service
+            android:name="com.cloudwebrtc.webrtc.FlutterRTCService"
+            android:foregroundServiceType="mediaProjection"
+            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

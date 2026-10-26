@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
 
 import '../../domain/entities/live_participant.dart';
+import 'screen_annotation_overlay.dart';
 
 class ParticipantTile extends StatelessWidget {
   final LiveParticipant participant;
@@ -72,6 +73,15 @@ class ParticipantTile extends StatelessWidget {
                     )
                   : _buildAvatarFallback(context),
             ),
+
+            // Interactive Co-Annotation and Live Laser Pointer Overlay during Screen Sharing
+            if (participant.isScreenSharing && isHero)
+              Positioned.fill(
+                child: ScreenAnnotationOverlay(
+                  presenter: participant,
+                  constraints: const BoxConstraints(),
+                ),
+              ),
 
             // Top-right badges (Hand raise / Screen share)
             Positioned(

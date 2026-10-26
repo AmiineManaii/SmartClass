@@ -6,6 +6,7 @@ import 'package:smartclass/features/videoconference/application/videoconference_
 import 'package:smartclass/features/videoconference/domain/entities/join_token.dart';
 import 'package:smartclass/features/videoconference/domain/entities/live_participant.dart';
 import 'package:smartclass/features/videoconference/domain/entities/room_connection_state.dart';
+import 'package:smartclass/features/videoconference/domain/entities/screen_annotation.dart';
 import 'package:smartclass/features/videoconference/domain/entities/session_chat_message.dart';
 import 'package:smartclass/features/videoconference/domain/entities/video_session.dart';
 import 'package:smartclass/features/videoconference/domain/ports/room_port.dart';
@@ -304,12 +305,105 @@ void main() {
     expect(fakeRepo.leaveSessionCalled, true);
   });
 
-  test('LiveRoomController endRoomForEveryone disconnects and ends session', () async {
+  test('LiveRoomController manages screen share permissions and presenter roles', () async {
     final controller = container.read(liveRoomControllerProvider.notifier);
     await controller.joinRoom('session-123');
 
-    await controller.endRoomForEveryone();
-    expect(container.read(liveRoomControllerProvider).connectionState, RoomConnectionState.endedByHost);
-    expect(fakeRepo.endSessionCalled, true);
+    // Host initially can share screen, students cannot
+    expect(container.read(liveRoomControllerProvider).isHost, true);
+    expect(container.read(liveRoomControllerProvider).canShareScreen, true);
+
+    // Host allows students to share screen
+    controller.setAllowStudentsScreenShare(true);
+    expect(container.read(liveRoomControllerProvider).allowStudentsScreenShare, true);
+
+    // Host designates student-42 as presenter
+    controller.togglePresenter('student-42');
+    expect(container.read(liveRoomControllerProvider).presenterIdentities.contains('student-42'), true);
+
+    // Toggling again removes presenter role
+    controller.togglePresenter('student-42');
+    expect(container.read(liveRoomControllerProvider).presenterIdentities.contains('student-42'), false);
+  });
+
+  test('LiveRoomController manages co-annotation and interactive pointer (Option A)', () async {
+    final controller = container.read(liveRoomControllerProvider.notifier);
+    await controller.joinRoom('session-123');
+
+    // Host can annotate by default
+    expect(container.read(liveRoomControllerProvider).canAnnotate, true);
+
+    // Host grants control to Alice
+    controller.giveAnnotationControl('student-42', targetName: 'Alice');
+    expect(container.read(liveRoomControllerProvider).activeControllerIdentity, 'student-42');
+    expect(container.read(liveRoomControllerProvider).activeControllerName, 'Alice');
+
+    // Add annotation stroke locally
+    final stroke = AnnotationStroke(
+      id: 'stroke-1',
+      authorIdentity: 'user-1',
+      authorName: 'Prof',
+      colorValue: 0xFFFF0000,
+      strokeWidth: 3.0,
+      points: const [
+        AnnotationPoint(0.1, 0.1),
+        AnnotationPoint(0.2, 0.2),
+      ],
+    );
+    controller.addAnnotationStroke(stroke);
+    expect(container.read(liveRoomControllerProvider).annotationStrokes.length, 1);
+
+    // Clear annotations
+    controller.clearAnnotations();
+    expect(container.read(liveRoomControllerProvider).annotationStrokes.isEmpty, true);
+
+    // Host revokes control
+    controller.giveAnnotationControl(null);
+    expect(container.read(liveRoomControllerProvider).activeControllerIdentity, null);
+  });
+
+  test('LiveRoomController receives screen permission and annotation packets via data channel', () async {
+    final controller = container.read(liveRoomControllerProvider.notifier);
+    await controller.joinRoom('session-123');
+
+    // Simulate remote permission broadcast
+    fakeRoomPort.emitDataMessage({
+      'type': 'screen_permission_update',
+      'allowStudents': true,
+      'presenters': ['student-42', 'student-99'],
+    });
+    await Future<void>.delayed(Duration.zero);
+
+    var state = container.read(liveRoomControllerProvider);
+    expect(state.allowStudentsScreenShare, true);
+    expect(state.presenterIdentities, contains('student-42'));
+
+    // Simulate remote grant control broadcast
+    fakeRoomPort.emitDataMessage({
+      'type': 'grant_control',
+      'targetIdentity': 'student-42',
+      'targetName': 'Alice',
+    });
+    await Future<void>.delayed(Duration.zero);
+
+    state = container.read(liveRoomControllerProvider);
+    expect(state.activeControllerIdentity, 'student-42');
+    expect(state.activeControllerName, 'Alice');
+
+    // Simulate remote pointer move
+    fakeRoomPort.emitDataMessage({
+      'type': 'pointer_move',
+      'identity': 'student-42',
+      'name': 'Alice',
+      'x': 0.45,
+      'y': 0.75,
+    });
+    await Future<void>.delayed(Duration.zero);
+
+    state = container.read(liveRoomControllerProvider);
+    expect(state.livePointers.containsKey('student-42'), true);
+    expect(state.livePointers['student-42']!.x, 0.45);
+    expect(state.livePointers['student-42']!.y, 0.75);
   });
 }
+

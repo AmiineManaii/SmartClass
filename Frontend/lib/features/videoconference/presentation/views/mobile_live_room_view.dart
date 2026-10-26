@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../application/live_room_controller.dart';
 import '../../domain/entities/live_participant.dart';
-import '../../domain/entities/room_connection_state.dart';
 import '../widgets/live_chat_panel.dart';
 import '../widgets/live_room_controls.dart';
 import '../widgets/live_video_tile_loader.dart';
@@ -138,7 +137,8 @@ class _MobileLiveRoomViewState extends ConsumerState<MobileLiveRoomView> {
 
     final local = roomState.localParticipant;
     final remotes = roomState.remoteParticipants.values.toList();
-    final heroSpeaker = roomState.activeSpeaker;
+    final heroSpeaker =
+        roomState.screenSharingParticipant ?? roomState.activeSpeaker;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0F1D),

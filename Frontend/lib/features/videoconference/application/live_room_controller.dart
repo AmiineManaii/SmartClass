@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -10,6 +10,7 @@ import '../../../../core/services/sound_effect_service.dart';
 import '../domain/entities/join_token.dart';
 import '../domain/entities/live_participant.dart';
 import '../domain/entities/room_connection_state.dart';
+import '../domain/entities/screen_annotation.dart';
 import '../domain/entities/session_chat_message.dart';
 import '../domain/entities/session_event.dart';
 import '../domain/entities/video_session.dart';
@@ -60,6 +61,17 @@ class LiveRoomState {
   final HandRaiseNotice? latestHandRaise;
   final String? errorMessage;
 
+  // Screen share & co-annotation features
+  final bool allowStudentsScreenShare;
+  final Set<String> presenterIdentities;
+  final bool isAnnotationActive;
+  final String? activeControllerIdentity;
+  final String? activeControllerName;
+  final Map<String, LivePointerState> livePointers;
+  final List<AnnotationStroke> annotationStrokes;
+  final AnnotationToolMode currentToolMode;
+  final int currentAnnotationColor;
+
   const LiveRoomState({
     this.session,
     this.joinToken,
@@ -78,13 +90,46 @@ class LiveRoomState {
     this.isHandRaised = false,
     this.latestHandRaise,
     this.errorMessage,
+    this.allowStudentsScreenShare = false,
+    this.presenterIdentities = const {},
+    this.isAnnotationActive = false,
+    this.activeControllerIdentity,
+    this.activeControllerName,
+    this.livePointers = const {},
+    this.annotationStrokes = const [],
+    this.currentToolMode = AnnotationToolMode.pointer,
+    this.currentAnnotationColor = 0xFFEF4444,
   });
 
   bool get isHost {
     final role = joinToken?.role.toLowerCase();
     return role == 'host' || role == 'teacher' || role == 'admin';
   }
-  bool get canPublishScreen => joinToken?.permissions.canPublishScreen ?? isHost;
+
+  bool get canShareScreen {
+    if (isHost) return true;
+    if (allowStudentsScreenShare) return true;
+    final myId = localParticipant?.identity;
+    if (myId != null && presenterIdentities.contains(myId)) return true;
+    return false;
+  }
+
+  bool get canPublishScreen => canShareScreen;
+
+  bool get canAnnotate {
+    if (isHost) return true;
+    if (activeControllerIdentity == 'all') return true;
+    final myId = localParticipant?.identity;
+    return myId != null && activeControllerIdentity == myId;
+  }
+
+  LiveParticipant? get screenSharingParticipant {
+    if (localParticipant?.isScreenSharing == true) return localParticipant;
+    for (final p in remoteParticipants.values) {
+      if (p.isScreenSharing) return p;
+    }
+    return null;
+  }
 
   LiveParticipant? get activeSpeaker {
     if (activeSpeakerIdentity == null) {
@@ -118,6 +163,16 @@ class LiveRoomState {
     bool? isHandRaised,
     HandRaiseNotice? latestHandRaise,
     String? errorMessage,
+    bool? allowStudentsScreenShare,
+    Set<String>? presenterIdentities,
+    bool? isAnnotationActive,
+    String? activeControllerIdentity,
+    String? activeControllerName,
+    bool clearActiveController = false,
+    Map<String, LivePointerState>? livePointers,
+    List<AnnotationStroke>? annotationStrokes,
+    AnnotationToolMode? currentToolMode,
+    int? currentAnnotationColor,
   }) {
     return LiveRoomState(
       session: session ?? this.session,
@@ -138,6 +193,21 @@ class LiveRoomState {
       isHandRaised: isHandRaised ?? this.isHandRaised,
       latestHandRaise: latestHandRaise ?? this.latestHandRaise,
       errorMessage: errorMessage ?? this.errorMessage,
+      allowStudentsScreenShare:
+          allowStudentsScreenShare ?? this.allowStudentsScreenShare,
+      presenterIdentities: presenterIdentities ?? this.presenterIdentities,
+      isAnnotationActive: isAnnotationActive ?? this.isAnnotationActive,
+      activeControllerIdentity: clearActiveController
+          ? null
+          : (activeControllerIdentity ?? this.activeControllerIdentity),
+      activeControllerName: clearActiveController
+          ? null
+          : (activeControllerName ?? this.activeControllerName),
+      livePointers: livePointers ?? this.livePointers,
+      annotationStrokes: annotationStrokes ?? this.annotationStrokes,
+      currentToolMode: currentToolMode ?? this.currentToolMode,
+      currentAnnotationColor:
+          currentAnnotationColor ?? this.currentAnnotationColor,
     );
   }
 }
@@ -231,6 +301,57 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
           );
           _addIncomingChatMessage(msg);
         }
+      } else if (type == 'screen_permission_update') {
+        final allowStudents = data['allowStudents'] == true;
+        final presentersList = (data['presenters'] as List?)?.cast<String>() ?? [];
+        state = state.copyWith(
+          allowStudentsScreenShare: allowStudents,
+          presenterIdentities: presentersList.toSet(),
+        );
+      } else if (type == 'grant_control') {
+        final targetId = data['targetIdentity'] as String?;
+        final targetName = data['targetName'] as String?;
+        if (targetId == null) {
+          state = state.copyWith(
+            clearActiveController: true,
+            isAnnotationActive: false,
+          );
+        } else {
+          state = state.copyWith(
+            activeControllerIdentity: targetId,
+            activeControllerName: targetName,
+            isAnnotationActive: true,
+          );
+        }
+      } else if (type == 'pointer_move') {
+        final id = data['identity'] as String? ?? '';
+        final name = data['name'] as String? ?? 'Participant';
+        final x = (data['x'] as num).toDouble();
+        final y = (data['y'] as num).toDouble();
+        final colorVal = data['color'] as int? ?? 0xFFEF4444;
+        final pointers = Map<String, LivePointerState>.from(state.livePointers);
+        pointers[id] = LivePointerState(
+          identity: id,
+          name: name,
+          x: x,
+          y: y,
+          color: Color(colorVal),
+          updatedAt: DateTime.now(),
+        );
+        state = state.copyWith(livePointers: pointers);
+      } else if (type == 'annotation_stroke') {
+        final strokeMap = data['stroke'];
+        if (strokeMap is Map) {
+          final stroke = AnnotationStroke.fromJson(Map<String, dynamic>.from(strokeMap));
+          state = state.copyWith(
+            annotationStrokes: [...state.annotationStrokes, stroke],
+          );
+        }
+      } else if (type == 'annotation_clear') {
+        state = state.copyWith(
+          annotationStrokes: const [],
+          livePointers: const {},
+        );
       }
     }));
   }
@@ -397,7 +518,7 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
   }
 
   Future<void> toggleScreenShare() async {
-    if (!state.canPublishScreen) return;
+    if (!state.canShareScreen && !state.isScreenSharing) return;
     final next = !state.isScreenSharing;
     try {
       await _roomPort.setScreenShareEnabled(next);
@@ -405,6 +526,118 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
     } catch (e) {
       debugPrint('[LiveRoomController] Screen share error: $e');
     }
+  }
+
+  void setAllowStudentsScreenShare(bool allowed) {
+    if (!state.isHost) return;
+    state = state.copyWith(allowStudentsScreenShare: allowed);
+    final payload = jsonEncode({
+      'type': 'screen_permission_update',
+      'allowStudents': allowed,
+      'presenters': state.presenterIdentities.toList(),
+    });
+    _roomPort.sendData(utf8.encode(payload), topic: 'screen_permission');
+  }
+
+  void togglePresenter(String identity) {
+    if (!state.isHost) return;
+    final presenters = Set<String>.from(state.presenterIdentities);
+    if (presenters.contains(identity)) {
+      presenters.remove(identity);
+    } else {
+      presenters.add(identity);
+    }
+    state = state.copyWith(presenterIdentities: presenters);
+    final payload = jsonEncode({
+      'type': 'screen_permission_update',
+      'allowStudents': state.allowStudentsScreenShare,
+      'presenters': presenters.toList(),
+    });
+    _roomPort.sendData(utf8.encode(payload), topic: 'screen_permission');
+  }
+
+  void giveAnnotationControl(String? targetIdentity, {String? targetName}) {
+    if (!state.isHost) return;
+    if (targetIdentity == null) {
+      state = state.copyWith(
+        clearActiveController: true,
+        isAnnotationActive: false,
+      );
+    } else {
+      state = state.copyWith(
+        activeControllerIdentity: targetIdentity,
+        activeControllerName: targetName,
+        isAnnotationActive: true,
+      );
+    }
+    final payload = jsonEncode({
+      'type': 'grant_control',
+      'targetIdentity': targetIdentity,
+      'targetName': targetName,
+    });
+    _roomPort.sendData(utf8.encode(payload), topic: 'annotation');
+  }
+
+  void toggleAnnotationMode() {
+    state = state.copyWith(isAnnotationActive: !state.isAnnotationActive);
+  }
+
+  void setAnnotationToolMode(AnnotationToolMode mode) {
+    state = state.copyWith(currentToolMode: mode);
+  }
+
+  void setAnnotationColor(int colorValue) {
+    state = state.copyWith(currentAnnotationColor: colorValue);
+  }
+
+  void sendPointerMove(double x, double y) {
+    if (!state.canAnnotate) return;
+    final myId = state.localParticipant?.identity ?? 'local';
+    final myName = state.localParticipant?.name ?? 'Vous';
+    final pointers = Map<String, LivePointerState>.from(state.livePointers);
+    pointers[myId] = LivePointerState(
+      identity: myId,
+      name: myName,
+      x: x,
+      y: y,
+      color: Color(state.currentAnnotationColor),
+      updatedAt: DateTime.now(),
+    );
+    state = state.copyWith(livePointers: pointers);
+
+    final payload = jsonEncode({
+      'type': 'pointer_move',
+      'x': x,
+      'y': y,
+      'identity': myId,
+      'name': myName,
+      'color': state.currentAnnotationColor,
+    });
+    _roomPort.sendData(utf8.encode(payload), topic: 'annotation');
+  }
+
+  void addAnnotationStroke(AnnotationStroke stroke) {
+    if (!state.canAnnotate) return;
+    state = state.copyWith(
+      annotationStrokes: [...state.annotationStrokes, stroke],
+    );
+    final payload = jsonEncode({
+      'type': 'annotation_stroke',
+      'stroke': stroke.toJson(),
+    });
+    _roomPort.sendData(utf8.encode(payload), topic: 'annotation');
+  }
+
+  void clearAnnotations() {
+    if (!state.canAnnotate) return;
+    state = state.copyWith(
+      annotationStrokes: const [],
+      livePointers: const {},
+    );
+    final payload = jsonEncode({
+      'type': 'annotation_clear',
+    });
+    _roomPort.sendData(utf8.encode(payload), topic: 'annotation');
   }
 
   Future<void> toggleRaiseHand() async {

@@ -113,6 +113,38 @@ class LiveRoomControls extends ConsumerWidget {
                 onTap: controller.toggleCamera,
               ),
 
+              // Screen Share
+              _buildRoundBtn(
+                icon: Icons.present_to_all_rounded,
+                color: roomState.isScreenSharing
+                    ? Colors.white
+                    : (roomState.canShareScreen
+                        ? const Color(0xFF38BDF8)
+                        : Colors.white38),
+                bgColor: roomState.isScreenSharing
+                    ? const Color(0xFF10B981)
+                    : (roomState.canShareScreen
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFF111827)),
+                borderColor: roomState.isScreenSharing
+                    ? const Color(0xFF10B981)
+                    : (roomState.canShareScreen
+                        ? const Color(0xFF38BDF8).withValues(alpha: 0.4)
+                        : Colors.white12),
+                onTap: () {
+                  if (roomState.canShareScreen) {
+                    controller.toggleScreenShare();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Le partage d\'écran nécessite l\'autorisation de l\'enseignant'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+              ),
+
               // Hand
               _buildRoundBtn(
                 icon: Icons.front_hand_rounded,
@@ -255,21 +287,44 @@ class LiveRoomControls extends ConsumerWidget {
               ),
               const SizedBox(width: 10),
 
-              // Screen Share (Host Only)
-              if (roomState.canPublishScreen) ...[
-                IconButton.filled(
-                  tooltip: roomState.isScreenSharing ? 'Arrêter le partage' : 'Partager l\'écran',
-                  icon: const Icon(Icons.present_to_all_rounded, size: 20, color: Colors.white),
-                  style: IconButton.styleFrom(
-                    backgroundColor: roomState.isScreenSharing
-                        ? const Color(0xFF10B981)
-                        : const Color(0xFF1E2638),
-                    padding: const EdgeInsets.all(12),
-                  ),
-                  onPressed: controller.toggleScreenShare,
+              // Screen Share (Host & Permitted Students)
+              IconButton.filled(
+                tooltip: roomState.isScreenSharing
+                    ? 'Arrêter le partage d\'écran'
+                    : (roomState.canShareScreen
+                        ? 'Partager l\'écran'
+                        : 'Partage d\'écran non autorisé par l\'enseignant'),
+                icon: Icon(
+                  Icons.present_to_all_rounded,
+                  size: 20,
+                  color: roomState.isScreenSharing
+                      ? Colors.white
+                      : (roomState.canShareScreen
+                          ? const Color(0xFF38BDF8)
+                          : Colors.white38),
                 ),
-                const SizedBox(width: 10),
-              ],
+                style: IconButton.styleFrom(
+                  backgroundColor: roomState.isScreenSharing
+                      ? const Color(0xFF10B981)
+                      : (roomState.canShareScreen
+                          ? const Color(0xFF1E2638)
+                          : const Color(0xFF111827)),
+                  padding: const EdgeInsets.all(12),
+                ),
+                onPressed: () {
+                  if (roomState.canShareScreen) {
+                    controller.toggleScreenShare();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Le partage d\'écran nécessite l\'autorisation de l\'enseignant'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(width: 10),
 
               // Raise Hand
               IconButton.filled(
