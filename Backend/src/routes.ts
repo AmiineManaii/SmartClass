@@ -86,10 +86,15 @@ export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
   });
   router.use('/exams', examsModule.router);
 
-  // 5. Videoconference timetable slice (/api/v1/videoconference)
+  // 5. Videoconference timetable & live sessions slice (/api/v1/videoconference)
   const videoconferenceModule = createVideoconferenceModule({
     ...options.videoconferenceModuleOptions,
     ...adminGuard,
+    groupRepository: groupsModule.groupRepository,
+    requireApprovedTeacherMiddleware: authModule.requireApprovedTeacherMiddleware([
+      'TEACHER',
+      'ADMIN',
+    ] as Role[]),
   });
   router.use('/videoconference', videoconferenceModule.router);
 

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_providers.dart';
-import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/smart_loader.dart';
 import '../../application/providers/courses_provider.dart';
@@ -17,48 +16,284 @@ import '../widgets/running_job_banner.dart';
 import '../widgets/staggered_list_item.dart';
 import '../widgets/subject_detail_card.dart';
 
-/// "Cours & Ressources" pour le professeur.
-///
-/// - Section "Mes matières" : cartes matières extraites des classes du prof.
-///   Cliquer sur une matière filtre les cours de cette matière uniquement.
-/// - FAB "+" : choisir classe -> choisir matière (matières du prof pr cette
-///   classe) -> creation avec IA.
-/// - "Cours generes" : liste depuis myGeneratedCoursesProvider, tap -> lecteur.
-/// Les etudiants voient leurs cours publies comme avant.
-class CoursesPage extends ConsumerWidget {
+/// "Cours & Ressources" pour le professeur et l'étudiant.
+class CoursesPage extends ConsumerStatefulWidget {
   const CoursesPage({super.key});
 
+  @override
+  ConsumerState<CoursesPage> createState() => _CoursesPageState();
+}
+
+class _CoursesPageState extends ConsumerState<CoursesPage> {
   static const _filters = ['all', 'in_progress', 'drafts'];
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchQuery = '';
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final role = ref.watch(authStateProvider).valueOrNull?.role?.toLowerCase();
     final isTeacher = role == 'teacher' || role == 'admin';
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          isTeacher
-              ? context.tr('nav_courses_resources')
-              : context.tr('my_courses'),
+      backgroundColor: theme.colorScheme.surface,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(myCoursesProvider);
+            ref.invalidate(myGeneratedCoursesProvider);
+            ref.invalidate(publishedCoursesProvider);
+          },
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // 1. Hero Header Banner
+              SliverToBoxAdapter(
+                child: _buildHeroBanner(context, isTeacher),
+              ),
+
+              // 2. Real Search Bar
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: _buildSearchBar(context, isDark),
+                ),
+              ),
+
+              // 3. Main Content
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildBody(context, ref, isTeacher),
+                ),
+              ),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: 96),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          if (isTeacher)
-            IconButton(
-              icon: const Icon(Icons.add_rounded),
-              onPressed: () => context.push('/courses/ai-create'),
-              tooltip: context.tr('create_course'),
-            ),
-          IconButton(
-            icon: const Icon(Icons.search_rounded),
-            onPressed: () {
-              context.showInfoToast(context.tr('feature_coming_soon'));
-            },
-            tooltip: context.tr('search'),
+      ),
+    );
+  }
+
+  Widget _buildHeroBanner(BuildContext context, bool isTeacher) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF122675), Color(0xFF1E3A8A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF122675).withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      body: _buildBody(context, ref, isTeacher),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.menu_book_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isTeacher ? 'Cours & Ressources' : 'Mes Cours & Supports',
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      Text(
+                        isTeacher
+                            ? 'Pédagogie & IA Générative'
+                            : 'Apprentissage interactif',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              if (isTeacher)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFA78BFA),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.auto_awesome, size: 11, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text(
+                        'IA +',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            isTeacher
+                ? 'Gérez vos supports de cours, organisez vos matières et créez des modules interactifs assistés par l\'IA.'
+                : 'Consultez les cours de vos professeurs, téléchargez les supports et testez vos connaissances.',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 12,
+              height: 1.35,
+            ),
+          ),
+          if (isTeacher) ...[
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF122675),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                minimumSize: const Size.fromHeight(40),
+              ),
+              icon: const Icon(Icons.auto_awesome_rounded,
+                  size: 16, color: Color(0xFF6D28D9)),
+              label: const Text(
+                'Créer un cours avec l\'IA',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5,
+                ),
+              ),
+              onPressed: () => context.push('/courses/ai-create'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context, bool isDark) {
+    return Container(
+      height: 42,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _searchQuery.isNotEmpty
+              ? const Color(0xFF122675)
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : const Color(0xFFE2E8F0)),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          Icon(
+            Icons.search_rounded,
+            size: 18,
+            color: _searchQuery.isNotEmpty
+                ? const Color(0xFF122675)
+                : const Color(0xFF94A3B8),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: (val) => setState(() => _searchQuery = val.trim()),
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+              decoration: const InputDecoration(
+                hintText: 'Rechercher un cours, matière ou module...',
+                hintStyle: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  color: Color(0xFF94A3B8),
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ),
+          if (_searchQuery.isNotEmpty)
+            GestureDetector(
+              onTap: () {
+                _searchCtrl.clear();
+                setState(() => _searchQuery = '');
+              },
+              child: const Icon(Icons.cancel_rounded,
+                  size: 16, color: Color(0xFF94A3B8)),
+            ),
+        ],
+      ),
     );
   }
 
@@ -68,53 +303,54 @@ class CoursesPage extends ConsumerWidget {
     final theme = Theme.of(context);
     final activeFilters = isTeacher ? _filters : const ['all', 'in_progress'];
 
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isTeacher) ...[
-                  _buildSubjectsSection(context, ref, selectedSubject),
-                  const SizedBox(height: 24),
-                  _buildTeacherGeneratedCourses(context, ref, selectedSubject),
-                ] else ...[
-                  SizedBox(
-                    height: 40,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: activeFilters.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final filter = activeFilters[index];
-                        final isSelected = filter == selectedFilter;
-                        return FilterChip(
-                          label: Text(context.tr(filter)),
-                          selected: isSelected,
-                          onSelected: (_) =>
-                              ref.read(courseFilterProvider.notifier).state =
-                                  filter,
-                          selectedColor: theme.colorScheme.primaryContainer,
-                          labelStyle: theme.textTheme.labelSmall?.copyWith(
-                            color: isSelected
-                                ? theme.colorScheme.onPrimaryContainer
-                                : theme.colorScheme.onSurfaceVariant,
-                          ),
-                        );
-                      },
-                    ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (isTeacher) ...[
+          _buildSubjectsSection(context, ref, selectedSubject),
+          const SizedBox(height: 20),
+          _buildTeacherGeneratedCourses(
+              context, ref, selectedSubject, _searchQuery),
+        ] else ...[
+          SizedBox(
+            height: 38,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: activeFilters.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final filter = activeFilters[index];
+                final isSelected = filter == selectedFilter;
+                return ChoiceChip(
+                  label: Text(context.tr(filter)),
+                  selected: isSelected,
+                  onSelected: (_) =>
+                      ref.read(courseFilterProvider.notifier).state = filter,
+                  selectedColor: const Color(0xFFEEF2FF),
+                  backgroundColor: theme.colorScheme.surfaceContainerHigh,
+                  labelStyle: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? const Color(0xFF4338CA)
+                        : theme.colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(height: 16),
-                  _buildCourseList(context, ref, selectedSubject),
-                  const SizedBox(height: 24),
-                  _buildGeneratedSection(context, ref),
-                ],
-              ],
+                  side: isSelected
+                      ? const BorderSide(color: Color(0xFFC7D2FE), width: 1)
+                      : BorderSide.none,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                );
+              },
             ),
           ),
-        ),
+          const SizedBox(height: 16),
+          _buildCourseList(context, ref, selectedSubject, _searchQuery),
+          const SizedBox(height: 24),
+          _buildGeneratedSection(context, ref),
+        ],
       ],
     );
   }
@@ -123,7 +359,6 @@ class CoursesPage extends ConsumerWidget {
   Widget _buildSubjectsSection(
       BuildContext context, WidgetRef ref, String? selectedSubject) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,26 +366,59 @@ class CoursesPage extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              context.tr('ai_my_subjects'),
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+            Row(
+              children: [
+                Text(
+                  context.tr('ai_my_subjects'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                if (selectedSubject != null) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEEF2FF),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      selectedSubject,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF4338CA),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
-            TextButton(
-              onPressed: () =>
-                  ref.read(selectedSubjectProvider.notifier).state = null,
-              child: Text(
-                context.tr('reset_filter'),
-                style: TextStyle(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w600,
+            if (selectedSubject != null)
+              TextButton(
+                onPressed: () =>
+                    ref.read(selectedSubjectProvider.notifier).state = null,
+                style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  context.tr('reset_filter'),
+                  style: const TextStyle(
+                    color: Color(0xFF4338CA),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Consumer(
           builder: (context, ref, _) {
             final coursesAsync = ref.watch(myCoursesProvider);
@@ -213,9 +481,12 @@ class CoursesPage extends ConsumerWidget {
   }
 
   /// Section dédiée pour l'enseignant : affiche ses cours créés/générés avec l'IA.
-  /// Si une matière est sélectionnée, seuls les cours de cette matière sont affichés.
   Widget _buildTeacherGeneratedCourses(
-      BuildContext context, WidgetRef ref, String? selectedSubject) {
+    BuildContext context,
+    WidgetRef ref,
+    String? selectedSubject,
+    String query,
+  ) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final mineAsync = ref.watch(myGeneratedCoursesProvider);
@@ -238,10 +509,20 @@ class CoursesPage extends ConsumerWidget {
       data: (courses) {
         var filtered = courses;
         if (selectedSubject != null && selectedSubject.isNotEmpty) {
-          filtered = courses
+          filtered = filtered
               .where((c) =>
                   c.subject != null &&
                   c.subject!.toLowerCase() == selectedSubject.toLowerCase())
+              .toList();
+        }
+        if (query.isNotEmpty) {
+          final q = query.toLowerCase();
+          filtered = filtered
+              .where((c) =>
+                  c.title.toLowerCase().contains(q) ||
+                  (c.subject?.toLowerCase().contains(q) ?? false) ||
+                  (c.content?.toLowerCase().contains(q) ?? false) ||
+                  c.authorName.toLowerCase().contains(q))
               .toList();
         }
 
@@ -252,26 +533,32 @@ class CoursesPage extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${context.tr('my_courses')} (${filtered.length})',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      '${context.tr('my_courses')} (${filtered.length})',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ],
                 ),
                 TextButton.icon(
                   onPressed: () => context.push('/courses/ai-create'),
-                  icon: const Icon(Icons.add_rounded, size: 18),
+                  icon: const Icon(Icons.add_rounded, size: 16),
                   label: Text(
                     context.tr('create_action'),
-                    style: TextStyle(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.w600,
+                    style: const TextStyle(
+                      color: Color(0xFF4338CA),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             if (filtered.isEmpty)
               Container(
                 width: double.infinity,
@@ -287,16 +574,18 @@ class CoursesPage extends ConsumerWidget {
                   children: [
                     Icon(
                       Icons.auto_stories_outlined,
-                      size: 48,
+                      size: 40,
                       color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      selectedSubject != null
-                          ? 'Aucun cours généré pour $selectedSubject'
-                          : 'Aucun cours généré pour le moment',
+                      query.isNotEmpty
+                          ? 'Aucun cours trouvé pour "$query"'
+                          : (selectedSubject != null
+                              ? 'Aucun cours généré pour $selectedSubject'
+                              : 'Aucun cours généré pour le moment'),
                       style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         color: colorScheme.onSurface,
                       ),
                       textAlign: TextAlign.center,
@@ -315,7 +604,11 @@ class CoursesPage extends ConsumerWidget {
                       icon: const Icon(Icons.auto_awesome, size: 16),
                       label: const Text('Créer avec l\'IA'),
                       style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF122675),
                         visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ],
@@ -341,8 +634,12 @@ class CoursesPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildCourseList(BuildContext context, WidgetRef ref,
-      String? selectedSubject) {
+  Widget _buildCourseList(
+    BuildContext context,
+    WidgetRef ref,
+    String? selectedSubject,
+    String query,
+  ) {
     final theme = Theme.of(context);
     final coursesAsync = ref.watch(filteredCoursesProvider);
 
@@ -362,14 +659,23 @@ class CoursesPage extends ConsumerWidget {
               .where((c) => c.subjects.contains(selectedSubject))
               .toList();
         }
+        if (query.isNotEmpty) {
+          final q = query.toLowerCase();
+          filtered = filtered
+              .where((c) =>
+                  c.name.toLowerCase().contains(q) ||
+                  c.subjects.any((s) => s.toLowerCase().contains(q)))
+              .toList();
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               '${context.tr('my_courses')} (${filtered.length})',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
               ),
             ),
             const SizedBox(height: 12),
@@ -400,14 +706,15 @@ class CoursesPage extends ConsumerWidget {
           children: [
             Icon(
               Icons.menu_book_outlined,
-              size: 80,
+              size: 64,
               color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
               context.tr('no_class_title'),
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -481,8 +788,8 @@ Widget _buildGeneratedSection(BuildContext context, WidgetRef ref) {
           children: [
             Text(
               context.tr('published_courses'),
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),

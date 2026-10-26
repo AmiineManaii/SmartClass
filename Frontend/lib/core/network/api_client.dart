@@ -275,6 +275,81 @@ class ApiClient {
     }
   }
 
+  /// Emits every response line (including SSE `data:` frames) to [onLine] from a GET endpoint.
+  Future<void> getStream(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    required void Function(String line) onLine,
+    CancelToken? cancelToken,
+    bool authenticated = true,
+  }) async {
+    final headers = <String, dynamic>{
+      'X-Request-Id': const Uuid().v4(),
+      'Accept': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-store',
+    };
+    if (authenticated) {
+      final accessToken = await tokens.readAccessToken();
+      if (accessToken != null && accessToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $accessToken';
+      }
+    }
+    late Response<ResponseBody> res;
+    try {
+      res = await _dio.get<ResponseBody>(
+        path,
+        queryParameters: queryParameters,
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: headers,
+          receiveTimeout: Duration.zero,
+          extra: {'authenticated': authenticated},
+        ),
+        cancelToken: cancelToken,
+      );
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) {
+        throw const ApiException(
+          code: 'REQUEST_CANCELLED',
+          message: 'Request cancelled',
+        );
+      }
+      final errorRes = e.response;
+      if (errorRes != null && errorRes.data is ResponseBody) {
+        throw await _streamError(Response<ResponseBody>(
+          requestOptions: errorRes.requestOptions,
+          statusCode: errorRes.statusCode,
+          data: errorRes.data as ResponseBody,
+        ));
+      }
+      throw _toApiException(e);
+    }
+    final stream = res.data?.stream;
+    if (res.statusCode != 200 || stream == null) {
+      throw await _streamError(res);
+    }
+    var buffer = '';
+    try {
+      await for (final chunk in stream) {
+        buffer += utf8.decode(chunk, allowMalformed: true);
+        final lines = buffer.split('\n');
+        buffer = lines.removeLast();
+        for (final line in lines) {
+          onLine(line);
+        }
+      }
+      if (buffer.trim().isNotEmpty) onLine(buffer);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) {
+        throw const ApiException(
+          code: 'REQUEST_CANCELLED',
+          message: 'Request cancelled',
+        );
+      }
+      rethrow;
+    }
+  }
+
   Future<ApiException> _streamError(Response<ResponseBody> res) async {
     try {
       final bytes = <int>[];

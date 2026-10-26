@@ -275,10 +275,15 @@ The frontend automated suite covers:
 - [x] **Sprint 4 — Secure Anti-Fraud Proctoring & AI Score Diagnostics**:
   - Secure Exam Room (`SecureExamPage`) with real-time proctoring telemetry (webcam, audio, tab focus lock, fullscreen enforcement), countdown timer, and segmented tracker.
   - AI Pedagogical Score & Correction View (`ExamAiScorePage`) with custom radial score ring (`16 / 20`), cohort benchmark (`+3.2 pts`), mini KPI cards, diagnostic synthesis, and interactive category filters.
-- [ ] **Sprint 5 — Collaborative Spaces & Live Videoconference**:
+- [x] **Sprint 5 — Live Sessions & WebRTC Videoconference (Phases 0-8)**:
+  - Self-hosted LiveKit SFU WebRTC integration (RG27 privacy compliance) with 3-tier architecture (LiveKit media tracks, REST mutations & canonical chat persistence, SSE push stream, zero polling).
+  - Virtual Classroom Live Planner with scheduled and immediate session creation, timetable integration, class overlap checks, and early join windows.
+  - Interactive Pre-call Lobby (`/lobby`) with camera & microphone preview, permission verification, and teacher start CTA.
+  - Responsive Multi-screen Live Room (`/room`) for Web (>=1024px) and Mobile (<1024px): active speaker hero stage, floating draggable local PiP, filmstrip, thumb-zone controls.
+  - In-call persistent chat with offset pagination and optimistic delivery; host moderation (unit mute, mute all, persistent eject bans, chat locking); host-only screen sharing.
+  - Skew-compensated live ticking countdown cards on Student & Teacher dashboards (`StudentImminentLiveCard`, `TeacherImminentLiveCard`).
+- [ ] **Sprint 6 — Collaborative Spaces & Academic Analytics**:
   - Student & Class Community Forum (Stitch screen `3526cad0bee44bdd8064db2b96f544d4`) with channels, pinned announcements, upvoting, and interactive polls.
-  - Virtual Classroom Live Planner (Stitch screen `cbd433ad530b4ebc9674dcbc3be8a2b5`) with WebRTC/LiveKit room integration and participant roster.
-- [ ] **Sprint 6 — Academic Analytics & Advanced RAG**:
   - Class tracking and retention analytics (Stitch screen `b799fb41a59946b2b442a7c59f2fa5d0`).
   - Persistent quiz attempt tracking and vector-indexed student knowledge graphs.
 

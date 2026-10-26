@@ -841,5 +841,73 @@ Le backend implémente `SectionMemoryPort` → `PrismaSectionMemoryAdapter` (pgv
 - Une fois toutes les sections VALIDATED, le cours peut être publié
 - La validation d'une section insère son contenu dans la mémoire vectorielle de l'auteur
 
-*Dernière mise à jour : 2026-10-24*
-*Version : 2.0.1*
+---
+
+## 11. Visioconférence & Live Sessions (Architecture WebRTC, SSE & Tableaux de Bord)
+
+### Principes Fondamentaux & Architecture 3 Tiers
+1. **Séparation Stricte des Flux (3-Tier Realtime Architecture - ADR-0009)** :
+   - **Flux Média WebRTC** : Transporté exclusivement par le serveur SFU LiveKit auto-hébergé (`livekit_client` 2.11.0). Aucune donnée métier ni chat ne transite par les canaux de signalisation WebRTC.
+   - **Mutations & Persistance Métier** : Toutes les commandes de session (démarrage, fin, exclusion, muting, verrou de chat) et la persistance des messages de chat s'effectuent via les API REST sous `/api/v1/videoconference`.
+   - **Notifications Temps Réel (Push)** : `GET /videoconference/events` fournit un flux Server-Sent Events persistant, fan-out ciblé sur l'audience de la classe.
+2. **Interdiction Formelle du Polling** :
+   - Strictement aucun `Timer.periodic` d'interrogation réseau.
+   - Le ticking local de 1 seconde dans `StudentImminentLiveCard` et `TeacherImminentLiveCard` est purement visuel (maintien de l'affichage du compte à rebours sans aucun appel HTTP).
+   - Les listes et flux de session sont invalidés et rechargés uniquement sur réception d'événements SSE (`session.*`) ou `resync`.
+3. **Architecture Propre & Zéro Mock** :
+   - `RoomPort` (domaine pur) abstrait complètement la bibliothèque LiveKit.
+   - `LiveKitRoomAdapter` (infrastructure) implémente `RoomPort`, gère la publication de pistes, l'adaptive streaming (`dynacast`, `adaptiveStream`), le retournement de caméra sécurisé et le relai des streams de domaine (`connectionStateStream`, `participantJoinedStream`, etc.).
+   - `LiveRoomController` (StateNotifier Riverpod) orchestre l'état de la salle, l'activation de l'écran (Wakelock sécurisé), les actions de modération et la déduplication d'événements.
+
+### Écrans & Composants Développés
+
+1. **Lobby (`/videoconference/:sessionId/lobby`)** :
+   - Vérification des permissions caméra et micro avant entrée.
+   - Toggles d'activation du matériel avec prévisualisation locale.
+   - Vue étudiant : état d'attente animé (`WaitingSessionCard`) avec transition automatique vers la salle live dès émission de `session.started` via SSE.
+   - Vue enseignant : bouton proéminent "Démarrer la session" créant la salle LiveKit et passant le statut à `IN_PROGRESS`.
+2. **Salle Live (`/videoconference/:sessionId/room`)** :
+   - Responsive multi-écrans sans aucun mock :
+     - **Bureau / Tablette (`WebLiveRoomView`, largeur ≥ 1024px)** : Scène orateur actif principale, filmstrip des autres participants, rail latéral droit avec onglets Chat & Participants, dock de contrôle compact en bas d'écran.
+     - **Mobile (`MobileLiveRoomView`, largeur < 1024px)** : Orateur en plein écran, PiP flottant déplaçable avec inertie pour la caméra locale, barre de contrôle ergonomique accessible au pouce, bottom sheets coulissantes pour le chat et les participants.
+   - **Gestion de Présence & Modération Hôte** :
+     - Liste des participants avec statut muet/parlant et détection de main levée.
+     - Actions enseignant : couper le micro d'un participant (`mute`), couper tous les micros (`mute-all`), exclure un participant (`remove` avec interdiction définitive de réémission de token).
+     - Déconnexion gérée : options séparées "Quitter le cours" (participant individuel) et "Terminer pour tout le monde" (hôte uniquement).
+   - **Partage d'Écran (Host-Only)** :
+     - Bouton de partage d'écran affiché uniquement pour l'hôte.
+     - Enforced côté serveur via les grants de token LiveKit (`canPublishSources: ['camera', 'microphone']` pour les élèves ; source `screen_share` restreinte au professeur).
+   - **Chat Persistant Intégré** :
+     - Historique paginé sauvegardé en base de données PostgreSQL (`GET /messages`).
+     - Envoi instantané avec déduplication `clientMessageId` (`POST /messages`).
+     - Réception temps réel sans rafraîchissement via l'événement SSE `session.chat-message-created`.
+     - Bannière informative quand le professeur verrouille le chat (`PATCH /chat-settings`).
+3. **Cartes d'Accueil & Compte à Rebours** :
+   - `StudentImminentLiveCard` : synchronisation horaire avec compensation de décalage d'horloge serveur (`serverOffset`), badges visuels (`EN DIRECT`, `ACCÈS OUVERT`, `PROCHAIN DIRECT`), compte à rebours dynamique (`Ouverture dans MM:SS` / `Début dans MM:SS`), bouton CTA réactif (désactivé avant ouverture, activé pour rejoindre dès le créneau d'accès).
+   - `TeacherImminentLiveCard` : carte dédiée sur le tableau de bord enseignant avec phase courante et boutons d'action contextuels ("Démarrer la session" / "Rejoindre le cours").
+
+### Endpoints Utilisés par le Client
+
+| Méthode | Path | Usage |
+|---------|------|-------|
+| `GET` | `/api/v1/videoconference/sessions` | Liste filtrée des sessions (`live`, `scheduled`, `past`) |
+| `POST` | `/api/v1/videoconference/sessions` | Planification ou démarrage immédiat de session (enseignant) |
+| `GET` | `/api/v1/videoconference/sessions/:id` | Détails de la session et statut |
+| `PATCH` | `/api/v1/videoconference/sessions/:id` | Modification d'une session planifiée |
+| `POST` | `/api/v1/videoconference/sessions/:id/cancel` | Annulation d'une session avec motif |
+| `POST` | `/api/v1/videoconference/sessions/:id/start` | Démarrage d'une session planifiée |
+| `POST` | `/api/v1/videoconference/sessions/:id/join-token` | Obtention du jeton JWT pour rejoindre la room LiveKit |
+| `POST` | `/api/v1/videoconference/sessions/:id/end` | Clôture explicite de la session par l'enseignant |
+| `POST` | `/api/v1/videoconference/sessions/:id/leave` | Déclaration de départ du participant |
+| `GET` | `/api/v1/videoconference/sessions/:id/participants` | Liste de présence des participants |
+| `POST` | `/api/v1/videoconference/sessions/:id/participants/:userId/mute` | Coupure micro d'un participant |
+| `POST` | `/api/v1/videoconference/sessions/:id/mute-all` | Coupure collective des micros |
+| `POST` | `/api/v1/videoconference/sessions/:id/participants/:userId/remove` | Exclusion d'un participant |
+| `GET` | `/api/v1/videoconference/sessions/:id/messages` | Historique des messages de chat |
+| `POST` | `/api/v1/videoconference/sessions/:id/messages` | Envoi d'un message de chat |
+| `PATCH` | `/api/v1/videoconference/sessions/:id/chat-settings` | Verrouillage/déverrouillage du chat |
+| `GET` | `/api/v1/videoconference/me/next-session` | Flux de la session live/imminente pour les widgets dashboard |
+| `GET` | `/api/v1/videoconference/events` | Flux SSE continu des événements temps réel |
+
+*Dernière mise à jour : 2026-10-25*
+*Version : 2.2.0*

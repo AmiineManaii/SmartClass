@@ -1460,6 +1460,12 @@ abstract class AppLocalizations {
   /// **'Rejoindre la session'**
   String get join_session;
 
+  /// No description provided for @join_live.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rejoindre le Live'**
+  String get join_live;
+
   /// No description provided for @session_title.
   ///
   /// In fr, this message translates to:
@@ -1579,6 +1585,300 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Lever la main'**
   String get raise_hand;
+
+  /// No description provided for @videoconference_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Visioconférence'**
+  String get videoconference_title;
+
+  /// No description provided for @tab_live.
+  ///
+  /// In fr, this message translates to:
+  /// **'En direct'**
+  String get tab_live;
+
+  /// No description provided for @tab_scheduled.
+  ///
+  /// In fr, this message translates to:
+  /// **'Programmées'**
+  String get tab_scheduled;
+
+  /// No description provided for @tab_past.
+  ///
+  /// In fr, this message translates to:
+  /// **'Passées'**
+  String get tab_past;
+
+  /// No description provided for @new_session.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouvelle session'**
+  String get new_session;
+
+  /// No description provided for @schedule_session.
+  ///
+  /// In fr, this message translates to:
+  /// **'Programmer une session'**
+  String get schedule_session;
+
+  /// No description provided for @start_now.
+  ///
+  /// In fr, this message translates to:
+  /// **'Démarrer maintenant'**
+  String get start_now;
+
+  /// No description provided for @schedule.
+  ///
+  /// In fr, this message translates to:
+  /// **'Programmer'**
+  String get schedule;
+
+  /// No description provided for @edit_session.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifier la session'**
+  String get edit_session;
+
+  /// No description provided for @cancel_session.
+  ///
+  /// In fr, this message translates to:
+  /// **'Annuler la session'**
+  String get cancel_session;
+
+  /// No description provided for @confirm_cancel_session.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voulez-vous vraiment annuler cette session ?'**
+  String get confirm_cancel_session;
+
+  /// No description provided for @cancel_reason.
+  ///
+  /// In fr, this message translates to:
+  /// **'Motif d\'annulation'**
+  String get cancel_reason;
+
+  /// No description provided for @cancel_reason_hint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex. Professeur indisponible, cours déplacé...'**
+  String get cancel_reason_hint;
+
+  /// No description provided for @join_room.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rejoindre le cours'**
+  String get join_room;
+
+  /// No description provided for @join_lobby.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rejoindre le sas'**
+  String get join_lobby;
+
+  /// No description provided for @leave_session.
+  ///
+  /// In fr, this message translates to:
+  /// **'Quitter la session'**
+  String get leave_session;
+
+  /// No description provided for @end_session_for_all.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mettre fin pour tout le monde'**
+  String get end_session_for_all;
+
+  /// No description provided for @confirm_end_session.
+  ///
+  /// In fr, this message translates to:
+  /// **'Êtes-vous sûr de vouloir clore cette session pour tous les participants ?'**
+  String get confirm_end_session;
+
+  /// No description provided for @field_class.
+  ///
+  /// In fr, this message translates to:
+  /// **'Classe'**
+  String get field_class;
+
+  /// No description provided for @select_class.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionner une classe'**
+  String get select_class;
+
+  /// No description provided for @field_subject.
+  ///
+  /// In fr, this message translates to:
+  /// **'Matière'**
+  String get field_subject;
+
+  /// No description provided for @field_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Titre de la séance'**
+  String get field_title;
+
+  /// No description provided for @field_title_hint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex. Mathématiques - Analyse'**
+  String get field_title_hint;
+
+  /// No description provided for @field_description.
+  ///
+  /// In fr, this message translates to:
+  /// **'Description (facultatif)'**
+  String get field_description;
+
+  /// No description provided for @field_date.
+  ///
+  /// In fr, this message translates to:
+  /// **'Date'**
+  String get field_date;
+
+  /// No description provided for @field_start_time.
+  ///
+  /// In fr, this message translates to:
+  /// **'Heure de début'**
+  String get field_start_time;
+
+  /// No description provided for @field_duration.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée'**
+  String get field_duration;
+
+  /// No description provided for @field_join_opens_before.
+  ///
+  /// In fr, this message translates to:
+  /// **'Accès anticipé des étudiants'**
+  String get field_join_opens_before;
+
+  /// No description provided for @minutes_unit.
+  ///
+  /// In fr, this message translates to:
+  /// **'min'**
+  String get minutes_unit;
+
+  /// No description provided for @minutes_before.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} min avant'**
+  String minutes_before(Object count);
+
+  /// No description provided for @chat_enabled_label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Activer le chat textuel en séance'**
+  String get chat_enabled_label;
+
+  /// No description provided for @scheduling_success.
+  ///
+  /// In fr, this message translates to:
+  /// **'Session programmée avec succès'**
+  String get scheduling_success;
+
+  /// No description provided for @update_success.
+  ///
+  /// In fr, this message translates to:
+  /// **'Session modifiée avec succès'**
+  String get update_success;
+
+  /// No description provided for @cancel_success.
+  ///
+  /// In fr, this message translates to:
+  /// **'Session annulée avec succès'**
+  String get cancel_success;
+
+  /// No description provided for @no_live_sessions_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune session en direct'**
+  String get no_live_sessions_title;
+
+  /// No description provided for @no_live_sessions_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Il n\'y a actuellement aucun cours interactif en cours.'**
+  String get no_live_sessions_desc;
+
+  /// No description provided for @no_scheduled_sessions_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune session programmée'**
+  String get no_scheduled_sessions_title;
+
+  /// No description provided for @no_scheduled_sessions_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous n\'avez pas de sessions prévues pour le moment.'**
+  String get no_scheduled_sessions_desc;
+
+  /// No description provided for @no_past_sessions_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune session passée'**
+  String get no_past_sessions_title;
+
+  /// No description provided for @no_past_sessions_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'L\'historique de vos cours en visioconférence apparaîtra ici.'**
+  String get no_past_sessions_desc;
+
+  /// No description provided for @phase_live.
+  ///
+  /// In fr, this message translates to:
+  /// **'EN DIRECT'**
+  String get phase_live;
+
+  /// No description provided for @phase_join_open.
+  ///
+  /// In fr, this message translates to:
+  /// **'SAS OUVERT'**
+  String get phase_join_open;
+
+  /// No description provided for @phase_upcoming.
+  ///
+  /// In fr, this message translates to:
+  /// **'PROGRAMMÉE'**
+  String get phase_upcoming;
+
+  /// No description provided for @phase_ended.
+  ///
+  /// In fr, this message translates to:
+  /// **'TERMINÉE'**
+  String get phase_ended;
+
+  /// No description provided for @phase_canceled.
+  ///
+  /// In fr, this message translates to:
+  /// **'ANNULÉE'**
+  String get phase_canceled;
+
+  /// No description provided for @error_session_not_joinable.
+  ///
+  /// In fr, this message translates to:
+  /// **'La session n\'est pas encore accessible.'**
+  String get error_session_not_joinable;
+
+  /// No description provided for @error_session_start_too_early.
+  ///
+  /// In fr, this message translates to:
+  /// **'Il est trop tôt pour démarrer cette session.'**
+  String get error_session_start_too_early;
+
+  /// No description provided for @error_live_service_unavailable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le service vidéo est temporairement indisponible.'**
+  String get error_live_service_unavailable;
+
+  /// No description provided for @error_chat_disabled.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le chat a été désactivé pour cette session.'**
+  String get error_chat_disabled;
 
   /// No description provided for @shared_resources.
   ///
@@ -1837,12 +2137,6 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Dans {min} min'**
   String in_minutes(Object min);
-
-  /// No description provided for @join_live.
-  ///
-  /// In fr, this message translates to:
-  /// **'Rejoindre le Live'**
-  String get join_live;
 
   /// No description provided for @studio_ia_title.
   ///

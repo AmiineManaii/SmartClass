@@ -1,11 +1,10 @@
+import '../../../videoconference/domain/entities/video_session.dart';
+
 /// A live course session scheduled for today, shown with a join CTA.
 ///
 /// Pure Dart — no Flutter dependency.
 ///
-/// Source of truth (planned): today's-course calendar endpoint
-/// (videoconference module, contract not yet written). Until it lands,
-/// [studentTodayLiveProvider] resolves to `null` and the dashboard hides
-/// the live widget instead of showing invented sessions.
+/// Fed reactively by `nextSessionFeedProvider` from the videoconference module.
 class TodayLiveSession {
   final String id;
   final String subject;
@@ -15,6 +14,8 @@ class TodayLiveSession {
   final int minutesRemaining;
   final List<String> attendeesInitials;
   final int extraAttendeesCount;
+  final VideoSession? videoSession;
+  final Duration serverOffset;
 
   const TodayLiveSession({
     required this.id,
@@ -25,5 +26,7 @@ class TodayLiveSession {
     required this.minutesRemaining,
     this.attendeesInitials = const [],
     this.extraAttendeesCount = 0,
+    this.videoSession,
+    this.serverOffset = Duration.zero,
   });
 }

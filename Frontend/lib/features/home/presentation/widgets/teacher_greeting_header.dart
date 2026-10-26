@@ -71,8 +71,17 @@ class TeacherAvatar extends StatelessWidget {
 
 class TeacherGreetingHeader extends StatelessWidget {
   final AuthState? user;
+  final VoidCallback? onCalendarTap;
+  final VoidCallback? onNotificationsTap;
+  final VoidCallback? onProfileTap;
 
-  const TeacherGreetingHeader({this.user, super.key});
+  const TeacherGreetingHeader({
+    this.user,
+    this.onCalendarTap,
+    this.onNotificationsTap,
+    this.onProfileTap,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +92,11 @@ class TeacherGreetingHeader extends StatelessWidget {
 
     return Row(
       children: [
-        const TeacherAvatar(size: 56),
+        InkWell(
+          onTap: onProfileTap,
+          borderRadius: BorderRadius.circular(56),
+          child: const TeacherAvatar(size: 56),
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -129,14 +142,14 @@ class TeacherGreetingHeader extends StatelessWidget {
         _SquareIconButton(
           icon: Icons.calendar_today_outlined,
           tooltip: context.tr('calendar'),
-          onPressed: () {},
+          onPressed: onCalendarTap,
         ),
         const SizedBox(width: 8),
         _SquareIconButton(
           icon: Icons.notifications_outlined,
           tooltip: context.tr('notifications'),
           showDot: true,
-          onPressed: () {},
+          onPressed: onNotificationsTap,
         ),
       ],
     );

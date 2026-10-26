@@ -125,6 +125,10 @@ components:
                 - SERVICE_UNAVAILABLE
                 - SECTIONS_NOT_VALIDATED
                 - IMAGE_SERVICE_UNAVAILABLE
+                - SESSION_NOT_JOINABLE
+                - SESSION_START_TOO_EARLY
+                - LIVE_SERVICE_UNAVAILABLE
+                - CHAT_DISABLED
               description: Stable error code (never renamed, mirrors Backend error-codes.ts)
             message:
               type: string

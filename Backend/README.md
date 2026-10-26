@@ -131,9 +131,79 @@ If running PostgreSQL locally or via Docker:
 | `SMTP_HOST` | `string` | `smtp.gmail.com` | SMTP email gateway host |
 | `SMTP_PORT` | `number` | `587` | SMTP port |
 | `SMTP_SECURE` | `boolean` | `false` | TLS secure connection |
-| `SMTP_USER` | `string` | `faroukmessay006@gmail.com` | SMTP authenticated email username |
+| `SMTP_USER` | `string` | `user@example.com` | SMTP authenticated email username |
 | `SMTP_PASS` | `string` | Empty (dev fallback) | Gmail App Password (16 characters) |
-| `SMTP_FROM` | `string` | `SmartClass <faroukmessay006@gmail.com>` | Sender header address |
+| `SMTP_FROM` | `string` | `SmartClass <noreply@smartclass.local>` | Sender header address |
+| `LIVEKIT_URL` | `string` | Empty / `http://livekit:7880` | Internal LiveKit SFU signaling URL for backend |
+| `LIVEKIT_PUBLIC_URL` | `string` | Empty / `ws://localhost:7880` | Public LiveKit SFU URL advertised to Flutter clients |
+| `LIVEKIT_API_KEY` | `string` | Empty / `devkey` | LiveKit API Key for room management and token minting |
+| `LIVEKIT_API_SECRET` | `string` | Empty (min 32 chars) | LiveKit API Secret |
+| `LIVEKIT_TOKEN_TTL_SECONDS` | `number` | `600` | Token time-to-live in seconds (10 minutes) |
+| `SESSION_JOIN_OPENS_MINUTES` | `number` | `5` | Minutes prior to start when students can join lobby |
+| `SESSION_EMPTY_ROOM_TIMEOUT_MINUTES` | `number` | `10` | Timeout before an empty room is collected by LiveKit |
+
+---
+
+## LiveKit WebRTC SFU Setup & Production Deployment
+
+SmartClass utilizes a self-hosted [LiveKit](https://livekit.io/) SFU server (`livekit/livekit-server:v1.13.10`) for live group video sessions with full RG27 data privacy compliance.
+
+### Port & Protocol Specifications
+
+| Port | Protocol | Scope | Purpose |
+|---|---|---|---|
+| **7880** | TCP (HTTP/WS) | Public / Ingress | Signaling, client WebSocket connection, Server SDK API |
+| **7881** | TCP | Public / Ingress | ICE over TCP fallback for restrictive corporate/campus firewalls |
+| **7882** | UDP | Public / Ingress | ICE UDP multiplexer (transports all WebRTC audio/video/screen tracks) |
+| **3478** | UDP | Public / Ingress | Built-in TURN server for mobile carrier symmetric NAT traversal |
+| **5349** | TLS / TCP | Public / Ingress | Built-in TURNS (TURN over TLS) |
+
+### Production Deployment & Hardening Guidelines
+
+1. **Mandatory HTTPS & WSS for Web**:
+   - WebRTC APIs (`navigator.mediaDevices.getUserMedia`, `getDisplayMedia`) are blocked by modern browsers (Chrome, Firefox, Safari) on insecure origins (HTTP/WS) except on `localhost`.
+   - Production requires valid TLS certificates (e.g., via Let's Encrypt / Certbot / Caddy reverse proxy) with `https://` for the API and `wss://` for LiveKit signaling.
+2. **DNS & Public URL Configuration**:
+   - Set `LIVEKIT_URL=http://livekit:7880` for backend container-to-container calls.
+   - Set `LIVEKIT_PUBLIC_URL=wss://live.smartclass.yourdomain.com` for client connections.
+   - In `livekit.yaml`, set `rtc.use_external_ip: true` in production or specify `rtc.node_ip: <PUBLIC_IP>` so ICE candidates advertise the routable public IP.
+3. **Symmetric Mobile NAT & Built-in TURN**:
+   - For mobile devices connected over cellular 4G/5G carriers, symmetric NAT frequently blocks direct peer-to-SFU UDP. Enable LiveKit's built-in TURN server by configuring `turn.enabled: true` and mapping UDP port 3478.
+4. **Firewall & Cloud Security Groups**:
+   - Allow Inbound: TCP 7880, TCP 7881, UDP 7882, UDP 3478.
+   - Outbound: Unrestricted (or stateful return traffic).
+5. **Local Docker Desktop & WSL2 Caveats**:
+   - Docker Desktop on Windows routes through a WSL2 VM. Ensure Windows Defender Firewall allows inbound traffic on UDP port 7882.
+   - For local physical phones on LAN, set `LIVEKIT_PUBLIC_URL=ws://<LAN_IP>:7880`. If UDP is blocked by Windows firewall, LiveKit will fall back to ICE TCP port 7881.
+
+---
+
+## Videoconference & Live Sessions Endpoints (Sprint 5, UC3/UC4)
+
+All live session endpoints are mounted under `/api/v1/videoconference`.
+
+| Method | Endpoint | Description | Auth & Role Required |
+|---|---|---|---|
+| `GET` | `/timetable` | Weekly timetable view scoped to class group | Authenticated |
+| `POST` | `/sessions` | Create scheduled or immediate live session | Approved TEACHER or ADMIN |
+| `GET` | `/sessions` | List sessions with role filtering (`tab=live\|scheduled\|past`) | Authenticated (class scoped) |
+| `GET` | `/sessions/:id` | Get session details (hides `roomName` from non-hosts) | Authenticated (class member) |
+| `PATCH` | `/sessions/:id` | Update scheduled session metadata/timing | Host or ADMIN |
+| `POST` | `/sessions/:id/cancel` | Cancel scheduled session with reason | Host or ADMIN |
+| `POST` | `/sessions/:id/start` | Start live session & provision LiveKit room | Host or ADMIN |
+| `POST` | `/sessions/:id/join-token` | Issue signed LiveKit participant JWT token | Authenticated (class member) |
+| `POST` | `/sessions/:id/end` | Explicitly complete session & close LiveKit room | Host or ADMIN |
+| `POST` | `/sessions/:id/leave` | Record participant departure interval | Authenticated |
+| `GET` | `/sessions/:id/participants` | View attendance intervals and active participants | Host or ADMIN |
+| `POST` | `/sessions/:id/participants/:userId/mute` | Server-side track muting for a participant | Host or ADMIN |
+| `POST` | `/sessions/:id/mute-all` | Mute all participant microphones | Host or ADMIN |
+| `POST` | `/sessions/:id/participants/:userId/remove` | Eject participant and ban from rejoining | Host or ADMIN |
+| `GET` | `/sessions/:id/messages` | Paginated canonical in-call chat history | Authenticated (session audience) |
+| `POST` | `/sessions/:id/messages` | Post persistent in-call chat message | Authenticated (session audience) |
+| `PATCH` | `/sessions/:id/chat-settings` | Lock/unlock participant chat messaging | Host or ADMIN |
+| `POST` | `/webhooks/livekit` | LiveKit server webhook ingestion (HMAC verified) | LiveKit SFU |
+| `GET` | `/me/next-session` | Reactive feed of active or imminent live session | Authenticated |
+| `GET` | `/events` | Real-time SSE push stream for session & chat events | Authenticated |
 
 ---
 

@@ -712,6 +712,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get join_session => 'Rejoindre la session';
 
   @override
+  String get join_live => 'Rejoindre le Live';
+
+  @override
   String get session_title => 'Titre de la session';
 
   @override
@@ -770,6 +773,165 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get raise_hand => 'Lever la main';
+
+  @override
+  String get videoconference_title => 'Visioconférence';
+
+  @override
+  String get tab_live => 'En direct';
+
+  @override
+  String get tab_scheduled => 'Programmées';
+
+  @override
+  String get tab_past => 'Passées';
+
+  @override
+  String get new_session => 'Nouvelle session';
+
+  @override
+  String get schedule_session => 'Programmer une session';
+
+  @override
+  String get start_now => 'Démarrer maintenant';
+
+  @override
+  String get schedule => 'Programmer';
+
+  @override
+  String get edit_session => 'Modifier la session';
+
+  @override
+  String get cancel_session => 'Annuler la session';
+
+  @override
+  String get confirm_cancel_session =>
+      'Voulez-vous vraiment annuler cette session ?';
+
+  @override
+  String get cancel_reason => 'Motif d\'annulation';
+
+  @override
+  String get cancel_reason_hint =>
+      'Ex. Professeur indisponible, cours déplacé...';
+
+  @override
+  String get join_room => 'Rejoindre le cours';
+
+  @override
+  String get join_lobby => 'Rejoindre le sas';
+
+  @override
+  String get leave_session => 'Quitter la session';
+
+  @override
+  String get end_session_for_all => 'Mettre fin pour tout le monde';
+
+  @override
+  String get confirm_end_session =>
+      'Êtes-vous sûr de vouloir clore cette session pour tous les participants ?';
+
+  @override
+  String get field_class => 'Classe';
+
+  @override
+  String get select_class => 'Sélectionner une classe';
+
+  @override
+  String get field_subject => 'Matière';
+
+  @override
+  String get field_title => 'Titre de la séance';
+
+  @override
+  String get field_title_hint => 'Ex. Mathématiques - Analyse';
+
+  @override
+  String get field_description => 'Description (facultatif)';
+
+  @override
+  String get field_date => 'Date';
+
+  @override
+  String get field_start_time => 'Heure de début';
+
+  @override
+  String get field_duration => 'Durée';
+
+  @override
+  String get field_join_opens_before => 'Accès anticipé des étudiants';
+
+  @override
+  String get minutes_unit => 'min';
+
+  @override
+  String minutes_before(Object count) {
+    return '$count min avant';
+  }
+
+  @override
+  String get chat_enabled_label => 'Activer le chat textuel en séance';
+
+  @override
+  String get scheduling_success => 'Session programmée avec succès';
+
+  @override
+  String get update_success => 'Session modifiée avec succès';
+
+  @override
+  String get cancel_success => 'Session annulée avec succès';
+
+  @override
+  String get no_live_sessions_title => 'Aucune session en direct';
+
+  @override
+  String get no_live_sessions_desc =>
+      'Il n\'y a actuellement aucun cours interactif en cours.';
+
+  @override
+  String get no_scheduled_sessions_title => 'Aucune session programmée';
+
+  @override
+  String get no_scheduled_sessions_desc =>
+      'Vous n\'avez pas de sessions prévues pour le moment.';
+
+  @override
+  String get no_past_sessions_title => 'Aucune session passée';
+
+  @override
+  String get no_past_sessions_desc =>
+      'L\'historique de vos cours en visioconférence apparaîtra ici.';
+
+  @override
+  String get phase_live => 'EN DIRECT';
+
+  @override
+  String get phase_join_open => 'SAS OUVERT';
+
+  @override
+  String get phase_upcoming => 'PROGRAMMÉE';
+
+  @override
+  String get phase_ended => 'TERMINÉE';
+
+  @override
+  String get phase_canceled => 'ANNULÉE';
+
+  @override
+  String get error_session_not_joinable =>
+      'La session n\'est pas encore accessible.';
+
+  @override
+  String get error_session_start_too_early =>
+      'Il est trop tôt pour démarrer cette session.';
+
+  @override
+  String get error_live_service_unavailable =>
+      'Le service vidéo est temporairement indisponible.';
+
+  @override
+  String get error_chat_disabled =>
+      'Le chat a été désactivé pour cette session.';
 
   @override
   String get shared_resources => 'Ressources partagées';
@@ -907,9 +1069,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String in_minutes(Object min) {
     return 'Dans $min min';
   }
-
-  @override
-  String get join_live => 'Rejoindre le Live';
 
   @override
   String get studio_ia_title => 'Studio IA · Révisions & Quiz';

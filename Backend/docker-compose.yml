@@ -40,6 +40,26 @@ services:
         max-size: "1m"
         max-file: "1"
 
+  livekit:
+    image: livekit/livekit-server:v1.13.10
+    container_name: smartclass-livekit
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml --node-ip 192.168.100.22
+    environment:
+      - NODE_IP=192.168.100.22
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    volumes:
+      - ./livekit/livekit.yaml:/etc/livekit.yaml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 7880 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
   api:
     build:
       context: .

@@ -31,9 +31,7 @@ const envSchema = z.object({
   // SMTP Email configuration
   SMTP_HOST: z.string().default('smtp.gmail.com'),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
-  SMTP_SECURE: z
-    .preprocess((val) => val === 'true' || val === true, z.boolean())
-    .default(false),
+  SMTP_SECURE: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(false),
   SMTP_USER: z.string().default('faroukmessay006@gmail.com'),
   SMTP_PASS: z.string().optional().default(''),
   SMTP_FROM: z.string().default('SmartClass <faroukmessay006@gmail.com>'),
@@ -76,6 +74,20 @@ const envSchema = z.object({
   SEARXNG_URL: z.string().default('http://searxng:8080'),
   // Model for search prompt reformulation (sam860/lucy:1.7b)
   OLLAMA_REFORMULATE_MODEL: z.string().default('sam860/lucy:1.7b'),
+  // LiveKit WebRTC SFU configuration
+  LIVEKIT_URL: z.string().optional().default(''),
+  LIVEKIT_PUBLIC_URL: z.string().optional().default(''),
+  LIVEKIT_API_KEY: z.string().optional().default(''),
+  LIVEKIT_API_SECRET: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length >= 32, {
+      message: 'LIVEKIT_API_SECRET must be at least 32 characters when provided',
+    })
+    .default(''),
+  LIVEKIT_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(600),
+  SESSION_JOIN_OPENS_MINUTES: z.coerce.number().int().positive().default(5),
+  SESSION_EMPTY_ROOM_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(10),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -87,7 +99,9 @@ export const parseEnv = (rawEnv: NodeJS.ProcessEnv = process.env): Env => {
     const formattedErrors = result.error.errors
       .map((err) => `  - ${err.path.join('.')}: ${err.message}`)
       .join('\n');
-    console.error(`\x1b[31m[CONFIG ERROR] Invalid environment variables:\n${formattedErrors}\x1b[0m`);
+    console.error(
+      `\x1b[31m[CONFIG ERROR] Invalid environment variables:\n${formattedErrors}\x1b[0m`,
+    );
     throw new Error(`Invalid environment variables:\n${formattedErrors}`);
   }
 

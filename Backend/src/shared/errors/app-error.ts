@@ -99,6 +99,30 @@ export class ImageServiceUnavailableError extends AppError {
   }
 }
 
+export class SessionNotJoinableError extends AppError {
+  constructor(message = 'Session is not joinable at this time', details: unknown[] = []) {
+    super(message, 409, ErrorCodes.SESSION_NOT_JOINABLE, details);
+  }
+}
+
+export class SessionStartTooEarlyError extends AppError {
+  constructor(message = 'Session can only be started up to 60 minutes before its scheduled start time', details: unknown[] = []) {
+    super(message, 409, ErrorCodes.SESSION_START_TOO_EARLY, details);
+  }
+}
+
+export class LiveServiceUnavailableError extends AppError {
+  constructor(message = 'Live video service is currently unavailable', details: unknown[] = []) {
+    super(message, 503, ErrorCodes.LIVE_SERVICE_UNAVAILABLE, details);
+  }
+}
+
+export class ChatDisabledError extends AppError {
+  constructor(message = 'Chat is currently disabled for this session', details: unknown[] = []) {
+    super(message, 403, ErrorCodes.CHAT_DISABLED, details);
+  }
+}
+
 export class InternalError extends AppError {
   constructor(message = 'Internal server error', details: unknown[] = []) {
     super(message, 500, ErrorCodes.INTERNAL_ERROR, details, false);

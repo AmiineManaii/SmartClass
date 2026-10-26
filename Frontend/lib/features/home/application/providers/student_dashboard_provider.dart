@@ -6,6 +6,8 @@ import '../../domain/entities/student_class_membership.dart';
 import '../../domain/entities/student_course_progress.dart';
 import '../../domain/entities/today_live_session.dart';
 import '../../infrastructure/datasources/groups_remote_datasource.dart';
+import '../../../videoconference/application/videoconference_providers.dart';
+import '../../../videoconference/domain/entities/session_phase.dart';
 
 final groupsRemoteDataSourceProvider = Provider<GroupsRemoteDataSource>((ref) {
   return GroupsRemoteDataSource(ref.watch(apiClientProvider));
@@ -38,13 +40,34 @@ final studentClassMembershipProvider =
 
 /// Today's live session, if the student really has a course today.
 ///
-/// Seam for the today's-course calendar endpoint (videoconference module,
-/// contract not yet written). Resolves to `null` until wired: the dashboard
-/// hides the live widget instead of showing an invented session.
+/// Reactively fed by `nextSessionFeedProvider` from the videoconference module.
 final studentTodayLiveProvider = FutureProvider<TodayLiveSession?>((ref) async {
-  // TODO(videoconference-contract): fetch today's session, e.g.
-  // `ref.watch(videoconferenceRepositoryProvider).todaySession()`.
-  return null;
+  final feed = await ref.watch(nextSessionFeedProvider.future);
+  final session = feed.session;
+  if (session == null) return null;
+
+  final phase = phaseOf(session, DateTime.now(), serverOffset: feed.serverOffset);
+  if (phase == SessionPhase.canceled || phase == SessionPhase.ended) {
+    return null;
+  }
+
+  final startsAt = session.startsAt;
+  final endsAt = session.endsAt;
+  final diff = startsAt.difference(DateTime.now().add(feed.serverOffset));
+
+  return TodayLiveSession(
+    id: session.id,
+    subject: session.subject ?? session.title,
+    instructor: session.hostName ?? '',
+    chapter: session.title,
+    time:
+        '${startsAt.hour.toString().padLeft(2, '0')}:${startsAt.minute.toString().padLeft(2, '0')} - ${endsAt.hour.toString().padLeft(2, '0')}:${endsAt.minute.toString().padLeft(2, '0')}',
+    minutesRemaining: diff.inMinutes > 0 ? diff.inMinutes : 0,
+    attendeesInitials: const ['SC'],
+    extraAttendeesCount: session.participantCount ?? 0,
+    videoSession: session,
+    serverOffset: feed.serverOffset,
+  );
 });
 
 /// Courses authored by the teacher, displayed on the student side.

@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>SmartClass a besoin d'accéder à la caméra pour les sessions de cours en direct.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SmartClass a besoin d'accéder au microphone pour vous permettre de communiquer pendant les cours en direct.</string>
 </dict>
 </plist>

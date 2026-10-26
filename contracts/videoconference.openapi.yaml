@@ -1,17 +1,17 @@
 openapi: 3.1.0
 info:
-  title: SmartClass API — Videoconference & Timetable
-  version: 0.1.0
+  title: SmartClass API — Videoconference & Live Sessions
+  version: 0.2.0
   description: >
-    Weekly timetable backing the admin schedule screen. Live rooms, recording
-    and transcription (UC3/UC4, RG8/RG11) arrive with the full videoconference
-    module in Sprint 3; only the read-only week view is implemented here.
+    Videoconference domain covering class-attached live sessions, scheduling,
+    LiveKit WebRTC token issuance, in-call chat persistence, host moderation,
+    attendance, SSE real-time feed, and the weekly timetable (UC3/UC4, RG8/RG11).
 servers:
   - url: /api/v1
     description: SmartClass API v1 prefix
 tags:
   - name: videoconference
-    description: Timetable and live sessions
+    description: Live classes, scheduling, WebRTC media rooms, and timetable
 paths:
   /videoconference/timetable:
     get:
@@ -21,12 +21,7 @@ paths:
       summary: Weekly timetable for a class group
       description: >
         Returns one bounded week (Monday to Saturday) of scheduled slots plus
-        per-day course counts. The fixed 7-day scope is intentionally not
-        paginated (bounded view, not an open-ended list). Class-scoped read:
-        ADMIN reads every timetable; any other authenticated user must belong
-        to the class (enrolled student, assigned teacher, or referent) —
-        otherwise 403. Powers the admin schedule screen and the teacher's
-        upcoming sessions.
+        per-day course counts. Class-scoped read.
       security:
         - bearerAuth: []
       x-status: implemented
@@ -46,7 +41,6 @@ paths:
             format: date
           description: >
             Any date inside the desired week (Monday is derived server-side).
-            Defaults to the current week.
           example: '2025-05-12'
       responses:
         '200':
@@ -95,8 +89,6 @@ paths:
                   days:
                     - date: '2025-05-12'
                       courseCount: 4
-                    - date: '2025-05-13'
-                      courseCount: 3
                   events:
                     - id: 550e8400-e29b-41d4-a716-446655440000
                       date: '2025-05-12'
@@ -119,11 +111,1397 @@ paths:
           $ref: './common.yaml#/components/responses/NotFound'
         '422':
           $ref: './common.yaml#/components/responses/ValidationError'
+
+  /videoconference/sessions:
+    post:
+      operationId: createVideoSession
+      tags:
+        - videoconference
+      summary: Create or schedule a new live video session
+      description: >
+        Teacher creates an immediate ("Start now", mode=NOW) or scheduled (mode=SCHEDULED)
+        live session attached to a ClassGroup. Validates class assignment and scheduling conflicts.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVideoSessionRequest'
+            example:
+              classGroupId: 550e8400-e29b-41d4-a716-446655440010
+              title: Mathématiques — Algèbre linéaire & Espaces vectoriels
+              description: Cours magistral et exercices d'application directe
+              subject: Mathématiques
+              mode: SCHEDULED
+              startsAt: '2026-10-26T10:00:00.000Z'
+              durationMinutes: 60
+              joinOpensMinutesBefore: 5
+      responses:
+        '201':
+          description: Video session created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/VideoSession'
+                additionalProperties: false
+              example:
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  classGroupId: 550e8400-e29b-41d4-a716-446655440010
+                  hostId: 550e8400-e29b-41d4-a716-446655440001
+                  title: Mathématiques — Algèbre linéaire & Espaces vectoriels
+                  description: Cours magistral et exercices d'application directe
+                  subject: Mathématiques
+                  startsAt: '2026-10-26T10:00:00.000Z'
+                  endsAt: '2026-10-26T11:00:00.000Z'
+                  status: SCHEDULED
+                  joinOpensMinutesBefore: 5
+                  chatEnabled: true
+                  createdAt: '2026-10-25T14:00:00.000Z'
+                  updatedAt: '2026-10-25T14:00:00.000Z'
+        '400':
+          $ref: './common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './common.yaml#/components/responses/Conflict'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+
+    get:
+      operationId: listVideoSessions
+      tags:
+        - videoconference
+      summary: List video sessions with offset pagination
+      description: >
+        Returns video sessions visible to the user. Admins can list all or filter by class;
+        teachers see sessions for their assigned classes; students see sessions for their enrolled class.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: classGroupId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter sessions by class group
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [SCHEDULED, IN_PROGRESS, COMPLETED, CANCELED]
+          description: Filter sessions by status
+        - $ref: './common.yaml#/components/parameters/PageParam'
+        - $ref: './common.yaml#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of video sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VideoSession'
+                  meta:
+                    $ref: './common.yaml#/components/schemas/PaginationOffsetMeta'
+                additionalProperties: false
+              example:
+                data:
+                  - id: 550e8400-e29b-41d4-a716-446655440000
+                    classGroupId: 550e8400-e29b-41d4-a716-446655440010
+                    hostId: 550e8400-e29b-41d4-a716-446655440001
+                    title: Mathématiques — Algèbre linéaire & Espaces vectoriels
+                    startsAt: '2026-10-26T10:00:00.000Z'
+                    endsAt: '2026-10-26T11:00:00.000Z'
+                    status: SCHEDULED
+                    joinOpensMinutesBefore: 5
+                    chatEnabled: true
+                    createdAt: '2026-10-25T14:00:00.000Z'
+                    updatedAt: '2026-10-25T14:00:00.000Z'
+                meta:
+                  page: 1
+                  limit: 20
+                  total: 1
+                  totalPages: 1
+                  hasNextPage: false
+                  hasPreviousPage: false
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+
+  /videoconference/sessions/{id}:
+    get:
+      operationId: getVideoSession
+      tags:
+        - videoconference
+      summary: Get details of a single video session
+      description: Returns the detailed session metadata. Class membership enforced.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Video session details
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/VideoSession'
+                additionalProperties: false
+              example:
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  classGroupId: 550e8400-e29b-41d4-a716-446655440010
+                  hostId: 550e8400-e29b-41d4-a716-446655440001
+                  title: Mathématiques — Algèbre linéaire
+                  startsAt: '2026-10-26T10:00:00.000Z'
+                  endsAt: '2026-10-26T11:00:00.000Z'
+                  status: SCHEDULED
+                  joinOpensMinutesBefore: 5
+                  chatEnabled: true
+                  createdAt: '2026-10-25T14:00:00.000Z'
+                  updatedAt: '2026-10-25T14:00:00.000Z'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+
+    patch:
+      operationId: updateVideoSession
+      tags:
+        - videoconference
+      summary: Update a scheduled video session
+      description: Only the host or admin can update a session, and only while in SCHEDULED status.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVideoSessionRequest'
+            example:
+              title: Mathématiques — Algèbre avancée
+              durationMinutes: 90
+      responses:
+        '200':
+          description: Updated session
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/VideoSession'
+                additionalProperties: false
+              example:
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  classGroupId: 550e8400-e29b-41d4-a716-446655440010
+                  title: Mathématiques — Algèbre avancée
+                  startsAt: '2026-10-26T10:00:00.000Z'
+                  endsAt: '2026-10-26T11:30:00.000Z'
+                  status: SCHEDULED
+                  joinOpensMinutesBefore: 5
+                  chatEnabled: true
+                  createdAt: '2026-10-25T14:00:00.000Z'
+                  updatedAt: '2026-10-25T14:30:00.000Z'
+        '400':
+          $ref: './common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './common.yaml#/components/responses/Conflict'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+
+  /videoconference/sessions/{id}/cancel:
+    post:
+      operationId: cancelVideoSession
+      tags:
+        - videoconference
+      summary: Cancel a scheduled session
+      description: Moves session from SCHEDULED to CANCELED. Emits session.status-changed event via SSE.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+              additionalProperties: false
+            example:
+              reason: Empêchement exceptionnel de l'enseignant
+      responses:
+        '200':
+          description: Canceled session
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/VideoSession'
+                additionalProperties: false
+              example:
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  classGroupId: 550e8400-e29b-41d4-a716-446655440010
+                  title: Mathématiques — Algèbre linéaire
+                  status: CANCELED
+                  cancelReason: Empêchement exceptionnel de l'enseignant
+                  startsAt: '2026-10-26T10:00:00.000Z'
+                  endsAt: '2026-10-26T11:00:00.000Z'
+                  joinOpensMinutesBefore: 5
+                  chatEnabled: true
+                  createdAt: '2026-10-25T14:00:00.000Z'
+                  updatedAt: '2026-10-25T14:45:00.000Z'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './common.yaml#/components/responses/Conflict'
+
+  /videoconference/sessions/{id}/start:
+    post:
+      operationId: startVideoSession
+      tags:
+        - videoconference
+      summary: Host starts the live video session
+      description: >
+        Moves session to IN_PROGRESS. Permitted up to 60 minutes prior to startsAt.
+        Emits session.status-changed event via SSE and enables student join-token requests.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Started session
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/VideoSession'
+                additionalProperties: false
+              example:
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  classGroupId: 550e8400-e29b-41d4-a716-446655440010
+                  title: Mathématiques — Algèbre linéaire
+                  status: IN_PROGRESS
+                  startedAt: '2026-10-26T09:55:00.000Z'
+                  startsAt: '2026-10-26T10:00:00.000Z'
+                  endsAt: '2026-10-26T11:00:00.000Z'
+                  joinOpensMinutesBefore: 5
+                  chatEnabled: true
+                  createdAt: '2026-10-25T14:00:00.000Z'
+                  updatedAt: '2026-10-26T09:55:00.000Z'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './common.yaml#/components/responses/Conflict'
+
+  /videoconference/sessions/{id}/join-token:
+    post:
+      operationId: issueJoinToken
+      tags:
+        - videoconference
+      summary: Request a LiveKit join token for an active session
+      description: >
+        Enforces membership, session readiness, and lack of removal restrictions.
+        Mints a short-lived least-privilege token with participant metadata.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Join token and room details
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/JoinTokenResponse'
+                additionalProperties: false
+              example:
+                data:
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  url: ws://localhost:7880
+                  expiresAt: '2026-10-26T10:10:00.000Z'
+                  role: host
+                  permissions:
+                    canPublish: true
+                    canPublishData: true
+                    canSubscribe: true
+                    hidden: false
+                    canPublishSources: [camera, microphone, screen_share, screen_share_audio]
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './common.yaml#/components/responses/Conflict'
+        '503':
+          $ref: './common.yaml#/components/responses/ServiceUnavailable'
+
+  /videoconference/sessions/{id}/end:
+    post:
+      operationId: endVideoSession
+      tags:
+        - videoconference
+      summary: Host explicitly ends the live session for everyone
+      description: >
+        Transitions session to COMPLETED. Closes the LiveKit room, persists attendance intervals,
+        and broadcasts session.status-changed.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ended session
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/VideoSession'
+                additionalProperties: false
+              example:
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  classGroupId: 550e8400-e29b-41d4-a716-446655440010
+                  title: Mathématiques — Algèbre linéaire
+                  status: COMPLETED
+                  startedAt: '2026-10-26T09:55:00.000Z'
+                  endedAt: '2026-10-26T11:02:00.000Z'
+                  startsAt: '2026-10-26T10:00:00.000Z'
+                  endsAt: '2026-10-26T11:00:00.000Z'
+                  joinOpensMinutesBefore: 5
+                  chatEnabled: true
+                  createdAt: '2026-10-25T14:00:00.000Z'
+                  updatedAt: '2026-10-26T11:02:00.000Z'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './common.yaml#/components/responses/Conflict'
+
+  /videoconference/sessions/{id}/participants:
+    get:
+      operationId: listSessionParticipants
+      tags:
+        - videoconference
+      summary: List participants and attendance intervals
+      description: Returns attendance intervals and join/leave records for the session. Host or Admin only.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of participants
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SessionParticipant'
+                additionalProperties: false
+              example:
+                data:
+                  - id: 550e8400-e29b-41d4-a716-446655440020
+                    sessionId: 550e8400-e29b-41d4-a716-446655440000
+                    userId: 550e8400-e29b-41d4-a716-446655440002
+                    userDisplayName: Salma Student
+                    userRole: STUDENT
+                    joinedAt: '2026-10-26T09:58:00.000Z'
+                    leftAt: '2026-10-26T11:01:00.000Z'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+
+  /videoconference/sessions/{id}/participants/{userId}/mute:
+    post:
+      operationId: muteParticipant
+      tags:
+        - videoconference
+      summary: Host mutes a participant's microphone
+      description: Host mutes participant audio track via LiveKit server API.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Participant muted
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - success
+                    properties:
+                      success:
+                        type: boolean
+                    additionalProperties: false
+              example:
+                data:
+                  success: true
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+
+  /videoconference/sessions/{id}/participants/{userId}/remove:
+    post:
+      operationId: removeParticipant
+      tags:
+        - videoconference
+      summary: Host removes and bans a participant from the session
+      description: Disconnects participant from room and records persistent removal restriction preventing re-entry.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+              additionalProperties: false
+            example:
+              reason: Comportement inapproprié
+      responses:
+        '200':
+          description: Participant removed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - success
+                    properties:
+                      success:
+                        type: boolean
+                    additionalProperties: false
+              example:
+                data:
+                  success: true
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+
+  /videoconference/sessions/{id}/mute-all:
+    post:
+      operationId: muteAll
+      tags:
+        - videoconference
+      summary: Host mutes all student microphones
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: All students muted
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - success
+                    properties:
+                      success:
+                        type: boolean
+                    additionalProperties: false
+              example:
+                data:
+                  success: true
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+
+  /videoconference/sessions/{id}/messages:
+    get:
+      operationId: listSessionChatMessages
+      tags:
+        - videoconference
+      summary: List persistent in-call chat messages with offset pagination
+      description: Returns saved messages. Initial page returns newest first for fast reconnect recovery.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: './common.yaml#/components/parameters/PageParam'
+        - $ref: './common.yaml#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated messages
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SessionChatMessage'
+                  meta:
+                    $ref: './common.yaml#/components/schemas/PaginationOffsetMeta'
+                additionalProperties: false
+              example:
+                data:
+                  - id: 550e8400-e29b-41d4-a716-446655440050
+                    sessionId: 550e8400-e29b-41d4-a716-446655440000
+                    senderId: 550e8400-e29b-41d4-a716-446655440002
+                    senderDisplayName: Salma Student
+                    senderRole: STUDENT
+                    content: Bonjour monsieur, pouvez-vous réexpliquer le théorème 2 ?
+                    createdAt: '2026-10-26T10:15:00.000Z'
+                meta:
+                  page: 1
+                  limit: 20
+                  total: 1
+                  totalPages: 1
+                  hasNextPage: false
+                  hasPreviousPage: false
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+
+    post:
+      operationId: createSessionChatMessage
+      tags:
+        - videoconference
+      summary: Send and persist an in-call chat message
+      description: >
+        Saves message canonically to PostgreSQL with clientMessageId idempotency.
+        Broadcasts message to session audience via SSE after successful database commit.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionChatMessageRequest'
+            example:
+              content: Pouvez-vous répéter la formule s'il vous plaît ?
+              clientMessageId: 987e6543-e21b-12d3-a456-426614174000
+      responses:
+        '201':
+          description: Message saved and broadcast
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SessionChatMessage'
+                additionalProperties: false
+              example:
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440051
+                  sessionId: 550e8400-e29b-41d4-a716-446655440000
+                  senderId: 550e8400-e29b-41d4-a716-446655440002
+                  senderDisplayName: Salma Student
+                  senderRole: STUDENT
+                  content: Pouvez-vous répéter la formule s'il vous plaît ?
+                  createdAt: '2026-10-26T10:16:00.000Z'
+        '400':
+          $ref: './common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+
+  /videoconference/sessions/{id}/chat-settings:
+    patch:
+      operationId: setSessionChatEnabled
+      tags:
+        - videoconference
+      summary: Host or Admin enables/disables session chat
+      description: When disabled, new message submissions are rejected with CHAT_DISABLED, while history remains readable.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatSettingsRequest'
+            example:
+              enabled: false
+      responses:
+        '200':
+          description: Updated session settings
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/VideoSession'
+                additionalProperties: false
+              example:
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  classGroupId: 550e8400-e29b-41d4-a716-446655440010
+                  title: Mathématiques — Algèbre linéaire
+                  status: IN_PROGRESS
+                  chatEnabled: false
+                  startsAt: '2026-10-26T10:00:00.000Z'
+                  endsAt: '2026-10-26T11:00:00.000Z'
+                  joinOpensMinutesBefore: 5
+                  createdAt: '2026-10-25T14:00:00.000Z'
+                  updatedAt: '2026-10-26T10:20:00.000Z'
+        '400':
+          $ref: './common.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+
+  /videoconference/me/next-session:
+    get:
+      operationId: getMyNextSession
+      tags:
+        - videoconference
+      summary: Fetch current active or upcoming session for dashboard card
+      description: Returns active LIVE session or nearest UPCOMING session within horizon (default 24h), plus serverNow for countdown offset.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: horizonHours
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 72
+            default: 24
+          description: Max hours into the future to look for upcoming scheduled sessions
+      responses:
+        '200':
+          description: Next session info
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NextSessionResponse'
+                additionalProperties: false
+              example:
+                data:
+                  liveSession: null
+                  upcomingSession:
+                    id: 550e8400-e29b-41d4-a716-446655440000
+                    classGroupId: 550e8400-e29b-41d4-a716-446655440010
+                    title: Algèbre Linéaire
+                    startsAt: '2026-10-26T10:00:00.000Z'
+                    endsAt: '2026-10-26T11:00:00.000Z'
+                    status: SCHEDULED
+                    joinOpensMinutesBefore: 5
+                    chatEnabled: true
+                    createdAt: '2026-10-25T14:00:00.000Z'
+                    updatedAt: '2026-10-25T14:00:00.000Z'
+                  serverNow: '2026-10-26T09:50:00.000Z'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+
+  /videoconference/events:
+    get:
+      operationId: streamSessionEvents
+      tags:
+        - videoconference
+      summary: Server-Sent Events stream for real-time video session updates
+      description: >
+        Unidirectional SSE stream pushing real-time session lifecycle, chat messages, and moderation events.
+        Emits text/event-stream with a heartbeat ping every 10s (: ping\n\n).
+        Events emitted:
+        session.created, session.updated, session.canceled, session.started, session.ended,
+        session.participant-joined, session.participant-left, session.participant-count-changed,
+        session.chat-message-created, session.chat-settings-updated.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: sessionId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional filter to subscribe only to a specific session
+      responses:
+        '200':
+          description: Real-time event stream
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/SessionEvent'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+
+  /videoconference/webhooks/livekit:
+    post:
+      operationId: receiveLiveKitWebhook
+      tags:
+        - videoconference
+      summary: LiveKit webhook handler for room and participant events
+      description: Verifies LiveKit JWT signature header and processes room_finished, participant_joined, participant_left.
+      security: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - event
+                - id
+                - createdAt
+              properties:
+                event:
+                  type: string
+                  example: participant_joined
+                id:
+                  type: string
+                  example: EV_987654321
+                createdAt:
+                  type: integer
+                  example: 1730000000
+                room:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                participant:
+                  type: object
+                  properties:
+                    identity:
+                      type: string
+                    name:
+                      type: string
+            example:
+              event: participant_joined
+              id: EV_123456789
+              createdAt: 1730000000
+              room:
+                name: room-550e8400-e29b-41d4-a716-446655440000
+              participant:
+                identity: 550e8400-e29b-41d4-a716-446655440002
+                name: Salma Student
+      responses:
+        '200':
+          description: Webhook received and processed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - received
+                properties:
+                  received:
+                    type: boolean
+                additionalProperties: false
+              example:
+                received: true
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+
 components:
   securitySchemes:
     bearerAuth:
       $ref: './common.yaml#/components/securitySchemes/bearerAuth'
   schemas:
+    VideoSession:
+      type: object
+      required:
+        - id
+        - classGroupId
+        - title
+        - startsAt
+        - endsAt
+        - status
+        - joinOpensMinutesBefore
+        - chatEnabled
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        classGroupId:
+          type: string
+          format: uuid
+        hostId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        hostName:
+          type:
+            - string
+            - 'null'
+        subject:
+          type:
+            - string
+            - 'null'
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type:
+            - string
+            - 'null'
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        startedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        endedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        status:
+          type: string
+          enum: [SCHEDULED, IN_PROGRESS, COMPLETED, CANCELED]
+        joinOpensMinutesBefore:
+          type: integer
+          minimum: 0
+          maximum: 30
+          default: 5
+        chatEnabled:
+          type: boolean
+          default: true
+        timetableSlotId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        courseId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        cancelReason:
+          type:
+            - string
+            - 'null'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    CreateVideoSessionRequest:
+      type: object
+      required:
+        - classGroupId
+        - title
+        - mode
+      properties:
+        classGroupId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 3
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        subject:
+          type: string
+          maxLength: 100
+        mode:
+          type: string
+          enum: [NOW, SCHEDULED]
+        startsAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+          minimum: 5
+          maximum: 480
+          default: 60
+        joinOpensMinutesBefore:
+          type: integer
+          minimum: 0
+          maximum: 30
+          default: 5
+        timetableSlotId:
+          type: string
+          format: uuid
+        courseId:
+          type: string
+          format: uuid
+      additionalProperties: false
+
+    UpdateVideoSessionRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        subject:
+          type: string
+          maxLength: 100
+        startsAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+          minimum: 5
+          maximum: 480
+        joinOpensMinutesBefore:
+          type: integer
+          minimum: 0
+          maximum: 30
+        chatEnabled:
+          type: boolean
+      additionalProperties: false
+
+    JoinTokenResponse:
+      type: object
+      required:
+        - token
+        - url
+        - expiresAt
+        - role
+        - permissions
+      properties:
+        token:
+          type: string
+        url:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        role:
+          type: string
+          enum: [host, student, admin]
+        permissions:
+          type: object
+          required:
+            - canPublish
+            - canPublishData
+            - canSubscribe
+            - hidden
+            - canPublishSources
+          properties:
+            canPublish:
+              type: boolean
+            canPublishData:
+              type: boolean
+            canSubscribe:
+              type: boolean
+            hidden:
+              type: boolean
+            canPublishSources:
+              type: array
+              items:
+                type: string
+          additionalProperties: false
+      additionalProperties: false
+
+    SessionParticipant:
+      type: object
+      required:
+        - id
+        - sessionId
+        - userId
+        - joinedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        userDisplayName:
+          type:
+            - string
+            - 'null'
+        userRole:
+          type:
+            - string
+            - 'null'
+        joinedAt:
+          type: string
+          format: date-time
+        leftAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+      additionalProperties: false
+
+    SessionChatMessage:
+      type: object
+      required:
+        - id
+        - sessionId
+        - senderId
+        - senderDisplayName
+        - senderRole
+        - content
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        senderId:
+          type: string
+          format: uuid
+        senderDisplayName:
+          type: string
+        senderRole:
+          type: string
+        content:
+          type: string
+          maxLength: 2000
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    CreateSessionChatMessageRequest:
+      type: object
+      required:
+        - content
+        - clientMessageId
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        clientMessageId:
+          type: string
+          format: uuid
+      additionalProperties: false
+
+    ChatSettingsRequest:
+      type: object
+      required:
+        - enabled
+      properties:
+        enabled:
+          type: boolean
+      additionalProperties: false
+
+    NextSessionResponse:
+      type: object
+      required:
+        - liveSession
+        - upcomingSession
+        - serverNow
+      properties:
+        liveSession:
+          oneOf:
+            - $ref: '#/components/schemas/VideoSession'
+            - type: 'null'
+        upcomingSession:
+          oneOf:
+            - $ref: '#/components/schemas/VideoSession'
+            - type: 'null'
+        serverNow:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    SessionEvent:
+      type: object
+      required:
+        - type
+        - sessionId
+        - classGroupId
+        - at
+      properties:
+        type:
+          type: string
+          enum:
+            - session.created
+            - session.updated
+            - session.canceled
+            - session.started
+            - session.ended
+            - session.participant-joined
+            - session.participant-left
+            - session.participant-count-changed
+            - session.chat-message-created
+            - session.chat-settings-updated
+        sessionId:
+          type: string
+          format: uuid
+        classGroupId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [SCHEDULED, IN_PROGRESS, COMPLETED, CANCELED]
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        at:
+          type: string
+          format: date-time
+        data:
+          type: object
+          additionalProperties: true
+      additionalProperties: false
+
     TimetableTeacher:
       type: object
       required:
@@ -136,6 +1514,7 @@ components:
         name:
           type: string
       additionalProperties: false
+
     TimetableEvent:
       type: object
       required:

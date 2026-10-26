@@ -1,581 +1,747 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../../app/app_providers.dart';
-import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/extensions/extensions.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/smart_loader.dart';
+import '../../application/videoconference_providers.dart';
+import '../widgets/schedule_session_dialog.dart';
+import '../widgets/video_session_card.dart';
 
-class VideoconferencePage extends ConsumerWidget {
+class VideoconferencePage extends ConsumerStatefulWidget {
   const VideoconferencePage({super.key});
-  
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VideoconferencePage> createState() =>
+      _VideoconferencePageState();
+}
+
+class _VideoconferencePageState extends ConsumerState<VideoconferencePage>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openScheduleDialog({bool liveNow = false}) async {
+    final result = await ScheduleSessionDialog.show(
+      context,
+      defaultLiveNow: liveNow,
+    );
+    if (result != null && mounted) {
+      ref.read(videoSessionsProvider('live').notifier).refresh();
+      ref.read(videoSessionsProvider('scheduled').notifier).refresh();
+      ref.read(videoSessionsProvider('past').notifier).refresh();
+      if (result == 'live') {
+        _tabController.animateTo(0);
+      } else if (result == 'scheduled') {
+        _tabController.animateTo(1);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final role = ref.watch(authStateProvider).valueOrNull?.role?.toLowerCase();
     final isTeacher = role == 'teacher' || role == 'admin';
 
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(isTeacher ? context.tr('nav_live_meetings') : context.tr('videoconference')),
-          bottom: TabBar(
-            tabs: [
-              Tab(text: context.tr('live_sessions')),
-              Tab(text: context.tr('scheduled_sessions')),
-              Tab(text: context.tr('past_sessions')),
-            ],
-          ),
-          actions: [
-            if (isTeacher)
-              IconButton(
-                icon: const Icon(Icons.add_rounded),
-                onPressed: () => _showCreateSessionDialog(context),
-                tooltip: context.tr('start_session'),
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      floatingActionButton: isTeacher
+          ? FloatingActionButton(
+              backgroundColor: isDark ? const Color(0xFF3B82F6) : const Color(0xFF122675),
+              foregroundColor: Colors.white,
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              tooltip: _tabController.index == 0
+                  ? 'Lancer un direct'
+                  : 'Programmer une séance',
+              onPressed: () => _openScheduleDialog(
+                liveNow: _tabController.index == 0,
               ),
-          ],
-        ),
-        body: TabBarView(
+              child: Icon(
+                _tabController.index == 0
+                    ? Icons.videocam_rounded
+                    : Icons.calendar_today_rounded,
+                size: 22,
+              ),
+            )
+          : null,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildSessionList(context, 'live', isTeacher),
-            _buildSessionList(context, 'scheduled', isTeacher),
-            _buildSessionList(context, 'past', isTeacher),
+            // Top Hero Banner
+            _buildHeroBanner(context, isTeacher, isDark),
+
+            // Search Bar & Filter Controls
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: _buildSearchBar(context, isDark),
+            ),
+
+            // Segmented Pill Tabs
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: _buildSegmentedTabs(context, isDark),
+            ),
+            const SizedBox(height: 6),
+
+            // Session List per Tab
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _TabSessionList(
+                    tabKey: 'live',
+                    isTeacher: isTeacher,
+                    searchQuery: _searchQuery,
+                    emptyTitle: 'Aucun direct en cours',
+                    emptyDesc:
+                        'Les séances en direct apparaîtront ici dès que leur diffusion commencera.',
+                    emptyIcon: Icons.videocam_outlined,
+                    onSchedule: () => _openScheduleDialog(liveNow: true),
+                  ),
+                  _TabSessionList(
+                    tabKey: 'scheduled',
+                    isTeacher: isTeacher,
+                    searchQuery: _searchQuery,
+                    emptyTitle: 'Aucune séance programmée',
+                    emptyDesc:
+                        'Planifiez vos prochains cours virtuels pour qu\'ils s\'affichent à l\'emploi du temps.',
+                    emptyIcon: Icons.calendar_month_outlined,
+                    onSchedule: () => _openScheduleDialog(liveNow: false),
+                  ),
+                  _TabSessionList(
+                    tabKey: 'past',
+                    isTeacher: isTeacher,
+                    searchQuery: _searchQuery,
+                    emptyTitle: 'Aucun historique récent',
+                    emptyDesc:
+                        'Les séances terminées et rapports d\'émargement seront archivés ici.',
+                    emptyIcon: Icons.history_rounded,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
-  
-  Widget _buildSessionList(BuildContext context, String filter, bool isTeacher) {
-    final sessions = filter == 'live'
-        ? [
-            {'title': 'Introduction à la POO', 'teacher': 'Prof. Martin', 'participants': 24, 'isLive': true, 'group': 'L3 Info - Groupe A'},
-          ]
-        : filter == 'scheduled'
-        ? [
-            {'title': 'Base de données - Chapitre 4', 'teacher': 'Prof. Dubois', 'date': DateTime.now().add(const Duration(days: 1)), 'time': '14:00 - 15:30', 'group': 'L3 Info - Groupe A'},
-            {'title': 'Algorithmique - Tris et recherche', 'teacher': 'Prof. Bernard', 'date': DateTime.now().add(const Duration(days: 3)), 'time': '10:00 - 11:30', 'group': 'L3 Info - Groupe B'},
-          ]
-        : [
-            {'title': 'Révision examen - POO', 'teacher': 'Prof. Martin', 'date': DateTime.now().subtract(const Duration(days: 2)), 'hasReplay': true, 'hasSummary': true, 'group': 'L3 Info - Groupe A'},
-            {'title': 'Introduction aux bases de données', 'teacher': 'Prof. Dubois', 'date': DateTime.now().subtract(const Duration(days: 5)), 'hasReplay': true, 'hasSummary': false, 'group': 'L3 Info - Groupe A'},
-          ];
-    
-    if (sessions.isEmpty) {
-      return _buildEmptyState(context, filter, isTeacher);
-    }
-    
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: sessions.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final session = sessions[index];
-        
-        if (filter == 'live') {
-          return _buildLiveSessionCard(context, session);
-        } else if (filter == 'scheduled') {
-          return _buildScheduledSessionCard(context, session);
-        } else {
-          return _buildPastSessionCard(context, session);
-        }
-      },
-    );
-  }
-  
-  Widget _buildLiveSessionCard(BuildContext context, Map<String, dynamic> session) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    
-    return AppCard(
-      onTap: () {},
-      padding: const EdgeInsets.all(16),
+
+  Widget _buildHeroBanner(BuildContext context, bool isTeacher, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF122675), Color(0xFF1E3A8A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF122675).withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.videocam_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Directs & Visioconférence',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      Text(
+                        'LiveKit SFU • Haute Définition',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: colorScheme.error.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(9999),
+                  color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFF34D399).withValues(alpha: 0.6),
+                    width: 0.8,
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: colorScheme.error,
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF34D399),
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'EN DIRECT',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.error,
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(width: 5),
+                    const Text(
+                      'Actif',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.more_vert_rounded),
-                onPressed: () {},
               ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
-            session['title'] as String,
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.person_rounded, size: 16, color: colorScheme.onSurfaceVariant),
-              const SizedBox(width: 4),
-              Text(
-                session['teacher'] as String,
-                style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(width: 16),
-              Icon(Icons.group_rounded, size: 16, color: colorScheme.onSurfaceVariant),
-              const SizedBox(width: 4),
-              Text(
-                '${session['participants']} participants',
-                style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(width: 16),
-              Icon(Icons.flag_rounded, size: 16, color: colorScheme.onSurfaceVariant),
-              const SizedBox(width: 4),
-              Text(
-                session['group'] as String,
-                style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  text: 'Rejoindre',
-                  onPressed: () {},
-                  leadingIcon: Icons.videocam_rounded,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: AppButton(
-                  text: 'Enregistrer',
-                  onPressed: () {},
-                  variant: AppButtonVariant.outlined,
-                  leadingIcon: Icons.fiber_manual_record_rounded,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildScheduledSessionCard(BuildContext context, Map<String, dynamic> session) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final date = session['date'] as DateTime;
-    
-    return AppCard(
-      onTap: () {},
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              Icons.calendar_today_rounded,
-              color: colorScheme.onPrimaryContainer,
-              size: 28,
+            'Participez ou animez des séances interactives avec streaming vidéo temps réel, chat, partage d\'écran et émargement.',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 12,
+              height: 1.35,
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          if (isTeacher) ...[
+            const SizedBox(height: 14),
+            Row(
               children: [
-                Text(
-                  session['title'] as String,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  session['teacher'] as String,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.access_time_rounded, size: 14, color: colorScheme.onSurfaceVariant),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${date.formatDate()} • ${session['time']}',
-                      style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(width: 12),
-                    Icon(Icons.flag_rounded, size: 14, color: colorScheme.onSurfaceVariant),
-                    const SizedBox(width: 4),
-                    Text(
-                      session['group'] as String,
-                      style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert_rounded),
-            onPressed: () {},
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildPastSessionCard(BuildContext context, Map<String, dynamic> session) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final date = session['date'] as DateTime;
-    
-    return AppCard(
-      onTap: () {},
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              session['hasReplay'] == true ? Icons.play_circle_rounded : Icons.videocam_off_rounded,
-              color: colorScheme.onSurfaceVariant,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  session['title'] as String,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  session['teacher'] as String,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today_rounded, size: 14, color: colorScheme.onSurfaceVariant),
-                    const SizedBox(width: 4),
-                    Text(
-                      date.formatDate(),
-                      style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                    ),
-                    if (session['hasReplay'] == true) ...[
-                      const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: colorScheme.tertiary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(9999),
-                        ),
-                        child: Text(
-                          'Replay',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.tertiary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                Expanded(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF122675),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ],
-                    if (session['hasSummary'] == true) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(9999),
-                        ),
-                        child: Text(
-                          'Résumé',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert_rounded),
-            onPressed: () {},
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildEmptyState(BuildContext context, String filter, bool isTeacher) {
-    String message;
-    IconData icon;
-    
-    switch (filter) {
-      case 'live':
-        message = 'Aucune session en direct';
-        icon = Icons.videocam_off_outlined;
-        break;
-      case 'scheduled':
-        message = 'Aucune session programmée';
-        icon = Icons.event_outlined;
-        break;
-      default:
-        message = 'Aucune session passée';
-        icon = Icons.history_outlined;
-    }
-    
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(48),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 80,
-              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            if (filter != 'past') ...[
-              const SizedBox(height: 16),
-              if (isTeacher)
-                AppButton(
-                  text: filter == 'live' ? 'Démarrer une session' : 'Programmer une session',
-                  onPressed: () => _showCreateSessionDialog(context),
-                  isFullWidth: false,
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text(
-                    filter == 'live'
-                        ? 'Aucun cours en direct pour vos classes actuellement.'
-                        : 'Les prochaines visioconférences planifiées par vos enseignants apparaîtront ici.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                    textAlign: TextAlign.center,
+                    icon: Icon(
+                      _tabController.index == 0
+                          ? Icons.videocam_rounded
+                          : Icons.calendar_today_rounded,
+                      size: 18,
+                    ),
+                    label: Text(
+                      _tabController.index == 0
+                          ? 'Lancer un direct'
+                          : 'Programmer une séance',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                    onPressed: () => _openScheduleDialog(
+                      liveNow: _tabController.index == 0,
+                    ),
                   ),
                 ),
-            ],
+              ],
+            ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context, bool isDark) {
+    return Container(
+      height: 42,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _searchQuery.isNotEmpty
+              ? const Color(0xFF122675)
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : const Color(0xFFE2E8F0)),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          Icon(
+            Icons.search_rounded,
+            size: 18,
+            color: _searchQuery.isNotEmpty
+                ? const Color(0xFF122675)
+                : const Color(0xFF94A3B8),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: (val) => setState(() => _searchQuery = val.trim()),
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+              decoration: const InputDecoration(
+                hintText: 'Rechercher une séance, matière ou enseignant...',
+                hintStyle: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  color: Color(0xFF94A3B8),
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ),
+          if (_searchQuery.isNotEmpty)
+            GestureDetector(
+              onTap: () {
+                _searchCtrl.clear();
+                setState(() => _searchQuery = '');
+              },
+              child: const Icon(Icons.cancel_rounded,
+                  size: 16, color: Color(0xFF94A3B8)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentedTabs(BuildContext context, bool isDark) {
+    final activeIndex = _tabController.index;
+
+    final tabs = [
+      {
+        'tooltip': 'En direct',
+        'icon': Icons.sensors_rounded,
+        'selectedIcon': Icons.sensors_rounded,
+        'activeColor': const Color(0xFFEF4444),
+        'isLive': true,
+      },
+      {
+        'tooltip': 'Programmées',
+        'icon': Icons.calendar_today_outlined,
+        'selectedIcon': Icons.calendar_month_rounded,
+        'activeColor': isDark ? const Color(0xFF60A5FA) : const Color(0xFF1E3A8A),
+        'isLive': false,
+      },
+      {
+        'tooltip': 'Historique',
+        'icon': Icons.history_rounded,
+        'selectedIcon': Icons.history_toggle_off_rounded,
+        'activeColor': isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+        'isLive': false,
+      },
+    ];
+
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          width: 1,
         ),
       ),
-    );
-  }
-  
-  void _showCreateSessionDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _CreateSessionSheet(),
+      child: Row(
+        children: List.generate(tabs.length, (idx) {
+          final isSelected = activeIndex == idx;
+          final item = tabs[idx];
+          final isLive = item['isLive'] as bool;
+          final activeColor = item['activeColor'] as Color;
+
+          return Expanded(
+            child: Tooltip(
+              message: item['tooltip'] as String,
+              child: GestureDetector(
+                onTap: () => _tabController.animateTo(idx),
+                behavior: HitTestBehavior.opaque,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 240),
+                  curve: Curves.easeOutCubic,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? (isDark ? const Color(0xFF1E293B) : Colors.white)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: (isDark ? Colors.black : const Color(0xFF0F172A))
+                                  .withValues(alpha: isDark ? 0.35 : 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(
+                        (isSelected
+                            ? item['selectedIcon']
+                            : item['icon']) as IconData,
+                        size: 20,
+                        color: isSelected
+                            ? activeColor
+                            : (isDark
+                                ? const Color(0xFF64748B)
+                                : const Color(0xFF94A3B8)),
+                      ),
+                      if (isLive)
+                        Positioned(
+                          top: -2,
+                          right: -4,
+                          child: Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFEF4444).withValues(alpha: 0.6),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
     );
   }
 }
 
-class _CreateSessionSheet extends ConsumerStatefulWidget {
-  @override
-  ConsumerState<_CreateSessionSheet> createState() => _CreateSessionSheetState();
-}
+class _TabSessionList extends ConsumerWidget {
+  final String tabKey;
+  final bool isTeacher;
+  final String searchQuery;
+  final String emptyTitle;
+  final String emptyDesc;
+  final IconData emptyIcon;
+  final VoidCallback? onSchedule;
 
-class _CreateSessionSheetState extends ConsumerState<_CreateSessionSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  DateTime _selectedDate = DateTime.now().add(const Duration(hours: 1));
-  TimeOfDay _selectedTime = TimeOfDay.now().replacing(hour: DateTime.now().hour + 1);
-  
+  const _TabSessionList({
+    required this.tabKey,
+    required this.isTeacher,
+    required this.searchQuery,
+    required this.emptyTitle,
+    required this.emptyDesc,
+    required this.emptyIcon,
+    this.onSchedule,
+  });
+
   @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncState = ref.watch(videoSessionsProvider(tabKey));
+
+    return RefreshIndicator(
+      onRefresh: () =>
+          ref.read(videoSessionsProvider(tabKey).notifier).refresh(),
+      child: asyncState.when(
+        data: (state) {
+          final q = searchQuery.toLowerCase().trim();
+          final filtered = q.isEmpty
+              ? state.sessions
+              : state.sessions.where((s) {
+                  final matchTitle = s.title.toLowerCase().contains(q);
+                  final matchClass =
+                      s.className?.toLowerCase().contains(q) ?? false;
+                  final matchSubject =
+                      s.subject?.toLowerCase().contains(q) ?? false;
+                  final matchHost =
+                      s.hostName?.toLowerCase().contains(q) ?? false;
+                  return matchTitle || matchClass || matchSubject || matchHost;
+                }).toList();
+
+          if (filtered.isEmpty) {
+            return _buildEmptyState(context);
+          }
+
+          return NotificationListener<ScrollNotification>(
+            onNotification: (scrollInfo) {
+              if (scrollInfo.metrics.pixels >=
+                      scrollInfo.metrics.maxScrollExtent - 200 &&
+                  state.hasMore &&
+                  !state.isLoadingMore) {
+                ref.read(videoSessionsProvider(tabKey).notifier).loadMore();
+              }
+              return false;
+            },
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              itemCount: filtered.length + (state.isLoadingMore ? 1 : 0),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                if (index >= filtered.length) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: SmartLoader.small(),
+                    ),
+                  );
+                }
+                final session = filtered[index];
+                return VideoSessionCard(
+                  session: session,
+                  isTeacher: isTeacher,
+                );
+              },
+            ),
+          );
+        },
+        loading: () => const Center(
+          child: SmartLoader.medium(
+            message: 'Chargement des séances de visioconférence...',
+          ),
+        ),
+        error: (err, _) => _buildErrorState(context, ref, err),
+      ),
+    );
   }
-  
-  @override
-  Widget build(BuildContext context) {
+
+  Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF1E293B)
+                        : colorScheme.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : const Color(0xFFE2E8F0),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEEF2FF),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFC7D2FE),
+                            width: 1,
+                          ),
+                        ),
+                        child: Icon(
+                          emptyIcon,
+                          size: 26,
+                          color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4338CA),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        emptyTitle,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        emptyDesc,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (isTeacher && tabKey != 'past') ...[
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF122675),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: Icon(
+                            tabKey == 'live'
+                                ? Icons.videocam_rounded
+                                : Icons.calendar_today_rounded,
+                            size: 16,
+                          ),
+                          label: Text(
+                            tabKey == 'live'
+                                ? 'Lancer un direct'
+                                : 'Programmer une séance',
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                          onPressed: onSchedule ?? () => ScheduleSessionDialog.show(context),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Nouvelle session',
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextFormField(
-                  controller: _titleController,
-                  decoration: InputDecoration(
-                    labelText: 'Titre de la session',
-                    hintText: 'ex: Introduction à la POO',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Titre requis';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _descriptionController,
-                  decoration: InputDecoration(
-                    labelText: 'Description',
-                    hintText: 'Description optionnelle...',
-                    alignLabelWithHint: true,
-                  ),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () async {
-                          final date = await showDatePicker(
-                            context: context,
-                            initialDate: _selectedDate,
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime.now().add(const Duration(days: 365)),
-                          );
-                          if (date != null) setState(() => _selectedDate = date);
-                        },
-                        child: InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: 'Date',
-                            prefixIcon: const Icon(Icons.calendar_today_rounded),
-                          ),
-                          child: Text(_selectedDate.formatDate()),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InkWell(
-                        onTap: () async {
-                          final time = await showTimePicker(
-                            context: context,
-                            initialTime: _selectedTime,
-                          );
-                          if (time != null) setState(() => _selectedTime = time);
-                        },
-                        child: InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: 'Heure',
-                            prefixIcon: const Icon(Icons.access_time_rounded),
-                          ),
-                          child: Text(_selectedTime.format(context)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppButton(
-                        text: 'Annuler',
-                        onPressed: () => Navigator.pop(context),
-                        variant: AppButtonVariant.outlined,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: AppButton(
-                        text: 'Programmer',
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            Navigator.pop(context);
-                            context.showSuccessToast('Session programmée');
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+        );
+      },
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, WidgetRef ref, Object err) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEE2E2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.error_outline_rounded,
+                  size: 26, color: Color(0xFFDC2626)),
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            const Text(
+              'Erreur de synchronisation des séances',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              err.toString(),
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 11,
+                color: Color(0xFFDC2626),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            FilledButton.tonal(
+              onPressed: () =>
+                  ref.read(videoSessionsProvider(tabKey).notifier).refresh(),
+              child: const Text('Réessayer'),
+            ),
+          ],
+        ),
       ),
     );
   }

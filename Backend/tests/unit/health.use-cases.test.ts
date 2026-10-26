@@ -4,14 +4,22 @@ import { GetReadinessUseCase } from '../../src/modules/health/application/get-re
 import type {
   HealthCheckPort,
   DatabaseHealthResult,
+  LiveKitHealthResult,
 } from '../../src/modules/health/domain/health-check.port.js';
 import { ServiceUnavailableError } from '../../src/shared/errors/index.js';
 
 class MockHealthCheckPort implements HealthCheckPort {
-  constructor(private readonly result: DatabaseHealthResult) {}
+  constructor(
+    private readonly dbResult: DatabaseHealthResult,
+    private readonly livekitResult: LiveKitHealthResult = { status: 'up', latencyMs: 5 },
+  ) {}
 
   public async checkDatabase(): Promise<DatabaseHealthResult> {
-    return this.result;
+    return this.dbResult;
+  }
+
+  public async checkLiveKit(): Promise<LiveKitHealthResult> {
+    return this.livekitResult;
   }
 }
 
@@ -28,11 +36,11 @@ describe('Health Module Use Cases', () => {
   });
 
   describe('GetReadinessUseCase', () => {
-    it('should return status ok and database latency when database is healthy', async () => {
-      const mockPort = new MockHealthCheckPort({
-        isHealthy: true,
-        latencyMs: 12,
-      });
+    it('should return status ok and service details when database and livekit are healthy', async () => {
+      const mockPort = new MockHealthCheckPort(
+        { isHealthy: true, latencyMs: 12 },
+        { status: 'up', latencyMs: 5 },
+      );
       const useCase = new GetReadinessUseCase(mockPort);
 
       const result = await useCase.execute();
@@ -41,6 +49,37 @@ describe('Health Module Use Cases', () => {
       expect(new Date(result.timestamp).toISOString()).toBe(result.timestamp);
       expect(result.services.database.status).toBe('up');
       expect(result.services.database.latencyMs).toBe(12);
+      expect(result.services.livekit.status).toBe('up');
+      expect(result.services.livekit.latencyMs).toBe(5);
+    });
+
+    it('should return status ok even when livekit is down (non-critical)', async () => {
+      const mockPort = new MockHealthCheckPort(
+        { isHealthy: true, latencyMs: 10 },
+        { status: 'down', error: 'ECONNREFUSED' },
+      );
+      const useCase = new GetReadinessUseCase(mockPort);
+
+      const result = await useCase.execute();
+
+      expect(result.status).toBe('ok');
+      expect(result.services.database.status).toBe('up');
+      expect(result.services.livekit.status).toBe('down');
+      expect(result.services.livekit.error).toBe('ECONNREFUSED');
+    });
+
+    it('should return status ok when livekit is not configured', async () => {
+      const mockPort = new MockHealthCheckPort(
+        { isHealthy: true, latencyMs: 8 },
+        { status: 'not_configured' },
+      );
+      const useCase = new GetReadinessUseCase(mockPort);
+
+      const result = await useCase.execute();
+
+      expect(result.status).toBe('ok');
+      expect(result.services.database.status).toBe('up');
+      expect(result.services.livekit.status).toBe('not_configured');
     });
 
     it('should throw ServiceUnavailableError when database is down', async () => {

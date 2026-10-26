@@ -81,6 +81,7 @@ On n'invente **jamais** une règle métier. Cadrage muet ou ambigu → on le not
 | `nodemailer`, `@types/nodemailer` | Envoi d'emails transactionnels via SMTP Gmail (Sprint 1) |
 | `multer`, `@types/multer` | Upload multipart en mémoire pour `POST /ai/courses/improve-pdf` (PDF 25 Mo max, approuvé avec la demande) |
 | `unpdf` | Extraction texte des PDF côté serveur (pdf.js ESM, `Uint8Array` requis — pas `Buffer`) pour `improve-pdf` |
+| `livekit-server-sdk` | Intégration serveur LiveKit SFU (tokens d'accès, gestion des rooms, webhooks) (Sprint 3) |
 
 **Volontairement PAS installés maintenant** : `ioredis` / `rate-limit-redis`, `bullmq`, `socket.io`, `@aws-sdk/*`, libs OpenAPI, `husky`, plugins de frontières ESLint. Chacun arrive avec la feature qui en a besoin.
 
@@ -359,7 +360,7 @@ Enums : `ENSEIGNANT→TEACHER`, `ETUDIANT→STUDENT`, `ADMIN→ADMIN` · `ACTIF�
 | RG4 | Contenu IA officiel : validation enseignant obligatoire ; l'IA ne publie jamais seule | Domain (state machine) | 2 |
 | RG6 | Génération IA individuelle : sans validation | Application | 4 |
 | RG7 | Conversation tuteur IA privée | Policy | 4 |
-| RG8 | Seul l'enseignant hôte gère l'enregistrement | Policy | 3 |
+| RG8 | Seul l'enseignant hôte gère l'enregistrement | Policy | Sprint 3 (Hosting & modération LiveKit implémentés ; Egress recording: Phase 9 optionnelle) |
 | RG11 | Résumé de session validé par le prof avant diffusion | Domain | 3 |
 | RG12 | Partage de ressource uniquement dans ses groupes | Policy | 5 |
 | RG14 | Mineurs + vidéos : chiffrement et rétention | Infra | 3 |
@@ -571,3 +572,41 @@ docker compose exec api npm run db:migrate -- --name <nom>
   - **Thinking** : `reasoning_effort` (`none` / `high`) ajouté au payload OpenAI-compatible en plus de `chat_template_kwargs.enable_thinking` ; Qwen3.5 ignorait ce dernier et brûlait le budget en raisonnement. Vérifié dans le conteneur : `thinking:false` → `OK` en 2 tokens, `thinking:true` → raisonnement.
   - **Santé** : `checkHealth` ignore les modèles d'embedding et compare les IDs normalisés (`:latest`) pour ne plus confondre `embeddinggemma-2` avec un modèle de chat.
   - **Qualité** : 2 assertions `reasoning_effort` ajoutées ; suite **293/293**, typecheck 0, build 0 ; Ollama joignable depuis Docker, complétion réelle et embeddings 768-dim validés.
+
+- 2026-10-25 — v2.0.0 — **Live Sessions (WebRTC) — Phase 0 & Phase 1 : Fondations, Modèle de données & Domaine Pur** :
+  - **ADRs** : `ADR-0007` (SFU LiveKit auto-hébergé, RG27), `ADR-0008` (Modèle de session rattaché aux classes, machine d'états SCHEDULED/IN_PROGRESS/COMPLETED/CANCELED, découplage cycle de vie logique vs room LiveKit), `ADR-0009` (Temps réel 3 tiers : média LiveKit, mutations/persistance REST, push SSE, sans polling ni socket.io).
+  - **LiveKit Server** : service Docker `smartclass-livekit` (`livekit/livekit-server:v1.13.10`) dans `docker-compose.yml` (ports 7880 TCP, 7881 TCP fallback, 7882/udp mux) + `Backend/livekit/livekit.yaml`. L'API démarre indépendamment de LiveKit.
+  - **Package** : `livekit-server-sdk` v2.19.2 installé.
+  - **Health** : LiveKit ajouté comme dépendance non critique dans `HealthCheckPort`, `PrismaHealthCheckAdapter` et `GetReadinessUseCase` (l'API reste 200 OK si LiveKit est éteint).
+  - **Contrat API** : `contracts/videoconference.openapi.yaml` étendu avec tous les endpoints de session, tokens, modération, chat persistant, SSE et webhooks (`x-status: planned`). Codes d'erreur stables ajoutés : `SESSION_NOT_JOINABLE` (409), `SESSION_START_TOO_EARLY` (409), `LIVE_SERVICE_UNAVAILABLE` (503), `CHAT_DISABLED` (403). Redocly validé sans erreur.
+  - **Modèle de données & Migration** : table `video_sessions` (statut, dates, room_name opaque, chat_enabled), `session_participants` (intervalles de présence), `session_chat_messages` (persistance avec client_message_id idempotent), `session_participant_removals` (exclusion persistante). **Écart assumé vs cadrage** : `session_participants` utilise un identifiant UUID propre au lieu d'une clé composite (id_session, id_user) afin de capturer fidèlement les reconnexions multiples sous forme d'intervalles distincts [joined_at, left_at].
+  - **Domaine pur** : `video-session.entity.ts`, `video-session-lifecycle.ts` (machine d'états + fonction pure `sessionPhase`), `video-session-validation.ts` (durée 5-480 min, horizon 365j, ouverture 0-30 min), `video-session-policy.ts` (règles `canHost`, `canStart` à H-60min, `evaluateJoinPermission`, conflits temporels), ports et erreurs typées. 34/34 tests unitaires de domaine verts.
+
+- 2026-10-25 — v2.1.0 — **Live Sessions (WebRTC) — Phases 2, 3 & 4 : CRUD, LiveKit SFU, Modération, Chat Persistant, SSE Push & Dashboard Feed** :
+  - **CRUD & Scheduling (Phase 2)** : Use cases `CreateVideoSession`, `ListVideoSessions`, `GetVideoSession`, `UpdateVideoSession`, `CancelVideoSession`. Vérification d'assignation professeur / référent / administrateur. Anti-collision horaire au sein d'une même classe. Rate-limiting sur mutations (20 req/min). Audit log exhaustif (`session.created`, `session.updated`, `session.canceled`).
+  - **Intégration LiveKit SFU & Modération (Phase 3)** : `LiveKitRoomAdapter` avec moindre privilège (pas de `roomAdmin` pour les participants ; partage d'écran et publication audio/vidéo restreints au host/enseignant ; étudiants en abonnement/données). Muting unitaire (`muteParticipant`), muting global (`muteAll`), exclusion persistante avec interdiction de rejoin (`removeParticipant`).
+  - **Reconnexion & Room Vide (ADR-0008)** : Le cycle de vie de la session logique est découplé de la room LiveKit. L'expiration d'une room vide ne termine pas la session métier ; la room est recréée de façon idempotente lors de la reconnexion du professeur ou des participants. Seul un ordre explicite "Terminer" par le host ou l'admin clôture la session en `COMPLETED`.
+  - **Chat Persistant (Phase 3)** : `POST /videoconference/sessions/:id/messages` avec idempotence `clientMessageId` et persistance PostgreSQL (`SessionChatMessage`). Validation de contenu (1-2000 car.), vérification du statut `IN_PROGRESS` et du verrou `chatEnabled` modulable en direct par le host (`PATCH /chat-settings`).
+  - **Webhooks LiveKit** : `POST /videoconference/webhooks/livekit` avec vérification de signature JWT (`WebhookReceiver`), déduplication par event ID, enregistrement idempotent des arrivées et départs (`participant_joined`, `participant_left`).
+  - **Temps Réel SSE & Dashboard Feed (Phase 4)** :
+    - `InMemoryLiveEventsHub` (port `LiveEventsPublisherPort`) : canal SSE authentifié `GET /videoconference/events` (Bearer token, `text/event-stream`, Cache-Control `no-cache, no-store`, Connection `keep-alive`, `X-Accel-Buffering: no`). Heartbeat périodique toutes les 10s (`: ping\n\n`). Gestion gracieuse de la contre-pression et nettoyage immédiat lors de la déconnexion client. Plafond de 3 connexions actives par utilisateur avec éviction automatique de la plus ancienne connexion (multi-onglets).
+    - **Hypothèse monoconteneur & Scalabilité** : `InMemoryLiveEventsHub` maintient les abonnés SSE en mémoire vive de l'instance Node.js courante. Dans un déploiement multi-instances / clusterisé, un bus Redis pub/sub (`RedisLiveEventsHub`) sera le chemin naturel d'extension.
+    - Événements diffusés : `session.created`, `session.updated`, `session.canceled`, `session.started`, `session.ended`, `session.participant-joined`, `session.participant-left`, `session.chat-message-created`, `session.chat-settings-updated`. Diffusion ciblée sur l'audience de la classe (élèves inscrits, professeurs assignés, référent).
+    - `GET /videoconference/me/next-session` : Calcul déterministe de la session live prioritaire et de la prochaine session planifiée dans l'horizon temporel (1-72h, défaut 24h) sur l'ensemble des classes de l'utilisateur (ou global pour ADMIN), incluant `serverNow` pour la compensation du décalage d'horloge client.
+  - **Tests & Qualité** : 78/78 tests unitaires videoconference verts (4 suites de tests complètes : domaine, CRUD, lifecycle LiveKit, SSE & dashboard feed). Typecheck 0 erreur, ESLint 0 erreur, Redocly OpenAPI lint validé à 100%.
+
+- 2026-10-25 — v2.2.0 — **Live Sessions (WebRTC) — Phase 8 : Durcissement Sécurité, Anti-Abus & Vérification E2E** :
+  - **Sécurité & Contrôle d'accès** :
+    - Blocage immédiat des utilisateurs au statut `SUSPENDED` dès `createAuthenticateMiddleware` (`AUTH_USER_SUSPENDED`), coupant l'accès au flux temps réel SSE, à la création de session et à l'émission de jetons LiveKit.
+    - Interdiction persistante de re-connexion pour les participants exclus d'une session (`isUserRemoved` via table `session_participant_removals` empêchant toute réémission de token LiveKit).
+    - Moindre privilège LiveKit : tokens participants sans grant `roomAdmin`, durée de vie courte (`LIVEKIT_TOKEN_TTL_SECONDS = 600s`), publication de partage d'écran strictement réservée au rôle hôte/enseignant.
+    - Censure Pino : masque automatiquement `joinToken`, `livekitToken`, `LIVEKIT_API_SECRET`, `LIVEKIT_API_KEY`, et tous les champs sensibles associés des logs.
+  - **Résilience & Anti-Abus** :
+    - Rate-limiting strict appliqué sur les mutations (20 req/min), l'ingestion des webhooks LiveKit (120 req/min) et l'établissement des connexions SSE (60 req/min).
+    - Déduplication idempotente des webhooks LiveKit par `event.id` et vérification de signature cryptographique HMAC.
+    - Déduplication idempotente des messages de chat par `clientMessageId`.
+    - Protection IDOR systématique avec vérification d'inscription/assignation à la classe sur l'ensemble des endpoints.
+  - **Documentation & Déploiement** :
+    - Guide de déploiement de production LiveKit rédigé dans `Backend/README.md` (TLS/HTTPS/WSS obligatoire, ports 7880 TCP, 7881 TCP fallback, 7882 UDP, TURN 3478 UDP pour carriers mobiles à NAT symétrique).
+    - Validation contractuelle Redocly 100% propre (0 erreur). 78/78 tests unitaires backend verts, 32/32 tests Flutter videoconference verts.
+

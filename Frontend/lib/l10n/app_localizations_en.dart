@@ -707,6 +707,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get join_session => 'Join session';
 
   @override
+  String get join_live => 'Join Live';
+
+  @override
   String get session_title => 'Session title';
 
   @override
@@ -765,6 +768,162 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get raise_hand => 'Raise hand';
+
+  @override
+  String get videoconference_title => 'Videoconference';
+
+  @override
+  String get tab_live => 'Live';
+
+  @override
+  String get tab_scheduled => 'Scheduled';
+
+  @override
+  String get tab_past => 'Past';
+
+  @override
+  String get new_session => 'New session';
+
+  @override
+  String get schedule_session => 'Schedule a session';
+
+  @override
+  String get start_now => 'Start now';
+
+  @override
+  String get schedule => 'Schedule';
+
+  @override
+  String get edit_session => 'Edit session';
+
+  @override
+  String get cancel_session => 'Cancel session';
+
+  @override
+  String get confirm_cancel_session =>
+      'Are you sure you want to cancel this session?';
+
+  @override
+  String get cancel_reason => 'Cancellation reason';
+
+  @override
+  String get cancel_reason_hint => 'E.g. Teacher unavailable, rescheduled...';
+
+  @override
+  String get join_room => 'Join class';
+
+  @override
+  String get join_lobby => 'Enter lobby';
+
+  @override
+  String get leave_session => 'Leave session';
+
+  @override
+  String get end_session_for_all => 'End for everyone';
+
+  @override
+  String get confirm_end_session =>
+      'Are you sure you want to end this session for all participants?';
+
+  @override
+  String get field_class => 'Class';
+
+  @override
+  String get select_class => 'Select a class';
+
+  @override
+  String get field_subject => 'Subject';
+
+  @override
+  String get field_title => 'Session title';
+
+  @override
+  String get field_title_hint => 'E.g. Mathematics - Calculus';
+
+  @override
+  String get field_description => 'Description (optional)';
+
+  @override
+  String get field_date => 'Date';
+
+  @override
+  String get field_start_time => 'Start time';
+
+  @override
+  String get field_duration => 'Duration';
+
+  @override
+  String get field_join_opens_before => 'Student early access';
+
+  @override
+  String get minutes_unit => 'min';
+
+  @override
+  String minutes_before(Object count) {
+    return '$count min before';
+  }
+
+  @override
+  String get chat_enabled_label => 'Enable text chat during session';
+
+  @override
+  String get scheduling_success => 'Session scheduled successfully';
+
+  @override
+  String get update_success => 'Session updated successfully';
+
+  @override
+  String get cancel_success => 'Session canceled successfully';
+
+  @override
+  String get no_live_sessions_title => 'No live sessions';
+
+  @override
+  String get no_live_sessions_desc =>
+      'There are currently no active live sessions.';
+
+  @override
+  String get no_scheduled_sessions_title => 'No scheduled sessions';
+
+  @override
+  String get no_scheduled_sessions_desc =>
+      'You have no sessions scheduled at the moment.';
+
+  @override
+  String get no_past_sessions_title => 'No past sessions';
+
+  @override
+  String get no_past_sessions_desc =>
+      'Your live session history will appear here.';
+
+  @override
+  String get phase_live => 'LIVE';
+
+  @override
+  String get phase_join_open => 'LOBBY OPEN';
+
+  @override
+  String get phase_upcoming => 'SCHEDULED';
+
+  @override
+  String get phase_ended => 'ENDED';
+
+  @override
+  String get phase_canceled => 'CANCELED';
+
+  @override
+  String get error_session_not_joinable => 'The session is not joinable yet.';
+
+  @override
+  String get error_session_start_too_early =>
+      'It is too early to start this session.';
+
+  @override
+  String get error_live_service_unavailable =>
+      'The live video service is temporarily unavailable.';
+
+  @override
+  String get error_chat_disabled => 'Chat has been disabled for this session.';
 
   @override
   String get shared_resources => 'Shared resources';
@@ -903,9 +1062,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String in_minutes(Object min) {
     return 'In $min min';
   }
-
-  @override
-  String get join_live => 'Join Live';
 
   @override
   String get studio_ia_title => 'AI Studio · Revision & Quiz';

@@ -43,6 +43,13 @@ export const createAuthenticateMiddleware = (
       const token = parts[1];
       const payload = await tokenService.verifyAccessToken(token);
 
+      if (payload.status === 'SUSPENDED') {
+        throw new ForbiddenError(
+          'Your account has been suspended.',
+          ErrorCodes.AUTH_USER_SUSPENDED,
+        );
+      }
+
       req.user = {
         id: payload.sub,
         email: payload.email,

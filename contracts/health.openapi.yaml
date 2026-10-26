@@ -98,6 +98,19 @@ paths:
                           latencyMs:
                             type: number
                         additionalProperties: false
+                      livekit:
+                        type: object
+                        required:
+                          - status
+                        properties:
+                          status:
+                            type: string
+                            enum: [up, down, not_configured]
+                          latencyMs:
+                            type: number
+                          error:
+                            type: string
+                        additionalProperties: false
                     additionalProperties: false
                 additionalProperties: false
               example:
@@ -107,6 +120,9 @@ paths:
                   database:
                     status: up
                     latencyMs: 3
+                  livekit:
+                    status: up
+                    latencyMs: 5
 
         '503':
           description: One or more services are unavailable

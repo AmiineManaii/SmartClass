@@ -1,4 +1,4 @@
-import type { HealthCheckPort } from '../domain/health-check.port.js';
+import type { HealthCheckPort, LiveKitHealthResult } from '../domain/health-check.port.js';
 import { ServiceUnavailableError } from '../../../shared/errors/index.js';
 
 export interface ReadinessResult {
@@ -9,6 +9,7 @@ export interface ReadinessResult {
       status: 'up';
       latencyMs: number;
     };
+    livekit: LiveKitHealthResult;
   };
 }
 
@@ -16,7 +17,10 @@ export class GetReadinessUseCase {
   constructor(private readonly healthCheckPort: HealthCheckPort) {}
 
   public async execute(): Promise<ReadinessResult> {
-    const dbResult = await this.healthCheckPort.checkDatabase();
+    const [dbResult, livekitResult] = await Promise.all([
+      this.healthCheckPort.checkDatabase(),
+      this.healthCheckPort.checkLiveKit(),
+    ]);
 
     if (!dbResult.isHealthy) {
       throw new ServiceUnavailableError('Database service unavailable', [
@@ -36,6 +40,7 @@ export class GetReadinessUseCase {
           status: 'up',
           latencyMs: dbResult.latencyMs,
         },
+        livekit: livekitResult,
       },
     };
   }

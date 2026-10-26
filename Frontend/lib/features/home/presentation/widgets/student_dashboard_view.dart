@@ -15,6 +15,9 @@ import 'student_ai_studio_card.dart';
 import 'student_assignments_section.dart';
 import 'student_greeting_header.dart';
 import 'student_imminent_live_card.dart';
+import '../../../videoconference/application/videoconference_providers.dart';
+import '../../../videoconference/domain/entities/session_phase.dart';
+import '../../../videoconference/domain/entities/video_session.dart';
 
 class StudentDashboardView extends ConsumerWidget {
   const StudentDashboardView({super.key});
@@ -197,6 +200,7 @@ class StudentDashboardView extends ConsumerWidget {
             ref.invalidate(myGroupsProvider);
             ref.invalidate(studentClassMembershipProvider);
             ref.invalidate(studentTodayLiveProvider);
+            ref.invalidate(nextSessionFeedProvider);
             ref.invalidate(dashboardClassesProvider);
             ref.invalidate(studentAssignmentsProvider);
           },
@@ -1180,10 +1184,32 @@ class _LiveSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final live = session;
     if (live == null) return const SizedBox.shrink();
+    if (live.videoSession != null) {
+      final phase = phaseOf(
+        live.videoSession!,
+        DateTime.now(),
+        serverOffset: live.serverOffset,
+      );
+      if (phase == SessionPhase.ended ||
+          phase == SessionPhase.canceled ||
+          live.videoSession!.status == VideoSessionStatus.completed ||
+          live.videoSession!.status == VideoSessionStatus.canceled) {
+        return const SizedBox.shrink();
+      }
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        StudentImminentLiveCard(session: live, onJoin: onJoin),
+        StudentImminentLiveCard(
+          session: live,
+          onJoin: () {
+            if (live.videoSession != null) {
+              context.push('/videoconference/${live.videoSession!.id}/lobby');
+            } else {
+              onJoin();
+            }
+          },
+        ),
         const SizedBox(height: 20),
       ],
     );
@@ -1623,61 +1649,125 @@ class _TopTitleRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(
-          child: Row(
-            children: [
-              Image.asset(
-                'assets/images/logo_emblem.png',
-                height: 32,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.school_rounded,
-                    color: colorScheme.onPrimary,
-                    size: 18,
-                  ),
+        // Left: Logo + PORTAIL ÉTUDIANT Badge
+        Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF122675), Color(0xFF2E45B8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(11),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF122675).withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              child: const Icon(
+                Icons.school_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'SMARTCLASS',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.secondary,
-                        letterSpacing: 0.5,
-                        fontWeight: FontWeight.w600,
+                    const Text(
+                      'SmartClass',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        color: Color(0xFF122675),
+                        letterSpacing: -0.3,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    Text(
-                      context.tr('home'),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
+                    const SizedBox(width: 5),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1.5,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'EDTECH',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(height: 3),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF1E3A8A)
+                        : const Color(0xFFEEF2FF),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF3B82F6)
+                          : const Color(0xFFC7D2FE),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.school_outlined,
+                        size: 11,
+                        color: isDark
+                            ? const Color(0xFF93C5FD)
+                            : const Color(0xFF1D4ED8),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'PORTAIL ÉTUDIANT',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: isDark
+                              ? const Color(0xFF93C5FD)
+                              : const Color(0xFF1D4ED8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
+
+        // Right: Notifications & Profile avatar
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1695,15 +1785,22 @@ class _TopTitleRow extends StatelessWidget {
               onTap: onProfileTap,
               borderRadius: BorderRadius.circular(9999),
               child: Container(
-                width: 32,
-                height: 32,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: colorScheme.surfaceContainerHigh,
                   border: Border.all(
-                    color: colorScheme.primaryContainer.withValues(alpha: 0.2),
+                    color: const Color(0xFF122675).withValues(alpha: 0.25),
                     width: 2,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
                 child: ClipOval(
                   child: Image.asset(
@@ -1712,7 +1809,7 @@ class _TopTitleRow extends StatelessWidget {
                     errorBuilder: (context, error, stackTrace) => Icon(
                       Icons.person_rounded,
                       color: colorScheme.onSurfaceVariant,
-                      size: 18,
+                      size: 20,
                     ),
                   ),
                 ),

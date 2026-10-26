@@ -29,6 +29,8 @@ import '../features/exams/presentation/pages/exams_page.dart';
 import '../features/exams/presentation/pages/secure_exam_page.dart';
 import '../features/exams/presentation/pages/exam_ai_score_page.dart';
 import '../features/videoconference/presentation/pages/videoconference_page.dart';
+import '../features/videoconference/presentation/pages/lobby_page.dart';
+import '../features/videoconference/presentation/pages/live_room_page.dart';
 import '../features/collaboration/presentation/pages/collaboration_page.dart'
     as collaboration_page;
 import '../features/ai_assistant/presentation/pages/ai_assistant_page.dart';
@@ -229,6 +231,33 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'exam-ai-score',
         builder: (context, state) => const ExamAiScorePage(),
       ),
+      GoRoute(
+        path: '/videoconference/:sessionId/lobby',
+        name: 'videoconference-lobby',
+        builder: (context, state) => LobbyPage(
+          sessionId: state.pathParameters['sessionId'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/videoconference/:sessionId/room',
+        name: 'videoconference-room',
+        builder: (context, state) {
+          final micParam = state.uri.queryParameters['mic'];
+          final camParam = state.uri.queryParameters['cam'];
+          final extra = state.extra as Map<String, dynamic>?;
+
+          final initialMic = extra?['initialMic'] as bool? ??
+              (micParam != null ? micParam == 'true' : null);
+          final initialCamera = extra?['initialCamera'] as bool? ??
+              (camParam != null ? camParam == 'true' : null);
+
+          return LiveRoomPage(
+            sessionId: state.pathParameters['sessionId'] ?? '',
+            initialMic: initialMic,
+            initialCamera: initialCamera,
+          );
+        },
+      ),
       ShellRoute(
         builder: (context, state, child) => MainScaffold(child: child),
         routes: [
@@ -408,101 +437,141 @@ class _BottomNavBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
-    final role = ref.watch(authStateProvider).valueOrNull?.role;
+    final role = ref.watch(authStateProvider).valueOrNull?.role?.toLowerCase();
 
-    // Admin shell (Tableau / Classes / Planning / Fraudes / Paramètres).
-    final items = role == 'admin'
-        ? const [
-            _NavItem(
-              icon: Icons.dashboard_outlined,
-              selectedIcon: Icons.dashboard_rounded,
-              labelKey: 'admin_tab_dashboard',
-              route: '/home',
-            ),
-            _NavItem(
-              icon: Icons.school_outlined,
-              selectedIcon: Icons.school_rounded,
-              labelKey: 'admin_tab_classes',
-              route: '/admin/classes',
-            ),
-            _NavItem(
-              icon: Icons.calendar_month_outlined,
-              selectedIcon: Icons.calendar_month_rounded,
-              labelKey: 'admin_tab_planning',
-              route: '/admin/planning',
-            ),
-            _NavItem(
-              icon: Icons.shield_outlined,
-              selectedIcon: Icons.shield_rounded,
-              labelKey: 'admin_tab_frauds',
-              route: '/admin/frauds',
-            ),
-            _NavItem(
-              icon: Icons.settings_outlined,
-              selectedIcon: Icons.settings_rounded,
-              labelKey: 'settings',
-              route: '/settings',
-            ),
-          ]
-        : const [
-            _NavItem(
-              icon: Icons.dashboard_outlined,
-              selectedIcon: Icons.dashboard_rounded,
-              labelKey: 'home',
-              route: '/home',
-            ),
-            _NavItem(
-              icon: Icons.menu_book_outlined,
-              selectedIcon: Icons.menu_book_rounded,
-              labelKey: 'nav_my_courses',
-              route: '/courses',
-            ),
-            _NavItem(
-              icon: Icons.auto_awesome_rounded,
-              selectedIcon: Icons.auto_awesome_rounded,
-              labelKey: 'ai_tutor',
-              route: '/ai-assistant',
-              isAiPill: true,
-            ),
-            _NavItem(
-              icon: Icons.forum_outlined,
-              selectedIcon: Icons.forum_rounded,
-              labelKey: 'community',
-              route: '/groups',
-            ),
-            _NavItem(
-              icon: Icons.person_outline_rounded,
-              selectedIcon: Icons.person_rounded,
-              labelKey: 'profile',
-              route: '/profile',
-            ),
-          ];
+    // Role-specific mobile navigation tabs (always providing Directs / Visioconférence).
+    final List<_NavItem> items;
+    if (role == 'admin') {
+      items = const [
+        _NavItem(
+          icon: Icons.dashboard_outlined,
+          selectedIcon: Icons.dashboard_rounded,
+          labelKey: 'admin_tab_dashboard',
+          route: '/home',
+        ),
+        _NavItem(
+          icon: Icons.school_outlined,
+          selectedIcon: Icons.school_rounded,
+          labelKey: 'admin_tab_classes',
+          route: '/admin/classes',
+        ),
+        _NavItem(
+          icon: Icons.videocam_outlined,
+          selectedIcon: Icons.videocam_rounded,
+          labelKey: 'nav_live_meetings',
+          route: '/videoconference',
+          isLivePill: true,
+        ),
+        _NavItem(
+          icon: Icons.calendar_month_outlined,
+          selectedIcon: Icons.calendar_month_rounded,
+          labelKey: 'admin_tab_planning',
+          route: '/admin/planning',
+        ),
+        _NavItem(
+          icon: Icons.settings_outlined,
+          selectedIcon: Icons.settings_rounded,
+          labelKey: 'settings',
+          route: '/settings',
+        ),
+      ];
+    } else if (role == 'teacher') {
+      items = const [
+        _NavItem(
+          icon: Icons.dashboard_outlined,
+          selectedIcon: Icons.dashboard_rounded,
+          labelKey: 'home',
+          route: '/home',
+        ),
+        _NavItem(
+          icon: Icons.school_outlined,
+          selectedIcon: Icons.school_rounded,
+          labelKey: 'nav_my_classes',
+          route: '/groups',
+        ),
+        _NavItem(
+          icon: Icons.videocam_outlined,
+          selectedIcon: Icons.videocam_rounded,
+          labelKey: 'nav_live_meetings',
+          route: '/videoconference',
+          isLivePill: true,
+        ),
+        _NavItem(
+          icon: Icons.menu_book_outlined,
+          selectedIcon: Icons.menu_book_rounded,
+          labelKey: 'nav_courses_resources',
+          route: '/courses',
+        ),
+        _NavItem(
+          icon: Icons.person_outline_rounded,
+          selectedIcon: Icons.person_rounded,
+          labelKey: 'profile',
+          route: '/profile',
+        ),
+      ];
+    } else {
+      // Student navigation
+      items = const [
+        _NavItem(
+          icon: Icons.dashboard_outlined,
+          selectedIcon: Icons.dashboard_rounded,
+          labelKey: 'home',
+          route: '/home',
+        ),
+        _NavItem(
+          icon: Icons.menu_book_outlined,
+          selectedIcon: Icons.menu_book_rounded,
+          labelKey: 'nav_my_courses',
+          route: '/courses',
+        ),
+        _NavItem(
+          icon: Icons.videocam_outlined,
+          selectedIcon: Icons.videocam_rounded,
+          labelKey: 'nav_live_meetings',
+          route: '/videoconference',
+          isLivePill: true,
+        ),
+        _NavItem(
+          icon: Icons.auto_awesome_rounded,
+          selectedIcon: Icons.auto_awesome_rounded,
+          labelKey: 'ai_tutor',
+          route: '/ai-assistant',
+          isAiPill: true,
+        ),
+        _NavItem(
+          icon: Icons.person_outline_rounded,
+          selectedIcon: Icons.person_rounded,
+          labelKey: 'profile',
+          route: '/profile',
+        ),
+      ];
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 4, 14, 10),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
         child: Container(
-          height: 64,
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          height: 62,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(32),
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: const Color(0xFF122675).withValues(alpha: 0.08),
+              color: isDark
+                  ? const Color(0xFF334155)
+                  : const Color(0xFFE2E8F0),
               width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.12),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
+                color: (isDark ? Colors.black : const Color(0xFF0F172A))
+                    .withValues(alpha: isDark ? 0.35 : 0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
                 spreadRadius: -2,
-              ),
-              BoxShadow(
-                color: const Color(0xFF122675).withValues(alpha: 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -513,84 +582,123 @@ class _BottomNavBar extends ConsumerWidget {
                   ? (location == '/home' || location == '/')
                   : location.startsWith(item.route);
 
-              final label = context.tr(item.labelKey);
+              final rawLabel = context.tr(item.labelKey);
 
-              return InkWell(
-                onTap: () => context.go(item.route),
-                borderRadius: BorderRadius.circular(24),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeOutCubic,
-                  padding: isSelected
-                      ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8)
-                      : const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    gradient: isSelected
-                        ? (item.isAiPill
-                              ? const LinearGradient(
-                                  colors: [
-                                    Color(0xFF4F46E5),
-                                    Color(0xFF7C3AED),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                )
-                              : const LinearGradient(
-                                  colors: [
-                                    Color(0xFF122675),
-                                    Color(0xFF263EA8),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ))
-                        : null,
-                    color: !isSelected && item.isAiPill
-                        ? const Color(0xFFEEF2FF)
-                        : Colors.transparent,
-                    border: !isSelected && item.isAiPill
-                        ? Border.all(color: const Color(0xFFC7D2FE), width: 0.8)
-                        : null,
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color:
-                                  (item.isAiPill
-                                          ? const Color(0xFF6366F1)
-                                          : const Color(0xFF122675))
-                                      .withValues(alpha: 0.30),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isSelected ? item.selectedIcon : item.icon,
-                        size: 20,
-                        color: isSelected
-                            ? Colors.white
-                            : (item.isAiPill
-                                  ? const Color(0xFF4F46E5)
-                                  : const Color(0xFF64748B)),
-                      ),
-                      if (isSelected) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          label,
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
-                          ),
+              return Expanded(
+                child: Center(
+                  child: Tooltip(
+                    message: rawLabel,
+                    child: InkWell(
+                      onTap: () => context.go(item.route),
+                      borderRadius: BorderRadius.circular(20),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 240),
+                        curve: Curves.easeOutCubic,
+                        width: isSelected ? 48 : 42,
+                        height: isSelected ? 48 : 42,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          gradient: isSelected
+                              ? (item.isAiPill
+                                  ? const LinearGradient(
+                                      colors: [
+                                        Color(0xFF6366F1),
+                                        Color(0xFF4F46E5),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    )
+                                  : (item.isLivePill
+                                      ? const LinearGradient(
+                                          colors: [
+                                            Color(0xFFEF4444),
+                                            Color(0xFFDC2626),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        )
+                                      : LinearGradient(
+                                          colors: isDark
+                                              ? const [
+                                                  Color(0xFF3B82F6),
+                                                  Color(0xFF1D4ED8),
+                                                ]
+                                              : const [
+                                                  Color(0xFF1E3A8A),
+                                                  Color(0xFF122675),
+                                                ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        )))
+                              : null,
+                          color: !isSelected
+                              ? (item.isAiPill
+                                  ? (isDark
+                                      ? const Color(0xFF312E81).withValues(alpha: 0.3)
+                                      : const Color(0xFFEEF2FF))
+                                  : (item.isLivePill
+                                      ? (isDark
+                                          ? const Color(0xFF881337).withValues(alpha: 0.3)
+                                          : const Color(0xFFFFF1F2))
+                                      : Colors.transparent))
+                              : null,
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: (item.isAiPill
+                                            ? const Color(0xFF6366F1)
+                                            : (item.isLivePill
+                                                ? const Color(0xFFEF4444)
+                                                : (isDark
+                                                    ? const Color(0xFF3B82F6)
+                                                    : const Color(0xFF122675))))
+                                        .withValues(alpha: isDark ? 0.45 : 0.30),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ]
+                              : null,
                         ),
-                      ],
-                    ],
+                        alignment: Alignment.center,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Icon(
+                              isSelected ? item.selectedIcon : item.icon,
+                              size: 22,
+                              color: isSelected
+                                  ? Colors.white
+                                  : (item.isAiPill
+                                      ? const Color(0xFF6366F1)
+                                      : (item.isLivePill
+                                          ? const Color(0xFFEF4444)
+                                          : (isDark
+                                              ? const Color(0xFF94A3B8)
+                                              : const Color(0xFF64748B)))),
+                            ),
+                            if (!isSelected && item.isLivePill)
+                              Positioned(
+                                top: -2,
+                                right: -2,
+                                child: Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEF4444),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isDark
+                                          ? const Color(0xFF1E293B)
+                                          : Colors.white,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -608,6 +716,7 @@ class _NavItem {
   final String labelKey;
   final String route;
   final bool isAiPill;
+  final bool isLivePill;
 
   const _NavItem({
     required this.icon,
@@ -615,6 +724,7 @@ class _NavItem {
     required this.labelKey,
     required this.route,
     this.isAiPill = false,
+    this.isLivePill = false,
   });
 }
 

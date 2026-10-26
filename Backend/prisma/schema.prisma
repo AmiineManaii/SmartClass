@@ -73,6 +73,13 @@ enum FraudStatus {
   CLOSED
 }
 
+enum VideoSessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
 model User {
   id                    String                 @id @default(uuid()) @db.Uuid
   email                 String                 @unique
@@ -106,6 +113,11 @@ model User {
   createdInvitations ClassInvitation[]       @relation("InvitationCreator")
   auditLogs          AuditLog[]
   coursePassages     CoursePassage[]
+  hostedSessions          VideoSession[]              @relation("HostedSessions")
+  sessionAttendances      SessionParticipant[]
+  sessionChatMessages     SessionChatMessage[]
+  sessionRemovalsReceived SessionParticipantRemoval[] @relation("ParticipantRemovals")
+  sessionRemovalsExecuted SessionParticipantRemoval[] @relation("ExecutorRemovals")
 
   @@index([email])
   @@index([role])
@@ -139,6 +151,7 @@ model ClassGroup {
   fraudCases  FraudReport[]
   invitations ClassInvitation[]
   courses     CourseClassGroup[]
+  videoSessions VideoSession[]
 
   @@index([level])
   @@index([status])
@@ -196,6 +209,7 @@ model TimetableSlot {
 
   classGroup ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
   teacher    User?      @relation("SlotTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  videoSessions VideoSession[]
 
   @@index([classGroupId])
   @@index([startsAt])
@@ -225,6 +239,7 @@ model Course {
   classGroups CourseClassGroup[]
   sections    CourseSection[]
   passages    CoursePassage[]
+  videoSessions VideoSession[]
 
   @@index([status])
   @@index([authorId])
@@ -413,4 +428,85 @@ model PasswordResetCode {
 
   @@index([userId])
   @@map("password_reset_codes")
+}
+
+model VideoSession {
+  id                     String             @id @default(uuid()) @db.Uuid
+  classGroupId           String             @map("class_group_id") @db.Uuid
+  hostId                 String?            @map("host_id") @db.Uuid
+  subject                String?            @db.VarChar(100)
+  title                  String             @db.VarChar(200)
+  description            String?            @db.Text
+  startsAt               DateTime           @map("starts_at") @db.Timestamptz
+  endsAt                 DateTime           @map("ends_at") @db.Timestamptz
+  startedAt              DateTime?          @map("started_at") @db.Timestamptz
+  endedAt                DateTime?          @map("ended_at") @db.Timestamptz
+  status                 VideoSessionStatus @default(SCHEDULED)
+  roomName               String             @unique @map("room_name")
+  joinOpensMinutesBefore Int                @default(5) @map("join_opens_minutes_before")
+  chatEnabled            Boolean            @default(true) @map("chat_enabled")
+  timetableSlotId        String?            @map("timetable_slot_id") @db.Uuid
+  courseId               String?            @map("course_id") @db.Uuid
+  cancelReason           String?            @map("cancel_reason") @db.Text
+  createdAt              DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+
+  classGroup    ClassGroup                  @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  host          User?                       @relation("HostedSessions", fields: [hostId], references: [id], onDelete: SetNull)
+  timetableSlot TimetableSlot?              @relation(fields: [timetableSlotId], references: [id], onDelete: SetNull)
+  course        Course?                     @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  participants  SessionParticipant[]
+  chatMessages  SessionChatMessage[]
+  removals      SessionParticipantRemoval[]
+
+  @@index([classGroupId, startsAt])
+  @@index([hostId])
+  @@index([status, startsAt])
+  @@map("video_sessions")
+}
+
+model SessionParticipant {
+  id        String    @id @default(uuid()) @db.Uuid
+  sessionId String    @map("session_id") @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  joinedAt  DateTime  @default(now()) @map("joined_at") @db.Timestamptz
+  leftAt    DateTime? @map("left_at") @db.Timestamptz
+
+  session VideoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, userId])
+  @@map("session_participants")
+}
+
+model SessionChatMessage {
+  id              String   @id @default(uuid()) @db.Uuid
+  sessionId       String   @map("session_id") @db.Uuid
+  senderId        String   @map("sender_id") @db.Uuid
+  clientMessageId String   @map("client_message_id") @db.Uuid
+  content         String   @db.VarChar(2000)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  session VideoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sender  User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, senderId, clientMessageId])
+  @@index([sessionId, createdAt])
+  @@map("session_chat_messages")
+}
+
+model SessionParticipantRemoval {
+  id          String   @id @default(uuid()) @db.Uuid
+  sessionId   String   @map("session_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  removedById String   @map("removed_by_id") @db.Uuid
+  reason      String?  @db.VarChar(500)
+  removedAt   DateTime @default(now()) @map("removed_at") @db.Timestamptz
+
+  session   VideoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User         @relation("ParticipantRemovals", fields: [userId], references: [id], onDelete: Cascade)
+  removedBy User         @relation("ExecutorRemovals", fields: [removedById], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@map("session_participant_removals")
 }

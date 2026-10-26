@@ -79,4 +79,33 @@ describe('Env Config', () => {
     } as unknown as NodeJS.ProcessEnv);
     expect(result.CORS_ORIGINS).toEqual(['http://a.com', 'http://b.com', 'http://c.com']);
   });
+
+  it('sets defaults for LiveKit environment variables', async () => {
+    const { parseEnv } = await import('../../src/config/env.js');
+    const result = parseEnv(validEnv as unknown as NodeJS.ProcessEnv);
+
+    expect(result.LIVEKIT_URL).toBe('');
+    expect(result.LIVEKIT_PUBLIC_URL).toBe('');
+    expect(result.LIVEKIT_API_KEY).toBe('');
+    expect(result.LIVEKIT_API_SECRET).toBe('');
+    expect(result.LIVEKIT_TOKEN_TTL_SECONDS).toBe(600);
+    expect(result.SESSION_JOIN_OPENS_MINUTES).toBe(5);
+    expect(result.SESSION_EMPTY_ROOM_TIMEOUT_MINUTES).toBe(10);
+  });
+
+  it('validates LIVEKIT_API_SECRET requires minimum 32 chars when provided', async () => {
+    const { parseEnv } = await import('../../src/config/env.js');
+    expect(() =>
+      parseEnv({
+        ...validEnv,
+        LIVEKIT_API_SECRET: 'short-secret',
+      } as unknown as NodeJS.ProcessEnv),
+    ).toThrow();
+
+    const result = parseEnv({
+      ...validEnv,
+      LIVEKIT_API_SECRET: 'a'.repeat(32),
+    } as unknown as NodeJS.ProcessEnv);
+    expect(result.LIVEKIT_API_SECRET).toBe('a'.repeat(32));
+  });
 });

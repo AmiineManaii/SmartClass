@@ -106,7 +106,14 @@ export const createApp = (options: CreateAppOptions = {}): Express => {
   );
 
   // 6. Body parsers (1mb limit)
-  app.use(express.json({ limit: '1mb' }) as unknown as RequestHandler);
+  app.use(
+    express.json({
+      limit: '1mb',
+      verify: (req, _res, buf) => {
+        (req as unknown as { rawBody?: Buffer }).rawBody = buf;
+      },
+    }) as unknown as RequestHandler,
+  );
   app.use(express.urlencoded({ extended: true, limit: '1mb' }) as unknown as RequestHandler);
 
   // 7. Health routes (unversioned, exempt from rate limits)

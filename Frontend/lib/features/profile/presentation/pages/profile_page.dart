@@ -88,31 +88,54 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final authState = ref.read(authStateProvider).valueOrNull;
     _twoFactorEnabled = authState?.twoFactorEnabled ?? false;
 
-    final isTeacher = authState?.role?.toLowerCase() == 'teacher';
+    final role = authState?.role?.toLowerCase() ?? 'student';
+    final isTeacher = role == 'teacher';
+    final isAdmin = role == 'admin';
 
-    final defaultId = isTeacher ? 'PPR-2026-89421' : 'CNE-2026-984210';
+    final defaultId = isAdmin
+        ? 'ADM-2026-001'
+        : (isTeacher ? 'PPR-2026-89421' : 'CNE-2026-984210');
     final initialId = (authState?.studentId != null && authState!.studentId!.isNotEmpty)
-        ? (isTeacher && authState.studentId!.startsWith('CNE-') ? defaultId : authState.studentId!)
+        ? (isTeacher && authState.studentId!.startsWith('CNE-')
+            ? defaultId
+            : (isAdmin && authState.studentId!.startsWith('CNE-') ? defaultId : authState.studentId!))
         : defaultId;
 
-    final defaultMajor = isTeacher
-        ? 'Département Informatique & Technologies Numériques'
-        : 'Cycle Ingénieur • Génie Informatique';
+    final defaultMajor = isAdmin
+        ? 'Direction & Administration ENT'
+        : (isTeacher
+            ? 'Département Informatique & Technologies Numériques'
+            : 'Cycle Ingénieur • Génie Informatique');
     final initialMajor = (authState?.major != null && authState!.major!.isNotEmpty)
-        ? (isTeacher && (authState.major!.startsWith('Cycle') || authState.major!.startsWith('Master')) ? defaultMajor : authState.major!)
+        ? (isTeacher && (authState.major!.startsWith('Cycle') || authState.major!.startsWith('Master'))
+            ? defaultMajor
+            : (isAdmin && (authState.major!.startsWith('Cycle') || authState.major!.startsWith('Master'))
+                ? defaultMajor
+                : authState.major!))
         : defaultMajor;
 
-    final defaultBio = isTeacher
-        ? 'Enseignant en Informatique & Systèmes Numériques • Spécialisé en Génie Logiciel, IA et Systèmes Distribués.'
-        : 'Étudiant en Cycle d\'Ingénieur • Passionné par l\'intelligence artificielle et le génie logiciel.';
+    final defaultBio = isAdmin
+        ? 'Administrateur Système • Supervision globale et administration de la plateforme académique SmartClass.'
+        : (isTeacher
+            ? 'Enseignant en Informatique & Systèmes Numériques • Spécialisé en Génie Logiciel, IA et Systèmes Distribués.'
+            : 'Étudiant en Cycle d\'Ingénieur • Passionné par l\'intelligence artificielle et le génie logiciel.');
     final initialBio = (authState?.bio != null && authState!.bio!.isNotEmpty)
-        ? (isTeacher && authState.bio!.contains('Étudiant') ? defaultBio : authState.bio!)
+        ? (isTeacher && authState.bio!.contains('Étudiant')
+            ? defaultBio
+            : (isAdmin && authState.bio!.contains('Étudiant') ? defaultBio : authState.bio!))
         : defaultBio;
+
+    final defaultUniversity = isAdmin
+        ? 'Administration Centrale ENT'
+        : (isTeacher ? 'Institut Supérieur / Université' : 'Université Mohammed V de Rabat');
+    final initialUniversity = (authState?.institution != null && authState!.institution!.isNotEmpty)
+        ? authState.institution!
+        : defaultUniversity;
 
     _fullNameController = TextEditingController(
       text: (authState?.displayName != null && authState!.displayName!.isNotEmpty)
           ? authState.displayName!
-          : (isTeacher ? 'Professeur' : 'Ahmed Mohsen'),
+          : (isAdmin ? 'Administrateur SmartClass' : (isTeacher ? 'Professeur' : 'Ahmed Mohsen')),
     );
     _emailController = TextEditingController(
       text: (authState?.email != null && authState!.email!.isNotEmpty)
@@ -123,9 +146,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       text: initialId,
     );
     _universityController = TextEditingController(
-      text: (authState?.institution != null && authState!.institution!.isNotEmpty)
-          ? authState.institution!
-          : (isTeacher ? 'Institut Supérieur / Université' : 'Université Mohammed V de Rabat'),
+      text: initialUniversity,
     );
     _majorController = TextEditingController(
       text: initialMajor,
@@ -148,7 +169,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     try {
       final tokens = ref.read(tokenStorageProvider);
       final authState = ref.read(authStateProvider).valueOrNull;
-      final isTeacher = authState?.role?.toLowerCase() == 'teacher';
+      final role = authState?.role?.toLowerCase() ?? 'student';
+      final isTeacher = role == 'teacher';
+      final isAdmin = role == 'admin';
       final userKey = authState?.userId ?? authState?.email;
       final profile = await tokens.readAcademicProfile(userKey);
 
@@ -159,7 +182,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       var bio = profile['bio'] ?? authState?.bio ?? '';
 
       // Default university & academic values according to role
-      if (isTeacher) {
+      if (isAdmin) {
+        if (inst.isEmpty) {
+          inst = 'Administration Centrale ENT';
+        }
+        if (maj.isEmpty || maj.startsWith('Cycle') || maj.startsWith('Master')) {
+          maj = 'Direction & Administration ENT';
+        }
+        if (sId.isEmpty || sId.startsWith('CNE-')) {
+          sId = 'ADM-2026-001';
+        }
+        if (bio.isEmpty || bio.contains('Étudiant')) {
+          bio = 'Administrateur Système • Supervision globale et administration de la plateforme académique SmartClass.';
+        }
+      } else if (isTeacher) {
         if (inst.isEmpty) {
           inst = 'Institut Supérieur / Université';
         }
@@ -192,13 +228,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           if (_universityController.text.trim().isEmpty) {
             _universityController.text = inst;
           }
-          if (_majorController.text.trim().isEmpty || (isTeacher && (_majorController.text.startsWith('Cycle') || _majorController.text.startsWith('Master')))) {
+          if (_majorController.text.trim().isEmpty || ((isTeacher || isAdmin) && (_majorController.text.startsWith('Cycle') || _majorController.text.startsWith('Master')))) {
             _majorController.text = maj;
           }
-          if (_studentIdController.text.trim().isEmpty || (isTeacher && _studentIdController.text.startsWith('CNE-'))) {
+          if (_studentIdController.text.trim().isEmpty || (isTeacher && _studentIdController.text.startsWith('CNE-')) || (isAdmin && _studentIdController.text.startsWith('CNE-'))) {
             _studentIdController.text = sId;
           }
-          if (_bioController.text.trim().isEmpty || (isTeacher && _bioController.text.contains('Étudiant'))) {
+          if (_bioController.text.trim().isEmpty || ((isTeacher || isAdmin) && _bioController.text.contains('Étudiant'))) {
             _bioController.text = bio;
           }
         });
@@ -546,12 +582,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   void _resetChanges() async {
     final authState = ref.read(authStateProvider).valueOrNull;
+    final role = authState?.role?.toLowerCase() ?? 'student';
+    final isTeacher = role == 'teacher';
+    final isAdmin = role == 'admin';
+
     setState(() {
-      _fullNameController.text = authState?.displayName ?? '';
+      _fullNameController.text = authState?.displayName ?? (isAdmin ? 'Administrateur SmartClass' : (isTeacher ? 'Professeur' : 'Ahmed Mohsen'));
       _emailController.text = authState?.email ?? '';
-      _studentIdController.text = authState?.studentId ?? '';
-      _universityController.text = authState?.institution ?? '';
-      _majorController.text = authState?.major ?? '';
+      _studentIdController.text = authState?.studentId ?? (isAdmin ? 'ADM-2026-001' : (isTeacher ? 'PPR-2026-89421' : 'CNE-2026-984210'));
+      _universityController.text = authState?.institution ?? (isAdmin ? 'Administration Centrale ENT' : (isTeacher ? 'Institut Supérieur / Université' : 'Université Mohammed V de Rabat'));
+      _majorController.text = authState?.major ?? (isAdmin ? 'Direction & Administration ENT' : (isTeacher ? 'Département Informatique & Technologies Numériques' : 'Cycle Ingénieur • Génie Informatique'));
       _bioController.text = authState?.bio ?? '';
     });
     await _loadAcademicProfile();
@@ -576,6 +616,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final isDesktop = context.screenWidth >= 1024;
+    final authState = ref.watch(authStateProvider).valueOrNull;
+    final role = authState?.role?.toLowerCase() ?? 'student';
 
     // Palette tokens
     final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
@@ -584,31 +626,32 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         : const Color(0xFFE2E8F0);
     final textMuted = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(
-          horizontal: isDesktop ? 32 : 16,
-          vertical: 24,
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1280),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 1. Breadcrumbs
-                  _buildBreadcrumbs(isDark),
-                  const SizedBox(height: 12),
+    if (isDesktop) {
+      // 100% UNTOUCHED ORIGINAL DESKTOP WEB LAYOUT
+      return Scaffold(
+        backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 32,
+            vertical: 24,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1280),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 1. Breadcrumbs
+                    _buildBreadcrumbs(isDark),
+                    const SizedBox(height: 12),
 
-                  // 2. Page Title + Badges + ENT Academic Status
-                  _buildHeaderSection(isDark),
-                  const SizedBox(height: 28),
+                    // 2. Page Title + Badges + ENT Academic Status
+                    _buildHeaderSection(isDark),
+                    const SizedBox(height: 28),
 
-                  // 3. Main 2-Column Section (Desktop) or Tabbed Layout (Mobile)
-                  if (isDesktop)
+                    // 3. Main 2-Column Section (Desktop)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -630,29 +673,909 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           ),
                         ),
                       ],
-                    )
-                  else ...[
-                    _buildLeftMenuColumn(cardBg, borderColor, isDark),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // 4. Bottom Actions Bar (ENT Sync timestamp & Save/Cancel)
+                    _buildBottomBar(cardBg, borderColor, isDark),
                     const SizedBox(height: 20),
-                    _buildActiveTabContent(cardBg, borderColor, isDark),
+
+                    // 5. Academic Footer legal links
+                    _buildFooterLinks(textMuted),
+                    const SizedBox(height: 24),
                   ],
-
-                  const SizedBox(height: 32),
-
-                  // 4. Bottom Actions Bar (ENT Sync timestamp & Save/Cancel)
-                  _buildBottomBar(cardBg, borderColor, isDark),
-                  const SizedBox(height: 20),
-
-                  // 5. Academic Footer legal links
-                  _buildFooterLinks(textMuted),
-                  const SizedBox(height: 24),
-                ],
+                ),
               ),
             ),
           ),
         ),
+      );
+    }
+
+    // DEDICATED PREMIUM MOBILE LAYOUT (!isDesktop)
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      appBar: _buildMobileAppBar(context, isDark, role),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 1. Mobile Hero Profile Header (Avatar, Name, Role badge, Email, University, CNE/PPR, ENT Sync)
+              _buildMobileHeroHeader(cardBg, borderColor, isDark, role),
+              const SizedBox(height: 14),
+
+              // 2. Sleek Horizontal Category Tab Pills Selector
+              _buildMobileTabsSelector(cardBg, borderColor, isDark),
+              const SizedBox(height: 16),
+
+              // 3. Active Tab Content (Optimized for Mobile)
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _buildActiveTabContent(
+                  cardBg,
+                  borderColor,
+                  isDark,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // 4. Mobile Save & Reset Actions Bar
+              _buildMobileBottomActions(cardBg, borderColor, isDark),
+              const SizedBox(height: 16),
+
+              // 5. Prominent Mobile Logout Section
+              _buildMobileLogoutSection(cardBg, borderColor, isDark),
+              const SizedBox(height: 20),
+
+              // 6. Mobile Footer Note
+              Center(
+                child: Text(
+                  'SmartClass © 2026 • Plateforme ENT v2.4.0',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: textMuted,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  // ===========================================================================
+  // MOBILE DEDICATED COMPONENTS
+  // ===========================================================================
+
+  PreferredSizeWidget _buildMobileAppBar(
+    BuildContext context,
+    bool isDark,
+    String role,
+  ) {
+    return AppBar(
+      elevation: 0,
+      scrolledUnderElevation: 1,
+      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      titleSpacing: 16,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF1E3A8A).withValues(alpha: 0.4)
+                  : const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.manage_accounts_rounded,
+              color: Color(0xFF2563EB),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  context.tr('account_settings_title'),
+                  style: TextStyle(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    letterSpacing: -0.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  _getRoleDisplayLabel(role),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: _getRoleColor(role),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        IconButton(
+          tooltip: context.tr('logout'),
+          icon: Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.logout_rounded,
+              color: Color(0xFFEF4444),
+              size: 19,
+            ),
+          ),
+          onPressed: _showLogoutDialog,
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  Widget _buildMobileHeroHeader(
+    Color cardBg,
+    Color borderColor,
+    bool isDark,
+    String role,
+  ) {
+    final isTeacher = role == 'teacher';
+    final isAdmin = role == 'admin';
+    final roleLabel = _getRoleDisplayLabel(role);
+    final roleColor = _getRoleColor(role);
+    final roleBg = _getRoleBgColor(role);
+
+    final officialId = _studentIdController.text.trim();
+    final university = _universityController.text.trim();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: isDark
+                        ? const Color(0xFF334155)
+                        : const Color(0xFFDBEAFE),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/student_avatar.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Text(
+                          _fullNameController.text.isNotEmpty
+                              ? _fullNameController.text[0].toUpperCase()
+                              : (isAdmin ? 'A' : (isTeacher ? 'P' : 'E')),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : const Color(0xFF1D4ED8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -2,
+                    right: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2563EB),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: cardBg,
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        color: Colors.white,
+                        size: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _fullNameController.text.isNotEmpty
+                                ? _fullNameController.text
+                                : (isAdmin ? 'Administrateur' : (isTeacher ? 'Professeur' : 'Étudiant')),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.verified_rounded,
+                          color: Color(0xFF2563EB),
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _emailController.text,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: roleBg,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isAdmin
+                                ? Icons.admin_panel_settings_rounded
+                                : (isTeacher ? Icons.workspace_premium_rounded : Icons.school_rounded),
+                            size: 12,
+                            color: roleColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            roleLabel,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                              color: roleColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(
+                      isAdmin
+                          ? Icons.admin_panel_settings_outlined
+                          : (isTeacher ? Icons.assignment_ind_outlined : Icons.badge_outlined),
+                      size: 14,
+                      color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        officialId.isNotEmpty
+                            ? officialId
+                            : (isAdmin ? 'ADM-2026-001' : (isTeacher ? 'PPR-2026-89421' : 'CNE-2026-984210')),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF22C55E),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'ENT Sync',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF15803D),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (university.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(
+                  Icons.account_balance_outlined,
+                  size: 13,
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    university,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileTabsSelector(
+    Color cardBg,
+    Color borderColor,
+    bool isDark,
+  ) {
+    final tabs = [
+      (Icons.person_rounded, context.tr('menu_personal_info'), null),
+      (
+        Icons.security_rounded,
+        context.tr('menu_security_auth'),
+        _twoFactorEnabled ? '2FA' : null,
+      ),
+      (Icons.notifications_rounded, context.tr('menu_notifications'), null),
+      (Icons.palette_rounded, context.tr('menu_appearance'), null),
+      (Icons.shield_rounded, context.tr('menu_privacy_gdpr'), null),
+      (
+        Icons.devices_rounded,
+        context.tr('menu_sessions_devices'),
+        '${_remoteSessions.length + 1}',
+      ),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: List.generate(tabs.length, (index) {
+          final tab = tabs[index];
+          final isSelected = _selectedMenuIndex == index;
+
+          return Padding(
+            padding: EdgeInsets.only(
+              left: index == 0 ? 0 : 8,
+              right: index == tabs.length - 1 ? 0 : 0,
+            ),
+            child: InkWell(
+              onTap: () => setState(() => _selectedMenuIndex = index),
+              borderRadius: BorderRadius.circular(12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 9,
+                ),
+                decoration: BoxDecoration(
+                  gradient: isSelected
+                      ? const LinearGradient(
+                          colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  color: isSelected
+                      ? null
+                      : (isDark ? const Color(0xFF1E293B) : Colors.white),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFF2563EB)
+                        : (isDark
+                            ? Colors.white.withValues(alpha: 0.10)
+                            : const Color(0xFFE2E8F0)),
+                    width: isSelected ? 1.5 : 1,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      tab.$1,
+                      size: 16,
+                      color: isSelected
+                          ? Colors.white
+                          : (isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B)),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      tab.$2,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                        color: isSelected
+                            ? Colors.white
+                            : (isDark
+                                ? const Color(0xFFE2E8F0)
+                                : const Color(0xFF334155)),
+                      ),
+                    ),
+                    if (tab.$3 != null) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Colors.white.withValues(alpha: 0.25)
+                              : (tab.$3 == '2FA'
+                                  ? const Color(0xFFDCFCE7)
+                                  : (isDark
+                                      ? const Color(0xFF334155)
+                                      : const Color(0xFFDBEAFE))),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          tab.$3!,
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected
+                                ? Colors.white
+                                : (tab.$3 == '2FA'
+                                    ? const Color(0xFF15803D)
+                                    : (isDark
+                                        ? Colors.white
+                                        : const Color(0xFF1D4ED8))),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildMobileBottomActions(
+    Color cardBg,
+    Color borderColor,
+    bool isDark,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _isSaving ? null : _saveProfile,
+              borderRadius: BorderRadius.circular(12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  gradient: _justSaved
+                      ? const LinearGradient(
+                          colors: [Color(0xFF059669), Color(0xFF10B981)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : const LinearGradient(
+                          colors: [Color(0xFF2563EB), Color(0xFF4F46E5)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (_justSaved
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFF2563EB))
+                          .withValues(alpha: _isSaving ? 0.15 : 0.35),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_isSaving) ...[
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Enregistrement en cours...',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ] else if (_justSaved) ...[
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Modifications enregistrées !',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ] else ...[
+                      const Icon(
+                        Icons.save_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        context.tr('save_changes'),
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              side: BorderSide(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.18)
+                    : const Color(0xFFCBD5E1),
+                width: 1.2,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: Icon(
+              Icons.restart_alt_rounded,
+              size: 16,
+              color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+            ),
+            onPressed: _isSaving ? null : _resetChanges,
+            label: Text(
+              context.tr('discard_changes'),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF475569),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLogoutSection(
+    Color cardBg,
+    Color borderColor,
+    bool isDark,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFFEF4444).withValues(alpha: 0.08)
+            : const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFEF4444).withValues(alpha: isDark ? 0.3 : 0.25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: Color(0xFFEF4444),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr('logout'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Fermer votre session active sur cet appareil',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            icon: const Icon(Icons.logout_rounded, size: 18),
+            label: Text(
+              context.tr('logout'),
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            onPressed: _showLogoutDialog,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showLogoutDialog() async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.logout_rounded,
+                color: Color(0xFFEF4444),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              context.tr('logout'),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          context.tr('logout_confirm_message'),
+          style: TextStyle(
+            fontSize: 13.5,
+            color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              context.tr('cancel'),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              ),
+            ),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            icon: const Icon(Icons.logout_rounded, size: 17),
+            label: Text(
+              context.tr('logout'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      try {
+        await ref.read(authStateProvider.notifier).logout();
+        if (mounted) {
+          context.go('/login');
+        }
+      } catch (_) {
+        if (mounted) {
+          context.go('/login');
+        }
+      }
+    }
+  }
+
+  String _getRoleDisplayLabel(String role) {
+    switch (role) {
+      case 'admin':
+        return 'Administrateur Système';
+      case 'teacher':
+        return 'Enseignant Certifié';
+      default:
+        return context.tr('active_student_badge');
+    }
+  }
+
+  Color _getRoleColor(String role) {
+    switch (role) {
+      case 'admin':
+        return const Color(0xFF4338CA);
+      case 'teacher':
+        return const Color(0xFF7E22CE);
+      default:
+        return const Color(0xFF15803D);
+    }
+  }
+
+  Color _getRoleBgColor(String role) {
+    switch (role) {
+      case 'admin':
+        return const Color(0xFFE0E7FF);
+      case 'teacher':
+        return const Color(0xFFF3E8FF);
+      default:
+        return const Color(0xFFDCFCE7);
+    }
   }
 
   // ===========================================================================
@@ -1138,9 +2061,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final authState = ref.watch(authStateProvider).valueOrNull;
     final role = authState?.role?.toLowerCase() ?? 'student';
     final isTeacher = role == 'teacher';
+    final isAdmin = role == 'admin';
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(context.screenWidth >= 1024 ? 24 : 16),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
@@ -1169,9 +2093,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       : const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
-                  Icons.folder_shared_rounded,
-                  color: Color(0xFF2563EB),
+                child: Icon(
+                  isAdmin
+                      ? Icons.admin_panel_settings_rounded
+                      : Icons.folder_shared_rounded,
+                  color: const Color(0xFF2563EB),
                   size: 20,
                 ),
               ),
@@ -1190,7 +2116,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      context.tr('certified_academic_data'),
+                      isAdmin
+                          ? 'Coordonnées & Informations administratives certifiées'
+                          : context.tr('certified_academic_data'),
                       style: TextStyle(
                         fontSize: 12,
                         color: isDark
@@ -1218,7 +2146,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.badge_rounded,
+                      isAdmin
+                          ? Icons.admin_panel_settings_outlined
+                          : Icons.badge_rounded,
                       size: 13,
                       color: isDark
                           ? const Color(0xFF93C5FD)
@@ -1226,7 +2156,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      isTeacher ? 'Matricule officiel certifié' : context.tr('official_id'),
+                      isAdmin
+                          ? 'Identifiant officiel certifié'
+                          : (isTeacher ? 'Matricule officiel certifié' : context.tr('official_id')),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -1312,9 +2244,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
-                            isTeacher
-                                ? 'Photo de profil enseignant'
-                                : context.tr('student_photo_title'),
+                            isAdmin
+                                ? 'Photo de profil administrateur'
+                                : (isTeacher
+                                    ? 'Photo de profil enseignant'
+                                    : context.tr('student_photo_title')),
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
@@ -1345,9 +2279,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        isTeacher
-                            ? 'Format PNG ou JPG, max 5 Mo. Cette photo figure sur votre badge officiel, vos fiches de cours et votre profil académique.'
-                            : context.tr('student_photo_desc'),
+                        isAdmin
+                            ? 'Format PNG ou JPG, max 5 Mo. Cette photo figure sur votre console d\'administration et vos rapports d\'audit.'
+                            : (isTeacher
+                                ? 'Format PNG ou JPG, max 5 Mo. Cette photo figure sur votre badge officiel, vos fiches de cours et votre profil académique.'
+                                : context.tr('student_photo_desc')),
                         style: TextStyle(
                           fontSize: 11.5,
                           color: isDark
@@ -1468,12 +2404,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       children: [
                         Expanded(
                           child: _buildInputField(
-                            label: isTeacher
-                                ? 'Matricule Enseignant (PPR / Somme)'
-                                : context.tr('student_number_label'),
+                            label: isAdmin
+                                ? 'Identifiant Administrateur (Admin ID)'
+                                : (isTeacher
+                                    ? 'Matricule Enseignant (PPR / Somme)'
+                                    : context.tr('student_number_label')),
                             controller: _studentIdController,
-                            icon: isTeacher ? Icons.assignment_ind_outlined : Icons.badge_outlined,
-                            trailingIcon: isTeacher ? Icons.verified_user_outlined : Icons.badge_rounded,
+                            icon: isAdmin ? Icons.admin_panel_settings_outlined : (isTeacher ? Icons.assignment_ind_outlined : Icons.badge_outlined),
+                            trailingIcon: isAdmin ? Icons.verified_user_rounded : (isTeacher ? Icons.verified_user_outlined : Icons.badge_rounded),
                             isDark: isDark,
                             readOnly: false,
                           ),
@@ -1481,9 +2419,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         const SizedBox(width: 16),
                         Expanded(
                           child: _buildInputField(
-                            label: isTeacher
-                                ? 'Établissement d\'affectation / Université'
-                                : context.tr('university_label'),
+                            label: isAdmin
+                                ? 'Direction & Administration ENT'
+                                : (isTeacher
+                                    ? 'Établissement d\'affectation / Université'
+                                    : context.tr('university_label')),
                             controller: _universityController,
                             icon: Icons.account_balance_outlined,
                             trailingIcon: Icons.check_circle_outline_rounded,
@@ -1495,20 +2435,24 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     )
                   else ...[
                     _buildInputField(
-                      label: isTeacher
-                          ? 'Matricule Enseignant (PPR / Somme)'
-                          : context.tr('student_number_label'),
+                      label: isAdmin
+                          ? 'Identifiant Administrateur (Admin ID)'
+                          : (isTeacher
+                              ? 'Matricule Enseignant (PPR / Somme)'
+                              : context.tr('student_number_label')),
                       controller: _studentIdController,
-                      icon: isTeacher ? Icons.assignment_ind_outlined : Icons.badge_outlined,
-                      trailingIcon: isTeacher ? Icons.verified_user_outlined : Icons.badge_rounded,
+                      icon: isAdmin ? Icons.admin_panel_settings_outlined : (isTeacher ? Icons.assignment_ind_outlined : Icons.badge_outlined),
+                      trailingIcon: isAdmin ? Icons.verified_user_rounded : (isTeacher ? Icons.verified_user_outlined : Icons.badge_rounded),
                       isDark: isDark,
                       readOnly: false,
                     ),
                     const SizedBox(height: 14),
                     _buildInputField(
-                      label: isTeacher
-                          ? 'Établissement d\'affectation / Université'
-                          : context.tr('university_label'),
+                      label: isAdmin
+                          ? 'Direction & Administration ENT'
+                          : (isTeacher
+                              ? 'Établissement d\'affectation / Université'
+                              : context.tr('university_label')),
                       controller: _universityController,
                       icon: Icons.account_balance_outlined,
                       trailingIcon: Icons.check_circle_outline_rounded,
@@ -1518,21 +2462,25 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   ],
                   const SizedBox(height: 14),
                   _buildInputField(
-                    label: isTeacher
-                        ? 'Département & Discipline d\'enseignement'
-                        : context.tr('major_promotion_label'),
+                    label: isAdmin
+                        ? 'Pôle de supervision & Rôles administratifs'
+                        : (isTeacher
+                            ? 'Département & Discipline d\'enseignement'
+                            : context.tr('major_promotion_label')),
                     controller: _majorController,
-                    icon: isTeacher ? Icons.domain_rounded : Icons.school_outlined,
+                    icon: isAdmin ? Icons.security_rounded : (isTeacher ? Icons.domain_rounded : Icons.school_outlined),
                     isDark: isDark,
                     readOnly: false,
                   ),
                   const SizedBox(height: 14),
                   _buildInputField(
-                    label: isTeacher
-                        ? 'Biographie & Domaines d\'expertise / Recherche'
-                        : 'Biographie / Présentation académique',
+                    label: isAdmin
+                        ? 'Fonction & Description administrative'
+                        : (isTeacher
+                            ? 'Biographie & Domaines d\'expertise / Recherche'
+                            : 'Biographie / Présentation académique'),
                     controller: _bioController,
-                    icon: isTeacher ? Icons.psychology_outlined : Icons.edit_note_rounded,
+                    icon: isAdmin ? Icons.description_outlined : (isTeacher ? Icons.psychology_outlined : Icons.edit_note_rounded),
                     isDark: isDark,
                     readOnly: false,
                   ),
@@ -1551,7 +2499,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   Widget _buildSecurityAuthCard(Color cardBg, Color borderColor, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(context.screenWidth >= 1024 ? 24 : 16),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
@@ -1627,10 +2575,81 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     : const Color(0xFFE2E8F0),
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 460;
+                if (isNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.password_rounded,
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  context.tr('main_password_label'),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '••••••••••••••••  •  ${context.tr('password_last_modified')}',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: isDark
+                                        ? const Color(0xFF94A3B8)
+                                        : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            side: BorderSide(
+                              color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: _showChangePasswordDialog,
+                          child: Text(
+                            context.tr('change_password_btn'),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : const Color(0xFF1E293B),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }
+                return Row(
                   children: [
                     Icon(
                       Icons.password_rounded,
@@ -1689,8 +2708,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ),
                     ),
                   ],
-                ),
-              ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 14),
@@ -1707,88 +2726,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     : const Color(0xFFE2E8F0),
               ),
             ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.smartphone_rounded,
-                  color: Color(0xFF10B981),
-                  size: 22,
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            context.tr('two_factor_auth_label'),
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF0F172A),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 1.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _twoFactorEnabled
-                                  ? const Color(0xFFDCFCE7)
-                                  : const Color(0xFFFEE2E2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              _twoFactorEnabled
-                                  ? context.tr('two_factor_active_badge')
-                                  : context.tr('two_factor_inactive_badge'),
-                              style: TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.bold,
-                                color: _twoFactorEnabled
-                                    ? const Color(0xFF15803D)
-                                    : const Color(0xFFB91C1C),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        context.tr('two_factor_desc'),
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    side: BorderSide(
-                      color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onPressed: _showTotpSetupModal,
-                  child: const Text('TOTP QR', style: TextStyle(fontSize: 11.5)),
-                ),
-                const SizedBox(width: 8),
-                Switch(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 460;
+                final switchWidget = Switch(
                   value: _twoFactorEnabled,
                   activeThumbColor: const Color(0xFF2563EB),
                   onChanged: (val) async {
@@ -1831,8 +2772,179 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       }
                     }
                   },
-                ),
-              ],
+                );
+
+                final totpButton = OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    side: BorderSide(
+                      color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: _showTotpSetupModal,
+                  child: const Text('TOTP QR', style: TextStyle(fontSize: 11.5)),
+                );
+
+                if (isNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.smartphone_rounded,
+                            color: Color(0xFF10B981),
+                            size: 22,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Wrap(
+                                  spacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text(
+                                      context.tr('two_factor_auth_label'),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 1.5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _twoFactorEnabled
+                                            ? const Color(0xFFDCFCE7)
+                                            : const Color(0xFFFEE2E2),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        _twoFactorEnabled
+                                            ? context.tr('two_factor_active_badge')
+                                            : context.tr('two_factor_inactive_badge'),
+                                        style: TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: _twoFactorEnabled
+                                              ? const Color(0xFF15803D)
+                                              : const Color(0xFFB91C1C),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  context.tr('two_factor_desc'),
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: isDark
+                                        ? const Color(0xFF94A3B8)
+                                        : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          totpButton,
+                          const SizedBox(width: 10),
+                          switchWidget,
+                        ],
+                      ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    const Icon(
+                      Icons.smartphone_rounded,
+                      color: Color(0xFF10B981),
+                      size: 22,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                context.tr('two_factor_auth_label'),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0F172A),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 1.5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _twoFactorEnabled
+                                  ? const Color(0xFFDCFCE7)
+                                  : const Color(0xFFFEE2E2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  _twoFactorEnabled
+                                      ? context.tr('two_factor_active_badge')
+                                      : context.tr('two_factor_inactive_badge'),
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: _twoFactorEnabled
+                                        ? const Color(0xFF15803D)
+                                        : const Color(0xFFB91C1C),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            context.tr('two_factor_desc'),
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    totpButton,
+                    const SizedBox(width: 8),
+                    switchWidget,
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 14),
@@ -2142,7 +3254,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   Widget _buildNotificationsCard(Color cardBg, Color borderColor, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(context.screenWidth >= 1024 ? 24 : 16),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
@@ -2302,7 +3414,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final typographyAsync = ref.watch(typographyConfigProvider);
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(context.screenWidth >= 1024 ? 24 : 16),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
@@ -2502,130 +3614,177 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ),
           const SizedBox(height: 24),
 
-          // Font Size & Visual Comfort Row
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : const Color(0xFFE2E8F0),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.text_fields_rounded,
-                  color: isDark
-                      ? const Color(0xFF94A3B8)
-                      : const Color(0xFF64748B),
-                  size: 20,
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.tr('font_comfort_title'),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        ),
+          LayoutBuilder(
+            builder: (context, fontConstraints) {
+              final isCompact = fontConstraints.maxWidth < 460;
+              final zoomWidget = typographyAsync.when(
+                data: (config) {
+                  final scalePct = (config.textScaleFactor * 100).round();
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF1E293B)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : const Color(0xFFCBD5E1),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        context.tr('font_comfort_desc'),
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : const Color(0xFF64748B),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Text(
+                            'A-',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 28,
+                          ),
+                          onPressed: () {
+                            final newScale = (config.textScaleFactor - 0.1)
+                                .clamp(0.85, 1.4);
+                            ref
+                                .read(typographyConfigProvider.notifier)
+                                .updateTextScale(newScale);
+                          },
                         ),
-                      ),
-                    ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(
+                            '$scalePct% ${scalePct == 100 ? "[Standard]" : ""}',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Text(
+                            'A+',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 28,
+                          ),
+                          onPressed: () {
+                            final newScale = (config.textScaleFactor + 0.1)
+                                .clamp(0.85, 1.4);
+                            ref
+                                .read(typographyConfigProvider.notifier)
+                                .updateTextScale(newScale);
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+              );
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : const Color(0xFFE2E8F0),
                   ),
                 ),
-                typographyAsync.when(
-                  data: (config) {
-                    final scalePct = (config.textScaleFactor * 100).round();
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF1E293B)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.12)
-                              : const Color(0xFFCBD5E1),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                child: isCompact
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          IconButton(
-                            icon: const Text(
-                              'A-',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 32,
-                              minHeight: 28,
-                            ),
-                            onPressed: () {
-                              final newScale = (config.textScaleFactor - 0.1)
-                                  .clamp(0.85, 1.4);
-                              ref
-                                  .read(typographyConfigProvider.notifier)
-                                  .updateTextScale(newScale);
-                            },
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              '$scalePct% ${scalePct == 100 ? "[Standard]" : ""}',
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.bold,
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.text_fields_rounded,
+                                color: isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
+                                size: 20,
                               ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  context.tr('font_comfort_title'),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            context.tr('font_comfort_desc'),
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B),
                             ),
                           ),
-                          IconButton(
-                            icon: const Text(
-                              'A+',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 32,
-                              minHeight: 28,
-                            ),
-                            onPressed: () {
-                              final newScale = (config.textScaleFactor + 0.1)
-                                  .clamp(0.85, 1.4);
-                              ref
-                                  .read(typographyConfigProvider.notifier)
-                                  .updateTextScale(newScale);
-                            },
+                          const SizedBox(height: 12),
+                          Center(child: zoomWidget),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Icon(
+                            Icons.text_fields_rounded,
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                            size: 20,
                           ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  context.tr('font_comfort_title'),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  context.tr('font_comfort_desc'),
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: isDark
+                                        ? const Color(0xFF94A3B8)
+                                        : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          zoomWidget,
                         ],
                       ),
-                    );
-                  },
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, _) => const SizedBox.shrink(),
-                ),
-              ],
-            ),
+              );
+            },
           ),
           const SizedBox(height: 12),
 
@@ -2730,9 +3889,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final authState = ref.watch(authStateProvider).valueOrNull;
     final role = authState?.role?.toLowerCase() ?? 'student';
     final isTeacher = role == 'teacher';
+    final isAdmin = role == 'admin';
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(context.screenWidth >= 1024 ? 24 : 16),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
@@ -2851,9 +4011,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            isTeacher
-                                ? 'Attestation d\'Exercice & Fiche de Service'
-                                : context.tr('data_export_title'),
+                            isAdmin
+                                ? 'Rapport d\'Audit & Journal Administratif'
+                                : isTeacher
+                                    ? 'Attestation d\'Exercice & Fiche de Service'
+                                    : context.tr('data_export_title'),
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
@@ -2862,9 +4024,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            isTeacher
-                                ? 'Générez et téléchargez votre attestation officielle d\'exercice et de charge d\'enseignement certifiée ENT au format PDF A4 officiel.'
-                                : context.tr('data_export_desc'),
+                            isAdmin
+                                ? 'Générez et téléchargez le journal officiel de traçabilité, des actions administratives et de gouvernance système certifié ENT.'
+                                : isTeacher
+                                    ? 'Générez et téléchargez votre attestation officielle d\'exercice et de charge d\'enseignement certifiée ENT au format PDF A4 officiel.'
+                                    : context.tr('data_export_desc'),
                             style: TextStyle(
                               fontSize: 11.5,
                               color: isDark
@@ -2878,7 +4042,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   ],
                 ),
                 const SizedBox(height: 14),
-                Row(
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
                   children: [
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
@@ -2907,7 +4073,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ),
                       onPressed: _isExporting ? null : () => _exportDataBackend(format: 'json'),
                     ),
-                    const SizedBox(width: 10),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFF0F172A),
@@ -2930,7 +4095,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             )
                           : const Icon(Icons.picture_as_pdf_rounded, size: 16),
                       label: Text(
-                        context.tr('download_pdf_btn'),
+                        isAdmin
+                            ? 'Télécharger le rapport PDF'
+                            : isTeacher
+                                ? 'Télécharger l\'attestation PDF'
+                                : context.tr('download_pdf_btn'),
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.white,
@@ -3026,33 +4195,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.tr('danger_freeze_account'),
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF1E293B),
-                            ),
-                          ),
-                          Text(
-                            context.tr('danger_freeze_desc'),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark
-                                  ? const Color(0xFF94A3B8)
-                                  : const Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    OutlinedButton(
+                LayoutBuilder(
+                  builder: (context, dangerConstraints) {
+                    final isCompact = dangerConstraints.maxWidth < 440;
+                    final freezeBtn = OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Color(0xFFF97316)),
                         shape: RoundedRectangleBorder(
@@ -3068,28 +4214,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
+                    );
+
+                    if (isCompact) {
+                      return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            context.tr('danger_delete_account'),
+                            context.tr('danger_freeze_account'),
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : const Color(0xFF1E293B),
                             ),
                           ),
+                          const SizedBox(height: 2),
                           Text(
-                            context.tr('danger_delete_desc'),
+                            context.tr('danger_freeze_desc'),
                             style: TextStyle(
                               fontSize: 11,
                               color: isDark
@@ -3097,10 +4238,54 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                   : const Color(0xFF64748B),
                             ),
                           ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: freezeBtn,
+                          ),
                         ],
-                      ),
-                    ),
-                    FilledButton(
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr('danger_freeze_account'),
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                ),
+                              ),
+                              Text(
+                                context.tr('danger_freeze_desc'),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        freezeBtn,
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+                LayoutBuilder(
+                  builder: (context, dangerConstraints) {
+                    final isCompact = dangerConstraints.maxWidth < 440;
+                    final deleteBtn = FilledButton(
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFFDC2626),
                         shape: RoundedRectangleBorder(
@@ -3116,8 +4301,70 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ],
+                    );
+
+                    if (isCompact) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.tr('danger_delete_account'),
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : const Color(0xFF1E293B),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            context.tr('danger_delete_desc'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: deleteBtn,
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr('danger_delete_account'),
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                ),
+                              ),
+                              Text(
+                                context.tr('danger_delete_desc'),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        deleteBtn,
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -3133,7 +4380,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   Widget _buildSessionsDevicesCard(Color cardBg, Color borderColor, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(context.screenWidth >= 1024 ? 24 : 16),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
@@ -3237,7 +4484,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           Text(
                             kIsWeb
@@ -3249,7 +4499,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               color: isDark ? Colors.white : const Color(0xFF0F172A),
                             ),
                           ),
-                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -3345,38 +4594,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         : const Color(0xFFE2E8F0),
                   ),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.devices_other_rounded,
-                      size: 22,
-                      color: Color(0xFF3B82F6),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            (session['device'] as String?) ?? 'Session connectée',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'IP : ${session['ipAddress'] ?? '127.0.0.1'} • ${session['location'] ?? 'Réseau sécurisé'} • ${(session['createdAt'] as String?)?.split('T').first ?? ''}',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    OutlinedButton(
+                child: LayoutBuilder(
+                  builder: (context, sessionConstraints) {
+                    final isNarrow = sessionConstraints.maxWidth < 440;
+                    final revokeBtn = OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -3398,32 +4619,112 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ],
+                    );
+
+                    if (isNarrow) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.devices_other_rounded,
+                                size: 22,
+                                color: Color(0xFF3B82F6),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  (session['device'] as String?) ?? 'Session connectée',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'IP : ${session['ipAddress'] ?? '127.0.0.1'} • ${session['location'] ?? 'Réseau sécurisé'} • ${(session['createdAt'] as String?)?.split('T').first ?? ''}',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: revokeBtn,
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        const Icon(
+                          Icons.devices_other_rounded,
+                          size: 22,
+                          color: Color(0xFF3B82F6),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                (session['device'] as String?) ?? 'Session connectée',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'IP : ${session['ipAddress'] ?? '127.0.0.1'} • ${session['location'] ?? 'Réseau sécurisé'} • ${(session['createdAt'] as String?)?.split('T').first ?? ''}',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        revokeBtn,
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
           const SizedBox(height: 16),
 
           // 3. Global Action: Revoke all other sessions
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              side: const BorderSide(color: Color(0xFFEF4444)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+          SizedBox(
+            width: context.screenWidth < 600 ? double.infinity : null,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                side: const BorderSide(color: Color(0xFFEF4444)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-            ),
-            icon: const Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 16),
-            label: Text(
-              context.tr('revoke_all_sessions_btn'),
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFEF4444),
+              icon: const Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 16),
+              label: Text(
+                context.tr('revoke_all_sessions_btn'),
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFEF4444),
+                ),
               ),
+              onPressed: _showRevokeAllSessionsDialog,
             ),
-            onPressed: _showRevokeAllSessionsDialog,
           ),
         ],
       ),
@@ -3475,7 +4776,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ],
             ),
             content: SizedBox(
-              width: 440,
+              width: context.screenWidth >= 600 ? 440 : (context.screenWidth - 48),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -3737,7 +5038,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ],
               ),
               content: SizedBox(
-                width: 420,
+                width: context.screenWidth >= 600 ? 420 : (context.screenWidth - 48),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -3950,7 +5251,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ],
             ),
             content: SizedBox(
-              width: 440,
+              width: context.screenWidth >= 600 ? 440 : (context.screenWidth - 48),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -4046,7 +5347,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ],
               ),
               content: SizedBox(
-                width: 460,
+                width: context.screenWidth >= 600 ? 460 : (context.screenWidth - 48),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -4330,7 +5631,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
                 children: [
                   Text(
                     title,
@@ -4340,8 +5644,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
                     ),
                   ),
-                  if (badge != null) ...[
-                    const SizedBox(width: 8),
+                  if (badge != null)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 7,
@@ -4360,7 +5663,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         ),
                       ),
                     ),
-                  ],
                 ],
               ),
               const SizedBox(height: 2),
