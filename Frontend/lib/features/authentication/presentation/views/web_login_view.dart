@@ -29,7 +29,7 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _rememberMe = true;
+  bool _rememberMe = false;
   String _selectedRole = 'student'; // 'student' | 'teacher' | 'admin'
   bool _isLoading = false;
 
@@ -52,7 +52,7 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
     if (mounted) {
       setState(() {
         _rememberMe = isRemember;
-        if (savedEmail != null && savedEmail.isNotEmpty) {
+        if (isRemember && savedEmail != null && savedEmail.isNotEmpty) {
           _emailController.text = savedEmail;
         }
       });
@@ -553,15 +553,13 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
                                             borderRadius: BorderRadius.circular(4),
                                           ),
                                           onChanged: (v) => setState(
-                                            () => _rememberMe = v ?? true,
+                                            () => _rememberMe = v ?? false,
                                           ),
                                         ),
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        isFr
-                                            ? 'Se souvenir de moi pendant 30 jours'
-                                            : 'Remember me for 30 days',
+                                        context.tr('remember_me_30_days'),
                                         style: TextStyle(
                                           color: isDark
                                               ? const Color(0xFF94A3B8)

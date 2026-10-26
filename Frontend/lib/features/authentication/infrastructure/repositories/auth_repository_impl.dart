@@ -29,7 +29,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   Future<AuthenticatedSession> _persist(
     AuthenticatedSession session, {
-    bool rememberMe = true,
+    bool rememberMe = false,
     String? email,
   }) async {
     await _tokens.saveSession(

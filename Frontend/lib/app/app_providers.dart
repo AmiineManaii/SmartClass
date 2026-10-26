@@ -1009,7 +1009,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   Future<void> login(
     String email,
     String password, {
-    bool rememberMe = true,
+    bool rememberMe = false,
   }) async {
     _ref.read(pendingEmailProvider.notifier).state = email;
     _emit(const AsyncValue.loading());
@@ -1316,7 +1316,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   Future<void> authenticate2fa({
     required String tempToken,
     required String code,
-    bool rememberMe = true,
+    bool rememberMe = false,
   }) async {
     _emit(const AsyncValue.loading());
     try {

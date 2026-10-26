@@ -15,7 +15,7 @@ class TokenStorage {
   Future<void> saveSession({
     required String accessToken,
     required String refreshToken,
-    bool rememberMe = true,
+    bool rememberMe = false,
     String? email,
   }) async {
     final prefs = await _prefs;
@@ -42,7 +42,7 @@ class TokenStorage {
 
   Future<bool> isRememberMe() async {
     final prefs = await _prefs;
-    return prefs.getBool(rememberMeKey) ?? true;
+    return prefs.getBool(rememberMeKey) ?? false;
   }
 
   Future<String?> getSavedEmail() async {

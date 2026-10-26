@@ -14,6 +14,7 @@ import '../widgets/auth_screen_scaffold.dart';
 import '../widgets/field_label.dart';
 import '../widgets/social_auth_buttons.dart';
 import '../views/web_login_view.dart';
+import '../../../../core/network/network_providers.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -27,6 +28,27 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final tokens = ref.read(tokenStorageProvider);
+    final savedEmail = await tokens.getSavedEmail();
+    final isRemember = await tokens.isRememberMe();
+    if (mounted) {
+      setState(() {
+        _rememberMe = isRemember;
+        if (isRemember && savedEmail != null && savedEmail.isNotEmpty) {
+          _emailController.text = savedEmail;
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -129,6 +151,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           await ref.read(authStateProvider.notifier).authenticate2fa(
                                 tempToken: tempToken,
                                 code: code,
+                                rememberMe: _rememberMe,
                               );
                           if (ctx.mounted) Navigator.of(ctx).pop();
                         } on Failure catch (f) {
@@ -166,6 +189,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       await ref.read(authStateProvider.notifier).login(
             _emailController.text.trim(),
             _passwordController.text,
+            rememberMe: _rememberMe,
           );
     } on TwoFactorRequiredFailure catch (twoFactorFailure) {
       if (!mounted) return;
@@ -290,7 +314,43 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () => setState(() => _rememberMe = !_rememberMe),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: Checkbox(
+                            value: _rememberMe,
+                            activeColor: colorScheme.primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            onChanged: (v) => setState(
+                              () => _rememberMe = v ?? false,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Text(
+                            context.tr('remember_me_30_days'),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
                 AppButton(
                   text: context.tr('login_button'),
                   trailingIcon: Icons.arrow_forward,

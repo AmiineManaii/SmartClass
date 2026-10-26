@@ -11,6 +11,7 @@ export interface RefreshTokenResult {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  isRememberMe?: boolean;
 }
 
 export class RefreshTokenUseCase {
@@ -85,6 +86,7 @@ export class RefreshTokenUseCase {
       accessToken,
       refreshToken: newRawRefreshToken,
       expiresIn,
+      isRememberMe: is30Days,
     };
   }
 }

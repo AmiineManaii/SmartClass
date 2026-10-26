@@ -111,15 +111,15 @@ export class AuthController {
       }
 
       const isRememberMe = req.body?.rememberMe === true;
-      const maxAgeMs = (isRememberMe ? 30 : 7) * 24 * 60 * 60 * 1000;
 
       // Set hardened httpOnly cookies for web browser sessions
+      // When rememberMe is false, maxAge is omitted so cookies expire upon browser session closure.
       res.cookie('smartclass_access_token', result.accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
-        maxAge: maxAgeMs,
+        ...(isRememberMe ? { maxAge: 30 * 24 * 60 * 60 * 1000 } : {}),
       });
 
       res.cookie('smartclass_refresh_token', result.refreshToken, {
@@ -127,7 +127,7 @@ export class AuthController {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
-        maxAge: maxAgeMs,
+        ...(isRememberMe ? { maxAge: 30 * 24 * 60 * 60 * 1000 } : {}),
       });
 
       res.status(200).json({
@@ -147,14 +147,13 @@ export class AuthController {
       });
 
       const isRememberMe = req.body?.rememberMe === true;
-      const maxAgeMs = (isRememberMe ? 30 : 7) * 24 * 60 * 60 * 1000;
 
       res.cookie('smartclass_access_token', result.accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
-        maxAge: maxAgeMs,
+        ...(isRememberMe ? { maxAge: 30 * 24 * 60 * 60 * 1000 } : {}),
       });
 
       res.cookie('smartclass_refresh_token', result.refreshToken, {
@@ -162,7 +161,7 @@ export class AuthController {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
-        maxAge: maxAgeMs,
+        ...(isRememberMe ? { maxAge: 30 * 24 * 60 * 60 * 1000 } : {}),
       });
 
       res.status(200).json({
@@ -260,13 +259,13 @@ export class AuthController {
 
       const result = await this.refreshTokenUseCase.execute({ refreshToken });
 
-      // Rotate cookies
+      // Rotate cookies: preserve 30-day persistent cookie if rememberMe was true, otherwise session cookie
       res.cookie('smartclass_access_token', result.accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
-        maxAge: 30 * 24 * 60 * 60 * 1000,
+        ...(result.isRememberMe ? { maxAge: 30 * 24 * 60 * 60 * 1000 } : {}),
       });
 
       res.cookie('smartclass_refresh_token', result.refreshToken, {
@@ -274,7 +273,7 @@ export class AuthController {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
-        maxAge: 30 * 24 * 60 * 60 * 1000,
+        ...(result.isRememberMe ? { maxAge: 30 * 24 * 60 * 60 * 1000 } : {}),
       });
 
       res.status(200).json({
