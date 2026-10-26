@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../../core/network/api_config.dart';
+import '../../../../core/services/sound_effect_service.dart';
 import '../domain/entities/join_token.dart';
 import '../domain/entities/live_participant.dart';
 import '../domain/entities/room_connection_state.dart';
@@ -409,24 +410,29 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
   Future<void> toggleRaiseHand() async {
     final next = !state.isHandRaised;
     state = state.copyWith(isHandRaised: next);
-    final myIdentity = state.localParticipant?.identity;
+
+    if (next) {
+      SoundEffectService.instance.playHandRaiseSound();
+    }
+
+    final myIdentity = state.localParticipant?.identity ?? 'local';
     final myName = state.localParticipant?.name ?? 'Vous';
-    if (myIdentity != null) {
-      final raised = Set<String>.from(state.raisedHands);
-      if (next) {
-        raised.add(myIdentity);
-      } else {
-        raised.remove(myIdentity);
-      }
-      state = state.copyWith(
-        raisedHands: raised,
-        latestHandRaise: HandRaiseNotice(
-          identity: myIdentity,
-          displayName: myName,
-          isRaised: next,
-          timestamp: DateTime.now(),
-        ),
-      );
+    final raised = Set<String>.from(state.raisedHands);
+    if (next) {
+      raised.add(myIdentity);
+    } else {
+      raised.remove(myIdentity);
+    }
+    state = state.copyWith(
+      raisedHands: raised,
+      latestHandRaise: HandRaiseNotice(
+        identity: myIdentity,
+        displayName: myName,
+        isRaised: next,
+        timestamp: DateTime.now(),
+      ),
+    );
+    try {
       final payload = jsonEncode({
         'type': 'raise_hand',
         'identity': myIdentity,
@@ -434,6 +440,8 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
         'raised': next,
       });
       await _roomPort.sendData(utf8.encode(payload), topic: 'hand_raise');
+    } catch (e) {
+      debugPrint('[LiveRoomController] Error sending hand raise data: $e');
     }
   }
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/services/sound_effect_service.dart';
 import '../../application/live_room_controller.dart';
 
 /// Floating notification banner and celebratory particle effect shown
@@ -77,13 +78,8 @@ class _HandRaiseNoticeOverlayState extends ConsumerState<HandRaiseNoticeOverlay>
   void _onHandRaised(HandRaiseNotice notice) {
     if (!notice.isRaised) return;
 
-    // Trigger audible alert and haptic feedback
-    try {
-      SystemSound.play(SystemSoundType.alert);
-      HapticFeedback.heavyImpact();
-    } catch (_) {
-      // Best-effort sound on platforms without system sound
-    }
+    // Trigger audible alert, haptic feedback and native chime
+    SoundEffectService.instance.playHandRaiseSound();
 
     setState(() {
       _currentNotice = notice;

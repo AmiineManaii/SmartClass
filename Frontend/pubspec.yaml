@@ -45,6 +45,7 @@ dependencies:
   flutter_dotenv: ^6.0.1
   livekit_client: ^2.11.0
   wakelock_plus: ^1.8.2
+  audioplayers: ^6.8.1
   # retrofit: ^4.10.0
 
 dev_dependencies:
@@ -64,4 +65,5 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/sounds/
     - .env
