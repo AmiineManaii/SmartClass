@@ -157,6 +157,8 @@ export type NextSessionQueryInput = z.infer<typeof nextSessionQuerySchema>;
 export const sseEventsQuerySchema = z
   .object({
     sessionId: uuidSchema.optional(),
+    token: z.string().optional(),
+    accessToken: z.string().optional(),
   })
   .strict();
 

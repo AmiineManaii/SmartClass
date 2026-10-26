@@ -23,24 +23,44 @@ export const createAuthenticateMiddleware = (
 ): RequestHandler => {
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
+      let token: string | undefined;
       const authHeader = req.headers.authorization;
 
-      if (!authHeader) {
+      if (authHeader) {
+        const parts = authHeader.split(' ');
+        if (parts.length === 2 && parts[0]?.toLowerCase() === 'bearer' && parts[1]) {
+          token = parts[1];
+        } else {
+          throw new UnauthorizedError(
+            'Malformed Authorization header. Format: Bearer <token>',
+            ErrorCodes.AUTH_TOKEN_INVALID,
+          );
+        }
+      }
+
+      // Fallback 1: Query parameter (e.g. for SSE streams / EventSource where headers cannot be set)
+      if (!token && req.query) {
+        const queryToken = req.query.token ?? req.query.accessToken;
+        if (typeof queryToken === 'string' && queryToken.trim().length > 0) {
+          token = queryToken.trim();
+        }
+      }
+
+      // Fallback 2: Cookie (for browser sessions with httpOnly cookie)
+      if (!token && req.headers.cookie) {
+        const match = req.headers.cookie.match(/(?:^|;\s*)smartclass_access_token=([^;]+)/);
+        if (match && match[1]) {
+          token = decodeURIComponent(match[1].trim());
+        }
+      }
+
+      if (!token) {
         throw new UnauthorizedError(
           'Missing Authorization header. Expected Bearer <token>.',
           ErrorCodes.AUTH_TOKEN_INVALID,
         );
       }
 
-      const parts = authHeader.split(' ');
-      if (parts.length !== 2 || parts[0]?.toLowerCase() !== 'bearer' || !parts[1]) {
-        throw new UnauthorizedError(
-          'Malformed Authorization header. Format: Bearer <token>',
-          ErrorCodes.AUTH_TOKEN_INVALID,
-        );
-      }
-
-      const token = parts[1];
       const payload = await tokenService.verifyAccessToken(token);
 
       if (payload.status === 'SUSPENDED') {

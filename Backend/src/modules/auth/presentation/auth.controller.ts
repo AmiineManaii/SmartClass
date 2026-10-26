@@ -113,12 +113,20 @@ export class AuthController {
       const isRememberMe = req.body?.rememberMe === true;
       const maxAgeMs = (isRememberMe ? 30 : 7) * 24 * 60 * 60 * 1000;
 
-      // Set hardened httpOnly cookie for web browser sessions
+      // Set hardened httpOnly cookies for web browser sessions
+      res.cookie('smartclass_access_token', result.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: maxAgeMs,
+      });
+
       res.cookie('smartclass_refresh_token', result.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        path: '/api/v1/auth',
+        path: '/',
         maxAge: maxAgeMs,
       });
 
@@ -141,11 +149,19 @@ export class AuthController {
       const isRememberMe = req.body?.rememberMe === true;
       const maxAgeMs = (isRememberMe ? 30 : 7) * 24 * 60 * 60 * 1000;
 
+      res.cookie('smartclass_access_token', result.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: maxAgeMs,
+      });
+
       res.cookie('smartclass_refresh_token', result.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        path: '/api/v1/auth',
+        path: '/',
         maxAge: maxAgeMs,
       });
 
@@ -232,7 +248,7 @@ export class AuthController {
 
       // 2. Fallback to httpOnly cookie if body is omitted or empty
       if (!refreshToken && req.headers.cookie) {
-        const match = req.headers.cookie.match(/smartclass_refresh_token=([^;]+)/);
+        const match = req.headers.cookie.match(/(?:^|;\s*)smartclass_refresh_token=([^;]+)/);
         if (match && match[1]) {
           refreshToken = decodeURIComponent(match[1].trim());
         }
@@ -244,12 +260,21 @@ export class AuthController {
 
       const result = await this.refreshTokenUseCase.execute({ refreshToken });
 
-      // Rotate the cookie
+      // Rotate cookies
+      res.cookie('smartclass_access_token', result.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+      });
+
       res.cookie('smartclass_refresh_token', result.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        path: '/api/v1/auth',
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60 * 1000,
       });
 
       res.status(200).json({
@@ -286,7 +311,7 @@ export class AuthController {
     try {
       let refreshToken = req.body?.refreshToken;
       if (!refreshToken && req.headers.cookie) {
-        const match = req.headers.cookie.match(/smartclass_refresh_token=([^;]+)/);
+        const match = req.headers.cookie.match(/(?:^|;\s*)smartclass_refresh_token=([^;]+)/);
         if (match && match[1]) {
           refreshToken = decodeURIComponent(match[1].trim());
         }
@@ -296,6 +321,12 @@ export class AuthController {
         await this.logoutUseCase.execute({ refreshToken });
       }
 
+      res.clearCookie('smartclass_access_token', {
+        path: '/',
+      });
+      res.clearCookie('smartclass_refresh_token', {
+        path: '/',
+      });
       res.clearCookie('smartclass_refresh_token', {
         path: '/api/v1/auth',
       });

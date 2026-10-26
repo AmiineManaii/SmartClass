@@ -159,6 +159,7 @@ class SseConnectionManager {
         queryParameters: queryParameters,
         cancelToken: cancelToken,
         onLine: (line) {
+          _attempt = 0;
           final message = parser.processLine(line);
           if (message != null && !_controller.isClosed) {
             _controller.add(message);

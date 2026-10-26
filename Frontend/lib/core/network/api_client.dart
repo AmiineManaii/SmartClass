@@ -73,20 +73,48 @@ class ApiClient {
     final alreadyRetried = err.requestOptions.extra['retried'] == true;
 
     if (err.response?.statusCode == 401 && !isPublicCall && !alreadyRetried) {
+      String? newToken;
       try {
-        final newToken = await (_refreshFuture ??=
+        newToken = await (_refreshFuture ??=
             _performRefresh().whenComplete(() => _refreshFuture = null));
-        if (newToken != null) {
-          err.requestOptions.headers['Authorization'] = 'Bearer $newToken';
-          err.requestOptions.extra['retried'] = true;
+      } catch (refreshErr) {
+        // Only clear tokens if the refresh itself was rejected by the server (401/403)
+        // or if there is no refresh token in storage. Temporary network errors must NOT
+        // wipe valid session tokens.
+        final isAuthFailure = (refreshErr is DioException &&
+                (refreshErr.response?.statusCode == 401 ||
+                    refreshErr.response?.statusCode == 403)) ||
+            (refreshErr is ApiException &&
+                (refreshErr.statusCode == 401 || refreshErr.statusCode == 403));
+
+        if (isAuthFailure) {
+          await tokens.clear();
+          onUnauthorized?.call();
+        }
+        return handler.next(err);
+      }
+
+      if (newToken != null && newToken.isNotEmpty) {
+        err.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+        err.requestOptions.extra['retried'] = true;
+        // If the request had token query parameter (like SSE stream), update it too
+        if (err.requestOptions.queryParameters.containsKey('token')) {
+          err.requestOptions.queryParameters['token'] = newToken;
+        }
+        try {
           final retry = await _dio.fetch<dynamic>(err.requestOptions);
           return handler.resolve(retry);
+        } on DioException catch (retryErr) {
+          // Retry failed due to network / stream error: reject with that error,
+          // but NEVER wipe tokens since the refreshed session credentials are valid!
+          return handler.next(retryErr);
+        } catch (_) {
+          return handler.next(err);
         }
-      } catch (_) {
-        // Refresh failed: fall through to unauthorized handling below.
+      } else {
+        await tokens.clear();
+        onUnauthorized?.call();
       }
-      await tokens.clear();
-      onUnauthorized?.call();
     }
     handler.next(err);
   }
@@ -94,7 +122,11 @@ class ApiClient {
   Future<String?> _performRefresh() async {
     final refreshToken = await tokens.readRefreshToken();
     if (refreshToken == null || refreshToken.isEmpty) {
-      throw const ApiException(message: 'No refresh token available');
+      throw const ApiException(
+        statusCode: 401,
+        code: 'AUTH_NO_REFRESH_TOKEN',
+        message: 'No refresh token available',
+      );
     }
     final res = await _dio.post<dynamic>(
       '${ApiConfig.apiPrefix}/auth/refresh',
@@ -105,7 +137,11 @@ class ApiClient {
     final access = data['accessToken'] as String?;
     final refresh = data['refreshToken'] as String?;
     if (access == null || access.isEmpty || refresh == null || refresh.isEmpty) {
-      throw const ApiException(message: 'Invalid refresh response');
+      throw const ApiException(
+        statusCode: 401,
+        code: 'AUTH_INVALID_REFRESH_RESPONSE',
+        message: 'Invalid refresh response',
+      );
     }
     final isRemember = await tokens.isRememberMe();
     final savedEmail = await tokens.getSavedEmail();
@@ -288,22 +324,28 @@ class ApiClient {
       'Accept': 'text/event-stream',
       'Cache-Control': 'no-cache, no-store',
     };
+    final qParams = Map<String, dynamic>.from(queryParameters ?? {});
     if (authenticated) {
       final accessToken = await tokens.readAccessToken();
       if (accessToken != null && accessToken.isNotEmpty) {
         headers['Authorization'] = 'Bearer $accessToken';
+        qParams['token'] = accessToken;
       }
     }
     late Response<ResponseBody> res;
     try {
       res = await _dio.get<ResponseBody>(
         path,
-        queryParameters: queryParameters,
+        queryParameters: qParams.isNotEmpty ? qParams : null,
         options: Options(
           responseType: ResponseType.stream,
           headers: headers,
-          receiveTimeout: Duration.zero,
-          extra: {'authenticated': authenticated},
+          receiveTimeout: ApiConfig.streamReceiveTimeout,
+          sendTimeout: const Duration(minutes: 5),
+          extra: {
+            'authenticated': authenticated,
+            'withCredentials': true,
+          },
         ),
         cancelToken: cancelToken,
       );
