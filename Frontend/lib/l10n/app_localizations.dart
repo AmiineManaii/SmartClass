@@ -7549,6 +7549,258 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Suspendre'**
   String get admin_btn_suspend;
+
+  /// No description provided for @ai_studio_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'STUDIO PÉDAGOGIQUE IA'**
+  String get ai_studio_badge;
+
+  /// No description provided for @ai_studio_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créateur de Cours & Syllabus Universitaire'**
+  String get ai_studio_title;
+
+  /// No description provided for @ai_lmd_compliance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Standards LMD & ECTS'**
+  String get ai_lmd_compliance;
+
+  /// No description provided for @ai_breadcrumb_courses.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cours & Ressources'**
+  String get ai_breadcrumb_courses;
+
+  /// No description provided for @ai_breadcrumb_creator.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créateur de Cours IA'**
+  String get ai_breadcrumb_creator;
+
+  /// No description provided for @ai_tooltip_reset.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réinitialiser le formulaire'**
+  String get ai_tooltip_reset;
+
+  /// No description provided for @ai_toast_reset.
+  ///
+  /// In fr, this message translates to:
+  /// **'Formulaire réinitialisé'**
+  String get ai_toast_reset;
+
+  /// No description provided for @ai_sec_source_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'1. Source & Consignes du Cours'**
+  String get ai_sec_source_title;
+
+  /// No description provided for @ai_sec_source_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mode de saisie, document support et consignes spécifiques'**
+  String get ai_sec_source_desc;
+
+  /// No description provided for @ai_sec_params_title.
+  ///
+  /// In fr, this message translates to:
+  /// **'2. Paramètres & Lancement'**
+  String get ai_sec_params_title;
+
+  /// No description provided for @ai_sec_params_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Volume horaire, niveau de difficulté et enrichissements didactiques'**
+  String get ai_sec_params_desc;
+
+  /// No description provided for @ai_mode_topic.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sujet Libre'**
+  String get ai_mode_topic;
+
+  /// No description provided for @ai_mode_topic_sub.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prompt & consignes'**
+  String get ai_mode_topic_sub;
+
+  /// No description provided for @ai_mode_pdf.
+  ///
+  /// In fr, this message translates to:
+  /// **'Support PDF'**
+  String get ai_mode_pdf;
+
+  /// No description provided for @ai_mode_pdf_sub.
+  ///
+  /// In fr, this message translates to:
+  /// **'Document de cours'**
+  String get ai_mode_pdf_sub;
+
+  /// No description provided for @ai_mode_url.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lien Web'**
+  String get ai_mode_url;
+
+  /// No description provided for @ai_mode_url_sub.
+  ///
+  /// In fr, this message translates to:
+  /// **'URL / Article'**
+  String get ai_mode_url_sub;
+
+  /// No description provided for @ai_chip_mermaid.
+  ///
+  /// In fr, this message translates to:
+  /// **'Schémas Mermaid'**
+  String get ai_chip_mermaid;
+
+  /// No description provided for @ai_level_short.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cours court'**
+  String get ai_level_short;
+
+  /// No description provided for @ai_level_short_sub.
+  ///
+  /// In fr, this message translates to:
+  /// **'~10h • Synthèse'**
+  String get ai_level_short_sub;
+
+  /// No description provided for @ai_level_standard.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cours normal'**
+  String get ai_level_standard;
+
+  /// No description provided for @ai_level_standard_sub.
+  ///
+  /// In fr, this message translates to:
+  /// **'~25h • Standard LMD'**
+  String get ai_level_standard_sub;
+
+  /// No description provided for @ai_level_detailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cours complet'**
+  String get ai_level_detailed;
+
+  /// No description provided for @ai_level_detailed_sub.
+  ///
+  /// In fr, this message translates to:
+  /// **'~45h • Manuel'**
+  String get ai_level_detailed_sub;
+
+  /// No description provided for @ai_diff_easy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Facile'**
+  String get ai_diff_easy;
+
+  /// No description provided for @ai_diff_easy_sub.
+  ///
+  /// In fr, this message translates to:
+  /// **'Initiation'**
+  String get ai_diff_easy_sub;
+
+  /// No description provided for @ai_diff_medium.
+  ///
+  /// In fr, this message translates to:
+  /// **'Moyenne'**
+  String get ai_diff_medium;
+
+  /// No description provided for @ai_diff_medium_sub.
+  ///
+  /// In fr, this message translates to:
+  /// **'Intermédiaire'**
+  String get ai_diff_medium_sub;
+
+  /// No description provided for @ai_diff_hard.
+  ///
+  /// In fr, this message translates to:
+  /// **'Difficile'**
+  String get ai_diff_hard;
+
+  /// No description provided for @ai_diff_hard_sub.
+  ///
+  /// In fr, this message translates to:
+  /// **'Avancé'**
+  String get ai_diff_hard_sub;
+
+  /// No description provided for @ai_btn_propose_outline.
+  ///
+  /// In fr, this message translates to:
+  /// **'💡 Proposer le plan en 3s (Recommandé)'**
+  String get ai_btn_propose_outline;
+
+  /// No description provided for @ai_proposing_outline_time.
+  ///
+  /// In fr, this message translates to:
+  /// **'⏱️ Élaboration du plan ({sec}s)...'**
+  String ai_proposing_outline_time(Object sec);
+
+  /// No description provided for @ai_outline_bg_note.
+  ///
+  /// In fr, this message translates to:
+  /// **'💡 La génération tourne en tâche de fond. Vous pouvez naviguer ailleurs dans l\'application.'**
+  String get ai_outline_bg_note;
+
+  /// No description provided for @ai_toast_plan_ready.
+  ///
+  /// In fr, this message translates to:
+  /// **'Plan généré et enregistré dans vos brouillons !'**
+  String get ai_toast_plan_ready;
+
+  /// No description provided for @ai_plan_saved_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Plan proposé & sauvegardé'**
+  String get ai_plan_saved_badge;
+
+  /// No description provided for @ai_plan_unsaved_badge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Plan proposé (non sauvegardé)'**
+  String get ai_plan_unsaved_badge;
+
+  /// No description provided for @ai_plan_review_desc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Consultez et validez le plan ci-dessous avant la génération du cours.'**
+  String get ai_plan_review_desc;
+
+  /// No description provided for @ai_btn_view_outline.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir le plan'**
+  String get ai_btn_view_outline;
+
+  /// No description provided for @ai_btn_reset_outline.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifier les options ou recommencer'**
+  String get ai_btn_reset_outline;
+
+  /// No description provided for @ai_btn_generate_from_outline.
+  ///
+  /// In fr, this message translates to:
+  /// **'Générer le cours complet depuis ce plan'**
+  String get ai_btn_generate_from_outline;
+
+  /// No description provided for @ai_pdf_optional_topic.
+  ///
+  /// In fr, this message translates to:
+  /// **'Titre ou consignes spécifiques (optionnel)'**
+  String get ai_pdf_optional_topic;
+
+  /// No description provided for @ai_generation_failed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Échec de la génération'**
+  String get ai_generation_failed;
 }
 
 class _AppLocalizationsDelegate

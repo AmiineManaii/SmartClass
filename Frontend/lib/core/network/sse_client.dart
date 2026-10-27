@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'api_client.dart';
+import 'api_exception.dart';
 
 class SseMessage {
   final String? event;
@@ -172,6 +173,11 @@ class SseConnectionManager {
     } catch (e) {
       if (cancelToken.isCancelled || _isDisposed || _isPaused) {
         return;
+      }
+      if (e is ApiException && (e.statusCode == 401 || e.code == 'AUTH_TOKEN_EXPIRED')) {
+        try {
+          await client.refreshSession();
+        } catch (_) {}
       }
       debugPrint('[SSE] Connection error: $e');
       _onConnectionLost();

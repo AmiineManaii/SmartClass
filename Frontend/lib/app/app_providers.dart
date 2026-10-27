@@ -199,11 +199,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'profile-setup',
         builder: (context, state) => const ProfileSetupPage(),
       ),
-      GoRoute(
-        path: '/courses/ai-create',
-        name: 'ai-create-course',
-        builder: (context, state) => const AiCourseCreatorPage(),
-      ),
       // Fullscreen (outside the shell): generate → validate every section
       // of one draft before it can be published (RG4/RG27).
       GoRoute(
@@ -272,6 +267,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/courses',
             name: 'courses',
             builder: (context, state) => const CoursesPage(),
+          ),
+          GoRoute(
+            path: '/courses/ai-create',
+            name: 'ai-create-course',
+            builder: (context, state) => const AiCourseCreatorPage(),
           ),
           GoRoute(
             path: '/courses/:courseId',

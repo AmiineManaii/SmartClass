@@ -4112,4 +4112,139 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get admin_btn_suspend => 'Suspendre';
+
+  @override
+  String get ai_studio_badge => 'STUDIO PÉDAGOGIQUE IA';
+
+  @override
+  String get ai_studio_title => 'Créateur de Cours & Syllabus Universitaire';
+
+  @override
+  String get ai_lmd_compliance => 'Standards LMD & ECTS';
+
+  @override
+  String get ai_breadcrumb_courses => 'Cours & Ressources';
+
+  @override
+  String get ai_breadcrumb_creator => 'Créateur de Cours IA';
+
+  @override
+  String get ai_tooltip_reset => 'Réinitialiser le formulaire';
+
+  @override
+  String get ai_toast_reset => 'Formulaire réinitialisé';
+
+  @override
+  String get ai_sec_source_title => '1. Source & Consignes du Cours';
+
+  @override
+  String get ai_sec_source_desc =>
+      'Mode de saisie, document support et consignes spécifiques';
+
+  @override
+  String get ai_sec_params_title => '2. Paramètres & Lancement';
+
+  @override
+  String get ai_sec_params_desc =>
+      'Volume horaire, niveau de difficulté et enrichissements didactiques';
+
+  @override
+  String get ai_mode_topic => 'Sujet Libre';
+
+  @override
+  String get ai_mode_topic_sub => 'Prompt & consignes';
+
+  @override
+  String get ai_mode_pdf => 'Support PDF';
+
+  @override
+  String get ai_mode_pdf_sub => 'Document de cours';
+
+  @override
+  String get ai_mode_url => 'Lien Web';
+
+  @override
+  String get ai_mode_url_sub => 'URL / Article';
+
+  @override
+  String get ai_chip_mermaid => 'Schémas Mermaid';
+
+  @override
+  String get ai_level_short => 'Cours court';
+
+  @override
+  String get ai_level_short_sub => '~10h • Synthèse';
+
+  @override
+  String get ai_level_standard => 'Cours normal';
+
+  @override
+  String get ai_level_standard_sub => '~25h • Standard LMD';
+
+  @override
+  String get ai_level_detailed => 'Cours complet';
+
+  @override
+  String get ai_level_detailed_sub => '~45h • Manuel';
+
+  @override
+  String get ai_diff_easy => 'Facile';
+
+  @override
+  String get ai_diff_easy_sub => 'Initiation';
+
+  @override
+  String get ai_diff_medium => 'Moyenne';
+
+  @override
+  String get ai_diff_medium_sub => 'Intermédiaire';
+
+  @override
+  String get ai_diff_hard => 'Difficile';
+
+  @override
+  String get ai_diff_hard_sub => 'Avancé';
+
+  @override
+  String get ai_btn_propose_outline => '💡 Proposer le plan en 3s (Recommandé)';
+
+  @override
+  String ai_proposing_outline_time(Object sec) {
+    return '⏱️ Élaboration du plan (${sec}s)...';
+  }
+
+  @override
+  String get ai_outline_bg_note =>
+      '💡 La génération tourne en tâche de fond. Vous pouvez naviguer ailleurs dans l\'application.';
+
+  @override
+  String get ai_toast_plan_ready =>
+      'Plan généré et enregistré dans vos brouillons !';
+
+  @override
+  String get ai_plan_saved_badge => 'Plan proposé & sauvegardé';
+
+  @override
+  String get ai_plan_unsaved_badge => 'Plan proposé (non sauvegardé)';
+
+  @override
+  String get ai_plan_review_desc =>
+      'Consultez et validez le plan ci-dessous avant la génération du cours.';
+
+  @override
+  String get ai_btn_view_outline => 'Voir le plan';
+
+  @override
+  String get ai_btn_reset_outline => 'Modifier les options ou recommencer';
+
+  @override
+  String get ai_btn_generate_from_outline =>
+      'Générer le cours complet depuis ce plan';
+
+  @override
+  String get ai_pdf_optional_topic =>
+      'Titre ou consignes spécifiques (optionnel)';
+
+  @override
+  String get ai_generation_failed => 'Échec de la génération';
 }

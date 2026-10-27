@@ -4077,4 +4077,139 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get admin_btn_suspend => 'Suspend';
+
+  @override
+  String get ai_studio_badge => 'AI PEDAGOGICAL STUDIO';
+
+  @override
+  String get ai_studio_title => 'AI Course & Syllabus Creator';
+
+  @override
+  String get ai_lmd_compliance => 'LMD & ECTS Standards';
+
+  @override
+  String get ai_breadcrumb_courses => 'Courses & Resources';
+
+  @override
+  String get ai_breadcrumb_creator => 'AI Course Creator';
+
+  @override
+  String get ai_tooltip_reset => 'Reset form';
+
+  @override
+  String get ai_toast_reset => 'Form reset';
+
+  @override
+  String get ai_sec_source_title => '1. Course Source & Instructions';
+
+  @override
+  String get ai_sec_source_desc =>
+      'Input mode, course document and specific instructions';
+
+  @override
+  String get ai_sec_params_title => '2. Parameters & Launch';
+
+  @override
+  String get ai_sec_params_desc =>
+      'Workload hours, difficulty level and didactic enrichments';
+
+  @override
+  String get ai_mode_topic => 'Free Topic';
+
+  @override
+  String get ai_mode_topic_sub => 'Prompt & guidelines';
+
+  @override
+  String get ai_mode_pdf => 'PDF Document';
+
+  @override
+  String get ai_mode_pdf_sub => 'Course document';
+
+  @override
+  String get ai_mode_url => 'Web Link';
+
+  @override
+  String get ai_mode_url_sub => 'URL / Article';
+
+  @override
+  String get ai_chip_mermaid => 'Mermaid Diagrams';
+
+  @override
+  String get ai_level_short => 'Short course';
+
+  @override
+  String get ai_level_short_sub => '~10h • Summary';
+
+  @override
+  String get ai_level_standard => 'Standard course';
+
+  @override
+  String get ai_level_standard_sub => '~25h • Standard LMD';
+
+  @override
+  String get ai_level_detailed => 'Comprehensive course';
+
+  @override
+  String get ai_level_detailed_sub => '~45h • Textbook';
+
+  @override
+  String get ai_diff_easy => 'Beginner';
+
+  @override
+  String get ai_diff_easy_sub => 'Introductory';
+
+  @override
+  String get ai_diff_medium => 'Intermediate';
+
+  @override
+  String get ai_diff_medium_sub => 'Standard';
+
+  @override
+  String get ai_diff_hard => 'Advanced';
+
+  @override
+  String get ai_diff_hard_sub => 'In-depth';
+
+  @override
+  String get ai_btn_propose_outline => '💡 Propose outline in 3s (Recommended)';
+
+  @override
+  String ai_proposing_outline_time(Object sec) {
+    return '⏱️ Drafting outline (${sec}s)...';
+  }
+
+  @override
+  String get ai_outline_bg_note =>
+      '💡 Generation runs in the background. You can navigate elsewhere in the app.';
+
+  @override
+  String get ai_toast_plan_ready =>
+      'Outline generated and saved to your drafts!';
+
+  @override
+  String get ai_plan_saved_badge => 'Proposed & saved outline';
+
+  @override
+  String get ai_plan_unsaved_badge => 'Proposed outline (unsaved)';
+
+  @override
+  String get ai_plan_review_desc =>
+      'Review and validate the outline below before generating the full course.';
+
+  @override
+  String get ai_btn_view_outline => 'View outline';
+
+  @override
+  String get ai_btn_reset_outline => 'Edit options or start over';
+
+  @override
+  String get ai_btn_generate_from_outline =>
+      'Generate full course from this outline';
+
+  @override
+  String get ai_pdf_optional_topic =>
+      'Title or specific instructions (optional)';
+
+  @override
+  String get ai_generation_failed => 'Generation failed';
 }

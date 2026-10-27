@@ -119,6 +119,12 @@ class ApiClient {
     handler.next(err);
   }
 
+  /// Public entry point for explicit session refresh (e.g. before long-lived SSE connections)
+  Future<String?> refreshSession() async {
+    return await (_refreshFuture ??=
+        _performRefresh().whenComplete(() => _refreshFuture = null));
+  }
+
   Future<String?> _performRefresh() async {
     final refreshToken = await tokens.readRefreshToken();
     if (refreshToken == null || refreshToken.isEmpty) {
@@ -325,22 +331,30 @@ class ApiClient {
       'Cache-Control': 'no-cache, no-store',
     };
     final qParams = Map<String, dynamic>.from(queryParameters ?? {});
+    String? currentToken;
     if (authenticated) {
-      final accessToken = await tokens.readAccessToken();
-      if (accessToken != null && accessToken.isNotEmpty) {
-        headers['Authorization'] = 'Bearer $accessToken';
-        qParams['token'] = accessToken;
+      currentToken = await tokens.readAccessToken();
+      if (currentToken != null && currentToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $currentToken';
+        qParams['token'] = currentToken;
       }
     }
-    late Response<ResponseBody> res;
-    try {
-      res = await _dio.get<ResponseBody>(
+
+    Future<Response<ResponseBody>> executeStreamRequest(String? activeToken) {
+      final reqHeaders = Map<String, dynamic>.from(headers);
+      final reqQParams = Map<String, dynamic>.from(qParams);
+      if (authenticated && activeToken != null && activeToken.isNotEmpty) {
+        reqHeaders['Authorization'] = 'Bearer $activeToken';
+        reqQParams['token'] = activeToken;
+      }
+      return _dio.get<ResponseBody>(
         path,
-        queryParameters: qParams.isNotEmpty ? qParams : null,
+        queryParameters: reqQParams.isNotEmpty ? reqQParams : null,
         options: Options(
           responseType: ResponseType.stream,
-          headers: headers,
-          receiveTimeout: ApiConfig.streamReceiveTimeout,
+          headers: reqHeaders,
+          // SSE connections are persistent keep-alive streams; avoid arbitrary client timeouts
+          receiveTimeout: Duration.zero,
           sendTimeout: const Duration(minutes: 5),
           extra: {
             'authenticated': authenticated,
@@ -349,6 +363,11 @@ class ApiClient {
         ),
         cancelToken: cancelToken,
       );
+    }
+
+    late Response<ResponseBody> res;
+    try {
+      res = await executeStreamRequest(currentToken);
     } on DioException catch (e) {
       if (e.type == DioExceptionType.cancel) {
         throw const ApiException(
@@ -356,15 +375,39 @@ class ApiClient {
           message: 'Request cancelled',
         );
       }
-      final errorRes = e.response;
-      if (errorRes != null && errorRes.data is ResponseBody) {
-        throw await _streamError(Response<ResponseBody>(
-          requestOptions: errorRes.requestOptions,
-          statusCode: errorRes.statusCode,
-          data: errorRes.data as ResponseBody,
-        ));
+      // If 401 on stream and authenticated, proactively refresh session and retry once
+      if (authenticated &&
+          (e.response?.statusCode == 401 ||
+              e.error?.toString().contains('401') == true)) {
+        try {
+          final refreshed = await refreshSession();
+          if (refreshed != null && refreshed.isNotEmpty) {
+            res = await executeStreamRequest(refreshed);
+          } else {
+            throw _toApiException(e);
+          }
+        } catch (_) {
+          final errorRes = e.response;
+          if (errorRes != null && errorRes.data is ResponseBody) {
+            throw await _streamError(Response<ResponseBody>(
+              requestOptions: errorRes.requestOptions,
+              statusCode: errorRes.statusCode,
+              data: errorRes.data as ResponseBody,
+            ));
+          }
+          throw _toApiException(e);
+        }
+      } else {
+        final errorRes = e.response;
+        if (errorRes != null && errorRes.data is ResponseBody) {
+          throw await _streamError(Response<ResponseBody>(
+            requestOptions: errorRes.requestOptions,
+            statusCode: errorRes.statusCode,
+            data: errorRes.data as ResponseBody,
+          ));
+        }
+        throw _toApiException(e);
       }
-      throw _toApiException(e);
     }
     final stream = res.data?.stream;
     if (res.statusCode != 200 || stream == null) {
