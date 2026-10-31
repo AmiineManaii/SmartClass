@@ -203,15 +203,13 @@ class _MermaidFigure extends StatelessWidget {
 
   static bool isSupported(String code) {
     final first = code.trimLeft().split('\n').first.trim().toLowerCase();
+    // Only flowchart, graph and sequenceDiagram are reliably supported in flutter_mermaid 0.1.0
     return first.startsWith('graph ') ||
         first.startsWith('flowchart ') ||
         first.startsWith('sequencediagram') ||
         first.startsWith('pie') ||
         first.startsWith('gantt') ||
-        first.startsWith('timeline') ||
-        first.startsWith('kanban') ||
-        first.startsWith('radar-beta') ||
-        first.startsWith('xychart-beta');
+        first.startsWith('timeline');
   }
 
   @override
@@ -256,7 +254,7 @@ class _MermaidFigure extends StatelessWidget {
           else
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-              child: _MermaidFallback(code: code, reason: 'mindmap'),
+              child: _MermaidFallback(code: code),
             ),
         ],
       ),
@@ -265,18 +263,16 @@ class _MermaidFigure extends StatelessWidget {
 }
 
 /// Fallback shown when a mermaid block cannot be rendered natively
-/// (unsupported `mindmap` type or syntax error from the LLM): the raw
+/// (unsupported type or syntax error from the LLM): the raw
 /// code stays readable and copyable instead of a blank card.
 class _MermaidFallback extends StatelessWidget {
   final String code;
-  final String reason;
 
-  const _MermaidFallback({required this.code, required this.reason});
+  const _MermaidFallback({required this.code});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final unsupported = reason == 'mindmap';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -290,19 +286,15 @@ class _MermaidFallback extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
-                unsupported
-                    ? Icons.account_tree_outlined
-                    : Icons.warning_amber_outlined,
+              const Icon(
+                Icons.account_tree_outlined,
                 size: 16,
-                color: const Color(0xFFF5C86B),
+                color: Color(0xFFF5C86B),
               ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  unsupported
-                      ? 'Carte hiérarchique (code brut — lecteur mindmap non supporté)'
-                      : 'Figure non affichable — code brut',
+                  'Diagramme (code brut — rendu non supporté sur mobile)',
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: const Color(0xFFF5C86B),
                   ),

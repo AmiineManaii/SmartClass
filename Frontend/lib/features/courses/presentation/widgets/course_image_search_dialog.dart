@@ -82,7 +82,7 @@ class CourseImageSearchDialog extends ConsumerWidget {
   }
 }
 
-/// Tuile d'un candidat d'image avec aperçu, titre et bouton d'insertion.
+/// Tuile d'un candidat d'image avec aperçu au-dessus, titre/description en dessous, puis bouton d'insertion.
 class _ImageCandidateTile extends StatelessWidget {
   final SectionImageCandidate candidate;
   final VoidCallback onInsert;
@@ -98,86 +98,90 @@ class _ImageCandidateTile extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: colorScheme.outlineVariant.withValues(alpha: 0.3),
         ),
       ),
-      child: Row(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Aperçu
-          ClipRRect(
-            borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-            child: Image.network(
-              candidate.url,
-              width: 80,
-              height: 60,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                width: 80,
-                height: 60,
-                color: colorScheme.surfaceContainerLow,
-                child: Icon(
-                  Icons.broken_image,
-                  color: colorScheme.onSurfaceVariant,
-                  size: 24,
-                ),
+          // Image en haut
+          Image.network(
+            candidate.url,
+            height: 180,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => Container(
+              height: 140,
+              color: colorScheme.surfaceContainerLow,
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.broken_image,
+                color: colorScheme.onSurfaceVariant,
+                size: 32,
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          // Détails
-          Expanded(
+          Padding(
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
+                // Titre
                 Text(
                   candidate.title.isNotEmpty ? candidate.title : 'Image',
                   style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                // Description / Caption
                 if (candidate.caption.isNotEmpty) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     candidate.caption,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
-                      fontSize: 10.5,
+                      fontSize: 11,
                     ),
-                    maxLines: 1,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
                 if (candidate.source.isNotEmpty) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     candidate.source,
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
-                      fontSize: 9,
+                      fontSize: 9.5,
                     ),
                   ),
                 ],
+                const SizedBox(height: 10),
+                // Bouton Insérer en dessous
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: onInsert,
+                    icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
+                    label: const Text('Insérer'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          FilledButton(
-            onPressed: onInsert,
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Insérer'),
           ),
         ],
       ),

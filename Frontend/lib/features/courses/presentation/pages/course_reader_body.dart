@@ -656,10 +656,15 @@ class _SectionBuildPanel extends ConsumerWidget {
             ...state.sections.asMap().entries.map((entry) {
               final index = entry.key;
               final section = entry.value;
+              final isCurrentStreaming = state.streamingKey == section.sectionKey;
               return CourseSectionCard(
                 key: ValueKey(section.sectionKey),
                 sectionNumber: index + 1,
                 section: section,
+                isStreaming: isCurrentStreaming,
+                streamingPhase: isCurrentStreaming ? state.streamingPhase : null,
+                streamingText: isCurrentStreaming ? state.streamingText : null,
+                onCancelStream: isCurrentStreaming ? () => ref.read(courseSectionBuildProvider(courseId).notifier).cancel() : null,
                 onGenerate: () =>
                     _generateSection(context, ref, section.sectionKey, false),
                 onRegenerate: () =>

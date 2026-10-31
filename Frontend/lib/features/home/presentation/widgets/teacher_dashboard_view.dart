@@ -927,36 +927,41 @@ class _QuickToolsGrid extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Text(
-                  'Outils & Services Pédagogiques',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEEF2FF),
-                    borderRadius: BorderRadius.circular(9999),
-                    border:
-                        Border.all(color: const Color(0xFFC7D2FE), width: 0.8),
-                  ),
-                  child: const Text(
-                    'Web & Mobile',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      color: Color(0xFF4338CA),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 10,
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      'Outils & Services Pédagogiques',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEEF2FF),
+                      borderRadius: BorderRadius.circular(9999),
+                      border:
+                          Border.all(color: const Color(0xFFC7D2FE), width: 0.8),
+                    ),
+                    child: const Text(
+                      'Web & Mobile',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        color: Color(0xFF4338CA),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

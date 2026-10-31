@@ -1241,13 +1241,15 @@ class _SectionCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const SmartLoader.small(customSize: 16),
+                        const Icon(Icons.auto_awesome, size: 16, color: Colors.amber),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            state.streamingPhase == 'memory'
-                                ? context.tr('ai_build_phase_memory')
-                                : context.tr('ai_build_phase_generating'),
+                            state.streamingPhase == 'web_search'
+                                ? '🔍 Recherche d\x27informations sur le web...'
+                                : (state.streamingPhase == 'memory'
+                                    ? context.tr('ai_build_phase_memory')
+                                    : '✍️ R\xE9daction du cours en cours...'),
                             style: theme.textTheme.labelMedium?.copyWith(
                               fontWeight: FontWeight.w600,
                               color: colorScheme.onSurface,
@@ -1290,7 +1292,7 @@ class _SectionCard extends StatelessWidget {
                 // Inner Material: the tile's ListTile must paint its ink on
                 // a Material *inside* the card's decorated surface.
                 Material(
-                  color: colorScheme.surface,
+                  color: Colors.transparent,
                   child: Theme(
                     data: theme.copyWith(dividerColor: Colors.transparent),
                     child: ExpansionTile(
@@ -1395,7 +1397,7 @@ class _WebImagePickerDialog extends StatelessWidget {
       insetPadding: const EdgeInsets.all(16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 680, maxHeight: 680),
+        constraints: const BoxConstraints(maxWidth: 520, maxHeight: 680),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1419,61 +1421,86 @@ class _WebImagePickerDialog extends StatelessWidget {
               ),
             ),
             Flexible(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final columns = constraints.maxWidth >= 560 ? 3 : 2;
-                  return GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                    shrinkWrap: true,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: columns,
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: 0.86,
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                shrinkWrap: true,
+                itemCount: images.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 14),
+                itemBuilder: (context, index) {
+                  final image = images[index];
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                      ),
                     ),
-                    itemCount: images.length,
-                    itemBuilder: (context, index) {
-                      final image = images[index];
-                      return Material(
-                        color: colorScheme.surfaceContainerLowest,
-                        clipBehavior: Clip.antiAlias,
-                        borderRadius: BorderRadius.circular(12),
-                        child: InkWell(
-                          onTap: () => Navigator.of(context).pop(image),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Image.network(
+                          image.url,
+                          height: 180,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Container(
+                            height: 140,
+                            color: colorScheme.surfaceContainerLow,
+                            alignment: Alignment.center,
+                            child: Icon(
+                              Icons.broken_image,
+                              color: colorScheme.onSurfaceVariant,
+                              size: 32,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Image.network(
-                                  image.url,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => ColoredBox(
-                                    color: colorScheme.surfaceContainerHighest,
-                                    child: Icon(
-                                      Icons.broken_image_outlined,
-                                      color: colorScheme.outline,
-                                    ),
-                                  ),
+                              Text(
+                                image.title.isNotEmpty ? image.title : 'Image',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Text(
-                                  image.caption.isNotEmpty
-                                      ? image.caption
-                                      : image.title,
-                                  maxLines: 2,
+                              if (image.caption.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  image.caption,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                    fontSize: 11,
+                                  ),
+                                  maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    fontWeight: FontWeight.w600,
+                                ),
+                              ],
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton.icon(
+                                  onPressed: () => Navigator.of(context).pop(image),
+                                  icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
+                                  label: const Text('Insérer'),
+                                  style: FilledButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   );
                 },
               ),

@@ -63,7 +63,8 @@ export class SearchSectionImagesUseCase {
     const count = dto.count && dto.count >= 1 ? Math.min(dto.count, 50) : 50;
 
     // Contexte brut envoyé : mots-clés / description + titre de la section
-    const rawKeywords = dto.query?.trim() || [section.description, ...section.keyTopics].filter(Boolean).join(' ').trim() || section.title;
+    const customQuery = dto.query?.trim();
+    const rawKeywords = customQuery || [section.description, ...section.keyTopics].filter(Boolean).join(' ').trim() || section.title;
     const rawSection = section.title;
 
     logger.info(
@@ -71,8 +72,8 @@ export class SearchSectionImagesUseCase {
       '[SearchSectionImages] Reçu demande de recherche d\'images',
     );
 
-    // 1. Reformulation via Ollama (Lucy)
-    const reformulatedQuery = await this.reformulateQuery(rawSection, rawKeywords);
+    // 1. Reformulation via Ollama (Lucy) — ignorée si l'enseignant fournit une query personnalisée
+    const reformulatedQuery = customQuery ?? await this.reformulateQuery(rawSection, rawKeywords);
     logger.info({ sectionKey: dto.sectionKey, query_used: reformulatedQuery }, '[SearchSectionImages] Query reformulée');
 
     // 2. Recherche d'images via SearxNG (avec fallbacks automatiques dans searchImages)

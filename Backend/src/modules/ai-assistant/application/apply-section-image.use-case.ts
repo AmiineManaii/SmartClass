@@ -34,8 +34,58 @@ const altText = (caption: string | undefined, fallback: string): string => {
 };
 
 /**
- * Inserts a teacher-chosen web image at the end of a section body and
- * demotes a validated section back to GENERATED (it must be re-approved).
+ * Inserts the illustration image directly under the section title & introductory paragraph/definition.
+ */
+const insertAfterIntro = (body: string, markdown: string): string => {
+  const lines = body.split('\n');
+  let firstHeadingIdx = -1;
+  let introEndIdx = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (firstHeadingIdx === -1) {
+      if (trimmed.startsWith('#')) {
+        firstHeadingIdx = i;
+      }
+    } else {
+      // Find the first paragraph (definition/intro) following the heading
+      if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('![')) {
+        let end = i;
+        while (end + 1 < lines.length && lines[end + 1].trim() && !lines[end + 1].trim().startsWith('#')) {
+          end++;
+        }
+        introEndIdx = end;
+        break;
+      }
+    }
+  }
+
+  if (introEndIdx !== -1) {
+    const before = lines.slice(0, introEndIdx + 1).join('\n');
+    const after = lines.slice(introEndIdx + 1).join('\n');
+    if (after.trim().length > 0) {
+      return `${before}\n\n${markdown.trim()}\n\n${after.trimStart()}\n`;
+    }
+    return `${before}\n\n${markdown.trim()}\n`;
+  }
+
+  // If there is only a title and no paragraph yet, insert right after the title
+  if (firstHeadingIdx !== -1) {
+    const before = lines.slice(0, firstHeadingIdx + 1).join('\n');
+    const after = lines.slice(firstHeadingIdx + 1).join('\n');
+    if (after.trim().length > 0) {
+      return `${before}\n\n${markdown.trim()}\n\n${after.trimStart()}\n`;
+    }
+    return `${before}\n\n${markdown.trim()}\n`;
+  }
+
+  // Fallback: prepend at the top
+  return `${markdown.trim()}\n\n${body}`;
+};
+
+/**
+ * Inserts a teacher-chosen web image near the top (after title and intro/definition)
+ * and demotes a validated section back to GENERATED (it must be re-approved).
  */
 export class ApplySectionImageUseCase {
   constructor(
@@ -59,11 +109,13 @@ export class ApplySectionImageUseCase {
       return { section };
     }
 
-    const markdown = `\n\n![${altText(dto.caption, section.title)}](${imageUrl})\n`;
+    const markdown = `![${altText(dto.caption, section.title)}](${imageUrl})`;
+    const updatedContent = insertAfterIntro(body, markdown);
+
     const saved = await this.sectionRepository.saveContent({
       courseId: dto.courseId,
       sectionKey: dto.sectionKey,
-      content: `${body}${markdown}`,
+      content: updatedContent,
       status: 'GENERATED',
     });
     return { section: saved };

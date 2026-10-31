@@ -392,6 +392,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
   public async streamCompletion(
     input: ChatCompletionInput,
     onDelta: (delta: string) => void,
+    onPhase?: (phase: string) => void,
   ): Promise<StreamCompletionUsage> {
     let tools = input.tools && input.tools.length > 0 ? input.tools : undefined;
     let activeModel = this.model;

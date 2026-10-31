@@ -122,11 +122,7 @@ const extrasGuidance = (extras: GenerateExtras): string => {
       '- Figures : schémas et graphes sous forme de blocs de code mermaid, ' +
         'un par grande partie. Types AUTORISÉS UNIQUEMENT (rendu natif ' +
         'flutter_mermaid 0.1.0) : `graph`/`flowchart` (ex. `graph TD`), ' +
-        '`sequenceDiagram`, `pie`, `gantt`, `timeline`. INTERDIT : `mindmap` ' +
-        '(non supporté par le renderer — utilise `graph TD` hiérarchique à ' +
-        'la place). Chaque bloc doit être autonettoyant : première ligne = ' +
-        'le type, nœuds avec identifiants simples ASCII entre crochets ' +
-        '(ex. `A[Factorielle]`), flèches `-->` ; aucun HTML, aucun style ' +
+        '`lowchart TD ou graph TD. RÈGLE CRITIQUE : N\x27utilise JAMAIS erDiagram, classDiagram ou mindmap (incompatibles avec le moteur de rendu mobile). Pour tout modèle entité-relation ou base de données, utilise IMPÉRATIVEMENT un lowchart TD ou graph TD avec des boîtes rectangulaires claires et des flèches. aucun HTML, aucun style ' +
         'exotique.',
     );
   }
@@ -420,7 +416,7 @@ export const buildSectionPrompt = (input: SectionPromptInput): CoursePrompt => {
       ? `- Exemples : au moins un exemple simple et concret, entièrement résolu.\n`
       : `- Exemples : pas d'exemple résolu, va droit au concept.\n`) +
     (extras.mermaid
-      ? `- Figures : si un schéma clarifie la notion, utilise un bloc de code mermaid de type \`graph TD\`, \`flowchart\`, \`sequenceDiagram\`, \`pie\`, \`gantt\` ou \`timeline\` (jamais \`mindmap\`, non supporté par le renderer).\n`
+      ? `- Figures : si un schéma clarifie la notion, utilise STRICTEMENT un bloc de code mermaid de type lowchart TD ou graph TD (ou sequenceDiagram). N\x27utilise JAMAIS erDiagram ni classDiagram (incompatibles mobile : utilise un lowchart TD pour représenter les tables et relations).\`graph TD\`, \`flowchart\`, \`sequenceDiagram, erDiagram, classDiagram\`, \`pie\`, \`gantt\` ou \`timeline\` (jamais \`mindmap\`, non supporté par le renderer).\n`
       : '') +
     (input.toolsOffered
       ? `- Recherche web : tu disposes de l'outil web_search (et fetch_url pour lire une page). Utilise-les pour vérifier les faits récents, formules ou références, puis appuie-toi sur ces sources sans inventer d'URL.\n`

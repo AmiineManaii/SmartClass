@@ -127,15 +127,15 @@ const ACCESS = {
 };
 
 describe('Unit: SearchSectionImagesUseCase', () => {
-  it('builds a query from the section and course, and returns five candidates', async () => {
+  it('builds a query from the section and course, and returns candidates', async () => {
     const search = makeSearch(Array.from({ length: 8 }, (_, index) => candidate(index)));
     const useCase = new SearchSectionImagesUseCase(makeCourseRepo(makeCourse()), new FakeSectionRepository(), search);
 
     const result = await useCase.execute({ ...ACCESS, sectionKey: 'sec-1' });
 
-    expect(result.query).toBe('Tris Informatique Quick sort Merge sort Complexité');
-    expect(search.searchImages).toHaveBeenCalledWith(result.query, 5);
-    expect(result.images).toHaveLength(5);
+    expect(result.query).toBe('Tris Tri rapide Quick sort Merge sort Complexité Stabilité');
+    expect(search.searchImages).toHaveBeenCalledWith(result.query, 50);
+    expect(result.images).toHaveLength(8);
   });
 
   it('lets the teacher override the query', async () => {
@@ -145,7 +145,7 @@ describe('Unit: SearchSectionImagesUseCase', () => {
     const result = await useCase.execute({ ...ACCESS, sectionKey: 'sec-1', query: '  quicksort diagram  ' });
 
     expect(result.query).toBe('quicksort diagram');
-    expect(search.searchImages).toHaveBeenCalledWith('quicksort diagram', 5);
+    expect(search.searchImages).toHaveBeenCalledWith('quicksort diagram', 50);
   });
 
   it('enforces ownership and section existence', async () => {

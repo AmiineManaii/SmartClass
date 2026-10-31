@@ -85,6 +85,7 @@ export interface AiGatewayPort {
   streamCompletion(
     input: ChatCompletionInput,
     onDelta: (delta: string) => void,
+    onPhase?: (phase: string) => void,
   ): Promise<StreamCompletionUsage>;
   checkHealth(): Promise<AiGatewayStatus>;
 }
