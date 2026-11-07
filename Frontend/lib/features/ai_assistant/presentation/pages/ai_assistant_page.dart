@@ -482,7 +482,7 @@ class _AiAssistantPageState extends ConsumerState<AiAssistantPage> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          isTeacher ? 'Espace Enseignant' : 'Aligné classe',
+                           isTeacher ? 'Espace Enseignant' : 'Aligné classe',
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.bold,

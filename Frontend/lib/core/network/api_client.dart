@@ -354,6 +354,7 @@ class ApiClient {
           responseType: ResponseType.stream,
           headers: reqHeaders,
           // SSE connections are persistent keep-alive streams; avoid arbitrary client timeouts
+          connectTimeout: Duration.zero,
           receiveTimeout: Duration.zero,
           sendTimeout: const Duration(minutes: 5),
           extra: {

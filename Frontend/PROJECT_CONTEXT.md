@@ -339,6 +339,56 @@ context.pop()                 // Retour
 
 ---
 
+## 7bis. Règles obligatoires pour les fichiers Presentation (Pages)
+
+### Règle A — Maximum 500 lignes par fichier Page
+
+Tout fichier Dart situé dans un dossier `presentation` et représentant une page (Page ou Screen) ne doit jamais dépasser **500 lignes de code au total**.
+
+Si une page dépasse cette limite, identifier les parties extractibles et les déplacer dans des fichiers séparés (widgets réutilisables ou privés).
+
+### Règle B — Une seule classe par fichier Page
+
+Chaque fichier Dart représentant une page dans `presentation` doit contenir **une seule déclaration de classe : la classe principale de la page**.
+
+Il est interdit de déclarer d'autres classes dans ce fichier. Les autres composants de l'interface doivent être extraits dans des fichiers séparés sous forme de widgets réutilisables ou privés selon leur utilisation.
+
+Exemple :
+
+```
+presentation/
+├── pages/
+│   └── home_page.dart
+└── widgets/
+    ├── home_header.dart
+    ├── home_content.dart
+    ├── home_card.dart
+    └── home_bottom_navigation.dart
+```
+
+- `home_page.dart` contient uniquement la classe `HomePage`.
+- Chaque widget extrait possède son propre fichier.
+- Les responsabilités sont séparées de manière logique.
+- L'organisation doit rester cohérente avec l'architecture déjà utilisée dans le projet.
+
+Ne pas créer artificiellement des widgets pour chaque petite ligne de code. L'extraction doit améliorer réellement la lisibilité, la réutilisabilité et la séparation des responsabilités.
+
+Ces deux contraintes sont obligatoires pour toutes les pages existantes et futures du projet.
+
+### Règle C — Maximum 500 lignes par fichier de présentation (général)
+
+Tout fichier Dart situé dans un dossier `presentation` (page, widget, view, controller, provider local, etc.) ne doit jamais dépasser **500 lignes de code au total**.
+
+Cette règle complète les règles A et B : elle s'applique à **tous** les fichiers de présentation, pas seulement aux pages.
+
+Si un fichier dépasse cette limite, identifier les parties extractibles et les déplacer dans des fichiers séparés selon leur responsabilité (widgets, vues, dialogs, cartes, onglets, helpers).
+
+Ne pas créer artificiellement des fichiers pour chaque petite ligne de code. L'extraction doit améliorer réellement la lisibilité, la réutilisabilité et la séparation des responsabilités.
+
+Cette contrainte est obligatoire pour tous les fichiers de présentation existants et futurs du projet.
+
+---
+
 ## 8. Données Mockées (Infrastructure)
 
 ### Structure

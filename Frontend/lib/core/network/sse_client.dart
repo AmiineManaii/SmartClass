@@ -84,16 +84,25 @@ class SseParser {
 
 /// Long-lived SSE connection manager with auto-reconnect, exponential backoff,
 /// and jitter.
+///
+/// Stops retrying silently after [maxConsecutiveFailures] consecutive errors
+/// (default 6) to avoid spamming the console when an endpoint is unavailable.
+/// Call [resume] to restart the retry cycle manually.
 class SseConnectionManager {
   final ApiClient client;
   final String path;
   final Map<String, dynamic>? queryParameters;
+
+  /// Maximum consecutive failed attempts before the manager pauses retrying.
+  final int maxConsecutiveFailures;
+
   final Random _random;
 
   CancelToken? _cancelToken;
   bool _isDisposed = false;
   bool _isPaused = false;
   int _attempt = 0;
+  int _consecutiveFailures = 0;
   Timer? _reconnectTimer;
 
   final _controller = StreamController<SseMessage>.broadcast();
@@ -104,12 +113,15 @@ class SseConnectionManager {
     required this.client,
     required this.path,
     this.queryParameters,
+    this.maxConsecutiveFailures = 6,
     Random? random,
-  })  : _random = random ?? Random();
+  }) : _random = random ?? Random();
 
   void connect() {
     if (_isDisposed) return;
     _isPaused = false;
+    _consecutiveFailures = 0;
+    _attempt = 0;
     _startConnection();
   }
 
@@ -125,6 +137,7 @@ class SseConnectionManager {
     if (_isDisposed) return;
     _isPaused = false;
     _attempt = 0;
+    _consecutiveFailures = 0;
     _startConnection();
   }
 
@@ -140,6 +153,12 @@ class SseConnectionManager {
 
   Future<void> _startConnection() async {
     if (_isDisposed || _isPaused) return;
+
+    // Stop retrying silently once we've hit the failure cap.
+    if (_consecutiveFailures >= maxConsecutiveFailures) {
+      debugPrint('[SSE] $path — endpoint unreachable after $maxConsecutiveFailures attempts, giving up. Call resume() to retry.');
+      return;
+    }
 
     _reconnectTimer?.cancel();
     _cancelToken?.cancel();
@@ -161,6 +180,7 @@ class SseConnectionManager {
         cancelToken: cancelToken,
         onLine: (line) {
           _attempt = 0;
+          _consecutiveFailures = 0;
           final message = parser.processLine(line);
           if (message != null && !_controller.isClosed) {
             _controller.add(message);
@@ -168,7 +188,8 @@ class SseConnectionManager {
         },
       );
 
-      // Normal completion / stream close: schedule reconnect
+      // Normal completion / stream close: reset failures and reconnect
+      _consecutiveFailures = 0;
       _onConnectionLost();
     } catch (e) {
       if (cancelToken.isCancelled || _isDisposed || _isPaused) {
@@ -179,13 +200,21 @@ class SseConnectionManager {
           await client.refreshSession();
         } catch (_) {}
       }
-      debugPrint('[SSE] Connection error: $e');
+      _consecutiveFailures++;
+      // Only log the first failure and every 3rd one to avoid spamming.
+      if (_consecutiveFailures == 1 || _consecutiveFailures % 3 == 0) {
+        debugPrint('[SSE] $path — connection error ($_consecutiveFailures/$maxConsecutiveFailures): $e');
+      }
       _onConnectionLost();
     }
   }
 
   void _onConnectionLost() {
     if (_isDisposed || _isPaused) return;
+    if (_consecutiveFailures >= maxConsecutiveFailures) {
+      debugPrint('[SSE] $path — max failures reached, stopped retrying.');
+      return;
+    }
 
     _attempt++;
     // Exponential backoff capped at 30 seconds with jitter

@@ -437,9 +437,12 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
     bool? initialMic,
     bool? initialCamera,
   }) async {
-    state = state.copyWith(
+    // Reset all state on (re)join so a previous session never leaves the
+    // controller stuck in a stale "loading" state.
+    state = LiveRoomState(
       connectionState: RoomConnectionState.connecting,
-      errorMessage: null,
+      isMicEnabled: initialMic ?? false,
+      isCameraEnabled: initialCamera ?? false,
     );
 
     try {

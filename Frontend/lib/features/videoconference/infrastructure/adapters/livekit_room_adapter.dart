@@ -53,7 +53,13 @@ class LiveKitRoomAdapter implements RoomPort {
   void _updateState(RoomConnectionState state) {
     _connectionState = state;
     if (!_connectionStateController.isClosed) {
-      _connectionStateController.add(state);
+      _safeAdd(_connectionStateController, state);
+    }
+  }
+
+  void _safeAdd<T>(StreamController<T> controller, T value) {
+    if (!controller.isClosed) {
+      controller.add(value);
     }
   }
 
@@ -108,12 +114,12 @@ class LiveKitRoomAdapter implements RoomPort {
       // Emit local participant
       final local = room.localParticipant;
       if (local != null) {
-        _participantJoinedController.add(_mapParticipant(local, isLocal: true));
+        _safeAdd(_participantJoinedController, _mapParticipant(local, isLocal: true));
       }
 
       // Emit existing remote participants
       for (final p in room.remoteParticipants.values) {
-        _participantJoinedController.add(_mapParticipant(p, isLocal: false));
+        _safeAdd(_participantJoinedController, _mapParticipant(p, isLocal: false));
       }
     } catch (e) {
       debugPrint('[LiveKitAdapter] Connect error: $e');
@@ -134,62 +140,52 @@ class LiveKitRoomAdapter implements RoomPort {
         }
       })
       ..on<lk.ParticipantConnectedEvent>((event) {
-        _participantJoinedController
-            .add(_mapParticipant(event.participant, isLocal: false));
+        _safeAdd(_participantJoinedController, _mapParticipant(event.participant, isLocal: false));
       })
       ..on<lk.ParticipantDisconnectedEvent>((event) {
-        _participantLeftController.add(event.participant.identity);
+        _safeAdd(_participantLeftController, event.participant.identity);
       })
       ..on<lk.TrackSubscribedEvent>((event) {
-        _participantUpdatedController
-            .add(_mapParticipant(event.participant, isLocal: false));
+        _safeAdd(_participantUpdatedController, _mapParticipant(event.participant, isLocal: false));
       })
       ..on<lk.TrackUnsubscribedEvent>((event) {
-        _participantUpdatedController
-            .add(_mapParticipant(event.participant, isLocal: false));
+        _safeAdd(_participantUpdatedController, _mapParticipant(event.participant, isLocal: false));
       })
       ..on<lk.TrackPublishedEvent>((event) {
         final p = event.participant;
-        _participantUpdatedController
-            .add(_mapParticipant(p, isLocal: p is lk.LocalParticipant));
+        _safeAdd(_participantUpdatedController, _mapParticipant(p, isLocal: p is lk.LocalParticipant));
       })
       ..on<lk.TrackUnpublishedEvent>((event) {
         final p = event.participant;
-        _participantUpdatedController
-            .add(_mapParticipant(p, isLocal: p is lk.LocalParticipant));
+        _safeAdd(_participantUpdatedController, _mapParticipant(p, isLocal: p is lk.LocalParticipant));
       })
       ..on<lk.TrackStreamStateUpdatedEvent>((event) {
         final p = event.participant;
-        _participantUpdatedController
-            .add(_mapParticipant(p, isLocal: p is lk.LocalParticipant));
+        _safeAdd(_participantUpdatedController, _mapParticipant(p, isLocal: p is lk.LocalParticipant));
       })
       ..on<lk.TrackMutedEvent>((event) {
         final p = event.participant;
-        _participantUpdatedController
-            .add(_mapParticipant(p, isLocal: p is lk.LocalParticipant));
+        _safeAdd(_participantUpdatedController, _mapParticipant(p, isLocal: p is lk.LocalParticipant));
       })
       ..on<lk.TrackUnmutedEvent>((event) {
         final p = event.participant;
-        _participantUpdatedController
-            .add(_mapParticipant(p, isLocal: p is lk.LocalParticipant));
+        _safeAdd(_participantUpdatedController, _mapParticipant(p, isLocal: p is lk.LocalParticipant));
       })
       ..on<lk.ActiveSpeakersChangedEvent>((event) {
         if (event.speakers.isNotEmpty) {
-          _activeSpeakerController.add(event.speakers.first.identity);
+          _safeAdd(_activeSpeakerController, event.speakers.first.identity);
         }
       })
       ..on<lk.LocalTrackPublishedEvent>((event) {
         final local = _room?.localParticipant;
         if (local != null) {
-          _participantUpdatedController
-              .add(_mapParticipant(local, isLocal: true));
+          _safeAdd(_participantUpdatedController, _mapParticipant(local, isLocal: true));
         }
       })
       ..on<lk.LocalTrackUnpublishedEvent>((event) {
         final local = _room?.localParticipant;
         if (local != null) {
-          _participantUpdatedController
-              .add(_mapParticipant(local, isLocal: true));
+          _safeAdd(_participantUpdatedController, _mapParticipant(local, isLocal: true));
         }
       })
       ..on<lk.DataReceivedEvent>((event) {
@@ -197,7 +193,7 @@ class LiveKitRoomAdapter implements RoomPort {
           final str = utf8.decode(event.data);
           final decoded = jsonDecode(str);
           if (decoded is Map<String, dynamic>) {
-            _dataMessageController.add(decoded);
+            _safeAdd(_dataMessageController, decoded);
           }
         } catch (_) {}
       });
@@ -243,7 +239,7 @@ class LiveKitRoomAdapter implements RoomPort {
     final local = _room?.localParticipant;
     if (local != null) {
       await local.setMicrophoneEnabled(enabled);
-      _participantUpdatedController.add(_mapParticipant(local, isLocal: true));
+      _safeAdd(_participantUpdatedController, _mapParticipant(local, isLocal: true));
     }
   }
 
@@ -252,7 +248,7 @@ class LiveKitRoomAdapter implements RoomPort {
     final local = _room?.localParticipant;
     if (local != null) {
       await local.setCameraEnabled(enabled);
-      _participantUpdatedController.add(_mapParticipant(local, isLocal: true));
+      _safeAdd(_participantUpdatedController, _mapParticipant(local, isLocal: true));
     }
   }
 
@@ -261,7 +257,7 @@ class LiveKitRoomAdapter implements RoomPort {
     final local = _room?.localParticipant;
     if (local != null) {
       await local.setScreenShareEnabled(enabled);
-      _participantUpdatedController.add(_mapParticipant(local, isLocal: true));
+      _safeAdd(_participantUpdatedController, _mapParticipant(local, isLocal: true));
     }
   }
 
