@@ -216,6 +216,18 @@ class ApiClient {
         ));
   }
 
+  Future<Response<T>> put<T>(
+    String path, {
+    Object? data,
+    bool authenticated = true,
+  }) {
+    return _guard(() => _dio.put<T>(
+          path,
+          data: data,
+          options: Options(extra: {'authenticated': authenticated}),
+        ));
+  }
+
   Future<Response<T>> delete<T>(
     String path, {
     Object? data,
@@ -535,4 +547,17 @@ Map<String, dynamic> apiEnvelope(Response response) {
     return body['data'] as Map<String, dynamic>;
   }
   throw const ApiException(message: 'Unexpected response format');
+}
+
+/// Extracts a list from `{ data: [...] }` or `{ data: { items: [...] } }`.
+List<dynamic> apiListEnvelope(Response response) {
+  final body = response.data;
+  if (body is Map<String, dynamic>) {
+    final data = body['data'];
+    if (data is List<dynamic>) return data;
+    if (data is Map<String, dynamic> && data['items'] is List<dynamic>) {
+      return data['items'] as List<dynamic>;
+    }
+  }
+  throw const ApiException(message: 'Unexpected list response format');
 }

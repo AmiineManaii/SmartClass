@@ -453,8 +453,8 @@ Enums : `ENSEIGNANT→TEACHER`, `ETUDIANT→STUDENT`, `ADMIN→ADMIN` · `ACTIF�
 | 0 | Init : squelette, Docker (api+db), health, kernel (erreurs, validation, pagination, rate limit, logs), Prisma + `User`, dossier `contracts/` (README, `common.yaml`, `health.openapi.yaml`) | ✅ Terminé |
 | 1 | UC8 Auth & profil, UC6 Groupes-classes, RBAC & Invitations (RG1-RG3) | ✅ Terminé (Auth, OTP email, profil, RBAC 3 rôles ADMIN/TEACHER/STUDENT, CRUD classes, invitations par code/lien, scoping cours-classes) |
 | 2 | UC1 Cours + upload/extraction PDF + LLM local + validation prof + scoping classes (RG4-RG5) | ✅ Terminé (Génération LLM Unsloth topic/text/url/PDF, streaming SSE, module Courses + scoping cours-classes, validation RG4 par **build section par section** : outline → PENDING → GENERATED → VALIDATED, publication 409 tant que toutes ne sont pas validées, mémoire vectorielle pgvector scopée auteur) |
-| 3 | UC3/UC4 Visio, enregistrement, Whisper, résumé (RG8-RG11) | ⬜ |
-| 4 | UC2/UC10 IA individuelle, RAG pgvector (RG6-RG7, RG29) | ⬜ |
+| 3 | UC3/UC4 Visio, enregistrement, Whisper, résumé (RG8-RG11) | ✅ Terminé (LiveKit SFU + Egress server-side, stockage local streamable HTTP Range 206, pipeline IA 7 étapes, Studio de révision enseignant, Replay interactif étudiant) |
+| 4 | UC2/UC10 IA individuelle, RAG pgvector (RG6-RG7, RG29) | ✅ Terminé (SmartModelRouter 2 modèles `gemma4:e4b` + `Qwen3.5-4B`, Tuteur IA de leçon ancré RAG avec citations temporelles, générateur étudiant de synthèses/quiz/flashcards) |
 | 5 | UC5 Collaboration, UC9 v1 Examen (RG12-RG13, RG16-RG19) | ⬜ |
 | 6 | UC9 v2 Anti-fraude avancé, UC7 Suivi (RG20-RG28) | ⬜ |
 
@@ -609,4 +609,31 @@ docker compose exec api npm run db:migrate -- --name <nom>
   - **Documentation & Déploiement** :
     - Guide de déploiement de production LiveKit rédigé dans `Backend/README.md` (TLS/HTTPS/WSS obligatoire, ports 7880 TCP, 7881 TCP fallback, 7882 UDP, TURN 3478 UDP pour carriers mobiles à NAT symétrique).
     - Validation contractuelle Redocly 100% propre (0 erreur). 78/78 tests unitaires backend verts, 32/32 tests Flutter videoconference verts.
+
+- 2026-11-07 — v2.3.0 — **AI-Powered Lecture Recording, Replay & Personalized Learning Ecosystem (Web + Mobile)** :
+  - **Stockage Local Sécurisé (`StoragePort` / `LocalStorageAdapter`)** :
+    - Stockage local configurable hors dépôt (`STORAGE_DRIVER=local`, `STORAGE_LOCAL_ROOT=/var/lib/smartclass-storage`, volume hôte `HOST_STORAGE_PATH` ex: `D:/SmartClassStorage`).
+    - Protection stricte contre la traversée de répertoire (`STORAGE_PATH_TRAVERSAL`), écriture/lecture par flux Node.js (`createReadStream`) et prise en charge native du streaming vidéo **HTTP Range (`206 Partial Content`, `Accept-Ranges: bytes`)** pour un scrubbing instantané sur Web et Mobile.
+  - **Enregistrement Serveur LiveKit Egress (`LiveKitEgressAdapter`)** :
+    - Contrôle serveur authentifié (`POST /videoconference/:id/recordings/start`, `POST /videoconference/:id/recordings/stop`) via `EgressClient` (`livekit-server-sdk`), indépendant du navigateur de l'enseignant, avec repli résilient si le conteneur Egress n'est pas démarré.
+    - Arrêt automatique de tout enregistrement actif lors de la clôture de la séance (`EndVideoSessionUseCase`) et prise en charge des webhooks `egress_started` / `egress_ended`.
+    - Diffusion temps réel SSE (`recording.started`, `recording.stopped`, `recording.processing`, `recording.ready`, `lesson.published`).
+  - **Routeur IA Deux Modèles (`SmartModelRouterAdapter`)** :
+    - Inspection dynamique d'Ollama (`/api/tags` et `/v1/models`) combinant `gemma4:e4b` (vision/slides, synthèse académique riche, tuteur pédagogique) et `hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1` (extraction JSON structurée rapide, chapitres, quiz, flashcards).
+    - File d'exécution séquentielle GPU (`AI_MAX_CONCURRENT_JOBS=1`) adaptée à la RTX 4060 Laptop (8 Go VRAM) avec bascule automatique sur le modèle disponible en cas d'indisponibilité.
+    - `OllamaEmbeddingAdapter` étendu avec repli déterministe 768 dimensions garantissant la continuité de l'indexation `pgvector` même hors-ligne.
+  - **Pipeline IA Asynchrone en 7 Étapes (`MediaProcessingWorker`)** :
+    1. Validation de l'enregistrement et sonde `ffprobe`.
+    2. Extraction audio mono 16 kHz (`ffmpeg`).
+    3. Transcription horodatée + génération des sous-titres WebVTT / SRT.
+    4. Détection des diapositives et changements visuels + hachage perceptuel de déduplication + analyse visuelle par modèle local.
+    5. Extraction et alignement des documents supports (PDF/slides).
+    6. Alignement temporel multimodal discours ↔ slides ↔ chapitres.
+    7. Génération du package pédagogique complet (`LessonPackage`) + validation qualité (`qualityScore`).
+  - **Studio de Révision & Publication Enseignant + Espace Replay & Tuteur IA Étudiant** :
+    - Cycle de publication strict : `PROCESSING -> READY_FOR_REVIEW -> APPROVED -> PUBLISHED` avec historique de versions (`LessonPackageVersion`).
+    - Endpoints enseignants (`/review`, `/review/regenerate`, `/review/approve`, `/review/publish`, `/review/unpublish`) et étudiants (`/learning-workspace`, `/search`, `/progress`, `/bookmarks`, `/notes`, `/study-artifacts`, `/quiz-attempts`, `/tutor/ask`).
+    - Tuteur IA ancré dans le cours publié avec citations cliquables (`[MM:SS]`, chapitre, slide).
+    - Contrat OpenAPI `contracts/videoconference.openapi.yaml` et `contracts/common.yaml` mis à jour (+18 endpoints).
+
 

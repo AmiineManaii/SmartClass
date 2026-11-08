@@ -50,6 +50,7 @@ abstract class AuthRepository {
     required String email,
     required String password,
     bool rememberMe = false,
+    String? role,
   });
 
   Future<AuthenticatedSession> refreshSession({required String refreshToken});

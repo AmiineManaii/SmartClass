@@ -14,6 +14,7 @@ export interface LoginDTO {
   email: string;
   password: string;
   rememberMe?: boolean;
+  role?: 'TEACHER' | 'STUDENT' | 'ADMIN';
   ipAddress?: string;
 }
 
@@ -152,6 +153,29 @@ export class LoginUseCase {
         'Please verify your email address before logging in.',
         ErrorCodes.AUTH_EMAIL_NOT_VERIFIED,
         [{ email: user.email }],
+      );
+    }
+
+    // 3b. Verify selected portal role matches user's assigned role
+    if (dto.role && user.role && user.role !== dto.role) {
+      if (typeof this.authRepository.saveAuditLog === 'function') {
+        await this.authRepository.saveAuditLog({
+          userId: user.id,
+          action: 'AUTH_LOGIN_FAILED',
+          targetType: 'User',
+          targetId: user.id,
+          details: {
+            ipAddress: dto.ipAddress ?? 'unknown',
+            reason: 'ROLE_MISMATCH',
+            expectedRole: user.role,
+            selectedRole: dto.role,
+          },
+        });
+      }
+      throw new ForbiddenError(
+        `This account belongs to the ${user.role} portal, not ${dto.role}. Please select the matching role to sign in.`,
+        ErrorCodes.AUTH_ROLE_MISMATCH,
+        [{ expectedRole: user.role, selectedRole: dto.role }],
       );
     }
 

@@ -35,3 +35,15 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local lecture recordings & generated media storage (never commit)
+SmartClassStorage/
+storage/
+*.mp4
+*.webm
+*.mkv
+*.wav
+*.m4a
+*.vtt
+*.srt
+

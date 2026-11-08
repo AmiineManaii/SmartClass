@@ -69,6 +69,7 @@ class AuthRemoteDataSource {
     required String email,
     required String password,
     bool rememberMe = false,
+    String? role,
   }) async {
     final res = await _client.post<dynamic>(
       '$_base/auth/login',
@@ -77,6 +78,7 @@ class AuthRemoteDataSource {
         'email': email,
         'password': password,
         'rememberMe': rememberMe,
+        'role': ?role,
       },
     );
     return apiEnvelope(res);

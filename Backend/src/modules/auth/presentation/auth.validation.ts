@@ -7,6 +7,7 @@ const passwordMessage =
 export const roleSchema = z.preprocess((val) => {
   if (typeof val !== 'string') return val;
   const normalized = val.trim().toUpperCase();
+  if (normalized === '' || normalized === 'NULL' || normalized === 'UNDEFINED') return undefined;
   if (
     normalized === 'PROFESOR' ||
     normalized === 'PROFESSEUR' ||
@@ -38,7 +39,7 @@ export const registerSchema = z
     // /role-selection (PATCH /users/me/role). An omitted (or null) role
     // stays null — it must NOT default to STUDENT, otherwise the
     // once-only assignment would be consumed before onboarding.
-    role: z.preprocess((val) => (val === null ? undefined : val), roleSchema.optional()),
+    role: z.preprocess((val) => (val === null || val === '' || val === undefined ? undefined : val), roleSchema.optional()),
   })
   .strict();
 
@@ -47,6 +48,7 @@ export const loginSchema = z
     email: z.string().trim().email('Invalid email address'),
     password: z.string().min(1, 'Password is required'),
     rememberMe: z.boolean().optional().default(false),
+    role: z.preprocess((val) => (val === null || val === '' || val === undefined ? undefined : val), roleSchema.optional()),
   })
   .strict();
 

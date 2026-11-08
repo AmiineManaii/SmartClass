@@ -19,17 +19,13 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage> {
   Widget build(BuildContext context) {
     final roomState = ref.watch(liveRoomControllerProvider);
 
-    // Cleanly pop/redirect when disconnected
+    // Cleanly redirect to videoconference dashboard when disconnected
     ref.listen<RoomConnectionState>(
       liveRoomControllerProvider.select((s) => s.connectionState),
       (prev, next) {
         if (next == RoomConnectionState.disconnected) {
           if (context.mounted) {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/videoconference');
-            }
+            context.go('/videoconference');
           }
         }
       },

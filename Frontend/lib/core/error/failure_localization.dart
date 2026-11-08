@@ -39,6 +39,8 @@ import 'failures.dart';
       return (key: 'not_found', args: noArgs);
     case 'FORBIDDEN':
       return (key: 'permission_denied', args: noArgs);
+    case 'AUTH_ROLE_MISMATCH':
+      return (key: 'auth_role_mismatch', args: noArgs);
     case 'ROLE_ALREADY_ASSIGNED':
       return (key: 'role_already_assigned', args: noArgs);
     case 'RATE_LIMITED':
@@ -58,6 +60,7 @@ String _validationKey(ValidationFailure failure) {
     if (path.contains('email')) return 'invalid_email';
     if (path.contains('password')) return 'password_too_short';
     if (path.contains('code')) return 'invalid_code';
+    if (path.contains('role')) return 'auth_role_mismatch';
     if (path.contains('firstname') || path.contains('lastname')) {
       return 'required_field';
     }

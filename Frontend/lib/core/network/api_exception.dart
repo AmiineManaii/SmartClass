@@ -35,6 +35,7 @@ Failure apiExceptionToFailure(ApiException e) {
     case 'AUTH_REFRESH_REUSED':
     case 'AUTH_EMAIL_NOT_VERIFIED':
     case 'AUTH_ACCOUNT_LOCKED':
+    case 'AUTH_ROLE_MISMATCH':
     case 'EMAIL_ALREADY_USED':
       return AuthFailure(e.message, code: e.code);
     case 'VALIDATION_ERROR':

@@ -32,6 +32,8 @@ import '../features/exams/presentation/pages/exam_ai_score_page.dart';
 import '../features/videoconference/presentation/pages/videoconference_page.dart';
 import '../features/videoconference/presentation/pages/lobby_page.dart';
 import '../features/videoconference/presentation/pages/live_room_page.dart';
+import '../features/videoconference/presentation/pages/teacher_review_studio_page.dart';
+import '../features/videoconference/presentation/pages/lecture_replay_workspace_page.dart';
 import '../features/collaboration/presentation/pages/collaboration_page.dart'
     as collaboration_page;
 import '../features/ai_assistant/presentation/pages/ai_assistant_page.dart';
@@ -142,7 +144,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       if ((location.startsWith('/courses/ai-create') ||
-              location.endsWith('/build')) &&
+              location.endsWith('/build') ||
+              (location.startsWith('/videoconference/') &&
+                  location.endsWith('/review'))) &&
           normalizedRole != 'teacher' &&
           normalizedRole != 'admin') {
         return '/courses';
@@ -254,6 +258,20 @@ final routerProvider = Provider<GoRouter>((ref) {
             initialCamera: initialCamera,
           );
         },
+      ),
+      GoRoute(
+        path: '/videoconference/:sessionId/review',
+        name: 'videoconference-review-studio',
+        builder: (context, state) => TeacherReviewStudioPage(
+          sessionId: state.pathParameters['sessionId'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/videoconference/:sessionId/replay',
+        name: 'videoconference-replay-workspace',
+        builder: (context, state) => LectureReplayWorkspacePage(
+          sessionId: state.pathParameters['sessionId'] ?? '',
+        ),
       ),
       ShellRoute(
         builder: (context, state, child) => MainScaffold(child: child),
@@ -999,6 +1017,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     String email,
     String password, {
     bool rememberMe = false,
+    String? role,
   }) async {
     _ref.read(pendingEmailProvider.notifier).state = email;
     _emit(const AsyncValue.loading());
@@ -1007,6 +1026,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
         email: email,
         password: password,
         rememberMe: rememberMe,
+        role: role,
       );
       final tokens = _ref.read(tokenStorageProvider);
       final profile = await tokens.readAcademicProfile(

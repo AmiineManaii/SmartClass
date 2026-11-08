@@ -80,6 +80,46 @@ enum VideoSessionStatus {
   CANCELED
 }
 
+enum RecordingStatus {
+  NOT_STARTED
+  STARTING
+  RECORDING
+  FINALIZING
+  RECORDED
+  PROCESSING
+  READY_FOR_REVIEW
+  APPROVED
+  PUBLISHED
+  FAILED
+  DELETED
+}
+
+enum ProcessingJobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+enum ProcessingStage {
+  VALIDATION
+  AUDIO_EXTRACTION
+  TRANSCRIPTION
+  VISUAL_ANALYSIS
+  DOCUMENT_ANALYSIS
+  TEMPORAL_ALIGNMENT
+  LESSON_GENERATION
+  QUALITY_VALIDATION
+  COMPLETED
+}
+
+enum StudyArtifactKind {
+  SUMMARY
+  QUIZ
+  FLASHCARDS
+}
+
 model User {
   id                    String                 @id @default(uuid()) @db.Uuid
   email                 String                 @unique
@@ -118,6 +158,13 @@ model User {
   sessionChatMessages     SessionChatMessage[]
   sessionRemovalsReceived SessionParticipantRemoval[] @relation("ParticipantRemovals")
   sessionRemovalsExecuted SessionParticipantRemoval[] @relation("ExecutorRemovals")
+  hostedRecordings        Recording[]                 @relation("HostedRecordings")
+  studyArtifacts          StudentLessonArtifact[]
+  quizAttempts            StudentQuizAttempt[]
+  lessonProgresses        StudentLessonProgress[]
+  lessonBookmarks         StudentLessonBookmark[]
+  lessonNotes             StudentLessonNote[]
+  tutorConversations      LessonTutorConversation[]
 
   @@index([email])
   @@index([role])
@@ -150,8 +197,9 @@ model ClassGroup {
   slots       TimetableSlot[]
   fraudCases  FraudReport[]
   invitations ClassInvitation[]
-  courses     CourseClassGroup[]
+  courses       CourseClassGroup[]
   videoSessions VideoSession[]
+  recordings    Recording[]
 
   @@index([level])
   @@index([status])
@@ -461,6 +509,7 @@ model VideoSession {
   participants  SessionParticipant[]
   chatMessages  SessionChatMessage[]
   removals      SessionParticipantRemoval[]
+  recording     Recording?
 
   @@index([classGroupId, startsAt])
   @@index([hostId])
@@ -512,4 +561,327 @@ model SessionParticipantRemoval {
 
   @@unique([sessionId, userId])
   @@map("session_participant_removals")
+}
+
+model Recording {
+  id                String          @id @default(uuid()) @db.Uuid
+  sessionId         String          @unique @map("session_id") @db.Uuid
+  classGroupId      String          @map("class_group_id") @db.Uuid
+  hostId            String?         @map("host_id") @db.Uuid
+  status            RecordingStatus @default(NOT_STARTED)
+  egressId          String?         @unique @map("egress_id")
+  storageKey        String?         @map("storage_key")
+  mimeType          String          @default("video/mp4") @map("mime_type")
+  sizeBytes         BigInt?         @map("size_bytes")
+  durationSeconds   Int?            @map("duration_seconds")
+  width             Int?
+  height            Int?
+  thumbnailKey      String?         @map("thumbnail_key")
+  sourceDocKey      String?         @map("source_doc_key")
+  sourceDocTitle    String?         @map("source_doc_title")
+  sourceDocText     String?         @map("source_doc_text") @db.Text
+  errorCode         String?         @map("error_code")
+  errorMessage      String?         @map("error_message") @db.Text
+  startedAt         DateTime?       @map("started_at") @db.Timestamptz
+  stoppedAt         DateTime?       @map("stopped_at") @db.Timestamptz
+  publishedAt       DateTime?       @map("published_at") @db.Timestamptz
+  processingVersion Int             @default(1) @map("processing_version")
+  aiModelUsed       String?         @map("ai_model_used")
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  session            VideoSession                 @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  classGroup         ClassGroup                   @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  host               User?                        @relation("HostedRecordings", fields: [hostId], references: [id], onDelete: SetNull)
+  jobs               RecordingProcessingJob[]
+  transcript         RecordingTranscript?
+  transcriptSegments RecordingTranscriptSegment[]
+  slideFrames        RecordingSlideFrame[]
+  chapters           RecordingChapter[]
+  lessonPackage      LessonPackage?
+  studyArtifacts     StudentLessonArtifact[]
+  quizAttempts       StudentQuizAttempt[]
+  progresses         StudentLessonProgress[]
+  bookmarks          StudentLessonBookmark[]
+  notes              StudentLessonNote[]
+  tutorConversations LessonTutorConversation[]
+
+  @@index([classGroupId, status])
+  @@index([hostId])
+  @@index([status])
+  @@map("recordings")
+}
+
+model RecordingProcessingJob {
+  id           String              @id @default(uuid()) @db.Uuid
+  recordingId  String              @map("recording_id") @db.Uuid
+  status       ProcessingJobStatus @default(QUEUED)
+  stage        ProcessingStage     @default(VALIDATION)
+  progress     Int                 @default(0)
+  attempts     Int                 @default(0)
+  maxAttempts  Int                 @default(3) @map("max_attempts")
+  lockedAt     DateTime?           @map("locked_at") @db.Timestamptz
+  workerId     String?             @map("worker_id")
+  errorMessage String?             @map("error_message") @db.Text
+  stageLogs    Json                @default("[]") @map("stage_logs")
+  startedAt    DateTime?           @map("started_at") @db.Timestamptz
+  completedAt  DateTime?           @map("completed_at") @db.Timestamptz
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  recording Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId, createdAt])
+  @@index([status, createdAt])
+  @@map("recording_processing_jobs")
+}
+
+model RecordingTranscript {
+  id           String   @id @default(uuid()) @db.Uuid
+  recordingId  String   @unique @map("recording_id") @db.Uuid
+  language     String   @default("fr")
+  fullText     String   @map("full_text") @db.Text
+  vttContent   String   @default("") @map("vtt_content") @db.Text
+  srtContent   String   @default("") @map("srt_content") @db.Text
+  qualityScore Float    @default(1.0) @map("quality_score")
+  modelUsed    String?  @map("model_used")
+  updatedById  String?  @map("updated_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  recording Recording                    @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  segments  RecordingTranscriptSegment[]
+
+  @@map("recording_transcripts")
+}
+
+model RecordingTranscriptSegment {
+  id           String   @id @default(uuid()) @db.Uuid
+  transcriptId String   @map("transcript_id") @db.Uuid
+  recordingId  String   @map("recording_id") @db.Uuid
+  orderIndex   Int      @map("order_index")
+  startSeconds Float    @map("start_seconds")
+  endSeconds   Float    @map("end_seconds")
+  text         String   @db.Text
+  speaker      String?
+  confidence   Float    @default(1.0)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  transcript RecordingTranscript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  recording  Recording           @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId, orderIndex])
+  @@index([recordingId, startSeconds])
+  @@map("recording_transcript_segments")
+}
+
+model RecordingSlideFrame {
+  id               String   @id @default(uuid()) @db.Uuid
+  recordingId      String   @map("recording_id") @db.Uuid
+  timestampSeconds Float    @map("timestamp_seconds")
+  storageKey       String?  @map("storage_key")
+  perceptualHash   String?  @map("perceptual_hash")
+  ocrText          String   @default("") @map("ocr_text") @db.Text
+  visualSummary    String   @default("") @map("visual_summary") @db.Text
+  sourcePage       Int?     @map("source_page")
+  modelUsed        String?  @map("model_used")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  recording Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId, timestampSeconds])
+  @@map("recording_slide_frames")
+}
+
+model RecordingChapter {
+  id           String   @id @default(uuid()) @db.Uuid
+  recordingId  String   @map("recording_id") @db.Uuid
+  orderIndex   Int      @map("order_index")
+  title        String
+  summary      String   @default("") @db.Text
+  startSeconds Float    @map("start_seconds")
+  endSeconds   Float    @map("end_seconds")
+  keyConcepts  String[] @default([]) @map("key_concepts")
+  slideFrameId String?  @map("slide_frame_id") @db.Uuid
+  sourcePage   Int?     @map("source_page")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  recording Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId, orderIndex])
+  @@map("recording_chapters")
+}
+
+model LessonPackage {
+  id                  String    @id @default(uuid()) @db.Uuid
+  recordingId         String    @unique @map("recording_id") @db.Uuid
+  version             Int       @default(1)
+  structuredNotes     String    @default("") @map("structured_notes") @db.Text
+  generalSummary      String    @default("") @map("general_summary") @db.Text
+  keyConcepts         Json      @default("[]") @map("key_concepts")
+  definitions         Json      @default("[]")
+  importantExamples   Json      @default("[]") @map("important_examples")
+  learningObjectives  String[]  @default([]) @map("learning_objectives")
+  formulasAndRules    String[]  @default([]) @map("formulas_and_rules")
+  importantMoments    Json      @default("[]") @map("important_moments")
+  revisionSheet       String    @default("") @map("revision_sheet") @db.Text
+  mindMapMermaid      String    @default("") @map("mind_map_mermaid") @db.Text
+  suggestedStudyOrder String[]  @default([]) @map("suggested_study_order")
+  flashcards          Json      @default("[]")
+  quizzes             Json      @default("[]")
+  qualityReport       Json      @default("{}") @map("quality_report")
+  primaryModel        String?   @map("primary_model")
+  secondaryModel      String?   @map("secondary_model")
+  approvedById        String?   @map("approved_by_id") @db.Uuid
+  approvedAt          DateTime? @map("approved_at") @db.Timestamptz
+  publishedAt         DateTime? @map("published_at") @db.Timestamptz
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  recording Recording              @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  versions  LessonPackageVersion[]
+
+  @@map("lesson_packages")
+}
+
+model LessonPackageVersion {
+  id              String   @id @default(uuid()) @db.Uuid
+  lessonPackageId String   @map("lesson_package_id") @db.Uuid
+  version         Int
+  snapshot        Json
+  editedById      String?  @map("edited_by_id") @db.Uuid
+  changeSummary   String?  @map("change_summary")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  lessonPackage LessonPackage @relation(fields: [lessonPackageId], references: [id], onDelete: Cascade)
+
+  @@index([lessonPackageId, version])
+  @@map("lesson_package_versions")
+}
+
+model StudentLessonArtifact {
+  id          String            @id @default(uuid()) @db.Uuid
+  recordingId String            @map("recording_id") @db.Uuid
+  userId      String            @map("user_id") @db.Uuid
+  kind        StudyArtifactKind
+  title       String
+  language    String            @default("fr")
+  chapterIds  String[]          @default([]) @map("chapter_ids")
+  config      Json              @default("{}")
+  content     Json              @default("{}")
+  modelUsed   String?           @map("model_used")
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+
+  recording Recording            @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempts  StudentQuizAttempt[]
+
+  @@index([recordingId, userId, kind])
+  @@map("student_lesson_artifacts")
+}
+
+model StudentQuizAttempt {
+  id             String   @id @default(uuid()) @db.Uuid
+  artifactId     String   @map("artifact_id") @db.Uuid
+  recordingId    String   @map("recording_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  score          Int
+  totalQuestions Int      @map("total_questions")
+  answers        Json     @default("[]")
+  results        Json     @default("[]")
+  weakTopics     String[] @default([]) @map("weak_topics")
+  completedAt    DateTime @default(now()) @map("completed_at") @db.Timestamptz
+
+  artifact  StudentLessonArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  recording Recording             @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId, userId])
+  @@map("student_quiz_attempts")
+}
+
+model StudentLessonProgress {
+  id                  String   @id @default(uuid()) @db.Uuid
+  recordingId         String   @map("recording_id") @db.Uuid
+  userId              String   @map("user_id") @db.Uuid
+  lastPositionSeconds Float    @default(0) @map("last_position_seconds")
+  watchedSeconds      Float    @default(0) @map("watched_seconds")
+  completedChapters   String[] @default([]) @map("completed_chapters")
+  flashcardKnownIds   String[] @default([]) @map("flashcard_known_ids")
+  flashcardReviewIds  String[] @default([]) @map("flashcard_review_ids")
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  recording Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([recordingId, userId])
+  @@map("student_lesson_progresses")
+}
+
+model StudentLessonBookmark {
+  id               String   @id @default(uuid()) @db.Uuid
+  recordingId      String   @map("recording_id") @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  timestampSeconds Float    @map("timestamp_seconds")
+  label            String
+  chapterTitle     String?  @map("chapter_title")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  recording Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId, userId, timestampSeconds])
+  @@map("student_lesson_bookmarks")
+}
+
+model StudentLessonNote {
+  id               String   @id @default(uuid()) @db.Uuid
+  recordingId      String   @map("recording_id") @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  timestampSeconds Float?   @map("timestamp_seconds")
+  content          String   @db.Text
+  highlightText    String?  @map("highlight_text") @db.Text
+  chapterTitle     String?  @map("chapter_title")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  recording Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId, userId, createdAt])
+  @@map("student_lesson_notes")
+}
+
+model LessonTutorConversation {
+  id          String   @id @default(uuid()) @db.Uuid
+  recordingId String   @map("recording_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  title       String   @default("Discussion Tuteur IA")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  recording Recording            @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  LessonTutorMessage[]
+
+  @@index([recordingId, userId, updatedAt])
+  @@map("lesson_tutor_conversations")
+}
+
+model LessonTutorMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  role           String
+  content        String   @db.Text
+  citations      Json     @default("[]")
+  modelUsed      String?  @map("model_used")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  conversation LessonTutorConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("lesson_tutor_messages")
 }

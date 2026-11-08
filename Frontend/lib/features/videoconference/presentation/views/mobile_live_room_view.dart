@@ -1,16 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../application/live_room_controller.dart';
-import '../../domain/entities/live_participant.dart';
 import '../widgets/live_chat_panel.dart';
 import '../widgets/live_room_controls.dart';
-import '../widgets/live_video_tile_loader.dart';
-import '../widgets/participant_tile.dart';
+import '../widgets/live_room_leave_dialog.dart';
+import '../widgets/mobile_live_video_stage.dart';
 import '../widgets/participants_sheet.dart';
+import '../widgets/recording_status_banner.dart';
 
 class MobileLiveRoomView extends ConsumerStatefulWidget {
   const MobileLiveRoomView({super.key});
@@ -28,10 +27,8 @@ class _MobileLiveRoomViewState extends ConsumerState<MobileLiveRoomView> {
   @override
   void initState() {
     super.initState();
-    // Auto-hide the bottom dock 3.5s after entering the session
     _startAutoHideTimer(const Duration(milliseconds: 3500));
 
-    // Live session duration stopwatch
     _sessionTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
         setState(() {
@@ -115,7 +112,6 @@ class _MobileLiveRoomViewState extends ConsumerState<MobileLiveRoomView> {
     final controller = ref.read(liveRoomControllerProvider.notifier);
     final session = roomState.session;
 
-    // Listen to chat toggle from controls
     ref.listen<bool>(
       liveRoomControllerProvider.select((s) => s.isChatOpen),
       (prev, next) {
@@ -125,7 +121,6 @@ class _MobileLiveRoomViewState extends ConsumerState<MobileLiveRoomView> {
       },
     );
 
-    // Listen to participants toggle from controls
     ref.listen<bool>(
       liveRoomControllerProvider.select((s) => s.isParticipantsOpen),
       (prev, next) {
@@ -145,10 +140,8 @@ class _MobileLiveRoomViewState extends ConsumerState<MobileLiveRoomView> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Main Content Area
             Column(
               children: [
-                // Top Bar
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -158,16 +151,12 @@ class _MobileLiveRoomViewState extends ConsumerState<MobileLiveRoomView> {
                         icon: const Icon(Icons.arrow_back_ios_new_rounded,
                             size: 18, color: Colors.white),
                         tooltip: context.tr('back'),
-                        onPressed: () async {
-                          await controller.leaveRoom();
-                          if (context.mounted) {
-                            if (context.canPop()) {
-                              context.pop();
-                            } else {
-                              context.go('/videoconference');
-                            }
-                          }
-                        },
+                        onPressed: () => LiveRoomLeaveHelper.showLeaveOrEndDialog(
+                          context: context,
+                          controller: controller,
+                          roomState: roomState,
+                          isHost: roomState.isHost,
+                        ),
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -184,34 +173,31 @@ class _MobileLiveRoomViewState extends ConsumerState<MobileLiveRoomView> {
                                     shape: BoxShape.circle,
                                   ),
                                 ),
-                                const SizedBox(width: 5),
+                                const SizedBox(width: 6),
                                 Text(
-                                  context.tr('tab_live').toUpperCase(),
+                                  context.tr('live_badge').toUpperCase(),
                                   style: const TextStyle(
                                     fontFamily: 'Inter',
                                     color: Color(0xFFEF4444),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
                                     letterSpacing: 0.5,
                                   ),
                                 ),
                                 const SizedBox(width: 6),
-                                Container(
-                                  width: 3,
-                                  height: 3,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.4),
-                                    shape: BoxShape.circle,
-                                  ),
+                                const Text(
+                                  '•',
+                                  style: TextStyle(
+                                      color: Colors.white38, fontSize: 10),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
                                   _formatElapsed(),
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontFamily: 'Inter',
-                                    color: Colors.white.withValues(alpha: 0.7),
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white70,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
@@ -251,14 +237,16 @@ class _MobileLiveRoomViewState extends ConsumerState<MobileLiveRoomView> {
                   ),
                 ),
 
-                // Video Stage Area with Tap-to-Toggle
+                const RecordingStatusBanner(),
+
+                // Video Stage with Tap to Toggle Dock
                 Expanded(
                   child: GestureDetector(
                     onTap: _toggleControls,
                     behavior: HitTestBehavior.opaque,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                      child: _buildAdaptiveVideoGrid(
+                      child: MobileLiveVideoStage(
                         roomState: roomState,
                         local: local,
                         remotes: remotes,
@@ -272,7 +260,7 @@ class _MobileLiveRoomViewState extends ConsumerState<MobileLiveRoomView> {
 
             // Floating Pill when Controls are Hidden
             Positioned(
-              bottom: 16,
+              bottom: 28,
               left: 0,
               right: 0,
               child: AnimatedOpacity(
@@ -363,7 +351,6 @@ class _MobileLiveRoomViewState extends ConsumerState<MobileLiveRoomView> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Collapse Handle Bar
                           GestureDetector(
                             onTap: _toggleControls,
                             behavior: HitTestBehavior.opaque,
@@ -381,8 +368,6 @@ class _MobileLiveRoomViewState extends ConsumerState<MobileLiveRoomView> {
                               ),
                             ),
                           ),
-
-                          // Quick Chat Pill
                           Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 4),
@@ -444,8 +429,6 @@ class _MobileLiveRoomViewState extends ConsumerState<MobileLiveRoomView> {
                               ),
                             ),
                           ),
-
-                          // Control Buttons Row
                           const LiveRoomControls(isMobile: true),
                         ],
                       ),
@@ -458,138 +441,5 @@ class _MobileLiveRoomViewState extends ConsumerState<MobileLiveRoomView> {
         ),
       ),
     );
-  }
-
-  Widget _buildAdaptiveVideoGrid({
-    required LiveRoomState roomState,
-    required LiveParticipant? local,
-    required List<LiveParticipant> remotes,
-    required LiveParticipant? heroSpeaker,
-  }) {
-    // Case 1: Only local participant in room
-    if (remotes.isEmpty) {
-      return Stack(
-        children: [
-          Positioned.fill(
-            child: local != null
-                ? ParticipantTile(participant: local, isHero: true)
-                : _buildLoadingState(roomState),
-          ),
-          Positioned(
-            top: 12,
-            left: 16,
-            right: 16,
-            child: Center(
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A).withValues(alpha: 0.85),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    width: 0.8,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Flexible(
-                      child: Text(
-                        'En attente des autres participants...',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // Case 2: 1-on-1 (You + 1 Remote participant, e.g. Teacher + 1 Student)
-    if (remotes.length == 1 && local != null) {
-      return Column(
-        children: [
-          Expanded(
-            flex: 1,
-            child: ParticipantTile(
-              participant: remotes.first,
-              isHero: true,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            flex: 1,
-            child: ParticipantTile(
-              participant: local,
-              isHero: true,
-            ),
-          ),
-        ],
-      );
-    }
-
-    // Case 3: Group class (3+ participants)
-    final otherParticipants = <LiveParticipant>[
-      if (local != null && heroSpeaker != local) local,
-      ...remotes.where((p) => p != heroSpeaker),
-    ];
-
-    return Column(
-      children: [
-        // Main Hero Speaker
-        Expanded(
-          flex: 4,
-          child: heroSpeaker != null
-              ? ParticipantTile(participant: heroSpeaker, isHero: true)
-              : _buildLoadingState(roomState),
-        ),
-
-        // Scrollable Peer Strip at Bottom
-        if (otherParticipants.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 88,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: otherParticipants.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                return SizedBox(
-                  width: 115,
-                  child: ParticipantTile(
-                    participant: otherParticipants[index],
-                    isHero: false,
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildLoadingState(LiveRoomState roomState) {
-    return const LiveVideoTileLoader();
   }
 }

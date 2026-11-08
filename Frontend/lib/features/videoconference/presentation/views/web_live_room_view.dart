@@ -9,6 +9,7 @@ import '../widgets/live_room_controls.dart';
 import '../widgets/live_video_tile_loader.dart';
 import '../widgets/participant_tile.dart';
 import '../widgets/participants_sheet.dart';
+import '../widgets/recording_status_banner.dart';
 
 class WebLiveRoomView extends ConsumerStatefulWidget {
   const WebLiveRoomView({super.key});
@@ -47,6 +48,16 @@ class _WebLiveRoomViewState extends ConsumerState<WebLiveRoomView>
       ...roomState.remoteParticipants.values
           .where((p) => p != heroSpeaker),
     ];
+    final isDrawerOpen =
+        roomState.isChatOpen || roomState.isParticipantsOpen;
+    final targetTab = roomState.isParticipantsOpen ? 1 : 0;
+    if (isDrawerOpen && _tabController.index != targetTab) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _tabController.index != targetTab) {
+          _tabController.animateTo(targetTab);
+        }
+      });
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F19),
@@ -85,11 +96,15 @@ class _WebLiveRoomViewState extends ConsumerState<WebLiveRoomView>
                   ),
                   const SizedBox(width: 10),
                 ],
-                Text(
-                  session?.title ?? 'Session Live',
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                Flexible(
+                  child: Text(
+                    session?.title ?? 'Session Live',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
                 ),
                 const Spacer(),
+                const RecordingStatusBanner(compact: true),
                 // Live Pill
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -129,17 +144,100 @@ class _WebLiveRoomViewState extends ConsumerState<WebLiveRoomView>
             ),
           ),
 
-          // Central Stage + Right Rail
+          // Recording Consent Banner
+          const RecordingStatusBanner(),
+
+          // Presenter Screen Sharing Banner (Google Meet Style)
+          if (roomState.isScreenSharing)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E293B),
+                border: Border(
+                  bottom: BorderSide(color: Color(0xFF3B82F6), width: 1.5),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.screen_share_rounded,
+                      size: 16,
+                      color: Color(0xFF60A5FA),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Vous partagez actuellement votre écran avec la classe',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  InkWell(
+                    onTap: () => ref
+                        .read(liveRoomControllerProvider.notifier)
+                        .toggleScreenShare(),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDC2626).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.6),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(
+                            Icons.stop_screen_share_rounded,
+                            size: 14,
+                            color: Color(0xFFF87171),
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Arrêter le partage',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              color: Color(0xFFF87171),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Central Stage + Google Meet Right Participant Column + Collapsible Drawer
           Expanded(
             child: Row(
               children: [
-                // Video Stage
+                // Main Stage + Google Meet Vertical Participant Strip on the Right
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Column(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Hero Active Speaker Tile
+                        // Hero Active Speaker / Screen Share Stage
                         Expanded(
                           child: heroSpeaker != null
                               ? ParticipantTile(
@@ -148,24 +246,63 @@ class _WebLiveRoomViewState extends ConsumerState<WebLiveRoomView>
                                 )
                               : const LiveVideoTileLoader(),
                         ),
-                        // Filmstrip Carousel (if other participants exist)
+                        // Google Meet Right Vertical Participant Column
                         if (otherParticipants.isNotEmpty) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(width: 14),
                           SizedBox(
-                            height: 110,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: otherParticipants.length,
-                              separatorBuilder: (_, _) => const SizedBox(width: 10),
-                              itemBuilder: (context, index) {
-                                return SizedBox(
-                                  width: 160,
-                                  child: ParticipantTile(
-                                    participant: otherParticipants[index],
-                                    isHero: false,
+                            width: 220,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
                                   ),
-                                );
-                              },
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF151B2B),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: const Color(0xFF334155),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.people_alt_rounded,
+                                        size: 14,
+                                        color: Color(0xFF60A5FA),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Classe (${otherParticipants.length + (heroSpeaker != null ? 1 : 0)})',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Expanded(
+                                  child: ListView.separated(
+                                    itemCount: otherParticipants.length,
+                                    separatorBuilder: (_, _) =>
+                                        const SizedBox(height: 10),
+                                    itemBuilder: (context, index) {
+                                      return SizedBox(
+                                        height: 136,
+                                        child: ParticipantTile(
+                                          participant: otherParticipants[index],
+                                          isHero: false,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -174,36 +311,99 @@ class _WebLiveRoomViewState extends ConsumerState<WebLiveRoomView>
                   ),
                 ),
 
-                // Right Rail
-                Container(
-                  width: 380,
-                  decoration: const BoxDecoration(
-                    border: Border(left: BorderSide(color: Color(0xFF334155), width: 1)),
-                  ),
-                  child: Column(
-                    children: [
-                      TabBar(
-                        controller: _tabController,
-                        indicatorColor: const Color(0xFF4056B9),
-                        labelColor: Colors.white,
-                        unselectedLabelColor: Colors.grey,
-                        tabs: [
-                          Tab(text: context.tr('chat')),
-                          Tab(text: context.tr('participants')),
-                        ],
+                // Collapsible Right Drawer (Discussion & Participants)
+                if (isDrawerOpen)
+                  Container(
+                    width: 360,
+                    margin: const EdgeInsets.fromLTRB(0, 12, 12, 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF151B2B),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFF334155),
+                        width: 1,
                       ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: const [
-                            LiveChatPanel(),
-                            ParticipantsSheet(),
-                          ],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          blurRadius: 16,
+                          offset: const Offset(-4, 4),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: [
+                        Container(
+                          color: const Color(0xFF1E2638),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TabBar(
+                                  controller: _tabController,
+                                  indicatorColor: const Color(0xFF3B82F6),
+                                  labelColor: Colors.white,
+                                  unselectedLabelColor: Colors.white60,
+                                  dividerColor: Colors.transparent,
+                                  onTap: (idx) {
+                                    final ctrl = ref.read(
+                                      liveRoomControllerProvider.notifier,
+                                    );
+                                    if (idx == 0) {
+                                      ctrl.toggleChat(true);
+                                    } else {
+                                      ctrl.toggleParticipants(true);
+                                    }
+                                  },
+                                  tabs: [
+                                    Tab(
+                                      icon: const Icon(
+                                        Icons.chat_bubble_outline_rounded,
+                                        size: 16,
+                                      ),
+                                      text: context.tr('chat'),
+                                    ),
+                                    Tab(
+                                      icon: const Icon(
+                                        Icons.people_outline_rounded,
+                                        size: 16,
+                                      ),
+                                      text: context.tr('participants'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: context.tr('close'),
+                                icon: const Icon(
+                                  Icons.close_rounded,
+                                  color: Colors.white70,
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  final ctrl = ref.read(
+                                    liveRoomControllerProvider.notifier,
+                                  );
+                                  ctrl.toggleChat(false);
+                                  ctrl.toggleParticipants(false);
+                                },
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: TabBarView(
+                            controller: _tabController,
+                            children: const [
+                              LiveChatPanel(),
+                              ParticipantsSheet(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),

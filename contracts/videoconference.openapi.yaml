@@ -1138,6 +1138,428 @@ paths:
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
 
+  /videoconference/recordings:
+    get:
+      operationId: listRecordings
+      tags:
+        - videoconference
+      summary: List recorded lectures for a class or user
+      description: Students receive only PUBLISHED recordings; teachers and admins receive all non-deleted recordings in their classes.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: classGroupId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/RecordingStatus'
+      responses:
+        '200':
+          description: List of recordings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RecordingOverview'
+                additionalProperties: false
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+
+  /videoconference/ai-models:
+    get:
+      operationId: getRecordingModelInventory
+      tags:
+        - videoconference
+      summary: Inspect local Ollama model inventory and two-model role routing
+      description: Returns live metadata for gemma4:e4b and Qwen3.5-4B-GGUF:Q4_1, VRAM budget, and task routing.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Local AI model inventory report
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+
+  /videoconference/sessions/{id}/recording/start:
+    post:
+      operationId: startSessionRecording
+      tags:
+        - videoconference
+      summary: Start server-side recording for an in-progress live session
+      description: Host or Admin starts LiveKit Egress / local server-side recording and notifies participants via SSE.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Recording started
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RecordingOverview'
+                additionalProperties: false
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './common.yaml#/components/responses/Conflict'
+
+  /videoconference/sessions/{id}/recording/stop:
+    post:
+      operationId: stopSessionRecording
+      tags:
+        - videoconference
+      summary: Stop active recording and enqueue 7-stage AI lesson processing pipeline
+      description: Finalizes MP4 storage on the MSI host and launches background transcription, slide analysis, and lesson package generation.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Recording finalized and processing queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RecordingOverview'
+                additionalProperties: false
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+
+  /videoconference/sessions/{id}/recording:
+    get:
+      operationId: getSessionRecording
+      tags:
+        - videoconference
+      summary: Get recording metadata and processing progress for a session
+      description: Returns recording status, stream URLs, and 7-stage pipeline job logs.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Recording overview
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RecordingOverview'
+                additionalProperties: false
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+    delete:
+      operationId: deleteSessionRecording
+      tags:
+        - videoconference
+      summary: Soft-delete recording and remove stored media file
+      description: Host or Admin deletes a session recording.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Recording deleted
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+
+  /videoconference/sessions/{id}/recording/stream:
+    get:
+      operationId: streamSessionRecordingVideo
+      tags:
+        - videoconference
+      summary: Stream recorded lecture MP4 with HTTP Range (206 Partial Content) support
+      description: Protected video streaming endpoint. Students may only stream PUBLISHED recordings.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Full MP4 video stream
+        '206':
+          description: Partial content MP4 byte-range stream
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+
+  /videoconference/sessions/{id}/review:
+    get:
+      operationId: getTeacherLessonReviewPackage
+      tags:
+        - videoconference
+      summary: Fetch full Teacher Review Studio package (transcript, slides, chapters, notes, quiz, flashcards, versions)
+      description: Teacher/Admin only endpoint for reviewing and editing AI-generated lesson materials before publication.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Teacher Review Studio workspace payload
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+    patch:
+      operationId: updateTeacherLessonReviewPackage
+      tags:
+        - videoconference
+      summary: Save teacher edits to transcript, chapters, structured notes, quizzes, or flashcards
+      description: Creates a new version snapshot and regenerates WebVTT/SRT subtitles when transcript segments are edited.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Updated Teacher Review Studio workspace
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+
+  /videoconference/sessions/{id}/review/publish:
+    post:
+      operationId: publishLessonPackage
+      tags:
+        - videoconference
+      summary: Approve and publish the reviewed lesson package to students
+      description: Transitions recording status to PUBLISHED and broadcasts recording.published via SSE.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lesson package published
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '409':
+          $ref: './common.yaml#/components/responses/Conflict'
+
+  /videoconference/sessions/{id}/workspace:
+    get:
+      operationId: getStudentLessonWorkspace
+      tags:
+        - videoconference
+      summary: Fetch complete Student Lecture Learning Workspace (replay, transcript, chapters, notes, quiz, flashcards, progress, AI Tutor history)
+      description: Accessible to class students once PUBLISHED, and to teachers/admins in preview mode.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Student learning workspace payload
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+
+  /videoconference/sessions/{id}/workspace/study-artifacts:
+    post:
+      operationId: generateStudentStudyArtifact
+      tags:
+        - videoconference
+      summary: Generate personalized student summary, quiz, or flashcards from the published lecture
+      description: Uses local Ollama models via SmartModelRouterPort grounded strictly in the published lesson.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind]
+              properties:
+                kind:
+                  type: string
+                  enum: [SUMMARY, QUIZ, FLASHCARDS]
+              additionalProperties: true
+      responses:
+        '201':
+          description: Generated student study artifact
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+
+  /videoconference/sessions/{id}/workspace/tutor/ask:
+    post:
+      operationId: askLessonAiTutor
+      tags:
+        - videoconference
+      summary: Ask a question to the source-grounded Lesson AI Tutor
+      description: Returns an answer grounded in the recorded lecture with clickable timestamp, chapter, and slide citations.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question:
+                  type: string
+                conversationId:
+                  type: string
+                  format: uuid
+                currentTimestampSeconds:
+                  type: integer
+                responseStyle:
+                  type: string
+                  enum: [concise, detailed, step-by-step, exam-focused]
+              additionalProperties: false
+      responses:
+        '200':
+          description: AI Tutor grounded response with timestamp citations
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1479,6 +1901,12 @@ components:
             - session.participant-count-changed
             - session.chat-message-created
             - session.chat-settings-updated
+            - recording.started
+            - recording.stopped
+            - recording.processing-progress
+            - recording.ready-for-review
+            - recording.published
+            - recording.failed
         sessionId:
           type: string
           format: uuid
@@ -1562,4 +1990,98 @@ components:
           items:
             type: string
             maxLength: 200
+      additionalProperties: false
+
+    RecordingStatus:
+      type: string
+      enum:
+        - NOT_STARTED
+        - STARTING
+        - RECORDING
+        - FINALIZING
+        - RECORDED
+        - PROCESSING
+        - READY_FOR_REVIEW
+        - APPROVED
+        - PUBLISHED
+        - FAILED
+        - DELETED
+
+    RecordingOverview:
+      type: object
+      required:
+        - id
+        - sessionId
+        - classGroupId
+        - status
+        - mimeType
+        - streamUrl
+        - posterUrl
+        - subtitlesVttUrl
+        - subtitlesSrtUrl
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        classGroupId:
+          type: string
+          format: uuid
+        hostId:
+          type: [string, 'null']
+          format: uuid
+        status:
+          $ref: '#/components/schemas/RecordingStatus'
+        mimeType:
+          type: string
+        sizeBytes:
+          type: [integer, 'null']
+        durationSeconds:
+          type: [integer, 'null']
+        width:
+          type: [integer, 'null']
+        height:
+          type: [integer, 'null']
+        hasSourceDocument:
+          type: boolean
+        sourceDocTitle:
+          type: [string, 'null']
+        errorCode:
+          type: [string, 'null']
+        errorMessage:
+          type: [string, 'null']
+        startedAt:
+          type: [string, 'null']
+          format: date-time
+        stoppedAt:
+          type: [string, 'null']
+          format: date-time
+        publishedAt:
+          type: [string, 'null']
+          format: date-time
+        processingVersion:
+          type: integer
+        aiModelUsed:
+          type: [string, 'null']
+        streamUrl:
+          type: string
+        posterUrl:
+          type: string
+        subtitlesVttUrl:
+          type: string
+        subtitlesSrtUrl:
+          type: string
+        latestJob:
+          type: [object, 'null']
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
       additionalProperties: false

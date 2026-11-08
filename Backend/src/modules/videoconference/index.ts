@@ -149,3 +149,86 @@ export {
   type GetMyNextSessionResult,
 } from './application/get-my-next-session.use-case.js';
 
+export type {
+  RecordingStatus,
+  ProcessingJobStatus,
+  ProcessingStage,
+  StudyArtifactKind,
+  RecordingEntity,
+  RecordingProcessingJobEntity,
+  RecordingTranscriptEntity,
+  RecordingTranscriptSegmentEntity,
+  RecordingSlideFrameEntity,
+  RecordingChapterEntity,
+  LessonPackageEntity,
+  LessonPackageVersionEntity,
+  StudentLessonArtifactEntity,
+  StudentQuizAttemptEntity,
+  StudentLessonProgressEntity,
+  StudentLessonBookmarkEntity,
+  StudentLessonNoteEntity,
+  LessonTutorConversationEntity,
+  LessonTutorMessageEntity,
+  TutorSourceCitation,
+} from './domain/recording.entity.js';
+
+export {
+  canStartRecording,
+  canStopRecording,
+  canApproveLesson,
+  canPublishLesson,
+  formatClockTimestamp,
+  formatVttTime,
+  formatSrtTime,
+  buildVttFromSegments,
+  buildSrtFromSegments,
+} from './domain/recording.entity.js';
+
+export type { EgressServicePort, StartEgressParams, StartEgressResult, StopEgressResult } from './domain/egress-service.port.js';
+export type { RecordingRepositoryPort, UpsertRecordingInput } from './domain/recording-repository.port.js';
+
+export { PrismaRecordingRepositoryAdapter } from './infrastructure/prisma-recording-repository.adapter.js';
+export { LiveKitEgressAdapter } from './infrastructure/livekit-egress.adapter.js';
+export {
+  MediaProcessingWorker,
+  computeFramePerceptualHash,
+  hammingDistanceHex64,
+} from './infrastructure/media-processing.worker.js';
+
+export {
+  StartRecordingUseCase,
+  StopRecordingUseCase,
+  GetRecordingUseCase,
+  ListRecordingsUseCase,
+  UploadRecordingSourceDocumentUseCase,
+  RetryRecordingProcessingUseCase,
+  DeleteRecordingUseCase,
+  ResolveRecordingMediaStreamUseCase,
+  toRecordingOverviewDto,
+  type RecordingOverviewDto,
+} from './application/recording-workflow.use-cases.js';
+
+export {
+  GetLessonReviewPackageUseCase,
+  UpdateLessonReviewPackageUseCase,
+  RegenerateLessonSectionUseCase,
+  ApproveLessonPackageUseCase,
+  PublishLessonPackageUseCase,
+  UnpublishLessonPackageUseCase,
+  type TeacherReviewWorkspaceDto,
+} from './application/teacher-review.use-cases.js';
+
+export {
+  GetPublishedLessonWorkspaceUseCase,
+  SearchLessonContentUseCase,
+  UpdateStudentProgressUseCase,
+  ManageStudentBookmarksUseCase,
+  ManageStudentNotesUseCase,
+  GenerateStudentStudyArtifactUseCase,
+  SubmitStudentQuizAttemptUseCase,
+  AskLessonAiTutorUseCase,
+  type StudentLessonWorkspaceDto,
+  type LessonSearchHit,
+} from './application/student-learning.use-cases.js';
+
+

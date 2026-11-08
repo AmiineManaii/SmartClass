@@ -96,12 +96,14 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
     bool rememberMe = false,
+    String? role,
   }) async {
     try {
       final data = await _remote.login(
         email: email,
         password: password,
         rememberMe: rememberMe,
+        role: UserModel.appRoleToApi(role),
       );
       if (data['twoFactorRequired'] == true) {
         final tempToken = data['tempToken'] as String? ?? '';
@@ -112,6 +114,14 @@ class AuthRepositoryImpl implements AuthRepository {
         throw TwoFactorRequiredFailure(tempToken, user: user);
       }
       final session = AuthSessionModel.fromJson(data).toAuthenticatedSession();
+      if (role != null &&
+          session.user.role != null &&
+          session.user.role!.toLowerCase() != role.toLowerCase()) {
+        throw const AuthFailure(
+          'This account belongs to another portal role.',
+          code: 'AUTH_ROLE_MISMATCH',
+        );
+      }
       return _persist(session, rememberMe: rememberMe, email: email);
     } on ApiException catch (e) {
       throw apiExceptionToFailure(e);

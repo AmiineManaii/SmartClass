@@ -42,7 +42,7 @@ const insertAfterIntro = (body: string, markdown: string): string => {
   let introEndIdx = -1;
 
   for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
+    const trimmed = (lines[i] ?? '').trim();
     if (firstHeadingIdx === -1) {
       if (trimmed.startsWith('#')) {
         firstHeadingIdx = i;
@@ -51,7 +51,11 @@ const insertAfterIntro = (body: string, markdown: string): string => {
       // Find the first paragraph (definition/intro) following the heading
       if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('![')) {
         let end = i;
-        while (end + 1 < lines.length && lines[end + 1].trim() && !lines[end + 1].trim().startsWith('#')) {
+        while (
+          end + 1 < lines.length &&
+          (lines[end + 1] ?? '').trim() &&
+          !(lines[end + 1] ?? '').trim().startsWith('#')
+        ) {
           end++;
         }
         introEndIdx = end;

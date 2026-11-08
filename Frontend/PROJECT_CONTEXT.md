@@ -958,6 +958,28 @@ Le backend implémente `SectionMemoryPort` → `PrismaSectionMemoryAdapter` (pgv
 | `PATCH` | `/api/v1/videoconference/sessions/:id/chat-settings` | Verrouillage/déverrouillage du chat |
 | `GET` | `/api/v1/videoconference/me/next-session` | Flux de la session live/imminente pour les widgets dashboard |
 | `GET` | `/api/v1/videoconference/events` | Flux SSE continu des événements temps réel |
+| `POST` | `/api/v1/videoconference/:id/recordings/start` | Démarrage de l'enregistrement serveur par l'hôte |
+| `POST` | `/api/v1/videoconference/:id/recordings/stop` | Arrêt de l'enregistrement et déclenchement du pipeline IA |
+| `GET` | `/api/v1/videoconference/:id/recordings/:recId/stream` | Streaming vidéo HTTP Range (`206 Partial Content`) authentifié |
+| `GET/PATCH` | `/api/v1/videoconference/:id/review` | Studio de révision IA enseignant et sauvegarde versionnée |
+| `POST` | `/api/v1/videoconference/:id/review/regenerate` | Régénération IA ciblée (résumé, notes, quiz, flashcards, mindmap) |
+| `POST` | `/api/v1/videoconference/:id/review/approve` | Approbation du package pédagogique par l'enseignant |
+| `POST` | `/api/v1/videoconference/:id/review/publish` | Publication du replay et du cours IA pour les étudiants |
+| `GET` | `/api/v1/videoconference/:id/learning-workspace` | Espace complet d'apprentissage étudiant (replay, cours, notes, quiz) |
+| `GET` | `/api/v1/videoconference/:id/search` | Recherche intelligente horodatée dans la transcription, les slides et le cours |
+| `POST` | `/api/v1/videoconference/:id/study-artifacts` | Génération personnalisée de synthèses, quiz et flashcards par l'étudiant |
+| `POST` | `/api/v1/videoconference/:id/quiz-attempts` | Soumission de quiz avec correction automatique et détection des points faibles |
+| `POST` | `/api/v1/videoconference/:id/tutor/ask` | Tuteur IA contextuel du cours avec citations cliquables (`[MM:SS]`) |
 
-*Dernière mise à jour : 2026-10-25*
-*Version : 2.2.0*
+### Écosystème Enregistrement, Studio de Révision Enseignant & Replay Interactif Étudiant (v2.3.0)
+
+1. **Contrôles d'Enregistrement en Salle Live (`LiveRoomControls`, `RecordingStatusBanner`)** :
+   - Bouton hôte Démarrer / Arrêter l'enregistrement sur Web et Mobile (`controller.toggleRecording()`).
+   - Bannière de consentement et badge `REC` visibles par tous les participants dès que l'enregistrement serveur est actif (synchronisé par SSE `recording.started`/`recording.stopped` et canal de données LiveKit).
+2. **Studio de Révision & Publication IA Enseignant (`/videoconference/:sessionId/review`)** :
+   - `TeacherReviewStudioPage` : interface responsive (split-screen sur Web ≥ 980px, lecteur + onglets sur Mobile) permettant de visionner le replay, éditer le titre, les résumés, le cours Markdown, la transcription segment par segment, la carte mentale Mermaid, régénérer chaque section avec l'IA, consulter l'historique des versions (`v1, v2...`) et publier pour la classe.
+3. **Espace Replay & Apprentissage IA Étudiant (`/videoconference/:sessionId/replay`)** :
+   - `LectureReplayWorkspacePage` : lecteur `InteractiveReplayPlayer` (vitesse `0.75x`–`2.0x`, sous-titres synchronisés, marqueurs de chapitres), `SynchronizedTranscriptPanel` (auto-scroll et saut temporel au clic), `StudentStudyLabPanel` (générateur de synthèses `short|medium|detailed|exam|eli15`, quiz auto-corrigés avec détection des sujets faibles, flashcards recto/verso), notes personnelles/favoris horodatés, et `LessonAiTutorPanel` (Tuteur IA RAG avec puces de citations temporelles cliquables).
+
+*Dernière mise à jour : 2026-11-07*
+*Version : 2.3.0*

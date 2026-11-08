@@ -57,6 +57,20 @@ class ParticipantsSheet extends ConsumerWidget {
                     onPressed: () => controller.muteAll(mute: true),
                   ),
                 ],
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
+                  tooltip: context.tr('close'),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () {
+                    final route = ModalRoute.of(context);
+                    if (route is PopupRoute) {
+                      Navigator.of(context).pop();
+                    } else {
+                      controller.toggleParticipants(false);
+                    }
+                  },
+                ),
               ],
             ),
           ),

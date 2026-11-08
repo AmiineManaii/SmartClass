@@ -6,7 +6,7 @@
 # ----------------------------------------------------
 FROM node:24-bookworm-slim AS base
 WORKDIR /app
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y openssl ffmpeg fonts-dejavu-core && rm -rf /var/lib/apt/lists/*
 
 # ----------------------------------------------------
 # Stage 2: Development (with dev dependencies & hot reload)

@@ -7,6 +7,7 @@ import 'package:livekit_client/livekit_client.dart' as lk;
 import '../../domain/entities/live_participant.dart';
 import '../../domain/entities/room_connection_state.dart';
 import '../../domain/ports/room_port.dart';
+import 'live_speech_recorder.dart';
 
 class LiveKitRoomAdapter implements RoomPort {
   lk.Room? _room;
@@ -151,13 +152,27 @@ class LiveKitRoomAdapter implements RoomPort {
       ..on<lk.TrackUnsubscribedEvent>((event) {
         _safeAdd(_participantUpdatedController, _mapParticipant(event.participant, isLocal: false));
       })
+      ..on<lk.LocalTrackPublishedEvent>((event) {
+        final local = _room?.localParticipant;
+        if (local != null) {
+          _syncLocalTracksToRecorder(local);
+          _safeAdd(_participantUpdatedController, _mapParticipant(local, isLocal: true));
+        }
+      })
+      ..on<lk.LocalTrackUnpublishedEvent>((event) {
+        final local = _room?.localParticipant;
+        if (local != null) {
+          _syncLocalTracksToRecorder(local);
+          _safeAdd(_participantUpdatedController, _mapParticipant(local, isLocal: true));
+        }
+      })
       ..on<lk.TrackPublishedEvent>((event) {
         final p = event.participant;
-        _safeAdd(_participantUpdatedController, _mapParticipant(p, isLocal: p is lk.LocalParticipant));
+        _safeAdd(_participantUpdatedController, _mapParticipant(p, isLocal: false));
       })
       ..on<lk.TrackUnpublishedEvent>((event) {
         final p = event.participant;
-        _safeAdd(_participantUpdatedController, _mapParticipant(p, isLocal: p is lk.LocalParticipant));
+        _safeAdd(_participantUpdatedController, _mapParticipant(p, isLocal: false));
       })
       ..on<lk.TrackStreamStateUpdatedEvent>((event) {
         final p = event.participant;
@@ -215,9 +230,9 @@ class LiveKitRoomAdapter implements RoomPort {
         p.permissions.canUpdateMetadata == true;
 
     final micPub = p.getTrackPublicationBySource(lk.TrackSource.microphone);
-    final isAudioMuted = micPub == null || micPub.muted;
+    final isAudioMuted = !p.isMicrophoneEnabled() || micPub == null || micPub.muted;
     final camPub = p.getTrackPublicationBySource(lk.TrackSource.camera);
-    final isVideoMuted = videoTrack == null || (camPub?.muted ?? true);
+    final isVideoMuted = !p.isCameraEnabled() || videoTrack == null || (camPub?.muted ?? true);
 
     return LiveParticipant(
       identity: p.identity,
@@ -237,10 +252,63 @@ class LiveKitRoomAdapter implements RoomPort {
   @override
   Future<void> setMicrophoneEnabled(bool enabled) async {
     final local = _room?.localParticipant;
-    if (local != null) {
+    if (local == null) return;
+
+    try {
       await local.setMicrophoneEnabled(enabled);
-      _safeAdd(_participantUpdatedController, _mapParticipant(local, isLocal: true));
+    } catch (e) {
+      debugPrint('[LiveKitAdapter] setMicrophoneEnabled($enabled) primary call error: $e');
     }
+
+    if (enabled) {
+      var micPub = local.getTrackPublicationBySource(lk.TrackSource.microphone);
+      if (micPub == null) {
+        try {
+          final audioTrack = await lk.LocalAudioTrack.create(
+            const lk.AudioCaptureOptions(
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            ),
+          );
+          await local.publishAudioTrack(audioTrack);
+          micPub = local.getTrackPublicationBySource(lk.TrackSource.microphone);
+        } catch (e) {
+          debugPrint('[LiveKitAdapter] Explicit LocalAudioTrack publish failed: $e');
+          rethrow;
+        }
+      }
+      if (micPub != null && micPub.muted) {
+        try {
+          await micPub.track?.unmute();
+        } catch (_) {}
+      }
+    } else {
+      final micPub = local.getTrackPublicationBySource(lk.TrackSource.microphone);
+      if (micPub != null && !micPub.muted) {
+        try {
+          await micPub.track?.mute();
+        } catch (_) {}
+      }
+    }
+
+    _safeAdd(_participantUpdatedController, _mapParticipant(local, isLocal: true));
+  }
+
+  void _syncLocalTracksToRecorder(lk.LocalParticipant local) {
+    try {
+      lk.VideoTrack? camTrack;
+      lk.VideoTrack? scrTrack;
+      for (final pub in local.videoTrackPublications) {
+        if (pub.source == lk.TrackSource.screenShareVideo && !pub.muted) {
+          scrTrack = pub.track as lk.VideoTrack?;
+        } else if (pub.source == lk.TrackSource.camera && !pub.muted) {
+          camTrack = pub.track as lk.VideoTrack?;
+        }
+      }
+      LiveSpeechRecorder.instance.updateCameraTrack(camTrack);
+      LiveSpeechRecorder.instance.updateScreenShareTrack(scrTrack, scrTrack != null);
+    } catch (_) {}
   }
 
   @override
@@ -248,6 +316,7 @@ class LiveKitRoomAdapter implements RoomPort {
     final local = _room?.localParticipant;
     if (local != null) {
       await local.setCameraEnabled(enabled);
+      _syncLocalTracksToRecorder(local);
       _safeAdd(_participantUpdatedController, _mapParticipant(local, isLocal: true));
     }
   }
@@ -257,6 +326,7 @@ class LiveKitRoomAdapter implements RoomPort {
     final local = _room?.localParticipant;
     if (local != null) {
       await local.setScreenShareEnabled(enabled);
+      _syncLocalTracksToRecorder(local);
       _safeAdd(_participantUpdatedController, _mapParticipant(local, isLocal: true));
     }
   }
