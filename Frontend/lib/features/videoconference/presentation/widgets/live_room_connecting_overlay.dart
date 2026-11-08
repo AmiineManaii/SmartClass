@@ -102,19 +102,26 @@ class _LiveRoomConnectingOverlayState extends ConsumerState<LiveRoomConnectingOv
     final sessionTitle = session?.title ?? 'Session de cours';
     final subject = session?.subject;
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment(0.0, -0.15),
-          radius: 1.2,
-          colors: [
-            Color(0xFF131D36),
-            Color(0xFF090D18),
-            Color(0xFF04060B),
-          ],
+    return Material(
+      color: Colors.transparent,
+      child: DefaultTextStyle(
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          decoration: TextDecoration.none,
         ),
-      ),
-      child: SafeArea(
+        child: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(0.0, -0.15),
+            radius: 1.2,
+            colors: [
+              Color(0xFF131D36),
+              Color(0xFF090D18),
+              Color(0xFF04060B),
+            ],
+          ),
+        ),
+        child: SafeArea(
         child: Stack(
           children: [
             // Ambient soft background glow spots
@@ -174,6 +181,7 @@ class _LiveRoomConnectingOverlayState extends ConsumerState<LiveRoomConnectingOv
                               : sessionTitle,
                           style: const TextStyle(
                             fontFamily: 'Inter',
+                            decoration: TextDecoration.none,
                             color: Colors.white70,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -308,6 +316,7 @@ class _LiveRoomConnectingOverlayState extends ConsumerState<LiveRoomConnectingOv
                       'Connexion au cours en direct',
                       style: TextStyle(
                         fontFamily: 'Inter',
+                        decoration: TextDecoration.none,
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -326,6 +335,7 @@ class _LiveRoomConnectingOverlayState extends ConsumerState<LiveRoomConnectingOv
                         key: ValueKey<int>(_statusIndex),
                         style: TextStyle(
                           fontFamily: 'Inter',
+                          decoration: TextDecoration.none,
                           color: Colors.white.withValues(alpha: 0.75),
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -364,6 +374,7 @@ class _LiveRoomConnectingOverlayState extends ConsumerState<LiveRoomConnectingOv
                               'Chiffré E2EE • WebRTC HD',
                               style: TextStyle(
                                 fontFamily: 'Inter',
+                                decoration: TextDecoration.none,
                                 color: Color(0xFF6EE7B7),
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -405,6 +416,7 @@ class _LiveRoomConnectingOverlayState extends ConsumerState<LiveRoomConnectingOv
                     'Annuler et quitter',
                     style: TextStyle(
                       fontFamily: 'Inter',
+                      decoration: TextDecoration.none,
                       color: Colors.white60,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -419,6 +431,8 @@ class _LiveRoomConnectingOverlayState extends ConsumerState<LiveRoomConnectingOv
           ],
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 }

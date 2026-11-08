@@ -13,8 +13,8 @@ extension on _VideoconferencePageState {
         'isLive': true,
       },
       {
-        'title': 'Programm├®es',
-        'tooltip': 'Programm├®es',
+        'title': 'Programmées',
+        'tooltip': 'Programmées',
         'icon': Icons.calendar_today_outlined,
         'selectedIcon': Icons.calendar_month_rounded,
         'activeColor': isDark ? const Color(0xFF60A5FA) : const Color(0xFF1E3A8A),

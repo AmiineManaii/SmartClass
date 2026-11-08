@@ -245,11 +245,12 @@ class VideoSessionCard extends ConsumerWidget {
                         ),
                       );
                       if (confirmed == true) {
-                        await ref
-                            .read(sessionActionsNotifierProvider.notifier)
-                            .endSession(session.id);
-                        ref.read(videoSessionsProvider('live').notifier).refresh();
-                        ref.read(videoSessionsProvider('past').notifier).refresh();
+                        final actionsNotifier = ref.read(sessionActionsNotifierProvider.notifier);
+                        final liveNotifier = ref.read(videoSessionsProvider('live').notifier);
+                        final pastNotifier = ref.read(videoSessionsProvider('past').notifier);
+                        await actionsNotifier.endSession(session.id);
+                        liveNotifier.refresh();
+                        pastNotifier.refresh();
                       }
                     },
                   ),

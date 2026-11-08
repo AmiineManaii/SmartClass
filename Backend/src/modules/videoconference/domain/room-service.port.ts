@@ -29,4 +29,6 @@ export interface RoomServicePort {
   removeParticipant(roomName: string, identity: string): Promise<void>;
   closeRoom(roomName: string): Promise<void>;
   getParticipantCount?(roomName: string): Promise<number>;
+  startRecording(roomName: string): Promise<string>;
+  stopRecording(egressId: string): Promise<void>;
 }

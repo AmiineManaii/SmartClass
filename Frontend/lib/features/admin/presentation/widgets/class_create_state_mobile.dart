@@ -273,7 +273,7 @@ extension on _ClassCreatePageState {
                       : null,
                 ),
                 const SizedBox(height: 16),
-                const Text('NIVEAU D\'├ëTUDES',
+                const Text('NIVEAU D\'ÉTUDES',
                     style:
                         TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),

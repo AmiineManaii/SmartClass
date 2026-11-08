@@ -38,6 +38,9 @@ export class PrismaVideoSessionRepositoryAdapter implements VideoSessionReposito
       timetableSlotId: row.timetableSlotId,
       courseId: row.courseId,
       cancelReason: row.cancelReason,
+      recordingUrl: row.recordingUrl ?? null,
+      recordingEgressId: row.recordingEgressId ?? null,
+      transcript: row.transcript ?? null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -63,6 +66,9 @@ export class PrismaVideoSessionRepositoryAdapter implements VideoSessionReposito
         timetableSlotId: session.timetableSlotId,
         courseId: session.courseId,
         cancelReason: session.cancelReason,
+        recordingUrl: session.recordingUrl,
+        recordingEgressId: session.recordingEgressId,
+        transcript: session.transcript,
       },
       include: {
         host: {
@@ -115,6 +121,9 @@ export class PrismaVideoSessionRepositoryAdapter implements VideoSessionReposito
         joinOpensMinutesBefore: session.joinOpensMinutesBefore,
         chatEnabled: session.chatEnabled,
         cancelReason: session.cancelReason,
+        recordingUrl: session.recordingUrl,
+        recordingEgressId: session.recordingEgressId,
+        transcript: session.transcript,
       },
       include: {
         host: {

@@ -6,6 +6,8 @@ import type { GetVideoSessionUseCase } from '../application/get-video-session.us
 import type { UpdateVideoSessionUseCase } from '../application/update-video-session.use-case.js';
 import type { CancelVideoSessionUseCase } from '../application/cancel-video-session.use-case.js';
 import type { StartVideoSessionUseCase } from '../application/start-video-session.use-case.js';
+import type { StartRecordingUseCase } from '../application/start-recording.use-case.js';
+import type { StopRecordingUseCase } from '../application/stop-recording.use-case.js';
 import type { IssueJoinTokenUseCase } from '../application/issue-join-token.use-case.js';
 import type { EndVideoSessionUseCase } from '../application/end-video-session.use-case.js';
 import type { LeaveVideoSessionUseCase } from '../application/leave-video-session.use-case.js';
@@ -46,6 +48,8 @@ export class VideoconferenceController {
     private readonly updateVideoSessionUseCase?: UpdateVideoSessionUseCase,
     private readonly cancelVideoSessionUseCase?: CancelVideoSessionUseCase,
     private readonly startVideoSessionUseCase?: StartVideoSessionUseCase,
+    private readonly startRecordingUseCase?: StartRecordingUseCase,
+    private readonly stopRecordingUseCase?: StopRecordingUseCase,
     private readonly issueJoinTokenUseCase?: IssueJoinTokenUseCase,
     private readonly endVideoSessionUseCase?: EndVideoSessionUseCase,
     private readonly leaveVideoSessionUseCase?: LeaveVideoSessionUseCase,
@@ -206,6 +210,46 @@ export class VideoconferenceController {
       res.status(200).json({
         data: result,
       });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public startRecording = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user || !req.user.role) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      if (!this.startRecordingUseCase) {
+        throw new Error('StartRecordingUseCase not configured');
+      }
+      const { id } = req.params as { id: string };
+      console.log(`[VideoconferenceController] startRecording requested for session ${id} by user ${req.user.id}`);
+      const result = await this.startRecordingUseCase.execute(
+        { id: req.user.id, role: req.user.role },
+        id,
+      );
+      res.status(200).json({ data: result });
+    } catch (err: any) {
+      console.error('[VideoconferenceController] startRecording error:', err?.message || err);
+      next(err);
+    }
+  };
+
+  public stopRecording = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user || !req.user.role) {
+        throw new UnauthorizedError('Unauthorized access', ErrorCodes.AUTH_TOKEN_INVALID);
+      }
+      if (!this.stopRecordingUseCase) {
+        throw new Error('StopRecordingUseCase not configured');
+      }
+      const { id } = req.params as { id: string };
+      const result = await this.stopRecordingUseCase.execute(
+        { id: req.user.id, role: req.user.role },
+        id,
+      );
+      res.status(200).json({ data: result });
     } catch (err) {
       next(err);
     }
@@ -472,7 +516,15 @@ export class VideoconferenceController {
         throw new Error('ReceiveLiveKitWebhookUseCase not configured');
       }
       const authHeader = req.headers.authorization;
-      const rawBody = (req as unknown as { rawBody?: Buffer }).rawBody ?? JSON.stringify(req.body);
+      const rawBody =
+        (req as unknown as { rawBody?: Buffer }).rawBody ??
+        (Buffer.isBuffer(req.body)
+          ? req.body
+          : typeof req.body === 'string'
+            ? req.body
+            : req.body != null
+              ? JSON.stringify(req.body)
+              : '');
       const result = await this.receiveLiveKitWebhookUseCase.execute(rawBody, authHeader);
       res.status(200).json(result);
     } catch (err) {

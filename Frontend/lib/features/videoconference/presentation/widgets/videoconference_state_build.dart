@@ -22,7 +22,7 @@ extension on _VideoconferencePageState {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   tooltip: _tabController.index == 0
                       ? 'Lancer un direct'
-                      : 'Programmer une s├®ance',
+                      : 'Programmer une séance',
                   onPressed: () => _openScheduleDialog(
                     liveNow: _tabController.index == 0,
                   ),
@@ -67,7 +67,7 @@ extension on _VideoconferencePageState {
                             searchQuery: _searchQuery,
                             emptyTitle: 'Aucun direct en cours',
                             emptyDesc:
-                                'Les s├®ances en direct appara├«tront ici d├¿s que leur diffusion commencera.',
+                                'Les séances en direct apparaîtront ici dès que leur diffusion commencera.',
                             emptyIcon: Icons.videocam_outlined,
                             onSchedule: () => _openScheduleDialog(liveNow: true),
                           ),
@@ -75,9 +75,9 @@ extension on _VideoconferencePageState {
                             tabKey: 'scheduled',
                             isTeacher: isTeacher,
                             searchQuery: _searchQuery,
-                            emptyTitle: 'Aucune s├®ance programm├®e',
+                            emptyTitle: 'Aucune séance programmée',
                             emptyDesc:
-                                'Planifiez vos prochains cours virtuels pour qu\'ils s\'affichent ├á l\'emploi du temps.',
+                                'Planifiez vos prochains cours virtuels pour qu\'ils s\'affichent à l\'emploi du temps.',
                             emptyIcon: Icons.calendar_month_outlined,
                             onSchedule: () => _openScheduleDialog(liveNow: false),
                           ),
@@ -85,9 +85,9 @@ extension on _VideoconferencePageState {
                             tabKey: 'past',
                             isTeacher: isTeacher,
                             searchQuery: _searchQuery,
-                            emptyTitle: 'Aucun historique r├®cent',
+                            emptyTitle: 'Aucun historique récent',
                             emptyDesc:
-                                'Les s├®ances termin├®es et rapports d\'├®margement seront archiv├®s ici.',
+                                'Les séances terminées et rapports d\'émargement seront archivés ici.',
                             emptyIcon: Icons.history_rounded,
                           ),
                         ],

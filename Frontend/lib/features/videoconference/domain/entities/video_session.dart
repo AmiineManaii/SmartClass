@@ -52,6 +52,9 @@ class VideoSession extends Equatable {
   final String? timetableSlotId;
   final String? courseId;
   final String? cancelReason;
+  final String? recordingUrl;
+  final String? recordingEgressId;
+  final String? transcript;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? className;
@@ -75,6 +78,9 @@ class VideoSession extends Equatable {
     this.timetableSlotId,
     this.courseId,
     this.cancelReason,
+    this.recordingUrl,
+    this.recordingEgressId,
+    this.transcript,
     required this.createdAt,
     required this.updatedAt,
     this.className,
@@ -102,6 +108,9 @@ class VideoSession extends Equatable {
     String? timetableSlotId,
     String? courseId,
     String? cancelReason,
+    String? recordingUrl,
+    String? recordingEgressId,
+    String? transcript,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? className,
@@ -126,6 +135,9 @@ class VideoSession extends Equatable {
       timetableSlotId: timetableSlotId ?? this.timetableSlotId,
       courseId: courseId ?? this.courseId,
       cancelReason: cancelReason ?? this.cancelReason,
+      recordingUrl: recordingUrl ?? this.recordingUrl,
+      recordingEgressId: recordingEgressId ?? this.recordingEgressId,
+      transcript: transcript ?? this.transcript,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       className: className ?? this.className,
@@ -152,6 +164,9 @@ class VideoSession extends Equatable {
         timetableSlotId,
         courseId,
         cancelReason,
+        recordingUrl,
+        recordingEgressId,
+        transcript,
         createdAt,
         updatedAt,
         className,

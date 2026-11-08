@@ -65,6 +65,10 @@ abstract class VideoconferenceRepository {
 
   Future<VideoSession> endSession(String id);
 
+  Future<VideoSession> startRecording(String id);
+
+  Future<VideoSession> stopRecording(String id);
+
   Future<void> leaveSession(String id);
 
   Future<void> muteParticipant(

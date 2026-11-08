@@ -1,4 +1,4 @@
-import { RoomServiceClient, AccessToken, TrackSource, TrackType } from 'livekit-server-sdk';
+import { RoomServiceClient, AccessToken, TrackSource, TrackType, EgressClient } from 'livekit-server-sdk';
 import type {
   RoomServicePort,
   JoinTokenResult,
@@ -8,6 +8,7 @@ import { getEnv } from '../../../config/env.js';
 
 export class LiveKitRoomAdapter implements RoomServicePort {
   private readonly client: RoomServiceClient;
+  private readonly egress: EgressClient;
   private readonly apiKey: string;
   private readonly apiSecret: string;
   private readonly publicUrl: string;
@@ -28,6 +29,7 @@ export class LiveKitRoomAdapter implements RoomServicePort {
       'secretsecretsecretsecretsecretsecret32';
 
     this.client = new RoomServiceClient(url, this.apiKey, this.apiSecret);
+    this.egress = new EgressClient(url, this.apiKey, this.apiSecret, { requestTimeout: 60000 });
   }
 
   public async createRoom(roomName: string, emptyTimeoutMinutes = 10): Promise<void> {
@@ -161,6 +163,34 @@ export class LiveKitRoomAdapter implements RoomServicePort {
   public async closeRoom(roomName: string): Promise<void> {
     try {
       await this.client.deleteRoom(roomName);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.toLowerCase().includes('not found')) {
+        return;
+      }
+      throw err;
+    }
+  }
+
+  public async startRecording(roomName: string): Promise<string> {
+    try {
+      console.log('[LiveKitRoomAdapter] Calling startRoomCompositeEgress for room:', roomName);
+      const info = await this.egress.startRoomCompositeEgress(roomName, {
+        file: {
+          filepath: `/recordings/${roomName}-{time}.mp4`,
+        },
+      });
+      console.log('[LiveKitRoomAdapter] startRoomCompositeEgress succeeded, info:', info);
+      return info.egressId;
+    } catch (err: any) {
+      console.error('[LiveKitRoomAdapter] startRoomCompositeEgress ERROR:', err?.message || err);
+      throw err;
+    }
+  }
+
+  public async stopRecording(egressId: string): Promise<void> {
+    try {
+      await this.egress.stopEgress(egressId);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message.toLowerCase().includes('not found')) {

@@ -448,6 +448,9 @@ model VideoSession {
   timetableSlotId        String?            @map("timetable_slot_id") @db.Uuid
   courseId               String?            @map("course_id") @db.Uuid
   cancelReason           String?            @map("cancel_reason") @db.Text
+  recordingUrl           String?            @map("recording_url") @db.Text
+  recordingEgressId      String?            @map("recording_egress_id") @db.VarChar(100)
+  transcript             String?            @db.Text
   createdAt              DateTime           @default(now()) @map("created_at") @db.Timestamptz
   updatedAt              DateTime           @updatedAt @map("updated_at") @db.Timestamptz
 

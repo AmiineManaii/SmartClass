@@ -1,4 +1,4 @@
-import { Router, type RequestHandler } from 'express';
+import express, { Router, type RequestHandler } from 'express';
 import type { VideoconferenceController } from './videoconference.controller.js';
 import { validate } from '../../../shared/http/validate.middleware.js';
 import {
@@ -101,6 +101,24 @@ export const createVideoconferenceRouter = (options: VideoconferenceRouterOption
     ...mutationMw,
     validate({ params: sessionIdParamsSchema }),
     controller.startSession,
+  );
+
+  router.post(
+    '/sessions/:id/recording/start',
+    authenticateMiddleware,
+    ...teacherMw,
+    ...mutationMw,
+    validate({ params: sessionIdParamsSchema }),
+    controller.startRecording,
+  );
+
+  router.post(
+    '/sessions/:id/recording/stop',
+    authenticateMiddleware,
+    ...teacherMw,
+    ...mutationMw,
+    validate({ params: sessionIdParamsSchema }),
+    controller.stopRecording,
   );
 
   router.post(
@@ -214,6 +232,7 @@ export const createVideoconferenceRouter = (options: VideoconferenceRouterOption
   // LiveKit Webhook Handler (signature verified via JWT header in use case)
   router.post(
     '/webhooks/livekit',
+    express.raw({ type: '*/*' }),
     ...webhookMw,
     controller.receiveWebhook,
   );

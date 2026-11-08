@@ -110,6 +110,16 @@ class VideoconferenceRepositoryImpl implements VideoconferenceRepository {
   }
 
   @override
+  Future<VideoSession> startRecording(String id) {
+    return _remoteDataSource.startRecording(id);
+  }
+
+  @override
+  Future<VideoSession> stopRecording(String id) {
+    return _remoteDataSource.stopRecording(id);
+  }
+
+  @override
   Future<void> leaveSession(String id) {
     return _remoteDataSource.leaveSession(id);
   }

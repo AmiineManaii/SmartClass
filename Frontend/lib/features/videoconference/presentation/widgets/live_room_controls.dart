@@ -46,7 +46,7 @@ class LiveRoomControls extends ConsumerWidget {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(context.tr('leave_session')),
+            child: Text(context.tr('end_session_for_all')),
           ),
         ],
       ),
@@ -61,6 +61,67 @@ class LiveRoomControls extends ConsumerWidget {
           context.go('/videoconference');
         }
       }
+    }
+  }
+
+  Future<void> _showHostEndOptions(BuildContext context, LiveRoomController controller) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.exit_to_app_rounded, color: Colors.white70),
+                title: Text(
+                  context.tr('leave_session'),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Sortir temporairement sans fermer le cours',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+                onTap: () => Navigator.of(ctx).pop('leave'),
+              ),
+              const Divider(color: Colors.white12),
+              ListTile(
+                leading: const Icon(Icons.call_end_rounded, color: Color(0xFFEF4444)),
+                title: Text(
+                  context.tr('end_session_for_all'),
+                  style: const TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text(
+                  'Termine la visioconférence et arrête l\'enregistrement pour tous',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+                onTap: () => Navigator.of(ctx).pop('end'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (!context.mounted) return;
+    if (action == 'leave') {
+      await _handleLeave(context, controller);
+    } else if (action == 'end') {
+      await _confirmEndSession(context, controller);
     }
   }
 
@@ -207,7 +268,7 @@ class LiveRoomControls extends ConsumerWidget {
                   color: Colors.white,
                   bgColor: const Color(0xFFDC2626),
                   borderColor: const Color(0xFFEF4444),
-                  onTap: () => _confirmEndSession(context, controller),
+                  onTap: () => _showHostEndOptions(context, controller),
                 )
               else
                 _buildRoundBtn(

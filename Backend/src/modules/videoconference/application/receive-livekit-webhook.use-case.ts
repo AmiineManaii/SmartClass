@@ -33,7 +33,14 @@ export class ReceiveLiveKitWebhookUseCase {
 
     let event;
     try {
-      const bodyStr = typeof body === 'string' ? body : body.toString('utf-8');
+      const bodyStr =
+        typeof body === 'string'
+          ? body
+          : Buffer.isBuffer(body)
+            ? body.toString('utf-8')
+            : body != null
+              ? String(body)
+              : '';
       event = await this.receiver.receive(bodyStr, authHeader);
     } catch (err) {
       logger.warn({ err }, 'Failed to verify LiveKit webhook signature');
@@ -55,7 +62,7 @@ export class ReceiveLiveKitWebhookUseCase {
       if (first) this.processedEventIds.delete(first);
     }
 
-    const roomName = event.room?.name;
+    const roomName = event.room?.name || (event as any).egressInfo?.roomName;
     if (!roomName) {
       return { received: true };
     }
@@ -113,6 +120,22 @@ export class ReceiveLiveKitWebhookUseCase {
           'LiveKit media room finished/empty; session remains IN_PROGRESS until host explicitly ends it',
         );
         break;
+
+      case 'egress_ended': {
+        const egressInfo = (event as any).egressInfo;
+        if (egressInfo) {
+          const fileResult = egressInfo.fileResults?.[0] || egressInfo.file;
+          const location = fileResult?.location || fileResult?.filename;
+          if (location) {
+            await this.sessionRepository.update({
+              ...session,
+              recordingUrl: location,
+            });
+            logger.info({ sessionId: session.id, recordingUrl: location }, 'LiveKit egress recording completed');
+          }
+        }
+        break;
+      }
 
       default:
         break;

@@ -69,6 +69,17 @@ export class EndVideoSessionUseCase {
         throw new ConflictError('Failed to transition session to COMPLETED');
       }
 
+      // Stop recording if active
+      const egressId = session.recordingEgressId || finalSession.recordingEgressId;
+      if (this.roomService && egressId) {
+        try {
+          console.log('[EndVideoSessionUseCase] Stopping egress recording:', egressId);
+          await this.roomService.stopRecording(egressId);
+        } catch (err) {
+          console.warn('[EndVideoSessionUseCase] Auto-recording stop failed:', err);
+        }
+      }
+
       // Close LiveKit room
       if (this.roomService) {
         await this.roomService.closeRoom(session.roomName);

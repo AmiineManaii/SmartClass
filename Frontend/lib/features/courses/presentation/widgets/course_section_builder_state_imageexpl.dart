@@ -3,7 +3,7 @@ extension on _CourseSectionBuilderPageState {
   String _imageExplanation(CourseSectionEntry section) {
     final description = section.description.trim();
     if (description.isNotEmpty) return description;
-    return section.keyTopics.join(' ┬À ');
+    return section.keyTopics.join(' · ');
   }
 
   /// Two image options for a section: local ComfyUI generation or a web

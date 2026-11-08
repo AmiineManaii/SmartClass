@@ -18,6 +18,9 @@ export interface VideoSessionDto {
   timetableSlotId: string | null;
   courseId: string | null;
   cancelReason: string | null;
+  recordingUrl: string | null;
+  recordingEgressId: string | null;
+  transcript: string | null;
   createdAt: string;
   updatedAt: string;
   participantCount?: number;
@@ -44,6 +47,9 @@ export const toVideoSessionDto = (
   timetableSlotId: session.timetableSlotId ?? null,
   courseId: session.courseId ?? null,
   cancelReason: session.cancelReason ?? null,
+  recordingUrl: session.recordingUrl ?? null,
+  recordingEgressId: session.recordingEgressId ?? null,
+  transcript: session.transcript ?? null,
   createdAt: session.createdAt.toISOString(),
   updatedAt: session.updatedAt.toISOString(),
   participantCount: participantCount ?? 0,

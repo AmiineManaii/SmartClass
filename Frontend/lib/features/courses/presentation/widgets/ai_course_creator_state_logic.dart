@@ -3,13 +3,13 @@ part of '../pages/ai_course_creator_page.dart';
 extension on _AiCourseCreatorPageState {
   void _showFailure(Object error) {
     if (error is ApiException) {
-      // Afficher le message d'erreur sp├®cifique du backend
+      // Afficher le message d'erreur spécifique du backend
       String message = error.message;
       if (error.code != null) {
         message = '[${error.code}] $message';
       }
       if (error.details.isNotEmpty) {
-        message += '\nD├®tails: ${error.details.join(', ')}';
+        message += '\nDétails: ${error.details.join(', ')}';
       }
       context.showErrorToast(message);
       return;
@@ -61,7 +61,7 @@ extension on _AiCourseCreatorPageState {
     }
   }
 
-  /// Starts a background generation: the page may be left immediately ÔÇö
+  /// Starts a background generation: the page may be left immediately —
   /// the job keeps streaming, then auto-saves the DRAFT (see
   /// `CourseGenerationJob`). Progress and result are observed below.
   bool _validateInputs() {
@@ -208,7 +208,7 @@ extension on _AiCourseCreatorPageState {
             title: outline.title.isEmpty ? subject : outline.title,
             subject: subject.isEmpty ? null : subject,
             content:
-                '# ${outline.title}\n\n> Plan valid├® : les chapitres sont r├®dig├®s un par un dans le constructeur de sections.',
+                '# ${outline.title}\n\n> Plan validé : les chapitres sont rédigés un par un dans le constructeur de sections.',
             level: _level,
             difficulty: _difficulty,
             format: _AiCourseCreatorPageState._format,
@@ -344,13 +344,13 @@ extension on _AiCourseCreatorPageState {
       case 'plan':
         addition = isEn
             ? 'with a structured 4-chapter syllabus and progressive competencies'
-            : 'avec un plan d├®taill├® en 4 chapitres structur├®s';
+            : 'avec un plan détaillé en 4 chapitres structurés';
         break;
       case 'quiz':
         updateState(() => _exExamples = true);
         addition = isEn
             ? 'including an interactive evaluation quiz with answer key'
-            : 'incluant un quiz interactif d\'├®valuation avec bar├¿me et corrig├®s';
+            : 'incluant un quiz interactif d\'évaluation avec barème et corrigés';
         break;
       case 'exercises':
         addition = isEn
@@ -360,13 +360,13 @@ extension on _AiCourseCreatorPageState {
       case 'cases':
         addition = isEn
             ? 'illustrated with real-world case studies and contextual applications'
-            : 'illustr├® d\'├®tudes de cas r├®elles et contextualisations d\'ing├®nierie';
+            : 'illustré d\'études de cas réelles et contextualisations d\'ingénierie';
         break;
       case 'mermaid':
         updateState(() => _exMermaid = true);
         addition = isEn
             ? 'enriched with conceptual Mermaid diagrams and flowcharts'
-            : 'enrichi de sch├®mas conceptuels et diagrammes Mermaid';
+            : 'enrichi de schémas conceptuels et diagrammes Mermaid';
         break;
       default:
         addition = chipType;

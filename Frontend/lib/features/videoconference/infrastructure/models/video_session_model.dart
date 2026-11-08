@@ -25,6 +25,9 @@ class VideoSessionModel {
       timetableSlotId: json['timetableSlotId'] as String?,
       courseId: json['courseId'] as String?,
       cancelReason: json['cancelReason'] as String?,
+      recordingUrl: json['recordingUrl'] as String?,
+      recordingEgressId: json['recordingEgressId'] as String?,
+      transcript: json['transcript'] as String?,
       createdAt: json['createdAt'] != null
           ? (DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now())
           : DateTime.now(),
@@ -55,6 +58,9 @@ class VideoSessionModel {
       'timetableSlotId': session.timetableSlotId,
       'courseId': session.courseId,
       'cancelReason': session.cancelReason,
+      'recordingUrl': session.recordingUrl,
+      'recordingEgressId': session.recordingEgressId,
+      'transcript': session.transcript,
       'createdAt': session.createdAt.toIso8601String(),
       'updatedAt': session.updatedAt.toIso8601String(),
       'className': session.className,

@@ -44,21 +44,40 @@ services:
     image: livekit/livekit-server:v1.13.10
     container_name: smartclass-livekit
     restart: unless-stopped
-    command: --config /etc/livekit.yaml --node-ip 192.168.100.22
+    command: --config /etc/livekit.yaml --node-ip 192.168.100.2
     environment:
-      - NODE_IP=192.168.100.22
+      - NODE_IP=192.168.100.2
     ports:
       - "7880:7880"
       - "7881:7881"
       - "7882:7882/udp"
     volumes:
       - ./livekit/livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "nc -z localhost 7880 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 5s
+
+  egress:
+    image: livekit/egress:latest
+    container_name: smartclass-egress
+    restart: unless-stopped
+    environment:
+      - EGRESS_CONFIG_FILE=/etc/egress.yaml
+    volumes:
+      - ./livekit/egress.yaml:/etc/egress.yaml:ro
+      - ./recordings:/recordings
+    depends_on:
+      livekit:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: --config /etc/egress.yaml
 
   api:
     build:
@@ -86,6 +105,18 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: smartclass-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
   pgdata:

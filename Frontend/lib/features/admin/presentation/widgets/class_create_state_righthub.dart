@@ -25,7 +25,7 @@ extension on _ClassCreatePageState {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header: APER├çU EN DIRECT
+          // Header: APERÇU EN DIRECT
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 20, 22, 16),
             child: Row(
@@ -163,7 +163,7 @@ extension on _ClassCreatePageState {
                   ),
                   const SizedBox(height: 16),
 
-                  // Enseignant R├®f├®rent Tile
+                  // Enseignant Référent Tile
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(

@@ -147,9 +147,9 @@ extension on _ProfilePageState {
                           const SizedBox(height: 2),
                           Text(
                             isAdmin
-                                ? 'G├®n├®rez et t├®l├®chargez le journal officiel de tra├ºabilit├®, des actions administratives et de gouvernance syst├¿me certifi├® ENT.'
+                                ? 'Générez et téléchargez le journal officiel de traçabilité, des actions administratives et de gouvernance système certifié ENT.'
                                 : isTeacher
-                                ? 'G├®n├®rez et t├®l├®chargez votre attestation officielle d\'exercice et de charge d\'enseignement certifi├®e ENT au format PDF A4 officiel.'
+                                ? 'Générez et téléchargez votre attestation officielle d\'exercice et de charge d\'enseignement certifiée ENT au format PDF A4 officiel.'
                                 : context.tr('data_export_desc'),
                             style: TextStyle(
                               fontSize: 11.5,
@@ -222,9 +222,9 @@ extension on _ProfilePageState {
                           : const Icon(Icons.picture_as_pdf_rounded, size: 16),
                       label: Text(
                         isAdmin
-                            ? 'T├®l├®charger le rapport PDF'
+                            ? 'Télécharger le rapport PDF'
                             : isTeacher
-                            ? 'T├®l├®charger l\'attestation PDF'
+                            ? 'Télécharger l\'attestation PDF'
                             : context.tr('download_pdf_btn'),
                         style: const TextStyle(
                           fontSize: 12,
@@ -253,7 +253,7 @@ extension on _ProfilePageState {
               updateState(() => _profileVisibleToCohort = val);
               await _savePreferences();
               _showSuccessSnackBar(
-                'Visibilit├® aupr├¿s des pairs mise ├á jour et enregistr├®e.',
+                'Visibilité auprès des pairs mise à jour et enregistrée.',
               );
             },
           ),
@@ -261,10 +261,10 @@ extension on _ProfilePageState {
           _buildNotificationSwitchRow(
             icon: isTeacher ? Icons.badge_outlined : Icons.leaderboard_outlined,
             title: isTeacher
-                ? 'Visibilit├® dans l\'annuaire des enseignants'
+                ? 'Visibilité dans l\'annuaire des enseignants'
                 : context.tr('privacy_visibility_ranking'),
             subtitle: isTeacher
-                ? 'Permettre aux ├®tudiants et coll├¿gues de consulter mes cours, coordonn├®es et heures de permanence.'
+                ? 'Permettre aux étudiants et collègues de consulter mes cours, coordonnées et heures de permanence.'
                 : context.tr('privacy_visibility_ranking_desc'),
             value: _rankingVisible,
             isDark: isDark,
@@ -273,8 +273,8 @@ extension on _ProfilePageState {
               await _savePreferences();
               _showSuccessSnackBar(
                 isTeacher
-                    ? 'Pr├®f├®rences d\'annuaire enseignant mises ├á jour et enregistr├®es.'
-                    : 'Pr├®f├®rences de classement mises ├á jour et enregistr├®es.',
+                    ? 'Préférences d\'annuaire enseignant mises à jour et enregistrées.'
+                    : 'Préférences de classement mises à jour et enregistrées.',
               );
             },
           ),
@@ -289,7 +289,7 @@ extension on _ProfilePageState {
               updateState(() => _shareAiSummaries = val);
               await _savePreferences();
               _showSuccessSnackBar(
-                'Partage des synth├¿ses IA mis ├á jour et enregistr├®.',
+                'Partage des synthèses IA mis à jour et enregistré.',
               );
             },
           ),

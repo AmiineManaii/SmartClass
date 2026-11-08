@@ -35,7 +35,7 @@ extension on _GroupsPageState {
           child: TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Rechercher une classe, mati├¿re ou niveau...',
+              hintText: 'Rechercher une classe, matière ou niveau...',
               hintStyle: TextStyle(
                 fontSize: 14,
                 color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),

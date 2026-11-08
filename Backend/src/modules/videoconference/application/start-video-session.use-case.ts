@@ -79,9 +79,24 @@ export class StartVideoSessionUseCase {
         { startedAt: now },
       );
 
-      const finalSession = updated ?? (await this.sessionRepository.findById(sessionId));
+      let finalSession = updated ?? (await this.sessionRepository.findById(sessionId));
       if (!finalSession || finalSession.status !== 'IN_PROGRESS') {
         throw new ConflictError('Failed to transition session to IN_PROGRESS');
+      }
+
+      // Auto-start recording (room composite egress) for the live session
+      if (this.roomService && !finalSession.recordingEgressId) {
+        try {
+          const egressId = await this.roomService.startRecording(finalSession.roomName);
+          const withRecording = await this.sessionRepository.update({
+            ...finalSession,
+            recordingEgressId: egressId,
+          });
+          finalSession = withRecording ?? finalSession;
+        } catch (err) {
+          // Recording failure must not block session start
+          console.warn('Auto-recording start failed:', err);
+        }
       }
 
       await this.auditService?.record({

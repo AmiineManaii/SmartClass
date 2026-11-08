@@ -1,0 +1,9 @@
+api_key: devkey
+api_secret: secretsecretsecretsecretsecretsecret32
+ws_url: ws://livekit:7880
+redis:
+  address: redis:6379
+template:
+  base_url: ""
+logging:
+  level: info

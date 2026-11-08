@@ -165,6 +165,12 @@ class SseConnectionManager {
     final cancelToken = CancelToken();
     _cancelToken = cancelToken;
 
+    final token = await client.tokens.readAccessToken();
+    if (token == null || token.isEmpty) {
+      debugPrint('[SSE] $path — aucun token actif, connexion différée.');
+      return;
+    }
+
     final parser = SseParser();
 
     try {
@@ -199,6 +205,12 @@ class SseConnectionManager {
         try {
           await client.refreshSession();
         } catch (_) {}
+      }
+      final hasToken = (await client.tokens.readAccessToken())?.isNotEmpty ?? false;
+      if (!hasToken && e is ApiException && e.statusCode == 401) {
+        _consecutiveFailures = maxConsecutiveFailures;
+        debugPrint('[SSE] $path — non authentifié (aucun token actif), attente de connexion.');
+        return;
       }
       _consecutiveFailures++;
       // Only log the first failure and every 3rd one to avoid spamming.

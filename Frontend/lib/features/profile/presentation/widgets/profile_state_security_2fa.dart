@@ -33,10 +33,10 @@ extension on _ProfilePageState {
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: const Text(
-                      'D├®sactiver la validation en deux ├®tapes ?',
+                      'Désactiver la validation en deux étapes ?',
                     ),
                     content: const Text(
-                      'Votre compte ne sera plus prot├®g├® par un code ├á usage unique lors de vos connexions.',
+                      'Votre compte ne sera plus protégé par un code à usage unique lors de vos connexions.',
                     ),
                     actions: [
                       TextButton(
@@ -48,7 +48,7 @@ extension on _ProfilePageState {
                           backgroundColor: const Color(0xFFEF4444),
                         ),
                         onPressed: () => Navigator.of(ctx).pop(true),
-                        child: const Text('D├®sactiver'),
+                        child: const Text('Désactiver'),
                       ),
                     ],
                   ),
@@ -59,14 +59,14 @@ extension on _ProfilePageState {
                     if (mounted) {
                       updateState(() => _twoFactorEnabled = false);
                       _showSuccessSnackBar(
-                        'Authentification ├á deux facteurs d├®sactiv├®e.',
+                        'Authentification à deux facteurs désactivée.',
                       );
                       _loadAuditLogs();
                     }
                   } catch (e) {
                     if (mounted) {
                       _showErrorSnackBar(
-                        'Erreur lors de la d├®sactivation du 2FA.',
+                        'Erreur lors de la désactivation du 2FA.',
                       );
                     }
                   }

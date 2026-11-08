@@ -14,7 +14,7 @@ extension on _GroupsPageState {
         ),
         title: const Text('Quitter la classe'),
         content: Text(
-          'Voulez-vous vraiment quitter la classe "$groupName" ? Vous perdrez l\'acc├¿s aux ressources associ├®es.',
+          'Voulez-vous vraiment quitter la classe "$groupName" ? Vous perdrez l\'accès aux ressources associées.',
         ),
         actions: [
           TextButton(
@@ -34,7 +34,7 @@ extension on _GroupsPageState {
                 ref.invalidate(myGroupsProvider);
                 ref.invalidate(studentClassMembershipProvider);
                 if (context.mounted) {
-                  context.showInfoToast('Vous avez quitt├® la classe.');
+                  context.showInfoToast('Vous avez quitté la classe.');
                 }
               } catch (e) {
                 if (context.mounted) {

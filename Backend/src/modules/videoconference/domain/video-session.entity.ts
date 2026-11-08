@@ -21,6 +21,9 @@ export interface VideoSession {
   timetableSlotId: string | null;
   courseId: string | null;
   cancelReason: string | null;
+  recordingUrl: string | null;
+  recordingEgressId: string | null;
+  transcript: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

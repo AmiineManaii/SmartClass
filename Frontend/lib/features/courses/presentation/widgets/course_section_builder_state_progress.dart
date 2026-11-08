@@ -92,9 +92,9 @@ extension on _CourseSectionBuilderPageState {
                   children: [
                     Text(
                       isGenerating
-                          ? 'G├®n├®ration en cours...'
+                          ? 'Génération en cours...'
                           : (allValidated
-                              ? 'Cours complet pr├¬t !'
+                              ? 'Cours complet prêt !'
                               : 'Construction du cours'),
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
@@ -108,8 +108,8 @@ extension on _CourseSectionBuilderPageState {
                       isGenerating && activeSection != null
                           ? 'Section ${activeIndex + 1}/$total : "${activeSection.title}"'
                           : (allValidated
-                              ? 'Toutes les sections sont r├®dig├®es et valid├®es'
-                              : '$pending section(s) restante(s) ├á g├®n├®rer'),
+                              ? 'Toutes les sections sont rédigées et validées'
+                              : '$pending section(s) restante(s) à générer'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -125,7 +125,7 @@ extension on _CourseSectionBuilderPageState {
                 FilledButton.icon(
                   onPressed: () => notifier.cancel(),
                   icon: const Icon(Icons.stop_rounded, size: 16),
-                  label: const Text('Arr├¬ter'),
+                  label: const Text('Arrêter'),
                   style: FilledButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     backgroundColor: colorScheme.error,
@@ -136,7 +136,7 @@ extension on _CourseSectionBuilderPageState {
                 FilledButton.icon(
                   onPressed: () => notifier.generateAllRemaining(),
                   icon: const Icon(Icons.bolt_rounded, size: 16),
-                  label: const Text('Tout g├®n├®rer'),
+                  label: const Text('Tout générer'),
                   style: FilledButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     backgroundColor: colorScheme.primary,
@@ -177,7 +177,7 @@ extension on _CourseSectionBuilderPageState {
               _buildStatBadge(
                 icon: Icons.check_circle_rounded,
                 color: Colors.green.shade700,
-                label: '$validated valid├®e(s)',
+                label: '$validated validée(s)',
               ),
               if (activeSection != null)
                 _buildStatBadge(
@@ -189,7 +189,7 @@ extension on _CourseSectionBuilderPageState {
                 _buildStatBadge(
                   icon: Icons.edit_note_rounded,
                   color: Colors.amber.shade800,
-                  label: '$generated ├á relire',
+                  label: '$generated à relire',
                 ),
               _buildStatBadge(
                 icon: Icons.hourglass_empty_rounded,

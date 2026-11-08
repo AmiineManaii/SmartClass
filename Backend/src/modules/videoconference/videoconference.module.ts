@@ -34,6 +34,8 @@ import { GetVideoSessionUseCase } from './application/get-video-session.use-case
 import { UpdateVideoSessionUseCase } from './application/update-video-session.use-case.js';
 import { CancelVideoSessionUseCase } from './application/cancel-video-session.use-case.js';
 import { StartVideoSessionUseCase } from './application/start-video-session.use-case.js';
+import { StartRecordingUseCase } from './application/start-recording.use-case.js';
+import { StopRecordingUseCase } from './application/stop-recording.use-case.js';
 import { IssueJoinTokenUseCase } from './application/issue-join-token.use-case.js';
 import { EndVideoSessionUseCase } from './application/end-video-session.use-case.js';
 import { LeaveVideoSessionUseCase } from './application/leave-video-session.use-case.js';
@@ -136,6 +138,22 @@ export const createVideoconferenceModule = (
     liveEventsHub,
   );
 
+  const startRecordingUseCase = new StartRecordingUseCase(
+    sessionRepository,
+    classAccessPort,
+    roomService,
+    auditService,
+    liveEventsHub,
+  );
+
+  const stopRecordingUseCase = new StopRecordingUseCase(
+    sessionRepository,
+    classAccessPort,
+    roomService,
+    auditService,
+    liveEventsHub,
+  );
+
   const issueJoinTokenUseCase = new IssueJoinTokenUseCase(
     sessionRepository,
     removalRepository,
@@ -223,6 +241,8 @@ export const createVideoconferenceModule = (
     updateVideoSessionUseCase,
     cancelVideoSessionUseCase,
     startVideoSessionUseCase,
+    startRecordingUseCase,
+    stopRecordingUseCase,
     issueJoinTokenUseCase,
     endVideoSessionUseCase,
     leaveVideoSessionUseCase,

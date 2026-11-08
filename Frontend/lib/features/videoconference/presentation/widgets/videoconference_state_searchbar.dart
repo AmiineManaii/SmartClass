@@ -44,7 +44,7 @@ extension on _VideoconferencePageState {
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
               ),
               decoration: const InputDecoration(
-                hintText: 'Rechercher une s├®ance, mati├¿re ou enseignant...',
+                hintText: 'Rechercher une séance, matière ou enseignant...',
                 hintStyle: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 12.5,

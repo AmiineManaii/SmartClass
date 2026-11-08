@@ -145,7 +145,7 @@ extension on _ClassCreatePageState {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Card 1: Identit├® Acad├®mique & Cursus
+                          // Card 1: Identité Académique & Cursus
                           _buildSectionCard(
                             isDark: isDark,
                             cardBg: cardBg,
@@ -180,7 +180,7 @@ extension on _ClassCreatePageState {
 
                                 // Cycle & Level Selector (Inline native chips)
                                 const Text(
-                                  'NIVEAU D\'├ëTUDES ACAD├ëMIQUE',
+                                  'NIVEAU D\'ÉTUDES ACADÉMIQUE',
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
@@ -192,7 +192,7 @@ extension on _ClassCreatePageState {
                                 _buildLevelSegmentedSelector(isDark),
                                 const SizedBox(height: 20),
 
-                                // Department / Fili├¿re
+                                // Department / Filière
                                 Text(
                                   context.tr('admin_department_label'),
                                   style: TextStyle(
@@ -216,7 +216,7 @@ extension on _ClassCreatePageState {
                           ),
                           const SizedBox(height: 22),
 
-                          // Card 2: Enseignant R├®f├®rent & Capacit├®
+                          // Card 2: Enseignant Référent & Capacité
                           _buildSectionCard(
                             isDark: isDark,
                             cardBg: cardBg,
@@ -307,7 +307,7 @@ extension on _ClassCreatePageState {
                                       child: _buildServiceToggleCard(
                                         isDark: isDark,
                                         icon: Icons.forum_outlined,
-                                        title: 'Forum d\'├®change',
+                                        title: 'Forum d\'échange',
                                         subtitle: context.tr('admin_service_forum_sub'),
                                         value: _forumEnabled,
                                         onChanged: (v) =>

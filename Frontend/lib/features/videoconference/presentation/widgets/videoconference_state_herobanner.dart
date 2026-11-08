@@ -64,7 +64,7 @@ extension on _VideoconferencePageState {
                       _buildHeroHeaderRow(context, isDark),
                       const SizedBox(height: 10),
                       Text(
-                        'Participez ou animez des s├®ances interactives avec streaming vid├®o temps r├®el, chat, partage d\'├®cran et ├®margement.',
+                        'Participez ou animez des séances interactives avec streaming vidéo temps réel, chat, partage d\'écran et émargement.',
                         style: TextStyle(
                           fontFamily: 'Inter',
                           color: Colors.white.withValues(alpha: 0.9),
@@ -95,7 +95,7 @@ extension on _VideoconferencePageState {
                       ),
                       icon: const Icon(Icons.calendar_month_rounded, size: 18),
                       label: const Text(
-                        'Programmer une s├®ance',
+                        'Programmer une séance',
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontWeight: FontWeight.w700,
@@ -117,7 +117,7 @@ extension on _VideoconferencePageState {
                 _buildHeroHeaderRow(context, isDark),
                 const SizedBox(height: 10),
                 Text(
-                  'Participez ou animez des s├®ances interactives avec streaming vid├®o temps r├®el, chat, partage d\'├®cran et ├®margement.',
+                  'Participez ou animez des séances interactives avec streaming vidéo temps réel, chat, partage d\'écran et émargement.',
                   style: TextStyle(
                     fontFamily: 'Inter',
                     color: Colors.white.withValues(alpha: 0.88),
@@ -141,7 +141,7 @@ extension on _VideoconferencePageState {
                     ),
                     icon: const Icon(Icons.calendar_month_rounded, size: 16),
                     label: const Text(
-                      'Programmer une s├®ance',
+                      'Programmer une séance',
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w700,

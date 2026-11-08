@@ -46,7 +46,7 @@ extension on _GroupsPageState {
                 const SizedBox(height: 16),
                 FilledButton.tonal(
                   onPressed: () => ref.invalidate(myGroupsProvider),
-                  child: const Text('R├®essayer'),
+                  child: const Text('Réessayer'),
                 ),
               ],
             ),
@@ -113,14 +113,14 @@ extension on _GroupsPageState {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Aucun groupe trouv├®',
+                      'Aucun groupe trouvé',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Aucune classe ne correspond ├á vos filtres actuels.',
+                      'Aucune classe ne correspond à vos filtres actuels.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
@@ -135,7 +135,7 @@ extension on _GroupsPageState {
                         });
                       },
                       icon: const Icon(Icons.refresh_rounded, size: 16),
-                      label: const Text('R├®initialiser la recherche'),
+                      label: const Text('Réinitialiser la recherche'),
                     ),
                   ],
                 ),
@@ -162,7 +162,7 @@ extension on _GroupsPageState {
                 final myRole = group['myRole'] as String?;
                 final roleLabel = myRole == 'TEACHER' || myRole == 'REFERENT'
                     ? 'Enseignant'
-                    : '├ëtudiant';
+                    : 'Étudiant';
                 final canInvite = myRole == 'TEACHER' ||
                     myRole == 'REFERENT' ||
                     isAdmin;

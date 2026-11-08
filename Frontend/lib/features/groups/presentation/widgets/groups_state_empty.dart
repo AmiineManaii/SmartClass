@@ -34,8 +34,8 @@ extension on _GroupsPageState {
             const SizedBox(height: 8),
             Text(
               isTeacherOrAdmin
-                  ? 'Cr├®ez votre premi├¿re classe virtuelle ou partagez un code d\'invitation pour rassembler vos ├®tudiants.'
-                  : 'Rejoignez votre classe gr├óce au code fourni par votre enseignant pour acc├®der aux ressources de cours.',
+                  ? 'Créez votre première classe virtuelle ou partagez un code d\'invitation pour rassembler vos étudiants.'
+                  : 'Rejoignez votre classe grâce au code fourni par votre enseignant pour accéder aux ressources de cours.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),

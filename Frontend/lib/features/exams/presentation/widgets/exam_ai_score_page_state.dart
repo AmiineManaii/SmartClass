@@ -49,7 +49,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                       color: colorScheme.primary, size: 22),
                   const SizedBox(width: 8),
                   Text(
-                    '3 Fiches de Rem├®diation Cibl├®es',
+                    '3 Fiches de Remédiation Ciblées',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -58,7 +58,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
               ),
               const SizedBox(height: 4),
               Text(
-                'G├®n├®r├®es automatiquement par l\'IA pour consolider vos points d\'am├®lioration.',
+                'Générées automatiquement par l\'IA pour consolider vos points d\'amélioration.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -68,29 +68,29 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                 number: 1,
                 title: 'Profondeur de la pile d\'appels (Call Stack)',
                 concept:
-                    'Pour fibonacci(n), bien qu\'il y ait O(2Ôü┐) appels totaux, la pile m├®moire ne retient simultan├®ment que les appels actifs le long de la branche la plus profonde, soit une profondeur maximale O(n).',
-                notion: 'Chapitre 2.3 ÔÇó R├®cursion & Arbre d\'appels',
+                    'Pour fibonacci(n), bien qu\'il y ait O(2ⁿ) appels totaux, la pile mémoire ne retient simultanément que les appels actifs le long de la branche la plus profonde, soit une profondeur maximale O(n).',
+                notion: 'Chapitre 2.3 • Récursion & Arbre d\'appels',
               ),
               const SizedBox(height: 10),
               _RemediationCardItem(
                 number: 2,
-                title: 'Arbres AVL : Cas de d├®s├®quilibre Gauche-Droite',
+                title: 'Arbres AVL : Cas de déséquilibre Gauche-Droite',
                 concept:
-                    'Lorsqu\'un n┼ôud pr├®sente un facteur de balance +2 et que son enfant gauche a un facteur -1, une simple rotation droite ne suffit pas. Une double rotation gauche-droite (LR) est obligatoire pour restaurer la propri├®t├® AVL.',
-                notion: 'Chapitre 4.2 ÔÇó ├ëquilibrage dynamique AVL',
+                    'Lorsqu\'un nœud présente un facteur de balance +2 et que son enfant gauche a un facteur -1, une simple rotation droite ne suffit pas. Une double rotation gauche-droite (LR) est obligatoire pour restaurer la propriété AVL.',
+                notion: 'Chapitre 4.2 • Équilibrage dynamique AVL',
               ),
               const SizedBox(height: 10),
               _RemediationCardItem(
                 number: 3,
-                title: 'M├®mo├»sation & Programmation Dynamique',
+                title: 'Mémoïsation & Programmation Dynamique',
                 concept:
-                    'Pour ├®liminer la redondance des calculs r├®cursifs de Fibonacci et abaisser la complexit├® temporelle de O(2Ôü┐) ├á O(n), stockez chaque sous-probl├¿me r├®solu dans un tableau ou dictionnaire.',
-                notion: 'Chapitre 5.1 ÔÇó Optimisation de la r├®cursivit├®',
+                    'Pour éliminer la redondance des calculs récursifs de Fibonacci et abaisser la complexité temporelle de O(2ⁿ) à O(n), stockez chaque sous-problème résolu dans un tableau ou dictionnaire.',
+                notion: 'Chapitre 5.1 • Optimisation de la récursivité',
               ),
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Enregistrer dans mes fiches de r├®vision'),
+                child: const Text('Enregistrer dans mes fiches de révision'),
               ),
             ],
           ),
@@ -126,7 +126,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
             ),
             const SizedBox(width: 10),
             Text(
-              'R├®sultats De L\'Examen',
+              'Résultats De L\'Examen',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -193,7 +193,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                                       color: colorScheme.onSurfaceVariant),
                                   const SizedBox(width: 6),
                                   Text(
-                                    widget.courseContext.split('ÔÇó').first.trim(),
+                                    widget.courseContext.split('•').first.trim(),
                                     style: theme.textTheme.labelSmall?.copyWith(
                                       color: colorScheme.onSurfaceVariant,
                                     ),
@@ -217,8 +217,8 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                                       color: colorScheme.onSecondaryFixed),
                                   const SizedBox(width: 6),
                                   Text(
-                                    widget.courseContext.contains('ÔÇó')
-                                        ? widget.courseContext.split('ÔÇó').last.trim()
+                                    widget.courseContext.contains('•')
+                                        ? widget.courseContext.split('•').last.trim()
                                         : 'Algorithmique',
                                     style: theme.textTheme.labelSmall?.copyWith(
                                       color: colorScheme.onSecondaryFixed,
@@ -250,7 +250,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            Text('ÔÇó',
+                            Text('•',
                                 style: TextStyle(
                                     color: colorScheme.outlineVariant)),
                             const SizedBox(width: 10),
@@ -264,7 +264,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            Text('ÔÇó',
+                            Text('•',
                                 style: TextStyle(
                                     color: colorScheme.outlineVariant)),
                             const SizedBox(width: 10),
@@ -283,7 +283,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                                       size: 13, color: colorScheme.tertiary),
                                   const SizedBox(width: 4),
                                   Text(
-                                    'Tr├¿s Bien',
+                                    'Très Bien',
                                     style: theme.textTheme.labelSmall?.copyWith(
                                       color: colorScheme.tertiary,
                                       fontWeight: FontWeight.bold,
@@ -386,7 +386,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                                   size: 16, color: colorScheme.tertiary),
                               const SizedBox(width: 8),
                               Text(
-                                'Valid├® avec succ├¿s (+3.2 pts vs promo)',
+                                'Validé avec succès (+3.2 pts vs promo)',
                                 style: theme.textTheme.labelMedium?.copyWith(
                                   color: colorScheme.tertiary,
                                   fontWeight: FontWeight.bold,
@@ -404,7 +404,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                           children: [
                             Expanded(
                               child: _KpiMetricCard(
-                                label: 'R├®ussite',
+                                label: 'Réussite',
                                 value: '8 / 10',
                                 badge: '80%',
                                 badgeColor: colorScheme.tertiary,
@@ -414,7 +414,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: _KpiMetricCard(
-                                label: '├Ç revoir',
+                                label: 'À revoir',
                                 value: '2 / 10',
                                 badge: '20%',
                                 badgeColor: colorScheme.error,
@@ -492,7 +492,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                               ),
                             ),
                             Text(
-                              'Diagnostic instantan├®',
+                              'Diagnostic instantané',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: colorScheme.onSurfaceVariant,
                                 fontSize: 11,
@@ -524,7 +524,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                                       height: 1.4,
                                     ),
                                     children: const [
-                                      TextSpan(text: 'ÔÇ£Tr├¿s bon travail, '),
+                                      TextSpan(text: '“Très bon travail, '),
                                       TextSpan(
                                         text: 'Salma',
                                         style: TextStyle(
@@ -532,16 +532,16 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                                       ),
                                       TextSpan(
                                           text:
-                                              ' ! Tu ma├«trises parfaitement la complexit├® asymptotique (QuickSort, arbres binaires). Pense ├á revoir le '),
+                                              ' ! Tu maîtrises parfaitement la complexité asymptotique (QuickSort, arbres binaires). Pense à revoir le '),
                                       TextSpan(
                                         text:
-                                            'Chapitre 2 sur la r├®cursivit├® et lÔÇÖarbre dÔÇÖappels',
+                                            'Chapitre 2 sur la récursivité et l’arbre d’appels',
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold),
                                       ),
                                       TextSpan(
                                           text:
-                                              ' ainsi que lÔÇÖ├®quilibrage des arbres AVL.ÔÇØ'),
+                                              ' ainsi que l’équilibrage des arbres AVL.”'),
                                     ],
                                   ),
                                 ),
@@ -555,7 +555,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                         FilledButton.icon(
                           onPressed: _showRemediationCardsDialog,
                           icon: const Icon(Icons.push_pin_rounded, size: 18),
-                          label: const Text('G├®n├®rer 3 fiches de rem├®diation'),
+                          label: const Text('Générer 3 fiches de remédiation'),
                           style: FilledButton.styleFrom(
                             backgroundColor: colorScheme.primary,
                             minimumSize: const Size(double.infinity, 46),
@@ -570,8 +570,8 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                             setState(() => _isPlayingAudio = !_isPlayingAudio);
                             context.showInfoToast(
                               _isPlayingAudio
-                                  ? 'Lecture du d├®brief audio IA...'
-                                  : 'D├®brief audio mis en pause.',
+                                  ? 'Lecture du débrief audio IA...'
+                                  : 'Débrief audio mis en pause.',
                             );
                           },
                           icon: Icon(
@@ -582,8 +582,8 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                             color: colorScheme.secondary,
                           ),
                           label: Text(_isPlayingAudio
-                              ? 'En ├®coute... (1 min de d├®brief audio)'
-                              : '├ëcouter le d├®brief audio (1 min)'),
+                              ? 'En écoute... (1 min de débrief audio)'
+                              : 'Écouter le débrief audio (1 min)'),
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size(double.infinity, 44),
                             shape: RoundedRectangleBorder(
@@ -601,7 +601,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'D├®tail des Questions',
+                        'Détail des Questions',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -616,7 +616,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                   ),
                   const SizedBox(height: 10),
 
-                  // Filter Segment Pills: Toutes (10), Erreurs (2), R├®ussies (8)
+                  // Filter Segment Pills: Toutes (10), Erreurs (2), Réussies (8)
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
@@ -636,7 +636,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                           onTap: () => setState(() => _filter = 'errors'),
                         ),
                         _FilterTab(
-                          label: 'R├®ussies (8)',
+                          label: 'Réussies (8)',
                           selected: _filter == 'success',
                           onTap: () => setState(() => _filter = 'success'),
                         ),
@@ -650,38 +650,38 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                     // Error Question 6
                     _QuestionBreakdownCard(
                       id: 'Q6',
-                      topic: 'R├®cursion & Arbre d\'appels',
+                      topic: 'Récursion & Arbre d\'appels',
                       question:
-                          'Quelle est la profondeur maximale de r├®cursion de la fonction fibonacci(n) na├»ve ?',
+                          'Quelle est la profondeur maximale de récursion de la fonction fibonacci(n) naïve ?',
                       isError: true,
-                      studentAnswer: 'A. O(2Ôü┐)',
+                      studentAnswer: 'A. O(2ⁿ)',
                       expectedAnswer: 'B. O(n)',
-                      notion: 'Notion : Chapitre 2.3 ÔÇó Pile d\'appels r├®cursive',
+                      notion: 'Notion : Chapitre 2.3 • Pile d\'appels récursive',
                       pointsText: '0 pt',
                       aiExplanationExpanded:
                           _expandedAiExplanations.contains('Q6'),
                       onToggleAiExplanation: () => _toggleAiExplanation('Q6'),
                       aiExplanation:
-                          'Attention ├á la confusion courante entre nombre total d\'appels et profondeur de la pile ! Bien que le nombre total de n┼ôuds dans l\'arbre d\'appels de Fibonacci na├»f soit O(2Ôü┐), la profondeur maximale de r├®cursion (la pile m├®moire d\'ex├®cution) n\'est que la hauteur maximale de cet arbre, c\'est-├á-dire O(n).',
+                          'Attention à la confusion courante entre nombre total d\'appels et profondeur de la pile ! Bien que le nombre total de nœuds dans l\'arbre d\'appels de Fibonacci naïf soit O(2ⁿ), la profondeur maximale de récursion (la pile mémoire d\'exécution) n\'est que la hauteur maximale de cet arbre, c\'est-à-dire O(n).',
                     ),
                     const SizedBox(height: 12),
 
                     // Error Question 9
                     _QuestionBreakdownCard(
                       id: 'Q9',
-                      topic: 'Arbres AVL & ├ëquilibrage',
+                      topic: 'Arbres AVL & Équilibrage',
                       question:
-                          'Apr├¿s insertion avec facteur de balance +2 et enfant gauche -1, quelle rotation est requise ?',
+                          'Après insertion avec facteur de balance +2 et enfant gauche -1, quelle rotation est requise ?',
                       isError: true,
                       studentAnswer: 'C. Simple rotation droite',
                       expectedAnswer: 'B. Double rotation gauche-droite',
-                      notion: 'Notion : Chapitre 4.2 ÔÇó ├ëquilibrage dynamique AVL',
+                      notion: 'Notion : Chapitre 4.2 • Équilibrage dynamique AVL',
                       pointsText: '0 pt',
                       aiExplanationExpanded:
                           _expandedAiExplanations.contains('Q9'),
                       onToggleAiExplanation: () => _toggleAiExplanation('Q9'),
                       aiExplanation:
-                          'Le motif (+2, -1) correspond au cas d├®s├®quilibr├® Gauche-Droite (Left-Right). Une simple rotation droite ne r├®tablirait pas l\'ordre strict car le sous-arbre int├®rieur violerait l\'├®quilibre. Une double rotation (rotation gauche sur l\'enfant, puis rotation droite sur le parent) est indispensable.',
+                          'Le motif (+2, -1) correspond au cas déséquilibré Gauche-Droite (Left-Right). Une simple rotation droite ne rétablirait pas l\'ordre strict car le sous-arbre intérieur violerait l\'équilibre. Une double rotation (rotation gauche sur l\'enfant, puis rotation droite sur le parent) est indispensable.',
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -692,16 +692,16 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                       id: 'Q3',
                       topic: 'Analyse asymptotique',
                       question:
-                          'Quelle est la complexit├® temporelle de l\'algorithme QuickSort dans le pire des cas ?',
+                          'Quelle est la complexité temporelle de l\'algorithme QuickSort dans le pire des cas ?',
                       isError: false,
-                      studentAnswer: 'B. O(n┬▓)',
-                      expectedAnswer: 'B. O(n┬▓)',
-                      notion: 'Notion : Chapitre 1.4 ÔÇó Partitionnement & Pivots',
+                      studentAnswer: 'B. O(n²)',
+                      expectedAnswer: 'B. O(n²)',
+                      notion: 'Notion : Chapitre 1.4 • Partitionnement & Pivots',
                       pointsText: '+2 pts',
                       aiExplanationExpanded: false,
                       onToggleAiExplanation: () {},
                       aiExplanation:
-                          'Parfaitement identifi├® ! Lorsque le pivot est syst├®matiquement min ou max, le partitionnement se r├®duit ├á n-1 ├®l├®ments ├á chaque niveau, donnant la s├®rie arithm├®tique de complexit├® O(n┬▓).',
+                          'Parfaitement identifié ! Lorsque le pivot est systématiquement min ou max, le partitionnement se réduit à n-1 éléments à chaque niveau, donnant la série arithmétique de complexité O(n²).',
                     ),
                     const SizedBox(height: 12),
 
@@ -710,34 +710,34 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                       id: 'Q1',
                       topic: 'Notions fondamentales',
                       question:
-                          'Quelle est la complexit├® spatiale d\'une table de hachage contenant n ├®l├®ments ?',
+                          'Quelle est la complexité spatiale d\'une table de hachage contenant n éléments ?',
                       isError: false,
                       studentAnswer: 'A. O(n)',
                       expectedAnswer: 'A. O(n)',
-                      notion: 'Notion : Chapitre 3.1 ÔÇó Tables de hachage & Alv├®oles',
+                      notion: 'Notion : Chapitre 3.1 • Tables de hachage & Alvéoles',
                       pointsText: '+2 pts',
                       aiExplanationExpanded: false,
                       onToggleAiExplanation: () {},
                       aiExplanation:
-                          'Exact : Le stockage lin├®aire de n ├®l├®ments dans les alv├®oles de la table requiert un espace O(n).',
+                          'Exact : Le stockage linéaire de n éléments dans les alvéoles de la table requiert un espace O(n).',
                     ),
                     const SizedBox(height: 12),
 
                     // Successful Question 7
                     _QuestionBreakdownCard(
                       id: 'Q7',
-                      topic: 'Tri & Complexit├®',
+                      topic: 'Tri & Complexité',
                       question:
-                          'Quel algorithme de tri par comparaison poss├¿de une borne inf├®rieure optimale de O(n log n) dans le pire des cas ?',
+                          'Quel algorithme de tri par comparaison possède une borne inférieure optimale de O(n log n) dans le pire des cas ?',
                       isError: false,
                       studentAnswer: 'B. Tri par fusion (MergeSort)',
                       expectedAnswer: 'B. Tri par fusion (MergeSort)',
-                      notion: 'Notion : Chapitre 1.2 ÔÇó Borne inf├®rieure de tri',
+                      notion: 'Notion : Chapitre 1.2 • Borne inférieure de tri',
                       pointsText: '+2 pts',
                       aiExplanationExpanded: false,
                       onToggleAiExplanation: () {},
                       aiExplanation:
-                          'Excellent ! Le tri par fusion garantit O(n log n) dans tous les cas gr├óce au d├®coupage ├®quilibr├® en moiti├®s.',
+                          'Excellent ! Le tri par fusion garantit O(n log n) dans tous les cas grâce au découpage équilibré en moitiés.',
                     ),
                   ],
 
@@ -747,7 +747,7 @@ class _ExamAiScorePageState extends State<ExamAiScorePage> {
                   FilledButton.icon(
                     onPressed: () => context.go('/exams'),
                     icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                    label: const Text('Retourner ├á mes examens'),
+                    label: const Text('Retourner à mes examens'),
                     style: FilledButton.styleFrom(
                       backgroundColor: colorScheme.primary,
                       minimumSize: const Size(double.infinity, 50),

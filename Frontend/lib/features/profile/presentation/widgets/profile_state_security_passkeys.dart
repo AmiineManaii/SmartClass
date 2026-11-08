@@ -69,15 +69,15 @@ extension on _ProfilePageState {
                         ),
                       ),
                       onPressed: () {
-                        final nameCtrl = TextEditingController(text: 'Cl├® de s├®curit├® FIDO2');
+                        final nameCtrl = TextEditingController(text: 'Clé de sécurité FIDO2');
                         showDialog(
                           context: context,
                           builder: (ctx) => AlertDialog(
-                            title: const Text('Enregistrer une cl├® / Passkey'),
+                            title: const Text('Enregistrer une clé / Passkey'),
                             content: TextField(
                               controller: nameCtrl,
                               decoration: const InputDecoration(
-                                labelText: 'Nom de l\'appareil ou de la cl├®',
+                                labelText: 'Nom de l\'appareil ou de la clé',
                                 hintText: 'Ex: Windows Hello, YubiKey 5C...',
                               ),
                             ),
@@ -116,7 +116,7 @@ extension on _ProfilePageState {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Text(
-                      'Aucune cl├® de s├®curit├® enregistr├®e. Vous pouvez en ajouter une pour renforcer la protection de votre compte.',
+                      'Aucune clé de sécurité enregistrée. Vous pouvez en ajouter une pour renforcer la protection de votre compte.',
                       style: TextStyle(
                         fontSize: 12,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -139,7 +139,7 @@ extension on _ProfilePageState {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              p['name'] ?? 'Cl├® de s├®curit├®',
+                              p['name'] ?? 'Clé de sécurité',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -157,7 +157,7 @@ extension on _ProfilePageState {
                           const SizedBox(width: 6),
                           IconButton(
                             icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFEF4444)),
-                            tooltip: 'Supprimer cette cl├®',
+                            tooltip: 'Supprimer cette clé',
                             onPressed: () => _removePasskey(p['id'] ?? ''),
                           ),
                         ],

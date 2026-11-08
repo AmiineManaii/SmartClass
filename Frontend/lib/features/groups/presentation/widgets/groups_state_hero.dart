@@ -99,7 +99,7 @@ extension on _GroupsPageState {
                                 Text(
                                   isTeacherOrAdmin
                                       ? 'GESTION DES PROMOTIONS & CLASSES'
-                                      : 'ESPACE ├ëTUDIANT & GROUPES',
+                                      : 'ESPACE ÉTUDIANT & GROUPES',
                                   style: const TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
@@ -131,8 +131,8 @@ extension on _GroupsPageState {
                 const SizedBox(height: 12),
                 Text(
                   isTeacherOrAdmin
-                      ? 'G├®rez vos espaces de cours, animez vos promotions, partagez vos supports et invitez vos ├®tudiants par code s├®curis├®.'
-                      : 'Acc├®dez ├á vos classes universitaires, retrouvez vos cours, vos camarades et participez aux projets communs.',
+                      ? 'Gérez vos espaces de cours, animez vos promotions, partagez vos supports et invitez vos étudiants par code sécurisé.'
+                      : 'Accédez à vos classes universitaires, retrouvez vos cours, vos camarades et participez aux projets communs.',
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.white.withValues(alpha: 0.88),

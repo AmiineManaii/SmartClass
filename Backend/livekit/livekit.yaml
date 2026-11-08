@@ -11,6 +11,9 @@ rtc:
 keys:
   devkey: secretsecretsecretsecretsecretsecret32
 
+redis:
+  address: redis:6379
+
 webhook:
   api_key: devkey
   urls:

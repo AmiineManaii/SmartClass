@@ -169,6 +169,22 @@ class VideoconferenceRemoteDataSource {
     return VideoSessionModel.fromJson(data);
   }
 
+  Future<VideoSession> startRecording(String id) async {
+    final res = await _client.post<dynamic>(
+      '${ApiConfig.apiPrefix}/videoconference/sessions/$id/recording/start',
+    );
+    final data = apiEnvelope(res);
+    return VideoSessionModel.fromJson(data);
+  }
+
+  Future<VideoSession> stopRecording(String id) async {
+    final res = await _client.post<dynamic>(
+      '${ApiConfig.apiPrefix}/videoconference/sessions/$id/recording/stop',
+    );
+    final data = apiEnvelope(res);
+    return VideoSessionModel.fromJson(data);
+  }
+
   Future<void> leaveSession(String id) async {
     await _client.post<dynamic>(
       '${ApiConfig.apiPrefix}/videoconference/sessions/$id/leave',

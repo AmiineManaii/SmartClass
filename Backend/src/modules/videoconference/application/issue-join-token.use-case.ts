@@ -88,6 +88,58 @@ export class IssueJoinTokenUseCase {
       const isHost = session.hostId === user.id;
       const isAdmin = user.role === 'ADMIN';
 
+      // Auto-start session to IN_PROGRESS when host or admin joins
+      if (session.status === 'SCHEDULED' && (isHost || isAdmin)) {
+        await this.sessionRepository.updateStatusAtomic(
+          sessionId,
+          'SCHEDULED',
+          'IN_PROGRESS',
+          { startedAt: now },
+        );
+        session.status = 'IN_PROGRESS';
+        session.startedAt = now;
+
+        try {
+          await this.eventsPublisher?.publishToClass(session.classGroupId, {
+            type: 'session.started',
+            sessionId: session.id,
+            classGroupId: session.classGroupId,
+            status: 'IN_PROGRESS',
+            startsAt: session.startsAt.toISOString(),
+            endsAt: session.endsAt.toISOString(),
+            at: now.toISOString(),
+          });
+        } catch {
+          // ignore SSE error
+        }
+      }
+
+      // Auto-start recording for the host if not already recording
+      if ((isHost || isAdmin) && !session.recordingEgressId && this.roomService) {
+        try {
+          console.log('[IssueJoinTokenUseCase] Auto-starting composite egress for room:', session.roomName);
+          const egressId = await this.roomService.startRecording(session.roomName);
+          session.recordingEgressId = egressId;
+          await this.sessionRepository.update({
+            ...session,
+            recordingEgressId: egressId,
+          });
+          console.log('[IssueJoinTokenUseCase] Auto-recording successfully started with egressId:', egressId);
+          try {
+            await this.eventsPublisher?.publishToClass(session.classGroupId, {
+              type: 'session.recording.started',
+              sessionId: session.id,
+              classGroupId: session.classGroupId,
+              status: session.status,
+              at: now.toISOString(),
+              data: { egressId },
+            });
+          } catch {}
+        } catch (err: any) {
+          console.warn('[IssueJoinTokenUseCase] Auto-recording start failed:', err?.message || err);
+        }
+      }
+
       const displayName =
         user.firstName && user.lastName
           ? `${user.firstName} ${user.lastName}`

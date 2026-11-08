@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../../core/network/api_config.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/services/sound_effect_service.dart';
 import '../domain/entities/join_token.dart';
 import '../domain/entities/live_participant.dart';
@@ -57,6 +58,7 @@ class LiveRoomState {
   final bool isMicEnabled;
   final bool isCameraEnabled;
   final bool isScreenSharing;
+  final bool isRecording;
   final bool isHandRaised;
   final HandRaiseNotice? latestHandRaise;
   final String? errorMessage;
@@ -87,6 +89,7 @@ class LiveRoomState {
     this.isMicEnabled = false,
     this.isCameraEnabled = false,
     this.isScreenSharing = false,
+    this.isRecording = false,
     this.isHandRaised = false,
     this.latestHandRaise,
     this.errorMessage,
@@ -160,6 +163,7 @@ class LiveRoomState {
     bool? isMicEnabled,
     bool? isCameraEnabled,
     bool? isScreenSharing,
+    bool? isRecording,
     bool? isHandRaised,
     HandRaiseNotice? latestHandRaise,
     String? errorMessage,
@@ -190,6 +194,7 @@ class LiveRoomState {
       isMicEnabled: isMicEnabled ?? this.isMicEnabled,
       isCameraEnabled: isCameraEnabled ?? this.isCameraEnabled,
       isScreenSharing: isScreenSharing ?? this.isScreenSharing,
+      isRecording: isRecording ?? this.isRecording,
       isHandRaised: isHandRaised ?? this.isHandRaised,
       latestHandRaise: latestHandRaise ?? this.latestHandRaise,
       errorMessage: errorMessage ?? this.errorMessage,
@@ -446,13 +451,14 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
     );
 
     try {
-      // 1. Fetch Session and Join Token
-      final session = await _repository.getSession(sessionId);
+      // 1. Fetch Join Token (this transitions session to IN_PROGRESS & auto-starts recording on backend)
       final joinToken = await _repository.getJoinToken(sessionId);
+      final session = await _repository.getSession(sessionId);
 
       state = state.copyWith(
         session: session,
         joinToken: joinToken,
+        isRecording: session.recordingEgressId != null,
       );
 
       // 2. Enable Wakelock
@@ -767,6 +773,38 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
       } catch (_) {}
     }
     _ref.invalidate(nextSessionFeedProvider);
+  }
+
+  Future<void> startRecording() async {
+    final sessionId = state.session?.id;
+    if (sessionId == null || !state.isHost) return;
+    try {
+      final updated = await _repository.startRecording(sessionId);
+      state = state.copyWith(
+        session: updated,
+        isRecording: true,
+      );
+    } catch (e) {
+      if (e is ApiException) {
+        debugPrint('[LiveRoomController] startRecording error: ${e.statusCode} ${e.code} - ${e.message} (details: ${e.details})');
+      } else {
+        debugPrint('[LiveRoomController] startRecording error: $e');
+      }
+    }
+  }
+
+  Future<void> stopRecording() async {
+    final sessionId = state.session?.id;
+    if (sessionId == null || !state.isHost) return;
+    try {
+      final updated = await _repository.stopRecording(sessionId);
+      state = state.copyWith(
+        session: updated,
+        isRecording: false,
+      );
+    } catch (e) {
+      debugPrint('[LiveRoomController] stopRecording error: $e');
+    }
   }
 
   Future<void> endRoomForEveryone() async {

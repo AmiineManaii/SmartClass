@@ -36,7 +36,10 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage> {
     );
 
     if (roomState.connectionState == RoomConnectionState.disconnected) {
-      return const LiveRoomConnectingOverlay();
+      return const Scaffold(
+        backgroundColor: Color(0xFF04060B),
+        body: LiveRoomConnectingOverlay(),
+      );
     }
 
     // Overlays for specific terminal states
@@ -73,12 +76,88 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage> {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 1024;
-        return Stack(
-          children: [
-            isWide ? const WebLiveRoomView() : const MobileLiveRoomView(),
+    return Scaffold(
+      backgroundColor: const Color(0xFF04060B),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 1024;
+          return Stack(
+            children: [
+              isWide ? const WebLiveRoomView() : const MobileLiveRoomView(),
+
+            // Automatic Recording indicator (visible to everyone when live is recording)
+            if (roomState.isRecording)
+              Positioned(
+                top: MediaQuery.paddingOf(context).top + 12,
+                left: 16,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDC2626).withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFDC2626).withValues(alpha: 0.4),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'REC',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Transcript FAB (if available)
+            if (roomState.session?.transcript != null &&
+                roomState.session!.transcript!.isNotEmpty)
+              Positioned(
+                top: MediaQuery.paddingOf(context).top + 8,
+                right: 16,
+                child: FloatingActionButton.small(
+                  heroTag: 'transcript_view',
+                  backgroundColor: Colors.black54,
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Transcript'),
+                        content: SingleChildScrollView(
+                          child: Text(roomState.session!.transcript!),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Fermer'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: const Icon(Icons.subtitles, color: Colors.white),
+                ),
+              ),
 
             // Wave / Hand Raise animated notice and celebration particles overlay
             const HandRaiseNoticeOverlay(),
@@ -126,8 +205,9 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage> {
           ],
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTerminalScreen({
     required IconData icon,

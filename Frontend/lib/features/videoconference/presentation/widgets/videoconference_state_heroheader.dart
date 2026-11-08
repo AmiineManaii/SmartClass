@@ -36,7 +36,7 @@ extension on _VideoconferencePageState {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Directs & Visioconf├®rence',
+                  'Directs & Visioconférence',
                   style: TextStyle(
                     fontFamily: 'Inter',
                     color: Colors.white,
@@ -46,7 +46,7 @@ extension on _VideoconferencePageState {
                   ),
                 ),
                 Text(
-                  'LiveKit SFU ÔÇó Haute D├®finition',
+                  'LiveKit SFU • Haute Définition',
                   style: TextStyle(
                     fontFamily: 'Inter',
                     color: Colors.white.withValues(alpha: 0.8),

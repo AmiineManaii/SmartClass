@@ -17,7 +17,7 @@ extension on _ProfilePageState {
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
         _showErrorSnackBar(
-          'Erreur lors de la g├®n├®ration 2FA: ${e.toString()}',
+          'Erreur lors de la génération 2FA: ${e.toString()}',
         );
       }
       return;
@@ -114,7 +114,7 @@ extension on _ProfilePageState {
                               onTap: () {
                                 Clipboard.setData(ClipboardData(text: secret));
                                 context.showSuccessToast(
-                                  'Cl├® secr├¿te copi├®e !',
+                                  'Clé secrète copiée !',
                                 );
                               },
                               borderRadius: BorderRadius.circular(6),
@@ -175,7 +175,7 @@ extension on _ProfilePageState {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    'Codes de secours (conservez-les pr├®cieusement) :',
+                                    'Codes de secours (conservez-les précieusement) :',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
@@ -278,7 +278,7 @@ extension on _ProfilePageState {
                             if (mounted) {
                               updateState(() => _twoFactorEnabled = true);
                               _showSuccessSnackBar(
-                                'Application Authenticator configur├®e et activ├®e avec succ├¿s !',
+                                'Application Authenticator configurée et activée avec succès !',
                               );
                               _loadAuditLogs();
                             }
@@ -294,7 +294,7 @@ extension on _ProfilePageState {
                           } catch (e) {
                             setDlgState(() {
                               isVerifying = false;
-                              errorMessage = 'Code invalide ou expir├®.';
+                              errorMessage = 'Code invalide ou expiré.';
                             });
                           }
                         },

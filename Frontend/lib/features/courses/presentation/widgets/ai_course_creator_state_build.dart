@@ -80,7 +80,7 @@ extension on _AiCourseCreatorPageState {
       },
     );
     // A draft id appearing means the course just landed in "Mes cours"
-    // (auto-save on completion, or manual save) ÔÇö offer a shortcut there.
+    // (auto-save on completion, or manual save) — offer a shortcut there.
     ref.listen<String?>(courseGenerationJobProvider.select((s) => s.courseId), (
       previous,
       next,
