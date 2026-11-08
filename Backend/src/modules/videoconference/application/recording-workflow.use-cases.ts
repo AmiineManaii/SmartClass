@@ -271,14 +271,23 @@ export class StopRecordingUseCase {
         mimeType: options?.capturePayload?.mimeType,
       });
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
+      const rawErrorMsg = err instanceof Error ? err.message : String(err);
+      let errorCode = 'RECORDING_STOP_FAILED';
+      let cleanErrorMessage = rawErrorMsg;
+      if (rawErrorMsg.includes('[RECORDING_EGRESS_FAILED]')) {
+        errorCode = 'RECORDING_EGRESS_FAILED';
+        cleanErrorMessage = rawErrorMsg.replace('[RECORDING_EGRESS_FAILED]', '').trim();
+      } else if (rawErrorMsg.includes('[RECORDING_FILE_MISSING]')) {
+        errorCode = 'RECORDING_FILE_MISSING';
+        cleanErrorMessage = rawErrorMsg.replace('[RECORDING_FILE_MISSING]', '').trim();
+      }
       console.error(
-        `[StopRecordingUseCase] Failed to stop recording for session ${session.id} (recording ${existing.id}): ${errorMsg}`,
+        `[StopRecordingUseCase] Failed to stop recording for session ${session.id} (recording ${existing.id}) [${errorCode}]: ${cleanErrorMessage}`,
       );
       await this.recordingRepository.updateRecording(existing.id, {
         status: 'FAILED',
-        errorCode: 'RECORDING_STOP_FAILED',
-        errorMessage: errorMsg,
+        errorCode,
+        errorMessage: cleanErrorMessage,
         stoppedAt: new Date(),
       });
       await this.eventsPublisher?.publishToClass(session.classGroupId, {
@@ -290,7 +299,8 @@ export class StopRecordingUseCase {
         data: {
           recordingId: existing.id,
           status: 'FAILED',
-          errorMessage: errorMsg,
+          errorCode,
+          errorMessage: cleanErrorMessage,
         },
       });
       throw err;

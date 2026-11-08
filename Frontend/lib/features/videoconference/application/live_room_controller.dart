@@ -818,15 +818,30 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
       if (state.isRecording) {
         final capture = await LiveSpeechRecorder.instance.stop();
         try {
-          await recordingDs.stopRecording(
+          final res = await recordingDs.stopRecording(
             sessionId,
             capturePayload: capture.toJson(),
           );
-        } finally {
           state = state.copyWith(
-            isRecording: false,
+            isRecording: res.recordingStatus.isActiveRecording,
             isRecordingBusy: false,
           );
+        } catch (stopErr) {
+          // Reconcile with authoritative backend state rather than blindly reporting stopped
+          try {
+            final rec = await recordingDs.getRecording(sessionId);
+            if (rec != null) {
+              state = state.copyWith(
+                isRecording: rec.recordingStatus.isActiveRecording,
+                isRecordingBusy: false,
+              );
+            } else {
+              state = state.copyWith(isRecordingBusy: false);
+            }
+          } catch (_) {
+            state = state.copyWith(isRecordingBusy: false);
+          }
+          rethrow;
         }
       } else {
         final overview = await recordingDs.startRecording(sessionId);

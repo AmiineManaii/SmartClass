@@ -33,7 +33,7 @@ export class LocalStorageAdapter implements StoragePort {
     const configured = rootDir ?? getEnv().STORAGE_LOCAL_ROOT;
     this.rootDir = path.resolve(configured);
     try {
-      fsp.mkdir(this.rootDir, { recursive: true }).then(() => fsp.chmod(this.rootDir, 0o777)).catch(() => {});
+      fsp.mkdir(this.rootDir, { recursive: true }).then(() => fsp.chmod(this.rootDir, 0o2775)).catch(() => {});
     } catch {}
   }
 
@@ -90,7 +90,7 @@ export class LocalStorageAdapter implements StoragePort {
     const parent = path.dirname(fullPath);
     await fsp.mkdir(parent, { recursive: true });
     try {
-      await fsp.chmod(parent, 0o777);
+      await fsp.chmod(parent, 0o2775);
     } catch {}
   }
 

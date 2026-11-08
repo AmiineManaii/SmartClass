@@ -51,8 +51,8 @@ export class LiveKitEgressAdapter implements EgressServicePort {
     const targetDir = path.dirname(absoluteTarget);
     await fs.mkdir(targetDir, { recursive: true });
     try {
-      await fs.chmod(targetDir, 0o777);
-      await fs.chmod(path.dirname(targetDir), 0o777);
+      await fs.chmod(targetDir, 0o2775);
+      await fs.chmod(path.dirname(targetDir), 0o2775);
     } catch {}
 
     const fileOutput = new EncodedFileOutput({
@@ -95,7 +95,7 @@ export class LiveKitEgressAdapter implements EgressServicePort {
     const targetPath = this.storage.resolveSafePath(params.storageKey);
     const targetDir = path.dirname(targetPath);
     try {
-      await fs.chmod(targetDir, 0o777);
+      await fs.chmod(targetDir, 0o2775);
     } catch {}
 
     // 1. Send stop command to LiveKit Egress
@@ -108,6 +108,7 @@ export class LiveKitEgressAdapter implements EgressServicePort {
     }
 
     let fileStat = await this.storage.stat(params.storageKey);
+    let egressFailureError: string | null = null;
 
     // 2. Poll Egress status until COMPLETE, FAILED, or timeout (max 12s)
     let attempts = 0;
@@ -124,6 +125,7 @@ export class LiveKitEgressAdapter implements EgressServicePort {
               info.status === EgressStatus.EGRESS_FAILED ||
               info.status === EgressStatus.EGRESS_ABORTED
             ) {
+              egressFailureError = info.error || 'Egress failed or aborted';
               console.error(
                 `[LiveKitEgressAdapter] Egress ${params.egressId} reported failure: ${info.error}`,
               );
@@ -149,10 +151,15 @@ export class LiveKitEgressAdapter implements EgressServicePort {
       fileStat = await this.storage.stat(params.storageKey);
     }
 
-    // 4. Strict verification: never pretend recording succeeded if no valid MP4 exists
+    // 4. Strict verification: distinguish egress termination vs file finalization
     if (!fileStat || fileStat.sizeBytes < 10_000) {
+      if (egressFailureError) {
+        throw new Error(
+          `[RECORDING_EGRESS_FAILED] L'enregistrement vidéo a échoué dans LiveKit Egress: ${egressFailureError}`,
+        );
+      }
       throw new Error(
-        `L'enregistrement vidéo n'a pas pu être finalisé sur le serveur (${fileStat?.sizeBytes ?? 0} octets reçus). Vérifiez que le conteneur LiveKit Egress est actif et a les droits d'écriture sur le volume de stockage.`,
+        `[RECORDING_FILE_MISSING] L'enregistrement vidéo n'a pas pu être finalisé sur le serveur (${fileStat?.sizeBytes ?? 0} octets reçus). Vérifiez que le conteneur LiveKit Egress est actif et a les droits d'écriture sur le volume de stockage.`,
       );
     }
 
