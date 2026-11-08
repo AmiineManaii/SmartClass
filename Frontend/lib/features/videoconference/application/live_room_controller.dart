@@ -817,14 +817,17 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
       final recordingDs = _ref.read(recordingRemoteDataSourceProvider);
       if (state.isRecording) {
         final capture = await LiveSpeechRecorder.instance.stop();
-        await recordingDs.stopRecording(
-          sessionId,
-          capturePayload: capture.toJson(),
-        );
-        state = state.copyWith(
-          isRecording: false,
-          isRecordingBusy: false,
-        );
+        try {
+          await recordingDs.stopRecording(
+            sessionId,
+            capturePayload: capture.toJson(),
+          );
+        } finally {
+          state = state.copyWith(
+            isRecording: false,
+            isRecordingBusy: false,
+          );
+        }
       } else {
         final overview = await recordingDs.startRecording(sessionId);
         final token = await TokenStorage().readAccessToken();

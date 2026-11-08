@@ -38,7 +38,8 @@ Thumbs.db
 
 # Local lecture recordings & generated media storage (never commit)
 SmartClassStorage/
-storage/
+/storage/
+!Backend/src/shared/storage/
 *.mp4
 *.webm
 *.mkv

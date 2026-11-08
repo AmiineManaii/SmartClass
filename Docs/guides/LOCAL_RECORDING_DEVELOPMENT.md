@@ -174,3 +174,4 @@ flutter run -d chrome
    - Le studio affiche la progression en temps réel (`VALIDATION` → `AUDIO_EXTRACTION` → `TRANSCRIPTION` → `VISUAL_ANALYSIS` → `LESSON_GENERATION` → `READY_FOR_REVIEW`).
    - L'enseignant vérifie la vidéo réelle, la transcription fidèle avec horodatages réels, les chapitres, le résumé, les quiz et flashcards générés.
    - L'enseignant approuve et publie le cours pour les étudiants.
+

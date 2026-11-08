@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { EgressClient, EncodedFileOutput, EncodedFileType } from 'livekit-server-sdk';
+import { EgressClient, EgressStatus, EncodedFileOutput, EncodedFileType } from 'livekit-server-sdk';
 import { getEnv } from '../../../config/env.js';
 import type { StoragePort } from '../../../shared/storage/storage.port.js';
 import type {
@@ -48,7 +48,12 @@ export class LiveKitEgressAdapter implements EgressServicePort {
 
   public async startRoomRecording(params: StartEgressParams): Promise<StartEgressResult> {
     const absoluteTarget = this.storage.resolveSafePath(params.storageKey);
-    await fs.mkdir(path.dirname(absoluteTarget), { recursive: true });
+    const targetDir = path.dirname(absoluteTarget);
+    await fs.mkdir(targetDir, { recursive: true });
+    try {
+      await fs.chmod(targetDir, 0o777);
+      await fs.chmod(path.dirname(targetDir), 0o777);
+    } catch {}
 
     const fileOutput = new EncodedFileOutput({
       fileType: EncodedFileType.MP4,
@@ -87,6 +92,12 @@ export class LiveKitEgressAdapter implements EgressServicePort {
     mediaBase64?: string;
     mimeType?: string;
   }): Promise<StopEgressResult> {
+    const targetPath = this.storage.resolveSafePath(params.storageKey);
+    const targetDir = path.dirname(targetPath);
+    try {
+      await fs.chmod(targetDir, 0o777);
+    } catch {}
+
     // 1. Send stop command to LiveKit Egress
     if (params.egressId && !params.egressId.startsWith('egress_local_')) {
       try {
@@ -96,12 +107,32 @@ export class LiveKitEgressAdapter implements EgressServicePort {
       }
     }
 
-    const targetPath = this.storage.resolveSafePath(params.storageKey);
     let fileStat = await this.storage.stat(params.storageKey);
 
-    // 2. Wait up to 12 seconds for the Egress container to flush and close the MP4 file
+    // 2. Poll Egress status until COMPLETE, FAILED, or timeout (max 12s)
     let attempts = 0;
     while ((!fileStat || fileStat.sizeBytes < 10_000) && attempts < 12) {
+      if (params.egressId && !params.egressId.startsWith('egress_local_')) {
+        try {
+          const list = await this.client.listEgress({ egressId: params.egressId });
+          const info = list.find((e) => e.egressId === params.egressId);
+          if (info) {
+            if (info.status === EgressStatus.EGRESS_COMPLETE) {
+              fileStat = await this.storage.stat(params.storageKey);
+              if (fileStat && fileStat.sizeBytes >= 10_000) break;
+            } else if (
+              info.status === EgressStatus.EGRESS_FAILED ||
+              info.status === EgressStatus.EGRESS_ABORTED
+            ) {
+              console.error(
+                `[LiveKitEgressAdapter] Egress ${params.egressId} reported failure: ${info.error}`,
+              );
+              break;
+            }
+          }
+        } catch {}
+      }
+
       await new Promise((r) => setTimeout(r, 1000));
       fileStat = await this.storage.stat(params.storageKey);
       attempts++;

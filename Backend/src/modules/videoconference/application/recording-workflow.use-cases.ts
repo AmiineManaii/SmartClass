@@ -259,15 +259,42 @@ export class StopRecordingUseCase {
     }
 
     const storageKey = existing.storageKey ?? `recordings/${session.id}/lecture.mp4`;
-    const stopResult = await this.egressService.stopRoomRecording({
-      egressId: existing.egressId ?? `egress_local_${session.id}`,
-      storageKey,
-      startedAt: existing.startedAt,
-      sessionTitle: session.title,
-      subject: session.subject,
-      mediaBase64: options?.capturePayload?.mediaBase64,
-      mimeType: options?.capturePayload?.mimeType,
-    });
+    let stopResult;
+    try {
+      stopResult = await this.egressService.stopRoomRecording({
+        egressId: existing.egressId ?? `egress_local_${session.id}`,
+        storageKey,
+        startedAt: existing.startedAt,
+        sessionTitle: session.title,
+        subject: session.subject,
+        mediaBase64: options?.capturePayload?.mediaBase64,
+        mimeType: options?.capturePayload?.mimeType,
+      });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error(
+        `[StopRecordingUseCase] Failed to stop recording for session ${session.id} (recording ${existing.id}): ${errorMsg}`,
+      );
+      await this.recordingRepository.updateRecording(existing.id, {
+        status: 'FAILED',
+        errorCode: 'RECORDING_STOP_FAILED',
+        errorMessage: errorMsg,
+        stoppedAt: new Date(),
+      });
+      await this.eventsPublisher?.publishToClass(session.classGroupId, {
+        type: 'recording.stopped',
+        sessionId: session.id,
+        classGroupId: session.classGroupId,
+        status: session.status,
+        at: new Date().toISOString(),
+        data: {
+          recordingId: existing.id,
+          status: 'FAILED',
+          errorMessage: errorMsg,
+        },
+      });
+      throw err;
+    }
 
     const stoppedAt = new Date();
     const recorded = await this.recordingRepository.updateRecording(existing.id, {

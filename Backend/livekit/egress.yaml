@@ -7,3 +7,4 @@ redis:
 
 insecure: true
 log_level: info
+
