@@ -18,6 +18,19 @@ services:
       retries: 5
       start_period: 5s
 
+  redis:
+    image: redis:7-alpine
+    container_name: smartclass-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
   searxng:
     image: searxng/searxng:latest
     container_name: smartclass-searxng
@@ -53,12 +66,46 @@ services:
       - "7882:7882/udp"
     volumes:
       - ./livekit/livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "nc -z localhost 7880 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 5s
+
+  egress:
+    image: livekit/egress:latest
+    container_name: smartclass-egress
+    restart: unless-stopped
+    environment:
+      - EGRESS_CONFIG_FILE=/etc/egress.yaml
+    volumes:
+      - ./livekit/egress.yaml:/etc/egress.yaml:ro
+      - ${STORAGE_HOST_PATH:-C:/SmartClassStorage}:/var/lib/smartclass-storage
+    depends_on:
+      livekit:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  asr:
+    build:
+      context: ./asr
+    container_name: smartclass-asr
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./asr/models:/app/models
+      - ./asr/main.py:/app/main.py
+      - asr_cache:/root/.cache/huggingface
+    environment:
+      - ASR_MODEL_SIZE=${ASR_MODEL_SIZE:-tiny}
+      - ASR_DEVICE=${ASR_DEVICE:-auto}
+      - ASR_COMPUTE_TYPE=${ASR_COMPUTE_TYPE:-auto}
 
   api:
     build:
@@ -71,14 +118,20 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-      - ${STORAGE_HOST_PATH:-../SmartClassStorage}:/var/lib/smartclass-storage
+      - ${STORAGE_HOST_PATH:-C:/SmartClassStorage}:/var/lib/smartclass-storage
     environment:
       - STORAGE_DRIVER=${STORAGE_DRIVER:-local}
       - STORAGE_LOCAL_ROOT=${STORAGE_LOCAL_ROOT:-/var/lib/smartclass-storage}
+      - ASR_BASE_URL=${ASR_BASE_URL:-http://asr:8000}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
     env_file:
       - .env
     depends_on:
       db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      livekit:
         condition: service_healthy
       searxng:
         condition: service_started
@@ -93,4 +146,4 @@ services:
 
 volumes:
   pgdata:
-
+  asr_cache:

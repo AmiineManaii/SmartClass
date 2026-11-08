@@ -894,6 +894,38 @@ describe('SmartClass Lecture Recording, 7-Stage AI Pipeline, Review Studio & Stu
             'hex',
           );
           await storage.putBuffer(storageKey, fakeMp4);
+          await storage.putBuffer(
+            `recordings/${sessionId}/subtitles/live_capture.json`,
+            Buffer.from(
+              JSON.stringify({
+                spokenTranscript:
+                  "Bienvenue au cours d'informatique. Nous abordons aujourd'hui l'architecture et les algorithmes.",
+                detectedLanguage: 'fr',
+                capturedSegments: [
+                  {
+                    startSeconds: 0,
+                    endSeconds: 15,
+                    text: 'Introduction et objectifs du cours en informatique et science des données.',
+                  },
+                  {
+                    startSeconds: 15,
+                    endSeconds: 30,
+                    text: 'Définition rigoureuse des concepts fondamentaux et analyse de la complexité.',
+                  },
+                  {
+                    startSeconds: 30,
+                    endSeconds: 45,
+                    text: 'Démonstration pratique avec implémentation concrète et étude de cas.',
+                  },
+                  {
+                    startSeconds: 45,
+                    endSeconds: 60,
+                    text: 'Synthèse générale, questions réponses et points essentiels pour les examens.',
+                  },
+                ],
+              }),
+            ),
+          );
           return {
             egressId: 'egress_local_test_1',
             sizeBytes: fakeMp4.length,

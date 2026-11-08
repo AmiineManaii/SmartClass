@@ -1,5 +1,4 @@
 import { execFile } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -25,6 +24,7 @@ export const sanitizeFfmpegText = (raw: string): string =>
 export class LiveKitEgressAdapter implements EgressServicePort {
   private readonly client: EgressClient;
   private readonly ffmpegPath: string;
+  private readonly ffprobePath: string;
 
   constructor(
     private readonly storage: StoragePort,
@@ -33,6 +33,7 @@ export class LiveKitEgressAdapter implements EgressServicePort {
       apiKey?: string;
       apiSecret?: string;
       ffmpegPath?: string;
+      ffprobePath?: string;
     },
   ) {
     const env = getEnv();
@@ -41,6 +42,7 @@ export class LiveKitEgressAdapter implements EgressServicePort {
     const apiSecret =
       options?.apiSecret || env.LIVEKIT_API_SECRET || 'secretsecretsecretsecretsecretsecret32';
     this.ffmpegPath = options?.ffmpegPath || env.FFMPEG_PATH || 'ffmpeg';
+    this.ffprobePath = options?.ffprobePath || env.FFPROBE_PATH || 'ffprobe';
     this.client = new EgressClient(url, apiKey, apiSecret);
   }
 
@@ -48,12 +50,12 @@ export class LiveKitEgressAdapter implements EgressServicePort {
     const absoluteTarget = this.storage.resolveSafePath(params.storageKey);
     await fs.mkdir(path.dirname(absoluteTarget), { recursive: true });
 
-    try {
-      const fileOutput = new EncodedFileOutput({
-        fileType: EncodedFileType.MP4,
-        filepath: absoluteTarget,
-      });
+    const fileOutput = new EncodedFileOutput({
+      fileType: EncodedFileType.MP4,
+      filepath: absoluteTarget,
+    });
 
+    try {
       const info = await this.client.startRoomCompositeEgress(
         params.roomName,
         { file: fileOutput },
@@ -68,15 +70,12 @@ export class LiveKitEgressAdapter implements EgressServicePort {
           mode: 'livekit-egress',
         };
       }
-    } catch {
-      // Standalone LiveKit development container without Egress Redis/Chrome cluster:
-      // fall back to local composite recording managed by SmartClass storage + FFmpeg.
+      throw new Error(`LiveKit Egress n'a pas retourné d'identifiant valide`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[LiveKitEgressAdapter] Failed to start RoomCompositeEgress: ${msg}`);
+      throw new Error(`Impossible de démarrer l'enregistrement LiveKit Egress: ${msg}`);
     }
-
-    return {
-      egressId: `egress_local_${randomUUID()}`,
-      mode: 'local-composite',
-    };
   }
 
   public async stopRoomRecording(params: {
@@ -88,42 +87,70 @@ export class LiveKitEgressAdapter implements EgressServicePort {
     mediaBase64?: string;
     mimeType?: string;
   }): Promise<StopEgressResult> {
-    const elapsedSeconds = params.startedAt
-      ? Math.max(16, Math.min(3600, Math.round((Date.now() - params.startedAt.getTime()) / 1000)))
-      : 24;
-
-    if (!params.egressId.startsWith('egress_local_')) {
+    // 1. Send stop command to LiveKit Egress
+    if (params.egressId && !params.egressId.startsWith('egress_local_')) {
       try {
         await this.client.stopEgress(params.egressId);
-      } catch {
-        // Egress may have already stopped when the room closed
+      } catch (err: unknown) {
+        console.warn(`[LiveKitEgressAdapter] stopEgress notification: ${err instanceof Error ? err.message : err}`);
       }
     }
 
-    if (params.mediaBase64 && params.mediaBase64.length > 200) {
+    const targetPath = this.storage.resolveSafePath(params.storageKey);
+    let fileStat = await this.storage.stat(params.storageKey);
+
+    // 2. Wait up to 12 seconds for the Egress container to flush and close the MP4 file
+    let attempts = 0;
+    while ((!fileStat || fileStat.sizeBytes < 10_000) && attempts < 12) {
+      await new Promise((r) => setTimeout(r, 1000));
+      fileStat = await this.storage.stat(params.storageKey);
+      attempts++;
+    }
+
+    // 3. Fallback: If Egress did not produce a file but the client provided real captured media, transcode it
+    if ((!fileStat || fileStat.sizeBytes < 10_000) && params.mediaBase64 && params.mediaBase64.length > 200) {
       await this.tryTranscodeUploadedMedia(
         params.storageKey,
         params.mediaBase64,
         params.sessionTitle ?? 'SmartClass Lecture',
         params.subject ?? 'Cours',
       );
+      fileStat = await this.storage.stat(params.storageKey);
     }
 
-    const existingStat = await this.storage.stat(params.storageKey);
-    if (!existingStat || existingStat.sizeBytes < 10_000) {
-      await this.synthesizePlayableLectureMp4(
-        params.storageKey,
-        Math.min(elapsedSeconds, 20),
-        params.sessionTitle ?? 'SmartClass Lecture',
-        params.subject ?? 'Module Academique',
+    // 4. Strict verification: never pretend recording succeeded if no valid MP4 exists
+    if (!fileStat || fileStat.sizeBytes < 10_000) {
+      throw new Error(
+        `L'enregistrement vidéo n'a pas pu être finalisé sur le serveur (${fileStat?.sizeBytes ?? 0} octets reçus). Vérifiez que le conteneur LiveKit Egress est actif et a les droits d'écriture sur le volume de stockage.`,
       );
     }
 
-    const meta = await this.storage.stat(params.storageKey);
+    // 5. Probe actual duration and validate stream integrity via FFprobe
+    let durationSeconds = 0;
+    try {
+      const { stdout } = await execFileAsync(this.ffprobePath, [
+        '-v',
+        'error',
+        '-show_entries',
+        'format=duration',
+        '-of',
+        'default=noprint_wrappers=1:nokey=1',
+        targetPath,
+      ]);
+      const parsed = parseFloat(stdout.trim());
+      if (!isNaN(parsed) && parsed > 0) {
+        durationSeconds = Math.round(parsed);
+      }
+    } catch {
+      if (params.startedAt) {
+        durationSeconds = Math.max(1, Math.round((Date.now() - params.startedAt.getTime()) / 1000));
+      }
+    }
+
     return {
       egressId: params.egressId,
-      sizeBytes: meta?.sizeBytes ?? 0,
-      durationSeconds: elapsedSeconds,
+      sizeBytes: fileStat.sizeBytes,
+      durationSeconds: Math.max(durationSeconds, 1),
     };
   }
 
@@ -140,7 +167,7 @@ export class LiveKitEgressAdapter implements EgressServicePort {
       const buffer = Buffer.from(mediaBase64, 'base64');
       await fs.writeFile(rawUploadPath, buffer);
 
-      // Transcode browser WebM/MP4 capture into universal H.264 + AAC MP4 with faststart
+      // Transcode real captured WebM/MP4 into standard H.264 + AAC MP4 with faststart
       await execFileAsync(
         this.ffmpegPath,
         [
@@ -167,158 +194,14 @@ export class LiveKitEgressAdapter implements EgressServicePort {
           '+faststart',
           targetPath,
         ],
-        { timeout: 35_000 },
+        { timeout: 45_000 },
       );
-    } catch {
-      // If browser capture was audio-only, combine the real audio with the visual slide canvas
-      try {
-        const fontFile = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf';
-        const safeTitle = sanitizeFfmpegText(sessionTitle);
-        const safeSub = sanitizeFfmpegText(subject);
-        await execFileAsync(
-          this.ffmpegPath,
-          [
-            '-y',
-            '-f',
-            'lavfi',
-            '-i',
-            'color=c=0x0f172a:s=1280x720:r=15:d=20',
-            '-i',
-            rawUploadPath,
-            '-shortest',
-            '-vf',
-            `drawbox=x=60:y=60:w=1160:h=600:color=0x1e293b@0.95:t=fill,drawtext=fontfile=${fontFile}:text='SMARTCLASS LIVE REPLAY':fontcolor=0x38bdf8:fontsize=24:x=110:y=110,drawtext=fontfile=${fontFile}:text='${safeTitle}':fontcolor=white:fontsize=42:x=110:y=180,drawtext=fontfile=${fontFile}:text='Module - ${safeSub}':fontcolor=0x94a3b8:fontsize=28:x=110:y=250`,
-            '-c:v',
-            'libx264',
-            '-preset',
-            'ultrafast',
-            '-pix_fmt',
-            'yuv420p',
-            '-c:a',
-            'aac',
-            '-b:a',
-            '96k',
-            '-ar',
-            '16000',
-            '-ac',
-            '1',
-            '-movflags',
-            '+faststart',
-            targetPath,
-          ],
-          { timeout: 30_000 },
-        );
-      } catch {
-        // Fallback handled by synthesizePlayableLectureMp4
-      }
+    } catch (err: unknown) {
+      console.error(
+        `[LiveKitEgressAdapter] Error transcoding uploaded media: ${err instanceof Error ? err.message : err}`,
+      );
     } finally {
       await fs.unlink(rawUploadPath).catch(() => {});
-    }
-  }
-
-  public async synthesizePlayableLectureMp4(
-    storageKey: string,
-    durationSeconds: number,
-    sessionTitle = 'SmartClass Lecture',
-    subject = 'Informatique & Sciences',
-  ): Promise<void> {
-    const targetPath = this.storage.resolveSafePath(storageKey);
-    await fs.mkdir(path.dirname(targetPath), { recursive: true });
-    const safeDuration = Math.max(12, Math.min(durationSeconds, 24));
-    const q = Math.max(3, Math.floor(safeDuration / 4));
-    const fontFile = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf';
-    const safeTitle = sanitizeFfmpegText(sessionTitle);
-    const safeSubject = sanitizeFfmpegText(subject);
-
-    try {
-      const vfFilter = [
-        `drawbox=x=50:y=45:w=1180:h=630:color=0x1e293b@0.95:t=fill`,
-        `drawbox=x=50:y=45:w=1180:h=8:color=0x2563eb@1.0:t=fill`,
-        `drawtext=fontfile=${fontFile}:text='SMARTCLASS AI LECTURE REPLAY':fontcolor=0x38bdf8:fontsize=22:x=95:y=95`,
-        `drawtext=fontfile=${fontFile}:text='${safeTitle}':fontcolor=white:fontsize=40:x=95:y=150`,
-        `drawtext=fontfile=${fontFile}:text='Module  ${safeSubject}':fontcolor=0x94a3b8:fontsize=26:x=95:y=215`,
-        `drawbox=x=95:y=275:w=1090:h=260:color=0x0f172a@0.9:t=fill`,
-        `drawtext=fontfile=${fontFile}:text='Chapitre 1 - Introduction, contexte et objectifs du cours':enable='lt(t,${q})':fontcolor=0x60a5fa:fontsize=30:x=130:y=340`,
-        `drawtext=fontfile=${fontFile}:text='Chapitre 2 - Concepts fondamentaux et architecture du systeme':enable='between(t,${q},${q * 2})':fontcolor=0x34d399:fontsize=30:x=130:y=340`,
-        `drawtext=fontfile=${fontFile}:text='Chapitre 3 - Demonstration pratique et resolution pas a pas':enable='between(t,${q * 2},${q * 3})':fontcolor=0xfbbf24:fontsize=30:x=130:y=340`,
-        `drawtext=fontfile=${fontFile}:text='Chapitre 4 - Synthese generale, points cles et Q-R':enable='gte(t,${q * 3})':fontcolor=0xc084fc:fontsize=30:x=130:y=340`,
-        `drawtext=fontfile=${fontFile}:text='Synchronisation Audio + Transcription + Tuteur IA actif':fontcolor=0xe2e8f0:fontsize=22:x=130:y=420`,
-        `drawtext=fontfile=${fontFile}:text='Timecode  %{pts\\:hms}':fontcolor=0x94a3b8:fontsize=22:x=95:y=585`,
-      ].join(',');
-
-      await execFileAsync(
-        this.ffmpegPath,
-        [
-          '-y',
-          '-f',
-          'lavfi',
-          '-i',
-          `color=c=0x0b132b:s=1280x720:r=15:d=${safeDuration}`,
-          '-f',
-          'lavfi',
-          '-i',
-          `sine=frequency=432:sample_rate=16000:duration=${safeDuration}`,
-          '-vf',
-          vfFilter,
-          '-af',
-          'volume=0.06',
-          '-c:v',
-          'libx264',
-          '-preset',
-          'ultrafast',
-          '-pix_fmt',
-          'yuv420p',
-          '-c:a',
-          'aac',
-          '-b:a',
-          '64k',
-          '-movflags',
-          '+faststart',
-          targetPath,
-        ],
-        { timeout: 25_000 },
-      );
-      return;
-    } catch {
-      try {
-        await execFileAsync(
-          this.ffmpegPath,
-          [
-            '-y',
-            '-f',
-            'lavfi',
-            '-i',
-            `color=c=0x1e293b:s=1280x720:r=15:d=${safeDuration}`,
-            '-f',
-            'lavfi',
-            '-i',
-            `sine=frequency=440:sample_rate=16000:duration=${safeDuration}`,
-            '-af',
-            'volume=0.06',
-            '-c:v',
-            'libx264',
-            '-preset',
-            'ultrafast',
-            '-pix_fmt',
-            'yuv420p',
-            '-c:a',
-            'aac',
-            '-b:a',
-            '64k',
-            '-movflags',
-            '+faststart',
-            targetPath,
-          ],
-          { timeout: 20_000 },
-        );
-        return;
-      } catch {
-        const minimalMp4Header = Buffer.from(
-          '00000018667479706d703432000000006d70343269736f6d000000086d646174',
-          'hex',
-        );
-        await this.storage.putBuffer(storageKey, minimalMp4Header);
-      }
     }
   }
 }

@@ -303,12 +303,10 @@ export class StopRecordingUseCase {
       },
     });
 
-    let job: Awaited<ReturnType<MediaProcessingWorker['enqueueProcessing']>> | null = null;
-    if (options?.awaitProcessing) {
-      job = await this.mediaWorker.enqueueProcessing(recorded.id, {
-        awaitCompletion: true,
-      });
-    }
+    // Automatically launch asynchronous 7-stage media & AI processing pipeline
+    const job = await this.mediaWorker.enqueueProcessing(recorded.id, {
+      awaitCompletion: options?.awaitProcessing,
+    });
     const refreshed = (await this.recordingRepository.findById(recorded.id)) ?? recorded;
 
     return toRecordingOverviewDto(refreshed, job);

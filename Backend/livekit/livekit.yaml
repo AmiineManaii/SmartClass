@@ -8,6 +8,9 @@ rtc:
   use_external_ip: false
   node_ip: 192.168.100.107
 
+redis:
+  address: redis:6379
+
 keys:
   devkey: secretsecretsecretsecretsecretsecret32
 

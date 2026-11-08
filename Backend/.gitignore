@@ -21,3 +21,7 @@ npm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Large model weights (persisted via Docker volume asr_cache)
+asr/models/**/*.bin
+*.bin

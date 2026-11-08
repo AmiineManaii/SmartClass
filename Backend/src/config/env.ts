@@ -96,6 +96,8 @@ const envSchema = z.object({
   MEDIA_FRAME_SCENE_THRESHOLD: z.coerce.number().min(0.05).max(0.95).default(0.25),
   MEDIA_FRAME_FALLBACK_INTERVAL_SEC: z.coerce.number().int().positive().default(30),
   TRANSCRIPTION_DEFAULT_LANGUAGE: z.string().default('auto'),
+  ASR_BASE_URL: z.string().default('http://asr:8000'),
+  REDIS_URL: z.string().default('redis://redis:6379'),
   FFMPEG_PATH: z.string().default('ffmpeg'),
   FFPROBE_PATH: z.string().default('ffprobe'),
 });

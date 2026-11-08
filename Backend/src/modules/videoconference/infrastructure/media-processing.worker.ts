@@ -86,12 +86,14 @@ export interface MediaProcessingWorkerDeps {
 
 export class MediaProcessingWorker {
   private readonly ffmpegPath: string;
+  private readonly ffprobePath: string;
   private readonly pdfExtractor: PdfTextExtractorPort;
   private readonly activeJobs = new Set<string>();
 
   constructor(private readonly deps: MediaProcessingWorkerDeps) {
     const env = getEnv();
     this.ffmpegPath = env.FFMPEG_PATH || 'ffmpeg';
+    this.ffprobePath = env.FFPROBE_PATH || 'ffprobe';
     this.pdfExtractor = deps.pdfExtractor ?? new UnpdfTextExtractor();
   }
 
@@ -297,18 +299,44 @@ export class MediaProcessingWorker {
         recording.storageKey ?? `recordings/${recording.sessionId}/lecture.mp4`;
       const exists = await this.deps.storage.exists(storageKey);
       const initialStat = exists ? await this.deps.storage.stat(storageKey) : null;
-      const durationSeconds = Math.max(recording.durationSeconds ?? 72, 48);
 
-      // Ensure lecture.mp4 is a real, standard H.264 + AAC playable video (repairs any <10KB placeholder)
-      if (!exists || !initialStat || initialStat.sizeBytes < 10_000) {
-        await this.synthesizePlayableLectureVideo(
-          storageKey,
-          Math.min(Math.max(recording.durationSeconds ?? 20, 12), 24),
-          sessionTitle,
-          sessionSubject,
+      // Ensure lecture.mp4 is a real, non-empty media file
+      if (!exists || !initialStat || initialStat.sizeBytes === 0) {
+        throw new Error(
+          `Fichier vidéo introuvable ou vide (${initialStat?.sizeBytes ?? 0} octets). L'enregistrement n'a pas pu être finalisé sur le serveur.`,
         );
       }
 
+      const targetPath = this.deps.storage.resolveSafePath(storageKey);
+      let probeWidth = recording.width ?? 1280;
+      let probeHeight = recording.height ?? 720;
+      let probeDuration = recording.durationSeconds ?? 0;
+
+      try {
+        const { stdout } = await execFileAsync(this.ffprobePath, [
+          '-v',
+          'error',
+          '-show_entries',
+          'stream=width,height:format=duration',
+          '-of',
+          'json',
+          targetPath,
+        ]);
+        const parsed = JSON.parse(stdout);
+        const vStream = parsed.streams?.find((s: { width?: number }) => s.width && s.width > 0);
+        if (vStream?.width && vStream?.height) {
+          probeWidth = vStream.width;
+          probeHeight = vStream.height;
+        }
+        const fmtDur = parseFloat(parsed.format?.duration);
+        if (!isNaN(fmtDur) && fmtDur > 0) {
+          probeDuration = Math.round(fmtDur);
+        }
+      } catch {
+        // Fallback to recorded duration
+      }
+
+      const durationSeconds = Math.max(probeDuration, recording.durationSeconds ?? 1);
       const stat = await this.deps.storage.stat(storageKey);
       const thumbnailKey = `recordings/${recording.sessionId}/poster.jpg`;
       await this.tryExtractPosterFrame(storageKey, thumbnailKey, sessionTitle, sessionSubject);
@@ -317,8 +345,8 @@ export class MediaProcessingWorker {
         storageKey,
         sizeBytes: stat?.sizeBytes ?? 65536,
         durationSeconds,
-        width: recording.width ?? 1280,
-        height: recording.height ?? 720,
+        width: probeWidth,
+        height: probeHeight,
         thumbnailKey,
       });
 
@@ -544,113 +572,6 @@ export class MediaProcessingWorker {
       .slice(0, 64);
   }
 
-  private async synthesizePlayableLectureVideo(
-    storageKey: string,
-    durationSeconds: number,
-    sessionTitle: string,
-    sessionSubject: string,
-  ): Promise<void> {
-    const targetPath = this.deps.storage.resolveSafePath(storageKey);
-    await fs.mkdir(path.dirname(targetPath), { recursive: true });
-    const safeDuration = Math.max(12, Math.min(durationSeconds, 24));
-    const q = Math.max(3, Math.floor(safeDuration / 4));
-    const fontFile = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf';
-    const safeTitle = this.cleanFfmpegLabel(sessionTitle);
-    const safeSubject = this.cleanFfmpegLabel(sessionSubject);
-
-    try {
-      const vfFilter = [
-        `drawbox=x=50:y=45:w=1180:h=630:color=0x1e293b@0.95:t=fill`,
-        `drawbox=x=50:y=45:w=1180:h=8:color=0x2563eb@1.0:t=fill`,
-        `drawtext=fontfile=${fontFile}:text='SMARTCLASS AI LECTURE REPLAY':fontcolor=0x38bdf8:fontsize=22:x=95:y=95`,
-        `drawtext=fontfile=${fontFile}:text='${safeTitle}':fontcolor=white:fontsize=40:x=95:y=150`,
-        `drawtext=fontfile=${fontFile}:text='Module  ${safeSubject}':fontcolor=0x94a3b8:fontsize=26:x=95:y=215`,
-        `drawbox=x=95:y=275:w=1090:h=260:color=0x0f172a@0.9:t=fill`,
-        `drawtext=fontfile=${fontFile}:text='Chapitre 1 - Introduction, contexte et objectifs du cours':enable='lt(t,${q})':fontcolor=0x60a5fa:fontsize=30:x=130:y=340`,
-        `drawtext=fontfile=${fontFile}:text='Chapitre 2 - Concepts fondamentaux et architecture du systeme':enable='between(t,${q},${q * 2})':fontcolor=0x34d399:fontsize=30:x=130:y=340`,
-        `drawtext=fontfile=${fontFile}:text='Chapitre 3 - Demonstration pratique et resolution pas a pas':enable='between(t,${q * 2},${q * 3})':fontcolor=0xfbbf24:fontsize=30:x=130:y=340`,
-        `drawtext=fontfile=${fontFile}:text='Chapitre 4 - Synthese generale, points cles et Q-R':enable='gte(t,${q * 3})':fontcolor=0xc084fc:fontsize=30:x=130:y=340`,
-        `drawtext=fontfile=${fontFile}:text='Synchronisation Audio + Transcription + Tuteur IA actif':fontcolor=0xe2e8f0:fontsize=22:x=130:y=420`,
-        `drawtext=fontfile=${fontFile}:text='Timecode  %{pts\\:hms}':fontcolor=0x94a3b8:fontsize=22:x=95:y=585`,
-      ].join(',');
-
-      await execFileAsync(
-        this.ffmpegPath,
-        [
-          '-y',
-          '-f',
-          'lavfi',
-          '-i',
-          `color=c=0x0b132b:s=1280x720:r=15:d=${safeDuration}`,
-          '-f',
-          'lavfi',
-          '-i',
-          `sine=frequency=432:sample_rate=16000:duration=${safeDuration}`,
-          '-vf',
-          vfFilter,
-          '-af',
-          'volume=0.06',
-          '-c:v',
-          'libx264',
-          '-preset',
-          'ultrafast',
-          '-pix_fmt',
-          'yuv420p',
-          '-c:a',
-          'aac',
-          '-b:a',
-          '64k',
-          '-movflags',
-          '+faststart',
-          targetPath,
-        ],
-        { timeout: 25_000 },
-      );
-    } catch {
-      try {
-        await execFileAsync(
-          this.ffmpegPath,
-          [
-            '-y',
-            '-f',
-            'lavfi',
-            '-i',
-            `color=c=0x1e293b:s=1280x720:r=15:d=${safeDuration}`,
-            '-f',
-            'lavfi',
-            '-i',
-            `sine=frequency=440:sample_rate=16000:duration=${safeDuration}`,
-            '-af',
-            'volume=0.06',
-            '-c:v',
-            'libx264',
-            '-preset',
-            'ultrafast',
-            '-pix_fmt',
-            'yuv420p',
-            '-c:a',
-            'aac',
-            '-b:a',
-            '64k',
-            '-movflags',
-            '+faststart',
-            targetPath,
-          ],
-          { timeout: 20_000 },
-        );
-      } catch {
-        // Fallback minimal ISO Base Media File Format header only if ffmpeg binary is missing
-        await this.deps.storage.putBuffer(
-          storageKey,
-          Buffer.from(
-            '00000018667479706d703432000000006d70343269736f6d000000086d646174',
-            'hex',
-          ),
-        );
-      }
-    }
-  }
-
   private async tryExtractPosterFrame(
     storageKey: string,
     thumbnailKey: string,
@@ -669,32 +590,6 @@ export class MediaProcessingWorker {
       const st = await fs.stat(outputPath).catch(() => null);
       if (st && st.size > 200) return;
     } catch {
-      // Fallback to direct lavfi slide render below
-    }
-
-    try {
-      const fontFile = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf';
-      const safeTitle = this.cleanFfmpegLabel(sessionTitle);
-      const safeSubject = this.cleanFfmpegLabel(sessionSubject);
-      await execFileAsync(
-        this.ffmpegPath,
-        [
-          '-y',
-          '-f',
-          'lavfi',
-          '-i',
-          'color=c=0x0f172a:s=1280x720:d=1',
-          '-vf',
-          `drawbox=x=60:y=60:w=1160:h=600:color=0x1e293b@0.95:t=fill,drawtext=fontfile=${fontFile}:text='SMARTCLASS AI REPLAY':fontcolor=0x38bdf8:fontsize=26:x=110:y=130,drawtext=fontfile=${fontFile}:text='${safeTitle}':fontcolor=white:fontsize=44:x=110:y=210,drawtext=fontfile=${fontFile}:text='${safeSubject}':fontcolor=0x94a3b8:fontsize=30:x=110:y=290`,
-          '-frames:v',
-          '1',
-          '-q:v',
-          '3',
-          outputPath,
-        ],
-        { timeout: 10_000 },
-      );
-    } catch {
       // Non-fatal
     }
   }
@@ -703,11 +598,10 @@ export class MediaProcessingWorker {
     storageKey: string,
     audioKey: string,
     standardAudioKey?: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const inputPath = this.deps.storage.resolveSafePath(storageKey);
     const outputPath = this.deps.storage.resolveSafePath(audioKey);
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
-    let extracted = false;
     try {
       await execFileAsync(
         this.ffmpegPath,
@@ -724,49 +618,20 @@ export class MediaProcessingWorker {
           '1',
           outputPath,
         ],
-        { timeout: 15_000 },
+        { timeout: 30_000 },
       );
       const st = await fs.stat(outputPath).catch(() => null);
-      extracted = Boolean(st && st.size > 200);
+      if (st && st.size > 200) {
+        if (standardAudioKey) {
+          const stdPath = this.deps.storage.resolveSafePath(standardAudioKey);
+          await fs.copyFile(outputPath, stdPath).catch(() => {});
+        }
+        return true;
+      }
     } catch {
-      extracted = false;
+      // Audio stream may be absent if session was silent or microphone was muted
     }
-
-    if (!extracted) {
-      try {
-        await execFileAsync(
-          this.ffmpegPath,
-          [
-            '-y',
-            '-f',
-            'lavfi',
-            '-i',
-            'sine=frequency=432:sample_rate=16000:duration=12',
-            '-af',
-            'volume=0.05',
-            '-acodec',
-            'pcm_s16le',
-            '-ar',
-            '16000',
-            '-ac',
-            '1',
-            outputPath,
-          ],
-          { timeout: 10_000 },
-        );
-      } catch {
-        // Non-fatal
-      }
-    }
-
-    if (standardAudioKey) {
-      try {
-        const stdPath = this.deps.storage.resolveSafePath(standardAudioKey);
-        await fs.copyFile(outputPath, stdPath);
-      } catch {
-        // Non-fatal
-      }
-    }
+    return false;
   }
 
   private async generateTimestampedTranscript(params: {
@@ -787,23 +652,9 @@ export class MediaProcessingWorker {
       chatContext,
     } = params;
 
-    const liveCapture = await this.loadLiveCaptureHints(recording.sessionId);
-    const combinedRawSpeech = [
-      liveCapture?.spokenTranscript ?? '',
-      ...(liveCapture?.capturedSegments?.map((s) => s.text) ?? []),
-      chatContext,
-    ]
-      .join(' ')
-      .trim();
+    const audioKey = `recordings/${recording.sessionId}/audio/lecture_16k.wav`;
+    const audioPath = this.deps.storage.resolveSafePath(audioKey);
 
-    const dialectInfo = this.detectMultilingualDialect(combinedRawSpeech);
-    const resolvedLang =
-      liveCapture?.detectedLanguage && liveCapture.detectedLanguage !== 'auto'
-        ? liveCapture.detectedLanguage
-        : dialectInfo.code;
-
-    const segmentCount = 6;
-    const step = Math.max(12, Math.floor(durationSeconds / segmentCount));
     let segments: Array<{
       orderIndex: number;
       startSeconds: number;
@@ -812,80 +663,95 @@ export class MediaProcessingWorker {
       speaker?: string | null;
       confidence?: number;
     }> = [];
+    let resolvedLang = 'fr';
 
-    // 1. If real live speech segments were captured during the session, preserve and enrich them!
-    if (liveCapture?.capturedSegments && liveCapture.capturedSegments.length > 0) {
-      segments = liveCapture.capturedSegments.map((seg, idx) => ({
-        orderIndex: idx,
-        startSeconds: Math.max(0, Math.round(seg.startSeconds)),
-        endSeconds: Math.max(
-          Math.round(seg.startSeconds) + 3,
-          Math.round(seg.endSeconds),
-        ),
-        text: seg.text.trim(),
-        speaker: seg.speaker || 'Enseignant',
-        confidence: 0.96,
-      }));
-    }
+    // 1. Send the extracted 16kHz mono audio to local Faster-Whisper ASR service
+    const asrBaseUrl = process.env.ASR_BASE_URL || 'http://asr:8000';
+    const audioExists = await fs
+      .stat(audioPath)
+      .then((s) => s.size > 200)
+      .catch(() => false);
 
-    // 2. Otherwise or if fewer than 3 segments, run multilingual AI post-processing (understanding Tunisian Derja ar-TN, Arabic, French, English)
-    if (segments.length < 3) {
+    if (audioExists) {
       try {
-        const aiRes = await this.deps.modelRouter.generateForRole('SPEECH_POST_PROCESSING', {
-          systemPrompt: [
-            'Tu es le moteur de transcription et de compréhension multilingue de SmartClass.',
-            'Tu comprends parfaitement le Français, l’Anglais, l’Arabe standard (العربية) et l’Arabe Tunisien / Derja tunisienne (en alphabet arabe ou franco-arabe/Arabizi comme "3aslema chabeb", "lyoum bch nchoufou", "kifech", "chnoua", "5ater", ainsi que le code-switching franco-tunisien).',
-            'Produis uniquement un tableau JSON de 6 segments horodatés fidèles et détaillés pour ce cours enregistré.',
-            'Si un discours brut ou des échanges sont fournis (même en Derja tunisienne ou multilingue), intègre-les fidèlement et reformule clairement les concepts techniques associés.',
-            'Chaque élément a {"text": "...", "speaker": "Enseignant"}. Aucun texte hors du JSON.',
-          ].join(' '),
-          messages: [
-            {
-              role: 'user',
-              content: `Titre: ${sessionTitle}\nMatière: ${sessionSubject}\nDescription: ${sessionDescription}\nLangue/Dialecte détecté: ${dialectInfo.label} (${resolvedLang})\nParole capturée en direct: ${liveCapture?.spokenTranscript || 'Aucune capture vocale directe'}\nQuestions du chat: ${chatContext || 'Aucune'}\nSupport: ${(recording.sourceDocText ?? '').slice(0, 1200)}`,
-            },
-          ],
-          temperature: 0.2,
-          maxTokens: 900,
+        const audioBuffer = await fs.readFile(audioPath);
+        const formData = new FormData();
+        const blob = new Blob([audioBuffer], { type: 'audio/wav' });
+        formData.append('file', blob, 'lecture_16k.wav');
+        formData.append('language', 'auto');
+
+        const asrResponse = await fetch(`${asrBaseUrl}/v1/audio/transcriptions`, {
+          method: 'POST',
+          body: formData,
+          signal: AbortSignal.timeout(60_000),
         });
 
-        const parsed = this.tryParseJsonArray(aiRes.content);
-        if (Array.isArray(parsed) && parsed.length >= 3) {
-          const aiSegments = parsed.slice(0, 8).map((item, idx) => ({
-            orderIndex: segments.length + idx,
-            startSeconds: idx * step,
-            endSeconds: Math.min(durationSeconds, (idx + 1) * step),
-            text:
-              typeof item?.text === 'string' && item.text.trim().length > 10
-                ? item.text.trim()
-                : `Explication approfondie de la section ${idx + 1} sur ${sessionTitle}.`,
-            speaker: typeof item?.speaker === 'string' ? item.speaker : 'Enseignant',
-            confidence: 0.94,
-          }));
-          segments = segments.length > 0 ? [...segments, ...aiSegments] : aiSegments;
+        if (asrResponse.ok) {
+          const asrData = (await asrResponse.json()) as {
+            text?: string;
+            language?: string;
+            segments?: Array<{ start: number; end: number; text: string }>;
+          };
+
+          if (asrData.language) {
+            resolvedLang = asrData.language;
+          }
+
+          if (Array.isArray(asrData.segments) && asrData.segments.length > 0) {
+            segments = asrData.segments
+              .filter((s) => s.text && s.text.trim().length > 0)
+              .map((s, idx) => ({
+                orderIndex: idx,
+                startSeconds: Math.round(s.start),
+                endSeconds: Math.max(Math.round(s.start) + 1, Math.round(s.end)),
+                text: s.text.trim(),
+                speaker: 'Enseignant',
+                confidence: 0.98,
+              }));
+          }
         }
-      } catch {
-        // Fallback to structured deterministic academic transcript segments below
+      } catch (err: unknown) {
+        console.warn(
+          `[MediaProcessingWorker] ASR call to ${asrBaseUrl} failed: ${err instanceof Error ? err.message : err}`,
+        );
       }
     }
 
+    // 2. Fallback to client live-capture hints if ASR service was unavailable or yielded 0 segments
     if (segments.length === 0) {
-      const defaultTexts = [
-        `Bonjour à tous (مرحبا بيكم الكل) et bienvenue dans cette séance consacrée à ${sessionTitle} dans le cadre du module ${sessionSubject}. Aujourd'hui nous allons explorer les fondements théoriques ainsi que leurs applications pratiques.`,
-        `Dans cette première partie, définissons rigoureusement les concepts clés de ${sessionTitle}. Il est essentiel de distinguer les hypothèses de départ, l'architecture globale et les propriétés d'invariance du système étudié.`,
-        `Observons maintenant sur la diapositive le schéma structurel et les mécanismes d'exécution étape par étape. Notez comment chaque composant interagit avec la couche suivante pour garantir la cohérence et la performance.`,
-        `Passons à un exemple concret et à la démonstration méthodologique. En appliquant la formule principale aux données d'entrée, nous obtenons une résolution structurée qui évite les erreurs classiques d'interprétation.`,
-        `Répondons aux questions soulevées pendant la séance : ${chatContext ? chatContext.slice(0, 180) : `comment optimiser et vérifier la validité de notre approche sur ${sessionTitle} ?`} La vérification systématique des cas limites reste la meilleure pratique.`,
-        `En conclusion de cette séance sur ${sessionTitle}, retenez les trois points fondamentaux vus aujourd'hui, préparez la fiche de révision associée et entraînez-vous avec le quiz d'auto-évaluation disponible dans votre espace SmartClass.`,
-      ];
-      segments = defaultTexts.map((text, idx) => ({
-        orderIndex: idx,
-        startSeconds: idx * step,
-        endSeconds: Math.min(durationSeconds, (idx + 1) * step),
-        text,
-        speaker: 'Enseignant',
-        confidence: 0.95,
-      }));
+      const liveCapture = await this.loadLiveCaptureHints(recording.sessionId);
+      if (liveCapture?.capturedSegments && liveCapture.capturedSegments.length > 0) {
+        segments = liveCapture.capturedSegments.map((seg, idx) => ({
+          orderIndex: idx,
+          startSeconds: Math.max(0, Math.round(seg.startSeconds)),
+          endSeconds: Math.max(
+            Math.round(seg.startSeconds) + 2,
+            Math.round(seg.endSeconds),
+          ),
+          text: seg.text.trim(),
+          speaker: seg.speaker || 'Enseignant',
+          confidence: 0.95,
+        }));
+        if (liveCapture.detectedLanguage && liveCapture.detectedLanguage !== 'auto') {
+          resolvedLang = liveCapture.detectedLanguage;
+        }
+      }
+    }
+
+    // 3. Strict rule: If NO speech was spoken, NEVER hallucinate text or use default pre-written paragraphs!
+    if (segments.length === 0) {
+      const emptyNotice =
+        "Aucune parole détectée lors de l'enregistrement de cette séance (session silencieuse ou micro coupé).";
+      return this.deps.recordingRepository.saveTranscript({
+        recordingId: recording.id,
+        language: resolvedLang,
+        fullText: emptyNotice,
+        vttContent: `WEBVTT\n\n00:00:00.000 --> 00:00:05.000\n${emptyNotice}\n`,
+        srtContent: `1\n00:00:00,000 --> 00:00:05,000\n${emptyNotice}\n`,
+        qualityScore: 1.0,
+        modelUsed: 'faster-whisper',
+        segments: [],
+      });
     }
 
     // Re-index orderIndex sequentially
@@ -982,32 +848,9 @@ export class MediaProcessingWorker {
         frameBuffer = null;
       }
 
+      // If no valid frame was extracted from video at this offset, skip it (no fake synthetic slides)
       if (!frameBuffer) {
-        try {
-          const heading = slideHeadings[i] ?? `Diapositive ${i + 1}`;
-          const color = accentColors[i] ?? '0x38bdf8';
-          await execFileAsync(
-            this.ffmpegPath,
-            [
-              '-y',
-              '-f',
-              'lavfi',
-              '-i',
-              'color=c=0x0b132b:s=1280x720:d=1',
-              '-vf',
-              `drawbox=x=50:y=45:w=1180:h=630:color=0x1e293b@0.95:t=fill,drawbox=x=50:y=45:w=1180:h=10:color=${color}@1.0:t=fill,drawtext=fontfile=${fontFile}:text='SMARTCLASS SLIDE #${i + 1}':fontcolor=${color}:fontsize=24:x=95:y=105,drawtext=fontfile=${fontFile}:text='${safeTitle}':fontcolor=white:fontsize=40:x=95:y=165,drawtext=fontfile=${fontFile}:text='${heading}':fontcolor=0xe2e8f0:fontsize=30:x=95:y=260,drawtext=fontfile=${fontFile}:text='Module ${safeSubject} - Repere temporel ${ts}s':fontcolor=0x94a3b8:fontsize=22:x=95:y=580`,
-              '-frames:v',
-              '1',
-              '-q:v',
-              '3',
-              framePath,
-            ],
-            { timeout: 8_000 },
-          );
-          frameBuffer = await fs.readFile(framePath);
-        } catch {
-          frameBuffer = Buffer.from(`slide-${recording.sessionId}-${i}-${ts}`);
-        }
+        continue;
       }
 
       const dHash = computeFramePerceptualHash(frameBuffer);
@@ -1019,21 +862,24 @@ export class MediaProcessingWorker {
       let ocrText = `${sessionTitle} — Diapositive ${i + 1} (${sessionSubject})`;
       let visualSummary =
         matchingSegment?.text.slice(0, 220) ??
-        `Support visuel présentant les concepts de la section ${i + 1} sur ${sessionTitle}.`;
+        `Support visuel extrait de l'enregistrement de ${sessionTitle} à ${ts}s.`;
 
       if (frameBuffer && frameBuffer.length > 5000) {
         try {
           const base64Img = frameBuffer.toString('base64');
-          const visionRes = await fetch('http://host.docker.internal:11434/api/generate', {
+          const aiBaseUrl = process.env.AI_BASE_URL || 'http://host.docker.internal:11434';
+          const visionModel = process.env.AI_VISION_MODEL || 'gemma4:e4b';
+          const visionRes = await fetch(`${aiBaseUrl}/api/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              model: 'gemma4:e4b',
-              prompt: "Tu es l'analyseur visuel de cours SmartClass. Regarde cette diapositive ou capture d'écran. Donne en une phrase concise le titre exact et les points clés affichés sur l'écran.",
+              model: visionModel,
+              prompt:
+                "Tu es l'analyseur visuel de cours SmartClass. Regarde cette diapositive ou capture d'écran. Donne en une phrase concise le titre exact et les points clés affichés sur l'écran.",
               images: [base64Img],
               stream: false,
             }),
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(20000),
           });
           if (visionRes.ok) {
             const data = (await visionRes.json()) as { response?: string };
@@ -1054,7 +900,7 @@ export class MediaProcessingWorker {
         ocrText,
         visualSummary,
         sourcePage: i + 1,
-        modelUsed: 'gemma4:e4b',
+        modelUsed: process.env.AI_VISION_MODEL || 'gemma4:e4b',
       });
     }
 
@@ -1072,6 +918,21 @@ export class MediaProcessingWorker {
   }): Promise<RecordingChapterEntity[]> {
     const { recording, sessionTitle, sessionSubject, durationSeconds, transcript, slideFrames } =
       params;
+
+    if (transcript.segments.length === 0) {
+      return this.deps.recordingRepository.replaceChapters(recording.id, [
+        {
+          orderIndex: 0,
+          title: `1. ${sessionTitle} (Séance sans parole)`,
+          summary: "Aucune parole n'a été détectée dans l'enregistrement audio de cette séance.",
+          startSeconds: 0,
+          endSeconds: durationSeconds,
+          keyConcepts: [sessionSubject, 'Séance sans audio'],
+          slideFrameId: slideFrames[0]?.id ?? null,
+          sourcePage: 1,
+        },
+      ]);
+    }
 
     const quarter = Math.max(15, Math.floor(durationSeconds / 4));
     const defaultChapters = [
@@ -1185,6 +1046,40 @@ export class MediaProcessingWorker {
       primaryModel,
       secondaryModel,
     } = params;
+
+    if (transcript.segments.length === 0) {
+      const generalSummary = `Séance enregistrée sur **${sessionTitle}** (${sessionSubject}). Aucune piste vocale n'a été détectée lors de l'enregistrement de cette séance.`;
+      const structuredNotes = `# Notes de cours : ${sessionTitle}\n**Matière :** ${sessionSubject} | **Durée :** ${Math.round(durationSeconds / 60)} min\n\n*Aucune parole détectée lors de l'enregistrement de cette séance.*`;
+      return this.deps.recordingRepository.saveLessonPackage(recording.id, {
+        version: 1,
+        generalSummary,
+        structuredNotes,
+        keyConcepts: [],
+        definitions: [],
+        importantExamples: [],
+        learningObjectives: [],
+        formulasAndRules: [],
+        importantMoments: [],
+        revisionSheet: structuredNotes,
+        mindMapMermaid: `mindmap\n  root(("${sessionTitle}"))\n    "${sessionSubject}"\n    "Séance enregistrée"`,
+        suggestedStudyOrder: [],
+        qualityReport: {
+          isValid: true,
+          score: 1.0,
+          warnings: ["Séance enregistrée sans parole détectée."],
+          checkedAt: new Date().toISOString(),
+          transcriptCoverageRatio: 1.0,
+          chaptersAlignedCount: 1,
+        },
+        flashcards: [],
+        quizzes: [],
+        primaryModel,
+        secondaryModel,
+        approvedById: null,
+        approvedAt: null,
+        publishedAt: null,
+      });
+    }
 
     let aiGeneralSummary = '';
     let aiStructuredNotes = '';
