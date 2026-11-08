@@ -164,7 +164,16 @@ class _LiveChatPanelState extends ConsumerState<LiveChatPanel> {
                 IconButton(
                   icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 22),
                   tooltip: context.tr('close'),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () {
+                    final route = ModalRoute.of(context);
+                    if (route is PopupRoute) {
+                      Navigator.of(context).pop();
+                    } else {
+                      ref
+                          .read(liveRoomControllerProvider.notifier)
+                          .toggleChat(false);
+                    }
+                  },
                 ),
               ],
             ),

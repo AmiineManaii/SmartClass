@@ -68,8 +68,22 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
   }
 
   void _showFailure(Failure failure) {
+    if (failure.code == 'AUTH_ROLE_MISMATCH') {
+      context.showErrorToast(context.tr('auth_role_mismatch'));
+      return;
+    }
+    if (failure is ValidationFailure && failure.fieldErrors.isNotEmpty) {
+      final msg = failure.fieldErrors.values.first;
+      if (msg.trim().isNotEmpty) {
+        context.showErrorToast(msg);
+        return;
+      }
+    }
     final l10n = failureL10n(failure);
-    context.showErrorToast(context.tr(l10n.key, args: l10n.args));
+    final text = context.tr(l10n.key, args: l10n.args);
+    context.showErrorToast(
+      text.isNotEmpty && text != l10n.key ? text : failure.message,
+    );
   }
 
   Future<void> _show2faChallengeModal(String tempToken) async {
@@ -200,6 +214,7 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
             email,
             password,
             rememberMe: _rememberMe,
+            role: _selectedRole,
           );
 
       if (mounted) {
@@ -433,7 +448,11 @@ class _WebLoginPageState extends ConsumerState<WebLoginPage>
                                   fontSize: 13,
                                 ),
                                 decoration: _inputDecoration(
-                                  hintText: 'salma.mansouri@smartclass.edu',
+                                  hintText: _selectedRole == 'teacher'
+                                      ? 'amine.mansouri@univ-smartclass.fr'
+                                      : _selectedRole == 'admin'
+                                          ? 'admin@univ-smartclass.fr'
+                                          : 'salma.idrissi@univ-smartclass.fr',
                                   prefixIcon: Icons.alternate_email_rounded,
                                   isDark: isDark,
                                 ),

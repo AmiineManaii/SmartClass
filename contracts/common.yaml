@@ -129,6 +129,13 @@ components:
                 - SESSION_START_TOO_EARLY
                 - LIVE_SERVICE_UNAVAILABLE
                 - CHAT_DISABLED
+                - RECORDING_NOT_ACTIVE
+                - RECORDING_ALREADY_ACTIVE
+                - RECORDING_NOT_FOUND
+                - RECORDING_NOT_PUBLISHED
+                - RECORDING_PROCESSING_FAILED
+                - LESSON_PACKAGE_NOT_READY
+                - STORAGE_ACCESS_DENIED
               description: Stable error code (never renamed, mirrors Backend error-codes.ts)
             message:
               type: string

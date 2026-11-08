@@ -6,6 +6,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  String _selectedRole = 'student'; // 'student' | 'teacher' | 'admin'
 
   @override
   void initState() {
@@ -35,8 +36,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _showFailure(Failure failure) {
+    if (failure.code == 'AUTH_ROLE_MISMATCH') {
+      context.showErrorToast(context.tr('auth_role_mismatch'));
+      return;
+    }
+    if (failure is ValidationFailure && failure.fieldErrors.isNotEmpty) {
+      final msg = failure.fieldErrors.values.first;
+      if (msg.trim().isNotEmpty) {
+        context.showErrorToast(msg);
+        return;
+      }
+    }
     final l10n = failureL10n(failure);
-    context.showErrorToast(context.tr(l10n.key, args: l10n.args));
+    final text = context.tr(l10n.key, args: l10n.args);
+    context.showErrorToast(
+      text.isNotEmpty && text != l10n.key ? text : failure.message,
+    );
   }
 
   /// No OAuth endpoint exists yet (`contracts/README.md` → planned).
@@ -183,6 +198,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             _emailController.text.trim(),
             _passwordController.text,
             rememberMe: _rememberMe,
+            role: _selectedRole,
           );
     } on TwoFactorRequiredFailure catch (twoFactorFailure) {
       if (!mounted) return;
@@ -238,7 +254,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             titleKey: 'welcome_title',
             subtitleKey: 'welcome_subtitle',
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 20),
+          _buildMobileRoleSelector(context, colorScheme),
+          const SizedBox(height: 20),
           Form(
             key: _formKey,
             child: Column(
@@ -392,6 +410,63 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
           const SizedBox(height: 16),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMobileRoleSelector(
+    BuildContext context,
+    ColorScheme colorScheme,
+  ) {
+    final isFr = ref.watch(localeProvider) == 'fr';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final roles = [
+      {'role': 'student', 'label': isFr ? 'Étudiant' : 'Student'},
+      {'role': 'teacher', 'label': isFr ? 'Enseignant' : 'Teacher'},
+      {'role': 'admin', 'label': isFr ? 'Administrateur' : 'Admin'},
+    ];
+
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: roles.map((item) {
+          final role = item['role']!;
+          final label = item['label']!;
+          final isSelected = _selectedRole == role;
+          return Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _selectedRole = role),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? (isDark ? const Color(0xFF2563EB) : colorScheme.primary)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected
+                        ? Colors.white
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

@@ -71,8 +71,12 @@ export const createApp = (options: CreateAppOptions = {}): Express => {
     );
   }
 
-  // 4. Security headers
-  app.use(helmet() as unknown as RequestHandler);
+  // 4. Security headers (allow cross-origin video/audio/image streaming for Flutter Web & Mobile)
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }) as unknown as RequestHandler,
+  );
 
   // 5. CORS whitelist
   app.use(
@@ -105,16 +109,23 @@ export const createApp = (options: CreateAppOptions = {}): Express => {
     }) as unknown as RequestHandler,
   );
 
-  // 6. Body parsers (1mb limit)
+  // 6. Body parsers (500mb raw for video recording uploads, 35mb json/urlencoded for PDF & docs)
+  app.use(
+    express.raw({
+      limit: '500mb',
+      type: ['video/*', 'application/octet-stream'],
+    }) as unknown as RequestHandler,
+  );
   app.use(
     express.json({
-      limit: '1mb',
+      limit: '35mb',
+      type: ['application/json', 'application/webhook+json', 'application/*+json'],
       verify: (req, _res, buf) => {
         (req as unknown as { rawBody?: Buffer }).rawBody = buf;
       },
     }) as unknown as RequestHandler,
   );
-  app.use(express.urlencoded({ extended: true, limit: '1mb' }) as unknown as RequestHandler);
+  app.use(express.urlencoded({ extended: true, limit: '35mb' }) as unknown as RequestHandler);
 
   // 7. Health routes (unversioned, exempt from rate limits)
   const healthModule = createHealthModule(options.healthModuleOptions);

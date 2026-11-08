@@ -13,14 +13,40 @@ class _LobbyPageState extends ConsumerState<LobbyPage> {
   void initState() {
     super.initState();
     _listenToSessionStarted();
-    // Initialize preview camera if camera is initially enabled
-    _initPreviewCamera();
+    // Initialize preview camera and warm up microphone permission if initially enabled
+    _initPreviewMedia();
   }
 
   @override
   void dispose() {
     _stopCameraPreview();
     super.dispose();
+  }
+
+  Future<void> _initPreviewMedia() async {
+    await _initPreviewCamera();
+    if (_micEnabled) {
+      await _warmUpMicrophonePermission();
+    }
+  }
+
+  Future<void> _warmUpMicrophonePermission() async {
+    try {
+      final audioTrack = await lk.LocalAudioTrack.create(
+        const lk.AudioCaptureOptions(
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        ),
+      );
+      await audioTrack.stop();
+      await audioTrack.dispose();
+    } catch (e) {
+      debugPrint('[LobbyPage] Microphone permission check failed: $e');
+      if (mounted) {
+        setState(() => _micEnabled = false);
+      }
+    }
   }
 
   Future<void> _initPreviewCamera() async {

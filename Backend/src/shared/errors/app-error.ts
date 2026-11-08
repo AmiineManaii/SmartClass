@@ -123,6 +123,30 @@ export class ChatDisabledError extends AppError {
   }
 }
 
+export class RecordingAlreadyActiveError extends AppError {
+  constructor(message = 'A recording is already active for this session', details: unknown[] = []) {
+    super(message, 409, ErrorCodes.RECORDING_ALREADY_ACTIVE, details);
+  }
+}
+
+export class RecordingNotActiveError extends AppError {
+  constructor(message = 'No active recording is running for this session', details: unknown[] = []) {
+    super(message, 409, ErrorCodes.RECORDING_NOT_ACTIVE, details);
+  }
+}
+
+export class RecordingNotPublishedError extends AppError {
+  constructor(message = 'This lesson recording has not been published yet', details: unknown[] = []) {
+    super(message, 403, ErrorCodes.RECORDING_NOT_PUBLISHED, details);
+  }
+}
+
+export class StorageAccessDeniedError extends AppError {
+  constructor(message = 'Invalid or unauthorized storage key access', details: unknown[] = []) {
+    super(message, 403, ErrorCodes.STORAGE_ACCESS_DENIED, details);
+  }
+}
+
 export class InternalError extends AppError {
   constructor(message = 'Internal server error', details: unknown[] = []) {
     super(message, 500, ErrorCodes.INTERNAL_ERROR, details, false);

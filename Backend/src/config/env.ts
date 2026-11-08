@@ -88,6 +88,16 @@ const envSchema = z.object({
   LIVEKIT_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(600),
   SESSION_JOIN_OPENS_MINUTES: z.coerce.number().int().positive().default(5),
   SESSION_EMPTY_ROOM_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(10),
+  // Local Storage & Lecture Recording Media Pipeline configuration
+  STORAGE_DRIVER: z.enum(['local']).default('local'),
+  STORAGE_LOCAL_ROOT: z.string().min(1).default('C:/SmartClassStorage'),
+  STORAGE_MAX_UPLOAD_MB: z.coerce.number().int().positive().default(50),
+  MEDIA_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(1),
+  MEDIA_FRAME_SCENE_THRESHOLD: z.coerce.number().min(0.05).max(0.95).default(0.25),
+  MEDIA_FRAME_FALLBACK_INTERVAL_SEC: z.coerce.number().int().positive().default(30),
+  TRANSCRIPTION_DEFAULT_LANGUAGE: z.string().default('auto'),
+  FFMPEG_PATH: z.string().default('ffmpeg'),
+  FFPROBE_PATH: z.string().default('ffprobe'),
 });
 
 export type Env = z.infer<typeof envSchema>;

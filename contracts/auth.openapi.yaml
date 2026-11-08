@@ -239,6 +239,11 @@ paths:
                   description: When true, issues a 30-day persistent session and sets an httpOnly refresh token cookie.
                   default: false
                   example: true
+                role:
+                  type: string
+                  enum: [STUDENT, TEACHER, ADMIN]
+                  description: Optional portal role selected on the login screen. If provided and does not match the account's assigned role, login fails with 403 AUTH_ROLE_MISMATCH.
+                  example: STUDENT
       responses:
         '200':
           description: Login successful. Returns access token (15m) and refresh token (30d with rememberMe, 7d otherwise). Also sets httpOnly cookie.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
 
 import '../../domain/entities/live_participant.dart';
+import 'presenter_pip_overlay.dart';
 import 'screen_annotation_overlay.dart';
 
 class ParticipantTile extends StatelessWidget {
@@ -25,10 +26,17 @@ class ParticipantTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final videoTrack =
-        (participant.screenTrack ?? participant.videoTrack) as lk.VideoTrack?;
-    final hasActiveVideo =
-        !participant.isVideoMuted && videoTrack != null && !videoTrack.muted;
+    final isScreenSharing =
+        participant.isScreenSharing && participant.screenTrack != null;
+    final screenTrack = participant.screenTrack as lk.VideoTrack?;
+    final cameraTrack = participant.videoTrack as lk.VideoTrack?;
+    final hasActiveCamera =
+        !participant.isVideoMuted && cameraTrack != null && !cameraTrack.muted;
+
+    final hasMainStream = isScreenSharing
+        ? (screenTrack != null && !screenTrack.muted)
+        : hasActiveCamera;
+    final mainTrack = isScreenSharing ? screenTrack : cameraTrack;
 
     return GestureDetector(
       onTap: onTap,
@@ -64,23 +72,32 @@ class ParticipantTile extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
-            // Video stream or Fallback Avatar
+            // Main stage stream: Shared Screen (contain) or Camera (cover) or Avatar Fallback
             Positioned.fill(
-              child: hasActiveVideo
+              child: hasMainStream && mainTrack != null
                   ? lk.VideoTrackRenderer(
-                      videoTrack,
-                      fit: lk.VideoViewFit.cover,
+                      mainTrack,
+                      fit: isScreenSharing
+                          ? lk.VideoViewFit.contain
+                          : lk.VideoViewFit.cover,
                     )
                   : _buildAvatarFallback(context),
             ),
 
             // Interactive Co-Annotation and Live Laser Pointer Overlay during Screen Sharing
-            if (participant.isScreenSharing && isHero)
+            if (isScreenSharing && isHero)
               Positioned.fill(
                 child: ScreenAnnotationOverlay(
                   presenter: participant,
                   constraints: const BoxConstraints(),
                 ),
+              ),
+
+            // Zoom / Teams Style Picture-in-Picture (PiP) Presenter Webcam Overlay
+            if (isScreenSharing && isHero && hasActiveCamera)
+              PresenterPipOverlay(
+                participant: participant,
+                videoTrack: cameraTrack,
               ),
 
             // Top-right badges (Hand raise / Screen share)
@@ -179,9 +196,13 @@ class ParticipantTile extends StatelessWidget {
                         maxWidth: isHero ? 200 : 75,
                       ),
                       child: Text(
-                        participant.isLocal
-                            ? '${participant.name} (Vous)'
-                            : participant.name,
+                        isScreenSharing
+                            ? (participant.isLocal
+                                ? 'Votre écran partagé'
+                                : 'Écran : ${participant.name}')
+                            : (participant.isLocal
+                                ? '${participant.name} (Vous)'
+                                : participant.name),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(

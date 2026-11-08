@@ -179,137 +179,248 @@ class VideoSessionCard extends ConsumerWidget {
             const SizedBox(height: 12),
             const Divider(height: 1),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                // Scheduled session actions for teacher (Edit / Cancel)
-                if (isTeacher && isScheduled) ...[
-                  TextButton.icon(
-                    icon: const Icon(Icons.edit_outlined, size: 16),
-                    label: Text(context.tr('edit')),
-                    style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                    onPressed: () {
-                      ScheduleSessionDialog.show(context, initialSession: session);
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton.icon(
-                    icon: const Icon(Icons.cancel_outlined, size: 16, color: Colors.red),
-                    label: Text(context.tr('cancel'), style: const TextStyle(color: Colors.red)),
-                    style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => CancelSessionDialog(session: session),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                ],
-
-                // Live session actions for teacher (End live session)
-                if (isTeacher && phase == SessionPhase.live) ...[
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.stop_circle_outlined, size: 16, color: Color(0xFFDC2626)),
-                    label: const Text(
-                      'Terminer',
-                      style: TextStyle(
-                        color: Color(0xFFDC2626),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.end,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // Scheduled session actions for teacher (Edit / Cancel)
+                  if (isTeacher && !isScheduled)
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.auto_awesome_rounded, size: 15),
+                      label: Text(
+                        context.tr('btn_review_studio'),
+                        style: const TextStyle(fontSize: 12),
                       ),
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () =>
+                          context.push('/videoconference/${session.id}/review'),
                     ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFDC2626)),
-                      visualDensity: VisualDensity.compact,
+                  if (isTeacher && isScheduled) ...[
+                    TextButton.icon(
+                      icon: const Icon(Icons.edit_outlined, size: 16),
+                      label: Text(context.tr('edit')),
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      onPressed: () {
+                        ScheduleSessionDialog.show(context, initialSession: session);
+                      },
                     ),
-                    onPressed: () async {
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Terminer la séance ?'),
-                          content: const Text(
-                              'Voulez-vous clore définitivement cette séance en direct pour tous les participants ?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(ctx).pop(false),
-                              child: const Text('Annuler'),
-                            ),
-                            FilledButton(
-                              style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFFDC2626)),
-                              onPressed: () => Navigator.of(ctx).pop(true),
-                              child: const Text('Terminer pour tous'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirmed == true) {
-                        await ref
-                            .read(sessionActionsNotifierProvider.notifier)
-                            .endSession(session.id);
-                        ref.read(videoSessionsProvider('live').notifier).refresh();
-                        ref.read(videoSessionsProvider('past').notifier).refresh();
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                ],
+                    TextButton.icon(
+                      icon: const Icon(Icons.cancel_outlined, size: 16, color: Colors.red),
+                      label: Text(context.tr('cancel'), style: const TextStyle(color: Colors.red)),
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => CancelSessionDialog(session: session),
+                        );
+                      },
+                    ),
+                  ],
 
-                // Join button (for live, lobby, or teacher)
-                if (phase == SessionPhase.live || phase == SessionPhase.joinOpen || isTeacher)
-                  FilledButton.icon(
-                    icon: Icon(
-                      phase == SessionPhase.live
-                          ? Icons.videocam_rounded
-                          : Icons.meeting_room_outlined,
-                      size: 16,
+                  // Live session actions for teacher (End live session)
+                  if (isTeacher && phase == SessionPhase.live)
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.stop_circle_outlined, size: 16, color: Color(0xFFDC2626)),
+                      label: const Text(
+                        'Terminer',
+                        style: TextStyle(
+                          color: Color(0xFFDC2626),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFDC2626)),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () async {
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Terminer la séance ?'),
+                            content: const Text(
+                                'Voulez-vous clore définitivement cette séance en direct pour tous les participants ?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(false),
+                                child: const Text('Annuler'),
+                              ),
+                              FilledButton(
+                                style: FilledButton.styleFrom(
+                                    backgroundColor: const Color(0xFFDC2626)),
+                                onPressed: () => Navigator.of(ctx).pop(true),
+                                child: const Text('Terminer pour tous'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true) {
+                          await ref
+                              .read(sessionActionsNotifierProvider.notifier)
+                              .endSession(session.id);
+                          ref.read(videoSessionsProvider('live').notifier).refresh();
+                          ref.read(videoSessionsProvider('past').notifier).refresh();
+                        }
+                      },
                     ),
-                    label: Text(
-                      phase == SessionPhase.live
-                          ? context.tr('join_room')
-                          : context.tr('join_lobby'),
+
+                  // Join button (for live, lobby, or teacher)
+                  if (phase == SessionPhase.live || phase == SessionPhase.joinOpen || isTeacher)
+                    FilledButton.icon(
+                      icon: Icon(
+                        phase == SessionPhase.live
+                            ? Icons.videocam_rounded
+                            : Icons.meeting_room_outlined,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                      label: Text(
+                        phase == SessionPhase.live
+                            ? context.tr('join_room')
+                            : context.tr('join_lobby'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: phase == SessionPhase.live
+                            ? const Color(0xFFDC2626)
+                            : const Color(0xFF2563EB),
+                        foregroundColor: Colors.white,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () =>
+                          context.push('/videoconference/${session.id}/lobby'),
                     ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: phase == SessionPhase.live
-                          ? const Color(0xFFDC2626)
-                          : const Color(0xFF122675),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    onPressed: () =>
-                        context.push('/videoconference/${session.id}/lobby'),
-                  ),
-              ],
+                ],
+              ),
             ),
           ] else if (phase == SessionPhase.ended) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1),
             const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check_circle_outline_rounded,
-                          size: 14, color: Colors.grey.shade600),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Séance terminée • Heure expirée',
-                        style: TextStyle(
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 13,
+                          color: Color(0xFF10B981),
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          'Replay & Synthèse IA prêts',
+                          style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w600),
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF10B981),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (isTeacher)
+                        OutlinedButton.icon(
+                          icon: Icon(
+                            Icons.rate_review_rounded,
+                            size: 16,
+                            color: theme.brightness == Brightness.dark
+                                ? const Color(0xFF93C5FD)
+                                : const Color(0xFF1E40AF),
+                          ),
+                          label: Text(
+                            context.tr('btn_review_studio'),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: theme.brightness == Brightness.dark
+                                  ? const Color(0xFF93C5FD)
+                                  : const Color(0xFF1E40AF),
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: theme.brightness == Brightness.dark
+                                ? const Color(0xFF1E3A8A).withValues(alpha: 0.25)
+                                : const Color(0xFFEFF6FF),
+                            side: BorderSide(
+                              color: theme.brightness == Brightness.dark
+                                  ? const Color(0xFF3B82F6).withValues(alpha: 0.5)
+                                  : const Color(0xFF93C5FD),
+                            ),
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                          ),
+                          onPressed: () => context.push(
+                            '/videoconference/${session.id}/review',
+                          ),
+                        ),
+                      FilledButton.icon(
+                        icon: const Icon(
+                          Icons.play_circle_fill_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                        label: Text(
+                          isTeacher
+                              ? context.tr('btn_preview_replay')
+                              : context.tr('btn_watch_replay'),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                        ),
+                        onPressed: () => context.push(
+                          '/videoconference/${session.id}/replay',
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ],

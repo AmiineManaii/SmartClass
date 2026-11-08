@@ -1,3 +1,5 @@
+library;
+
 /// Teacher-generated course (`GET /api/v1/courses/...`,
 /// `contracts/courses.openapi.yaml`).
 ///

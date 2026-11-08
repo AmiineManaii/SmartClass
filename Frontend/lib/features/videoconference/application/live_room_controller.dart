@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../../core/network/api_config.dart';
+import '../../../../core/network/token_storage.dart';
 import '../../../../core/services/sound_effect_service.dart';
 import '../domain/entities/join_token.dart';
 import '../domain/entities/live_participant.dart';
@@ -16,11 +17,13 @@ import '../domain/entities/session_event.dart';
 import '../domain/entities/video_session.dart';
 import '../domain/ports/room_port.dart';
 import '../domain/repositories/videoconference_repository.dart';
+import '../infrastructure/adapters/live_speech_recorder.dart';
 import '../infrastructure/adapters/livekit_room_adapter.dart';
 import '../infrastructure/models/session_chat_message_model.dart';
+import 'recording_providers.dart';
 import 'videoconference_providers.dart';
 
-final roomPortProvider = Provider<RoomPort>((ref) {
+final roomPortProvider = Provider.autoDispose<RoomPort>((ref) {
   final adapter = LiveKitRoomAdapter();
   ref.onDispose(() {
     adapter.dispose();
@@ -71,6 +74,9 @@ class LiveRoomState {
   final List<AnnotationStroke> annotationStrokes;
   final AnnotationToolMode currentToolMode;
   final int currentAnnotationColor;
+  final bool isRecording;
+  final bool isRecordingBusy;
+  final DateTime? recordingStartedAt;
 
   const LiveRoomState({
     this.session,
@@ -99,6 +105,9 @@ class LiveRoomState {
     this.annotationStrokes = const [],
     this.currentToolMode = AnnotationToolMode.pointer,
     this.currentAnnotationColor = 0xFFEF4444,
+    this.isRecording = false,
+    this.isRecordingBusy = false,
+    this.recordingStartedAt,
   });
 
   bool get isHost {
@@ -173,6 +182,9 @@ class LiveRoomState {
     List<AnnotationStroke>? annotationStrokes,
     AnnotationToolMode? currentToolMode,
     int? currentAnnotationColor,
+    bool? isRecording,
+    bool? isRecordingBusy,
+    DateTime? recordingStartedAt,
   }) {
     return LiveRoomState(
       session: session ?? this.session,
@@ -208,6 +220,9 @@ class LiveRoomState {
       currentToolMode: currentToolMode ?? this.currentToolMode,
       currentAnnotationColor:
           currentAnnotationColor ?? this.currentAnnotationColor,
+      isRecording: isRecording ?? this.isRecording,
+      isRecordingBusy: isRecordingBusy ?? this.isRecordingBusy,
+      recordingStartedAt: recordingStartedAt ?? this.recordingStartedAt,
     );
   }
 }
@@ -255,6 +270,8 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
       if (participant.isLocal) {
         state = state.copyWith(
           localParticipant: participant,
+          isMicEnabled: !participant.isAudioMuted,
+          isCameraEnabled: !participant.isVideoMuted,
           isScreenSharing: participant.isScreenSharing,
         );
       } else {
@@ -352,6 +369,12 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
           annotationStrokes: const [],
           livePointers: const {},
         );
+      } else if (type == 'recording_state') {
+        final active = data['isRecording'] == true;
+        state = state.copyWith(
+          isRecording: active,
+          recordingStartedAt: active ? DateTime.now() : state.recordingStartedAt,
+        );
       }
     }));
   }
@@ -412,6 +435,17 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
               ),
             );
           }
+        } else if (event.type == 'recording.started') {
+          state = state.copyWith(
+            isRecording: true,
+            isRecordingBusy: false,
+            recordingStartedAt: DateTime.now(),
+          );
+        } else if (event.type == 'recording.stopped') {
+          state = state.copyWith(
+            isRecording: false,
+            isRecordingBusy: false,
+          );
         }
       },
     );
@@ -462,6 +496,7 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
       final resolvedUrl = _resolveLiveKitUrl(joinToken.url);
       debugPrint('[LiveRoomController] Connecting to LiveKit at: $resolvedUrl');
       await _roomPort.connect(resolvedUrl, joinToken.token);
+      state = state.copyWith(connectionState: RoomConnectionState.connected);
 
       // 4. Initial Media Tracks (strictly respect settings from the lobby)
       final shouldEnableMic = initialMic ?? state.isHost;
@@ -482,12 +517,26 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
         debugPrint('[LiveRoomController] Initial camera error: $e');
       }
 
-      // 5. Initial Chat History (non-fatal)
+      // 5. Initial Chat History & Recording State (non-fatal)
       try {
         final history = await _repository.listChatMessages(sessionId);
         state = state.copyWith(chatMessages: history);
       } catch (e) {
         debugPrint('[LiveRoomController] Initial chat history error (non-fatal): $e');
+      }
+
+      try {
+        final recording = await _ref
+            .read(recordingRemoteDataSourceProvider)
+            .getRecording(sessionId);
+        if (recording != null && recording.recordingStatus.isActiveRecording) {
+          state = state.copyWith(
+            isRecording: true,
+            recordingStartedAt: recording.startedAt,
+          );
+        }
+      } catch (e) {
+        debugPrint('[LiveRoomController] Initial recording status error (non-fatal): $e');
       }
     } catch (e) {
       debugPrint('[LiveRoomController] Join error: $e');
@@ -716,13 +765,17 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
     final next = open ?? !state.isChatOpen;
     state = state.copyWith(
       isChatOpen: next,
+      isParticipantsOpen: next ? false : state.isParticipantsOpen,
       unreadChatCount: next ? 0 : state.unreadChatCount,
     );
   }
 
   void toggleParticipants([bool? open]) {
     final next = open ?? !state.isParticipantsOpen;
-    state = state.copyWith(isParticipantsOpen: next);
+    state = state.copyWith(
+      isParticipantsOpen: next,
+      isChatOpen: next ? false : state.isChatOpen,
+    );
   }
 
   Future<void> muteParticipant(String participantId, {bool mute = true}) async {
@@ -756,8 +809,70 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
     );
   }
 
+  Future<void> toggleRecording() async {
+    final sessionId = state.session?.id;
+    if (sessionId == null || !state.isHost || state.isRecordingBusy) return;
+    state = state.copyWith(isRecordingBusy: true);
+    try {
+      final recordingDs = _ref.read(recordingRemoteDataSourceProvider);
+      if (state.isRecording) {
+        final capture = await LiveSpeechRecorder.instance.stop();
+        await recordingDs.stopRecording(
+          sessionId,
+          capturePayload: capture.toJson(),
+        );
+        state = state.copyWith(
+          isRecording: false,
+          isRecordingBusy: false,
+        );
+      } else {
+        final overview = await recordingDs.startRecording(sessionId);
+        final token = await TokenStorage().readAccessToken();
+        final local = state.localParticipant;
+        await LiveSpeechRecorder.instance.start(
+          speakerName: local?.name ?? 'Enseignant',
+          sessionId: sessionId,
+          authToken: token,
+          backendUrl: ApiConfig.baseUrl,
+          initialCameraTrack: local?.videoTrack,
+          initialScreenTrack: local?.screenTrack,
+        );
+        state = state.copyWith(
+          isRecording: overview.recordingStatus.isActiveRecording,
+          isRecordingBusy: false,
+          recordingStartedAt: overview.startedAt ?? DateTime.now(),
+        );
+      }
+      _ref.invalidate(sessionRecordingOverviewProvider(sessionId));
+      try {
+        final payload = jsonEncode({
+          'type': 'recording_state',
+          'isRecording': state.isRecording,
+        });
+        await _roomPort.sendData(utf8.encode(payload), topic: 'control');
+      } catch (_) {}
+    } catch (e) {
+      state = state.copyWith(isRecordingBusy: false);
+      rethrow;
+    }
+  }
+
   Future<void> leaveRoom() async {
     final sessionId = state.session?.id;
+    if (state.isHost && (state.isRecording || LiveSpeechRecorder.instance.isRecording)) {
+      try {
+        final capture = await LiveSpeechRecorder.instance.stop();
+        if (sessionId != null) {
+          final recordingDs = _ref.read(recordingRemoteDataSourceProvider);
+          await recordingDs.stopRecording(
+            sessionId,
+            capturePayload: capture.toJson(),
+          );
+        }
+      } catch (e) {
+        debugPrint('[LiveRoomController] Auto-stop recording on leave error: $e');
+      }
+    }
     await WakelockPlus.disable().catchError((_) {});
     await _roomPort.disconnect();
     state = state.copyWith(connectionState: RoomConnectionState.disconnected);
@@ -772,6 +887,18 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
   Future<void> endRoomForEveryone() async {
     if (state.session == null || !state.isHost) return;
     final sessionId = state.session!.id;
+    if (state.isRecording || LiveSpeechRecorder.instance.isRecording) {
+      try {
+        final capture = await LiveSpeechRecorder.instance.stop();
+        final recordingDs = _ref.read(recordingRemoteDataSourceProvider);
+        await recordingDs.stopRecording(
+          sessionId,
+          capturePayload: capture.toJson(),
+        );
+      } catch (e) {
+        debugPrint('[LiveRoomController] Auto-stop recording on end error: $e');
+      }
+    }
     await WakelockPlus.disable().catchError((_) {});
     await _roomPort.disconnect();
     state = state.copyWith(connectionState: RoomConnectionState.endedByHost);
@@ -789,7 +916,7 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
       s.cancel();
     }
     _subscriptions.clear();
-    _roomPort.dispose();
+    _roomPort.disconnect();
     super.dispose();
   }
 }

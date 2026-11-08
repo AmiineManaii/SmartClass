@@ -673,7 +673,7 @@ class _SectionBuildPanel extends ConsumerWidget {
                 onImageSearch: () =>
                     _searchImages(context, ref, section.sectionKey),
               );
-            }).toList(),
+            }),
           ],
         );
     }
@@ -1040,7 +1040,7 @@ class _OutlinePreview extends StatelessWidget {
                 ],
               ),
             );
-          }).toList(),
+          }),
           const SizedBox(height: 16),
           Row(
             children: [

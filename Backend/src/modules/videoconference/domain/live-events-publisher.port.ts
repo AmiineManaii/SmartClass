@@ -10,7 +10,13 @@ export type SessionEventType =
   | 'session.participant-left'
   | 'session.participant-count-changed'
   | 'session.chat-message-created'
-  | 'session.chat-settings-updated';
+  | 'session.chat-settings-updated'
+  | 'recording.started'
+  | 'recording.stopped'
+  | 'recording.processing-progress'
+  | 'recording.ready-for-review'
+  | 'recording.published'
+  | 'recording.failed';
 
 export interface SessionEventPayload {
   type: SessionEventType;

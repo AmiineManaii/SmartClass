@@ -4,6 +4,7 @@ import type { RoomServicePort } from '../domain/room-service.port.js';
 import type { ClockPort } from '../domain/clock.port.js';
 import type { AuditServicePort } from '../../../shared/audit/audit.service.js';
 import type { LiveEventsPublisherPort } from '../domain/live-events-publisher.port.js';
+import type { StopRecordingUseCase } from './recording-workflow.use-cases.js';
 import { transitionVideoSession } from '../domain/video-session-lifecycle.js';
 import { SessionAccessDeniedDomainError } from '../domain/domain-errors.js';
 import { NotFoundError, ConflictError } from '../../../shared/errors/app-error.js';
@@ -23,6 +24,7 @@ export class EndVideoSessionUseCase {
     private readonly roomService?: RoomServicePort,
     private readonly auditService?: AuditServicePort,
     private readonly eventsPublisher?: LiveEventsPublisherPort,
+    private readonly stopRecordingUseCase?: StopRecordingUseCase,
   ) {}
 
   public async execute(user: UserContext, sessionId: string): Promise<VideoSessionDto> {
@@ -67,6 +69,15 @@ export class EndVideoSessionUseCase {
       const finalSession = updated ?? (await this.sessionRepository.findById(sessionId));
       if (!finalSession) {
         throw new ConflictError('Failed to transition session to COMPLETED');
+      }
+
+      // Automatically stop any active recording and enqueue AI processing before closing the room
+      if (this.stopRecordingUseCase) {
+        try {
+          await this.stopRecordingUseCase.execute(user, sessionId);
+        } catch {
+          // Ignore if no active recording exists for this session
+        }
       }
 
       // Close LiveKit room

@@ -282,10 +282,11 @@ The frontend automated suite covers:
   - Responsive Multi-screen Live Room (`/room`) for Web (>=1024px) and Mobile (<1024px): active speaker hero stage, floating draggable local PiP, filmstrip, thumb-zone controls.
   - In-call persistent chat with offset pagination and optimistic delivery; host moderation (unit mute, mute all, persistent eject bans, chat locking); host-only screen sharing.
   - Skew-compensated live ticking countdown cards on Student & Teacher dashboards (`StudentImminentLiveCard`, `TeacherImminentLiveCard`).
-- [ ] **Sprint 6 — Collaborative Spaces & Academic Analytics**:
-  - Student & Class Community Forum (Stitch screen `3526cad0bee44bdd8064db2b96f544d4`) with channels, pinned announcements, upvoting, and interactive polls.
-  - Class tracking and retention analytics (Stitch screen `b799fb41a59946b2b442a7c59f2fa5d0`).
-  - Persistent quiz attempt tracking and vector-indexed student knowledge graphs.
+- [x] **Sprint 6 — AI Lecture Recording, Teacher Review Studio & Student Replay Ecosystem (Web + Mobile)**:
+  - Server-side LiveKit Egress recording with participant consent indicators and local streamable storage (`StoragePort` / `LocalStorageAdapter` with HTTP `206 Partial Content` range requests).
+  - 7-stage local AI media-processing pipeline powered by the Two-Model Smart Router (`gemma4:e4b` + `hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1` on Ollama + `pgvector` embeddings).
+  - Teacher Review & Publishing Studio (`/videoconference/:id/review`) with inline transcript & Markdown editing, per-section AI regeneration, version history, and approval/publication workflow.
+  - Student Interactive Replay & Learning Workspace (`/videoconference/:id/replay`) with synchronized transcript, chapter & slide markers, personalized Summary/Quiz/Flashcard Study Lab, weak-topic detection, timestamped notes/bookmarks, and source-grounded RAG AI Tutor with clickable timestamp citations.
 
 ---
 
