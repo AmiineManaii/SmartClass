@@ -160,28 +160,45 @@ class _WebLiveRoomViewState extends ConsumerState<WebLiveRoomView>
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.screen_share_rounded,
-                      size: 16,
+                      size: 18,
                       color: Color(0xFF60A5FA),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Vous partagez actuellement votre écran avec la classe',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      color: Colors.white,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Text(
+                          'Vous partagez actuellement votre écran avec la classe',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            color: Colors.white,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          '💡 Conseil : Partagez une fenêtre spécifique (PowerPoint, PDF, navigateur) plutôt que tout l\'écran pour éviter les reflets en miroir.',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            color: Color(0xFF94A3B8),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 16),
                   InkWell(
                     onTap: () => ref
                         .read(liveRoomControllerProvider.notifier)
@@ -189,8 +206,8 @@ class _WebLiveRoomViewState extends ConsumerState<WebLiveRoomView>
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 5,
+                        horizontal: 14,
+                        vertical: 6,
                       ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFDC2626).withValues(alpha: 0.2),

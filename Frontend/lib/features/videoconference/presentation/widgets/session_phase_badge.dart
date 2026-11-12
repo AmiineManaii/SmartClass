@@ -13,6 +13,7 @@ class SessionPhaseBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     Color bg;
     Color fg;
     String labelKey;
@@ -20,32 +21,42 @@ class SessionPhaseBadge extends StatelessWidget {
 
     switch (phase) {
       case SessionPhase.live:
-        bg = const Color(0xFFEF4444).withValues(alpha: 0.12);
-        fg = const Color(0xFFDC2626);
+        bg = isDark
+            ? const Color(0xFFEF4444).withValues(alpha: 0.18)
+            : const Color(0xFFFEE2E2);
+        fg = isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626);
         labelKey = 'phase_live';
         icon = Icons.fiber_manual_record;
         break;
       case SessionPhase.joinOpen:
-        bg = const Color(0xFF10B981).withValues(alpha: 0.12);
-        fg = const Color(0xFF059669);
+        bg = isDark
+            ? const Color(0xFF10B981).withValues(alpha: 0.18)
+            : const Color(0xFFD1FAE5);
+        fg = isDark ? const Color(0xFF34D399) : const Color(0xFF059669);
         labelKey = 'phase_join_open';
         icon = Icons.meeting_room_outlined;
         break;
       case SessionPhase.upcoming:
-        bg = const Color(0xFF3B82F6).withValues(alpha: 0.12);
-        fg = const Color(0xFF2563EB);
+        bg = isDark
+            ? const Color(0xFF3B82F6).withValues(alpha: 0.18)
+            : const Color(0xFFDBEAFE);
+        fg = isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
         labelKey = 'phase_upcoming';
         icon = Icons.schedule_rounded;
         break;
       case SessionPhase.ended:
-        bg = Colors.grey.withValues(alpha: 0.12);
-        fg = Colors.grey.shade700;
+        bg = isDark
+            ? const Color(0xFF334155).withValues(alpha: 0.5)
+            : const Color(0xFFF1F5F9);
+        fg = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
         labelKey = 'phase_ended';
         icon = Icons.check_circle_outline_rounded;
         break;
       case SessionPhase.canceled:
-        bg = Colors.red.withValues(alpha: 0.08);
-        fg = Colors.red.shade600;
+        bg = isDark
+            ? const Color(0xFFEF4444).withValues(alpha: 0.12)
+            : const Color(0xFFFEE2E2);
+        fg = isDark ? const Color(0xFFFCA5A5) : const Color(0xFFB91C1C);
         labelKey = 'phase_canceled';
         icon = Icons.cancel_outlined;
         break;

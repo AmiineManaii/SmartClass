@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/smart_toast.dart';
 import '../../application/live_room_controller.dart';
 import 'live_room_leave_dialog.dart';
 
@@ -63,16 +64,15 @@ class LiveRoomControls extends ConsumerWidget {
                     : (roomState.canShareScreen
                         ? const Color(0xFF1E293B)
                         : const Color(0xFF0F172A)),
-                tooltip: 'Partage d\'écran',
+                tooltip: 'Partager l\'écran (Fenêtre, Onglet ou Écran)',
                 onTap: () {
                   if (roomState.canShareScreen) {
                     controller.toggleScreenShare();
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Partage d\'écran non autorisé par l\'enseignant'),
-                        duration: Duration(seconds: 2),
-                      ),
+                    SmartToast.warning(
+                      context,
+                      'Partage d\'écran non autorisé par l\'enseignant',
+                      title: 'Partage d\'écran',
                     );
                   }
                 },
@@ -247,11 +247,10 @@ class LiveRoomControls extends ConsumerWidget {
                     if (roomState.canShareScreen) {
                       controller.toggleScreenShare();
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Le partage d\'écran nécessite l\'autorisation de l\'enseignant'),
-                          duration: Duration(seconds: 2),
-                        ),
+                      SmartToast.warning(
+                        context,
+                        'Le partage d\'écran nécessite l\'autorisation de l\'enseignant',
+                        title: 'Partage d\'écran',
                       );
                     }
                   },
@@ -288,16 +287,19 @@ class LiveRoomControls extends ConsumerWidget {
                             final wasRecording = roomState.isRecording;
                             await controller.toggleRecording();
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    wasRecording
-                                        ? context.tr('rec_stopped_toast')
-                                        : context.tr('rec_started_toast'),
-                                  ),
-                                  duration: const Duration(seconds: 3),
-                                ),
-                              );
+                              if (wasRecording) {
+                                SmartToast.info(
+                                  context,
+                                  context.tr('rec_stopped_toast'),
+                                  title: 'Enregistrement',
+                                );
+                              } else {
+                                SmartToast.success(
+                                  context,
+                                  context.tr('rec_started_toast'),
+                                  title: 'Enregistrement',
+                                );
+                              }
                             }
                           },
                   ),

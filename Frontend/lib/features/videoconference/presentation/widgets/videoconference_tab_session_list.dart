@@ -67,7 +67,7 @@ class _TabSessionList extends ConsumerWidget {
                           crossAxisCount: 2,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 14,
-                          mainAxisExtent: 220,
+                          mainAxisExtent: 242,
                         ),
                         itemCount: filtered.length + (state.isLoadingMore ? 1 : 0),
                         itemBuilder: (context, index) {
@@ -113,7 +113,7 @@ class _TabSessionList extends ConsumerWidget {
         },
         loading: () => const Center(
           child: SmartLoader.medium(
-            message: 'Chargement des s├®ances de visioconf├®rence...',
+            message: 'Chargement des séances de visioconférence...',
           ),
         ),
         error: (err, _) => _buildErrorState(context, ref, err),
@@ -252,7 +252,7 @@ class _TabSessionList extends ConsumerWidget {
                           label: Text(
                             tabKey == 'live'
                                 ? 'Lancer un direct'
-                                : 'Programmer une s├®ance',
+                                : 'Programmer une séance',
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontWeight: FontWeight.w700,
@@ -285,12 +285,12 @@ class _TabSessionList extends ConsumerWidget {
                           ),
                           _buildEmptyFeatureTip(
                             icon: Icons.present_to_all_rounded,
-                            text: 'Partage d\'├®cran',
+                            text: 'Partage d\'écran',
                             isDark: isDark,
                           ),
                           _buildEmptyFeatureTip(
                             icon: Icons.fact_check_outlined,
-                            text: '├ëmargement auto',
+                            text: 'Émargement auto',
                             isDark: isDark,
                           ),
                         ],
@@ -366,7 +366,7 @@ class _TabSessionList extends ConsumerWidget {
             ),
             const SizedBox(height: 14),
             const Text(
-              'Erreur de synchronisation des s├®ances',
+              'Erreur de synchronisation des séances',
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 15,
@@ -387,7 +387,7 @@ class _TabSessionList extends ConsumerWidget {
             FilledButton.tonal(
               onPressed: () =>
                   ref.read(videoSessionsProvider(tabKey).notifier).refresh(),
-              child: const Text('R├®essayer'),
+              child: const Text('Réessayer'),
             ),
           ],
         ),

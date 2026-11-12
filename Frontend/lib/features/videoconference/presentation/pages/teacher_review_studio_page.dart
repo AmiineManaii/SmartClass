@@ -5,9 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/smart_toast.dart';
 import '../../application/recording_providers.dart';
 import '../../domain/entities/recording_models.dart';
 import '../widgets/interactive_replay_player.dart';
+import '../widgets/teacher_review_chapter_timeline.dart';
+import '../widgets/teacher_review_pipeline_banner.dart';
 import '../widgets/teacher_review_publishing_toolbar.dart';
 import '../widgets/teacher_review_tabs_view.dart';
 
@@ -24,8 +27,7 @@ class TeacherReviewStudioPage extends ConsumerStatefulWidget {
       _TeacherReviewStudioPageState();
 }
 
-class _TeacherReviewStudioPageState
-    extends ConsumerState<TeacherReviewStudioPage>
+class _TeacherReviewStudioPageState extends ConsumerState<TeacherReviewStudioPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final TextEditingController _titleCtrl = TextEditingController();
@@ -62,16 +64,32 @@ class _TeacherReviewStudioPageState
     final latestJob = workspace.jobs.isNotEmpty ? workspace.jobs.first : null;
     final isProcessing = workspace.recording?.status == 'PROCESSING' ||
         latestJob?.status == 'RUNNING' ||
-        workspace.lessonPackage == null;
+        (workspace.recording?.status != 'FAILED' &&
+            workspace.lessonPackage == null);
     if (isProcessing) {
       _pollTimer ??= Timer.periodic(const Duration(seconds: 3), (_) {
         if (!mounted) return;
         ref.invalidate(teacherReviewWorkspaceProvider(widget.sessionId));
       });
     } else {
-      _pollTimer?.cancel();
-      _pollTimer = null;
+      if (_pollTimer != null) {
+        _pollTimer?.cancel();
+        _pollTimer = null;
+        _initializedPackageId = null;
+      }
     }
+  }
+
+  static String _cleanAiPreamble(String text) {
+    var cleaned = text.trim();
+    final preamblePattern = RegExp(
+      r'^(?:En tant que|Voici le r[eé]sum[eé]|Voici les notes|Bonjour|Bienvenue|Je suis|En r[eé]ponse)[^\n]*\n+(?:\*{3,}|-{3,})?\s*',
+      caseSensitive: false,
+    );
+    while (preamblePattern.hasMatch(cleaned)) {
+      cleaned = cleaned.replaceFirst(preamblePattern, '').trim();
+    }
+    return cleaned;
   }
 
   void _hydrateControllers(TeacherReviewWorkspaceEntity workspace) {
@@ -81,9 +99,9 @@ class _TeacherReviewStudioPageState
     _initializedPackageId = '${pkg.id}_v${pkg.currentVersion}';
 
     _titleCtrl.text = pkg.title;
-    _shortSummaryCtrl.text = pkg.shortSummary;
-    _detailedSummaryCtrl.text = pkg.detailedSummary;
-    _markdownCtrl.text = pkg.structuredMarkdown;
+    _shortSummaryCtrl.text = _cleanAiPreamble(pkg.shortSummary);
+    _detailedSummaryCtrl.text = _cleanAiPreamble(pkg.detailedSummary);
+    _markdownCtrl.text = _cleanAiPreamble(pkg.structuredMarkdown);
     _mindmapCtrl.text = pkg.mindMapMermaid ?? '';
     _editedSegments = List<TranscriptSegmentEntity>.from(
       workspace.transcript?.segments ?? const [],
@@ -113,14 +131,18 @@ class _TeacherReviewStudioPageState
       );
       ref.invalidate(teacherReviewWorkspaceProvider(widget.sessionId));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('review_saved_success'))),
+        SmartToast.success(
+          context,
+          context.tr('review_saved_success'),
+          title: 'Enregistrement',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${context.tr('error')}: $e')),
+        SmartToast.error(
+          context,
+          '${context.tr('error')}: $e',
+          title: 'Erreur',
         );
       }
     } finally {
@@ -138,10 +160,19 @@ class _TeacherReviewStudioPageState
       );
       _initializedPackageId = null;
       ref.invalidate(teacherReviewWorkspaceProvider(widget.sessionId));
+      if (mounted) {
+        SmartToast.info(
+          context,
+          'Régénération de la section $section en cours...',
+          title: 'IA en cours',
+        );
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${context.tr('error')}: $e')),
+        SmartToast.error(
+          context,
+          '${context.tr('error')}: $e',
+          title: 'Erreur',
         );
       }
     } finally {
@@ -160,6 +191,7 @@ class _TeacherReviewStudioPageState
       } else if (action == 'unpublish') {
         await ds.unpublishLessonPackage(widget.sessionId);
       } else if (action == 'retry') {
+        _initializedPackageId = null;
         await ds.retryProcessing(widget.sessionId);
       }
       ref.invalidate(teacherReviewWorkspaceProvider(widget.sessionId));
@@ -171,14 +203,26 @@ class _TeacherReviewStudioPageState
                 : action == 'unpublish'
                     ? 'review_unpublished_success'
                     : 'rec_stopped_toast';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr(msgKey))),
+        final message = action == 'retry'
+            ? 'L\'analyse IA de la séance a démarré.'
+            : context.tr(msgKey);
+        final title = action == 'publish'
+            ? 'Publication réussie'
+            : action == 'approve'
+                ? 'Contenu validé'
+                : 'Studio IA';
+        SmartToast.success(
+          context,
+          message,
+          title: title,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${context.tr('error')}: $e')),
+        SmartToast.error(
+          context,
+          '${context.tr('error')}: $e',
+          title: 'Erreur',
         );
       }
     } finally {
@@ -194,42 +238,7 @@ class _TeacherReviewStudioPageState
     final isWide = MediaQuery.of(context).size.width >= 980;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/videoconference');
-            }
-          },
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.tr('review_studio_title'),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              context.tr('review_studio_subtitle'),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton.icon(
-            icon: const Icon(Icons.visibility_outlined, size: 16),
-            label: Text(context.tr('btn_preview_replay')),
-            onPressed: () =>
-                context.push('/videoconference/${widget.sessionId}/replay'),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+      appBar: _buildStudioAppBar(context, theme, asyncWorkspace.valueOrNull),
       body: asyncWorkspace.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(
@@ -256,6 +265,10 @@ class _TeacherReviewStudioPageState
           _setupPollingIfNeeded(workspace);
           _hydrateControllers(workspace);
           final pkg = workspace.lessonPackage;
+          final latestJob =
+              workspace.jobs.isNotEmpty ? workspace.jobs.first : null;
+          final isProcessing = workspace.recording?.status == 'PROCESSING' ||
+              latestJob?.status == 'RUNNING';
 
           return Column(
             children: [
@@ -270,15 +283,21 @@ class _TeacherReviewStudioPageState
                 onPublish: () => _runStatusAction('publish'),
                 onUnpublish: () => _runStatusAction('unpublish'),
               ),
+              if (isProcessing)
+                TeacherReviewActiveProcessingBanner(workspace: workspace),
               Expanded(
                 child: pkg == null
-                    ? _buildEmptyPipelineState(theme, workspace)
+                    ? TeacherReviewEmptyPipelineState(
+                        workspace: workspace,
+                        isBusy: _isBusy,
+                        onRetry: () => _runStatusAction('retry'),
+                      )
                     : isWide
                         ? Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               SizedBox(
-                                width: 440,
+                                width: 480,
                                 child: _buildLeftStagePane(theme, workspace),
                               ),
                               const VerticalDivider(width: 1),
@@ -305,20 +324,12 @@ class _TeacherReviewStudioPageState
                               ),
                             ],
                           )
-                        : Column(
+                        : ListView(
                             children: [
-                              Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: InteractiveReplayPlayer(
-                                  sessionId: widget.sessionId,
-                                  sessionTitle: workspace.sessionTitle,
-                                  recording: workspace.recording,
-                                  transcript: workspace.transcript,
-                                  chapters: pkg.chapters,
-                                  slides: workspace.slides,
-                                ),
-                              ),
-                              Expanded(
+                              _buildLeftStagePane(theme, workspace),
+                              const Divider(height: 1),
+                              SizedBox(
+                                height: 600,
                                 child: TeacherReviewTabsView(
                                   sessionId: widget.sessionId,
                                   tabController: _tabController,
@@ -349,96 +360,111 @@ class _TeacherReviewStudioPageState
     );
   }
 
-  Widget _buildEmptyPipelineState(
+  PreferredSizeWidget _buildStudioAppBar(
+    BuildContext context,
     ThemeData theme,
-    TeacherReviewWorkspaceEntity workspace,
+    TeacherReviewWorkspaceEntity? workspace,
   ) {
-    final latestJob = workspace.jobs.isNotEmpty ? workspace.jobs.first : null;
-    final isProcessing = workspace.recording?.status == 'PROCESSING' ||
-        latestJob?.status == 'RUNNING';
-    final progress = latestJob?.progressPercent ?? 35;
-    final stageMsg = latestJob?.stage ?? 'Analyse IA en cours...';
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isProcessing) ...[
-                const SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: CircularProgressIndicator(strokeWidth: 3),
+    final isDark = theme.brightness == Brightness.dark;
+    final title = workspace?.sessionTitle ?? 'Séance';
+    return AppBar(
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      backgroundColor: isDark ? const Color(0xFF0B1120) : Colors.white,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_rounded),
+        tooltip: 'Retour aux séances',
+        onPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/videoconference');
+          }
+        },
+      ),
+      titleSpacing: 0,
+      title: Row(
+        children: [
+          InkWell(
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/videoconference');
+              }
+            },
+            borderRadius: BorderRadius.circular(6),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              child: Text(
+                'Visioconférence',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                 ),
-                const SizedBox(height: 18),
+              ),
+            ),
+          ),
+          Icon(
+            Icons.chevron_right_rounded,
+            size: 16,
+            color: isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8),
+          ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 240),
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.auto_awesome_rounded, size: 12, color: Color(0xFF818CF8)),
+                SizedBox(width: 4),
                 Text(
-                  'Analyse IA de la séance en cours...',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Extraction du discours, reconnaissance des diapositives et génération du cours structuré.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress / 100.0,
-                    minHeight: 8,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '$progress% — $stageMsg',
+                  'Studio IA & Publication',
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF818CF8),
                   ),
-                ),
-              ] else ...[
-                Icon(
-                  Icons.auto_awesome_motion_rounded,
-                  size: 56,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  context.tr('review_no_package_title'),
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  context.tr('review_no_package_desc'),
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                FilledButton.icon(
-                  icon: const Icon(Icons.play_arrow_rounded),
-                  label: Text(context.tr('review_btn_retry_pipeline')),
-                  onPressed: _isBusy ? null : () => _runStatusAction('retry'),
                 ),
               ],
-            ],
+            ),
           ),
-        ),
+        ],
       ),
+      actions: [
+        FilledButton.tonalIcon(
+          icon: const Icon(Icons.visibility_rounded, size: 15),
+          label: const Text('Aperçu Étudiant', style: TextStyle(fontSize: 12)),
+          style: FilledButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          onPressed: () =>
+              context.push('/videoconference/${widget.sessionId}/replay'),
+        ),
+        const SizedBox(width: 14),
+      ],
     );
   }
 
@@ -459,38 +485,9 @@ class _TeacherReviewStudioPageState
           slides: workspace.slides,
         ),
         const SizedBox(height: 14),
-        Text(
-          context.tr('replay_chapters_title'),
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        ...pkg.chapters.map(
-          (ch) => ListTile(
-            dense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-            leading: Text(
-              ch.formattedRange,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF3B82F6),
-              ),
-            ),
-            title: Text(ch.title, style: const TextStyle(fontSize: 13)),
-            subtitle: Text(
-              ch.summary,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11.5),
-            ),
-            onTap: () {
-              ref
-                  .read(replayPositionSecondsProvider(widget.sessionId).notifier)
-                  .state = ch.startSec;
-            },
-          ),
+        TeacherReviewChapterTimeline(
+          sessionId: widget.sessionId,
+          chapters: pkg.chapters,
         ),
       ],
     );

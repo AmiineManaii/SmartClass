@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/smart_toast.dart';
 import '../../application/live_room_controller.dart';
 import '../../domain/entities/session_chat_message.dart';
 
@@ -60,11 +61,10 @@ class _LiveChatPanelState extends ConsumerState<LiveChatPanel> {
       _scrollToBottom();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: const Color(0xFFEF4444),
-          ),
+        SmartToast.error(
+          context,
+          e.toString(),
+          title: 'Erreur envoi chat',
         );
       }
     } finally {

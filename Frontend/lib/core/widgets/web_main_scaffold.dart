@@ -91,9 +91,10 @@ class WebMainScaffold extends ConsumerWidget {
                 ),
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+            child: ClipRect(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 // Top Header: Logo & Collapse Button
                 // Top Header: Logo & Collapse Button
                 Container(
@@ -517,6 +518,7 @@ class WebMainScaffold extends ConsumerWidget {
               ],
             ),
           ),
+        ),
 
           // ========================================================
           // 2. WORKSPACE CENTRAL : TOP BAR + BODY
@@ -1082,7 +1084,6 @@ class _WebNavItemState extends State<_WebNavItem> {
   Widget build(BuildContext context) {
     final isSelected = widget.isSelected;
     final isDark = widget.isDark;
-    final isCollapsed = widget.isCollapsed;
 
     // Palette calculation based on state and dark mode
     Color itemBg;
@@ -1118,12 +1119,62 @@ class _WebNavItemState extends State<_WebNavItem> {
           : const Color(0xFF64748B);
     }
 
-    Widget content;
-    if (isCollapsed) {
-      content = Tooltip(
-        message: widget.label,
-        waitDuration: const Duration(milliseconds: 150),
-        child: MouseRegion(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCollapsed = widget.isCollapsed || constraints.maxWidth < 130;
+        if (isCollapsed) {
+          return Tooltip(
+            message: widget.label,
+            waitDuration: const Duration(milliseconds: 150),
+            child: MouseRegion(
+              onEnter: (_) => setState(() => _isHovered = true),
+              onExit: (_) => setState(() => _isHovered = false),
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: widget.onTap,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  height: 44,
+                  margin: const EdgeInsets.symmetric(vertical: 3),
+                  decoration: BoxDecoration(
+                    color: itemBg,
+                    borderRadius: BorderRadius.circular(10),
+                    border: isSelected
+                        ? Border.all(
+                            color: isDark
+                                ? const Color(0xFF3B82F6)
+                                : const Color(0xFFBFDBFE),
+                          )
+                        : null,
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Icon(widget.icon, size: 21, color: iconColor),
+                      if (widget.isAiPill)
+                        Positioned(
+                          top: 6,
+                          right: 10,
+                          child: Container(
+                            width: 7,
+                            height: 7,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [Color(0xFF83F8CD), Color(0xFF8197FF)],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        return MouseRegion(
           onEnter: (_) => setState(() => _isHovered = true),
           onExit: (_) => setState(() => _isHovered = false),
           cursor: SystemMouseCursors.click,
@@ -1131,109 +1182,65 @@ class _WebNavItemState extends State<_WebNavItem> {
             onTap: widget.onTap,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
-              height: 44,
-              margin: const EdgeInsets.symmetric(vertical: 3),
+              margin: const EdgeInsets.symmetric(vertical: 2.5),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: itemBg,
                 borderRadius: BorderRadius.circular(10),
                 border: isSelected
                     ? Border.all(
                         color: isDark
-                            ? const Color(0xFF3B82F6)
-                            : const Color(0xFFBFDBFE),
+                            ? const Color(0xFF2563EB).withValues(alpha: 0.6)
+                            : const Color(0xFFDBEAFE),
                       )
                     : null,
               ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Icon(widget.icon, size: 21, color: iconColor),
-                  if (widget.isAiPill)
-                    Positioned(
-                      top: 6,
-                      right: 10,
-                      child: Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [Color(0xFF83F8CD), Color(0xFF8197FF)],
-                          ),
+              child: ClipRect(
+                child: Row(
+                  children: [
+                    Icon(widget.icon, size: 20, color: iconColor),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        widget.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: itemTextColor,
+                          fontSize: 13,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.w500,
                         ),
                       ),
                     ),
-                ],
+                    if (widget.isAiPill)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF83F8CD), Color(0xFF8197FF)],
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'IA ✨',
+                          style: TextStyle(
+                            color: Color(0xFF002116),
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      );
-    } else {
-      content = MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            margin: const EdgeInsets.symmetric(vertical: 2.5),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: itemBg,
-              borderRadius: BorderRadius.circular(10),
-              border: isSelected
-                  ? Border.all(
-                      color: isDark
-                          ? const Color(0xFF2563EB).withValues(alpha: 0.6)
-                          : const Color(0xFFDBEAFE),
-                    )
-                  : null,
-            ),
-            child: Row(
-              children: [
-                Icon(widget.icon, size: 20, color: iconColor),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    widget.label,
-                    style: TextStyle(
-                      color: itemTextColor,
-                      fontSize: 13,
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.w500,
-                    ),
-                  ),
-                ),
-                if (widget.isAiPill)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF83F8CD), Color(0xFF8197FF)],
-                      ),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'IA ✨',
-                      style: TextStyle(
-                        color: Color(0xFF002116),
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return content;
+        );
+      },
+    );
   }
 }

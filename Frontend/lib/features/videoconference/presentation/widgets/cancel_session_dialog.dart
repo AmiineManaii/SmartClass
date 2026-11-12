@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/smart_toast.dart';
 import '../../application/videoconference_providers.dart';
 import '../../domain/entities/video_session.dart';
 
@@ -38,20 +39,18 @@ class _CancelSessionDialogState extends ConsumerState<CancelSessionDialog> {
           );
       if (mounted) {
         Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.tr('cancel_success')),
-            backgroundColor: Colors.green,
-          ),
+        SmartToast.success(
+          context,
+          context.tr('cancel_success'),
+          title: 'Séance annulée',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: Colors.red,
-          ),
+        SmartToast.error(
+          context,
+          e.toString(),
+          title: 'Erreur',
         );
       }
     } finally {

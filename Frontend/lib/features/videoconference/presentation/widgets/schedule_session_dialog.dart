@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/smart_toast.dart';
 import '../../../courses/application/providers/courses_provider.dart';
 import '../../../courses/domain/entities/course_entry.dart';
 import '../../application/videoconference_providers.dart';
@@ -200,11 +201,10 @@ class _ScheduleSessionDialogState
         );
         if (mounted) {
           Navigator.of(context).pop('scheduled');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.tr('update_success')),
-              backgroundColor: const Color(0xFF10B981),
-            ),
+          SmartToast.success(
+            context,
+            context.tr('update_success'),
+            title: 'Séance modifiée',
           );
         }
       } else {
@@ -222,19 +222,24 @@ class _ScheduleSessionDialogState
         );
         if (mounted) {
           Navigator.of(context).pop(_isLiveNow ? 'live' : 'scheduled');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(_isLiveNow
-                  ? 'Séance en direct lancée avec succès !'
-                  : context.tr('scheduling_success')),
-              backgroundColor: const Color(0xFF10B981),
-            ),
+          SmartToast.success(
+            context,
+            _isLiveNow
+                ? 'Séance en direct lancée avec succès !'
+                : context.tr('scheduling_success'),
+            title: _isLiveNow ? 'Direct lancé' : 'Séance programmée',
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _errorMessage = _formatErrorMessage(e));
+        final formattedErr = _formatErrorMessage(e);
+        setState(() => _errorMessage = formattedErr);
+        SmartToast.error(
+          context,
+          formattedErr,
+          title: 'Erreur',
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

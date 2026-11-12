@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/smart_toast.dart';
 import '../../application/recording_providers.dart';
 import '../../domain/entities/recording_models.dart';
 
@@ -90,8 +91,10 @@ class _StudentStudyLabPanelState extends ConsumerState<StudentStudyLabPanel> {
       widget.onRefreshWorkspace();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${context.tr('error')}: $e')),
+        SmartToast.error(
+          context,
+          '${context.tr('error')}: $e',
+          title: 'Génération',
         );
       }
     } finally {
@@ -126,12 +129,19 @@ class _StudentStudyLabPanelState extends ConsumerState<StudentStudyLabPanel> {
       );
       if (mounted) {
         setState(() => _latestQuizResult = attempt);
+        SmartToast.success(
+          context,
+          'Quiz soumis avec succès ! Score calculé.',
+          title: 'Quiz complété',
+        );
         widget.onRefreshWorkspace();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${context.tr('error')}: $e')),
+        SmartToast.error(
+          context,
+          '${context.tr('error')}: $e',
+          title: 'Erreur',
         );
       }
     } finally {

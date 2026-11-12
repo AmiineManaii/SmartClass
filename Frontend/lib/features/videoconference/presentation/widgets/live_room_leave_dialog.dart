@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/smart_toast.dart';
 import '../../application/live_room_controller.dart';
 import '../../infrastructure/adapters/live_speech_recorder.dart';
 
@@ -79,6 +80,13 @@ class LiveRoomLeaveHelper {
       );
 
       if (confirmed == true) {
+        if (context.mounted) {
+          SmartToast.info(
+            context,
+            'Vous avez quitté le cours en direct.',
+            title: 'Séance quittée',
+          );
+        }
         try {
           await controller.leaveRoom();
         } catch (e) {
@@ -281,6 +289,13 @@ class LiveRoomLeaveHelper {
     );
 
     if (action == 'end_all') {
+      if (context.mounted) {
+        SmartToast.success(
+          context,
+          'Séance clôturée pour tous les participants.',
+          title: 'Séance terminée',
+        );
+      }
       try {
         await controller.endRoomForEveryone();
       } catch (e) {
@@ -292,6 +307,13 @@ class LiveRoomLeaveHelper {
         router.go('/videoconference');
       }
     } else if (action == 'leave_only') {
+      if (context.mounted) {
+        SmartToast.info(
+          context,
+          'Vous avez quitté la séance. La salle reste active.',
+          title: 'Séance en cours',
+        );
+      }
       try {
         await controller.leaveRoom();
       } catch (e) {

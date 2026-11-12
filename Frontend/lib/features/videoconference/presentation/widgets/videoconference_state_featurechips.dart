@@ -5,7 +5,7 @@ extension on _VideoconferencePageState {
       {'label': '1080p SFU', 'icon': Icons.hd_rounded},
       {'label': '< 100ms', 'icon': Icons.bolt_rounded},
       {'label': 'Partage & Laser', 'icon': Icons.draw_rounded},
-      {'label': 'Chiffr├® E2E', 'icon': Icons.lock_outline_rounded},
+      {'label': 'Chiffré E2E', 'icon': Icons.lock_outline_rounded},
     ];
 
     return Wrap(

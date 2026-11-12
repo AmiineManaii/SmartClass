@@ -35,7 +35,8 @@ class _ToastData {
 class SmartToast {
   static OverlayEntry? _overlayEntry;
   static final List<_ToastData> _activeToasts = [];
-  static final GlobalKey<_ToastContainerState> _containerKey = GlobalKey<_ToastContainerState>();
+  static final GlobalKey<_ToastContainerState> _containerKey =
+      GlobalKey<_ToastContainerState>();
 
   /// Shows a toast notification.
   static void show(
@@ -49,7 +50,6 @@ class SmartToast {
   }) {
     final overlayState = Overlay.maybeOf(context, rootOverlay: true);
     if (overlayState == null) {
-      // Fallback for environments without Overlay (e.g., bare widget tests)
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         SnackBar(
           content: Text(message),
@@ -71,7 +71,6 @@ class SmartToast {
       actionLabel: actionLabel,
     );
 
-    // Limit visible toasts to 3 max
     if (_activeToasts.length >= 3) {
       _activeToasts.removeAt(0);
     }
@@ -94,87 +93,34 @@ class SmartToast {
     }
   }
 
-  /// Convenience shortcut for success toast.
-  static void success(
-    BuildContext context,
-    String message, {
-    String? title,
-    Duration duration = const Duration(milliseconds: 3500),
-    VoidCallback? onAction,
-    String? actionLabel,
-  }) {
-    show(
-      context,
-      message: message,
-      title: title,
-      type: ToastType.success,
-      duration: duration,
-      onAction: onAction,
-      actionLabel: actionLabel,
-    );
+  static void success(BuildContext context, String message,
+      {String? title, Duration duration = const Duration(milliseconds: 3500),
+      VoidCallback? onAction, String? actionLabel}) {
+    show(context, message: message, title: title, type: ToastType.success,
+        duration: duration, onAction: onAction, actionLabel: actionLabel);
   }
 
-  /// Convenience shortcut for error toast.
-  static void error(
-    BuildContext context,
-    String message, {
-    String? title,
-    Duration duration = const Duration(milliseconds: 4000),
-    VoidCallback? onAction,
-    String? actionLabel,
-  }) {
-    show(
-      context,
-      message: message,
-      title: title,
-      type: ToastType.error,
-      duration: duration,
-      onAction: onAction,
-      actionLabel: actionLabel,
-    );
+  static void error(BuildContext context, String message,
+      {String? title, Duration duration = const Duration(milliseconds: 4000),
+      VoidCallback? onAction, String? actionLabel}) {
+    show(context, message: message, title: title, type: ToastType.error,
+        duration: duration, onAction: onAction, actionLabel: actionLabel);
   }
 
-  /// Convenience shortcut for warning toast.
-  static void warning(
-    BuildContext context,
-    String message, {
-    String? title,
-    Duration duration = const Duration(milliseconds: 3500),
-    VoidCallback? onAction,
-    String? actionLabel,
-  }) {
-    show(
-      context,
-      message: message,
-      title: title,
-      type: ToastType.warning,
-      duration: duration,
-      onAction: onAction,
-      actionLabel: actionLabel,
-    );
+  static void warning(BuildContext context, String message,
+      {String? title, Duration duration = const Duration(milliseconds: 3500),
+      VoidCallback? onAction, String? actionLabel}) {
+    show(context, message: message, title: title, type: ToastType.warning,
+        duration: duration, onAction: onAction, actionLabel: actionLabel);
   }
 
-  /// Convenience shortcut for info toast.
-  static void info(
-    BuildContext context,
-    String message, {
-    String? title,
-    Duration duration = const Duration(milliseconds: 3500),
-    VoidCallback? onAction,
-    String? actionLabel,
-  }) {
-    show(
-      context,
-      message: message,
-      title: title,
-      type: ToastType.info,
-      duration: duration,
-      onAction: onAction,
-      actionLabel: actionLabel,
-    );
+  static void info(BuildContext context, String message,
+      {String? title, Duration duration = const Duration(milliseconds: 3500),
+      VoidCallback? onAction, String? actionLabel}) {
+    show(context, message: message, title: title, type: ToastType.info,
+        duration: duration, onAction: onAction, actionLabel: actionLabel);
   }
 
-  /// Removes a toast by ID and cleans up overlay when empty.
   static void _removeToast(String id) {
     _activeToasts.removeWhere((t) => t.id == id);
     if (_activeToasts.isEmpty) {
@@ -223,8 +169,9 @@ class _ToastContainerState extends State<_ToastContainer> {
             color: Colors.transparent,
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment:
-                  isDesktop ? CrossAxisAlignment.end : CrossAxisAlignment.stretch,
+              crossAxisAlignment: isDesktop
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.stretch,
               children: SmartToast._activeToasts.map((toast) {
                 return Padding(
                   key: ValueKey(toast.id),
@@ -273,22 +220,17 @@ class _SmartToastCardState extends State<_SmartToastCard>
       vsync: this,
       duration: const Duration(milliseconds: 260),
     );
-
     _fadeAnimation = CurvedAnimation(
       parent: _animController,
       curve: Curves.easeOut,
     );
-
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0.0, -0.35),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _animController,
-        curve: Curves.easeOutCubic,
-      ),
-    );
-
+    ).animate(CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutCubic,
+    ));
     _scaleAnimation = Tween<double>(begin: 0.94, end: 1.0).animate(
       CurvedAnimation(
         parent: _animController,
@@ -305,9 +247,7 @@ class _SmartToastCardState extends State<_SmartToastCard>
     _isExiting = true;
     _dismissTimer?.cancel();
     _animController.reverse().then((_) {
-      if (mounted) {
-        widget.onDismiss();
-      }
+      if (mounted) widget.onDismiss();
     });
   }
 
@@ -376,7 +316,8 @@ class _SmartToastCardState extends State<_SmartToastCard>
 
     final accent = _getAccentColor(widget.toast.type);
     final icon = _getIcon(widget.toast.type);
-    final displayTitle = widget.toast.title ?? _getDefaultTitle(widget.toast.type, isEnglish);
+    final displayTitle =
+        widget.toast.title ?? _getDefaultTitle(widget.toast.type, isEnglish);
 
     final cardBg = isDark
         ? const Color(0xFF131A2A).withValues(alpha: 0.94)
@@ -413,7 +354,8 @@ class _SmartToastCardState extends State<_SmartToastCard>
                         offset: const Offset(0, 8),
                       ),
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+                        color:
+                            Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
                         blurRadius: 14,
                         offset: const Offset(0, 4),
                       ),
@@ -427,7 +369,6 @@ class _SmartToastCardState extends State<_SmartToastCard>
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Left glowing icon badge
                             Container(
                               width: 36,
                               height: 36,
@@ -441,15 +382,9 @@ class _SmartToastCardState extends State<_SmartToastCard>
                                   width: 1,
                                 ),
                               ),
-                              child: Icon(
-                                icon,
-                                color: accent,
-                                size: 20,
-                              ),
+                              child: Icon(icon, color: accent, size: 20),
                             ),
                             const SizedBox(width: 12),
-
-                            // Main textual content
                             Expanded(
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 1),
@@ -505,10 +440,7 @@ class _SmartToastCardState extends State<_SmartToastCard>
                                 ),
                               ),
                             ),
-
                             const SizedBox(width: 6),
-
-                            // Dismiss close button
                             InkWell(
                               onTap: _dismiss,
                               borderRadius: BorderRadius.circular(8),
@@ -526,8 +458,6 @@ class _SmartToastCardState extends State<_SmartToastCard>
                           ],
                         ),
                       ),
-
-                      // Subtle gradient accent indicator at bottom
                       ClipRRect(
                         borderRadius: const BorderRadius.vertical(
                           bottom: Radius.circular(16),

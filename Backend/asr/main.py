@@ -92,7 +92,10 @@ async def create_transcription(
             language=req_lang,
             initial_prompt=initial_prompt,
             vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=500),
+            vad_parameters=dict(min_silence_duration_ms=400, speech_pad_ms=200),
+            condition_on_previous_text=False,
+            compression_ratio_threshold=2.2,
+            no_speech_threshold=0.6,
             beam_size=5,
             temperature=temperature or 0.0,
         )

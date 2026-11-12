@@ -602,6 +602,30 @@ export class MediaProcessingWorker {
     const inputPath = this.deps.storage.resolveSafePath(storageKey);
     const outputPath = this.deps.storage.resolveSafePath(audioKey);
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
+
+    let hasAudioStream = true;
+    try {
+      const { stdout: probeOut } = await execFileAsync(this.ffprobePath, [
+        '-v',
+        'error',
+        '-show_entries',
+        'stream=codec_type',
+        '-of',
+        'json',
+        inputPath,
+      ]);
+      const parsed = JSON.parse(probeOut);
+      hasAudioStream =
+        parsed.streams?.some((s: { codec_type?: string }) => s.codec_type === 'audio') ?? true;
+    } catch {
+      // Non-fatal probe check
+    }
+
+    if (!hasAudioStream) {
+      console.warn(`[MediaProcessingWorker] Video ${storageKey} contains no audio stream`);
+      return false;
+    }
+
     try {
       await execFileAsync(
         this.ffmpegPath,
@@ -618,7 +642,7 @@ export class MediaProcessingWorker {
           '1',
           outputPath,
         ],
-        { timeout: 30_000 },
+        { timeout: 45_000 },
       );
       const st = await fs.stat(outputPath).catch(() => null);
       if (st && st.size > 200) {
@@ -628,8 +652,10 @@ export class MediaProcessingWorker {
         }
         return true;
       }
-    } catch {
-      // Audio stream may be absent if session was silent or microphone was muted
+    } catch (err: unknown) {
+      console.error(
+        `[MediaProcessingWorker] FFmpeg audio extraction failed: ${err instanceof Error ? err.message : err}`,
+      );
     }
     return false;
   }
@@ -836,6 +862,8 @@ export class MediaProcessingWorker {
             '1',
             '-q:v',
             '3',
+            '-update',
+            '1',
             framePath,
           ],
           { timeout: 8_000 },
@@ -1047,11 +1075,14 @@ export class MediaProcessingWorker {
       secondaryModel,
     } = params;
 
+    const existingPackage = await this.deps.recordingRepository.getLessonPackage(recording.id);
+    const targetVersion = (existingPackage?.version ?? 0) + 1;
+
     if (transcript.segments.length === 0) {
       const generalSummary = `Séance enregistrée sur **${sessionTitle}** (${sessionSubject}). Aucune piste vocale n'a été détectée lors de l'enregistrement de cette séance.`;
       const structuredNotes = `# Notes de cours : ${sessionTitle}\n**Matière :** ${sessionSubject} | **Durée :** ${Math.round(durationSeconds / 60)} min\n\n*Aucune parole détectée lors de l'enregistrement de cette séance.*`;
       return this.deps.recordingRepository.saveLessonPackage(recording.id, {
-        version: 1,
+        version: targetVersion,
         generalSummary,
         structuredNotes,
         keyConcepts: [],
@@ -1084,10 +1115,19 @@ export class MediaProcessingWorker {
     let aiGeneralSummary = '';
     let aiStructuredNotes = '';
 
+    const cleanAiEducationalText = (raw: string): string => {
+      let cleaned = raw.trim();
+      const preambleRegex = /^(?:En tant que|Voici le r[eé]sum[eé]|Bonjour|Bienvenue|Je suis|En r[eé]ponse)[^\n]*\n+(?:\*{3,}|-{3,})?\s*/i;
+      while (preambleRegex.test(cleaned)) {
+        cleaned = cleaned.replace(preambleRegex, '').trim();
+      }
+      return cleaned;
+    };
+
     try {
       const res = await this.deps.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
         systemPrompt:
-          'Tu es un professeur universitaire expert sur SmartClass. Rédige en français un résumé exécutif clair (2 paragraphes) suivi de notes de cours structurées en Markdown à partir de la transcription fournie. Sois précis, pédagogique et fidèle au cours.',
+          'Tu es un professeur universitaire expert sur SmartClass. Rédige en français un résumé exécutif clair (2 paragraphes) suivi de notes de cours structurées en Markdown à partir de la transcription fournie. Sois précis, pédagogique et fidèle au cours. RÈGLE CRITIQUE: Ne commence JAMAIS par une formule de politesse ou d\'introduction méta (interdit d\'écrire "En tant que...", "Voici le résumé...", "Bonjour"). Rentre DIRECTEMENT dans le vif du sujet pédagogique.',
         messages: [
           {
             role: 'user',
@@ -1099,10 +1139,10 @@ export class MediaProcessingWorker {
       });
 
       if (res.content && res.content.trim().length > 80) {
-        aiStructuredNotes = res.content.trim();
+        const cleanedContent = cleanAiEducationalText(res.content);
+        aiStructuredNotes = cleanedContent;
         aiGeneralSummary =
-          res.content
-            .trim()
+          cleanedContent
             .split('\n\n')
             .slice(0, 2)
             .join('\n\n')
@@ -1396,7 +1436,7 @@ export class MediaProcessingWorker {
     return this.deps.recordingRepository.saveLessonPackage(
       recording.id,
       {
-        version: 1,
+        version: targetVersion,
         structuredNotes,
         generalSummary,
         keyConcepts,

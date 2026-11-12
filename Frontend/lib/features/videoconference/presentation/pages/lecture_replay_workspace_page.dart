@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/smart_toast.dart';
 import '../../application/recording_providers.dart';
 import '../../domain/entities/recording_models.dart';
 import '../widgets/interactive_replay_player.dart';
@@ -61,10 +62,19 @@ class _LectureReplayWorkspacePageState
           );
       _bookmarkCtrl.clear();
       ref.invalidate(studentLessonWorkspaceProvider(widget.sessionId));
+      if (mounted) {
+        SmartToast.success(
+          context,
+          'Repère temporel ajouté avec succès',
+          title: 'Signet',
+        );
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${context.tr('error')}: $e')),
+        SmartToast.error(
+          context,
+          '${context.tr('error')}: $e',
+          title: 'Erreur',
         );
       }
     }
@@ -82,10 +92,19 @@ class _LectureReplayWorkspacePageState
           );
       _noteCtrl.clear();
       ref.invalidate(studentLessonWorkspaceProvider(widget.sessionId));
+      if (mounted) {
+        SmartToast.success(
+          context,
+          'Note personnelle enregistrée',
+          title: 'Note',
+        );
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${context.tr('error')}: $e')),
+        SmartToast.error(
+          context,
+          '${context.tr('error')}: $e',
+          title: 'Erreur',
         );
       }
     }

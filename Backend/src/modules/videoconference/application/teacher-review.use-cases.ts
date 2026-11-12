@@ -350,11 +350,20 @@ export class RegenerateLessonSectionUseCase {
     const flashcards = [...existingPkg.flashcards];
     const quizzes = [...existingPkg.quizzes];
 
+    const cleanAiEducationalText = (raw: string): string => {
+      let cleaned = raw.trim();
+      const preambleRegex = /^(?:En tant que|Voici le r[eé]sum[eé]|Bonjour|Bienvenue|Je suis|En r[eé]ponse)[^\n]*\n+(?:\*{3,}|-{3,})?\s*/i;
+      while (preambleRegex.test(cleaned)) {
+        cleaned = cleaned.replace(preambleRegex, '').trim();
+      }
+      return cleaned;
+    };
+
     if (input.section === 'summary') {
       try {
         const res = await this.modelRouter.generateForRole('STUDENT_SUMMARY', {
           systemPrompt:
-            'Tu es un professeur universitaire sur SmartClass. Régénère un résumé exécutif clair et structuré en français à partir du cours fourni.',
+            'Tu es un professeur universitaire sur SmartClass. Régénère un résumé exécutif clair et structuré en français à partir du cours fourni. RÈGLE CRITIQUE: Ne commence JAMAIS par une formule d\'introduction ou méta (interdit d\'écrire "En tant que...", "Voici le résumé..."). Rentre DIRECTEMENT dans le sujet du cours.',
           messages: [
             {
               role: 'user',
@@ -365,7 +374,7 @@ export class RegenerateLessonSectionUseCase {
           maxTokens: 500,
         });
         if (res.content.trim().length > 40) {
-          generalSummary = res.content.trim();
+          generalSummary = cleanAiEducationalText(res.content);
         }
       } catch {
         generalSummary = `${existingPkg.generalSummary}\n\n*(Synthèse enrichie : ${input.instructions || 'Version consolidée par l’enseignant'})*`;
@@ -374,7 +383,7 @@ export class RegenerateLessonSectionUseCase {
       try {
         const res = await this.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
           systemPrompt:
-            'Tu es un professeur universitaire sur SmartClass. Régénère des notes de cours complètes en Markdown avec titres, listes à puces et points de vigilance.',
+            'Tu es un professeur universitaire sur SmartClass. Régénère des notes de cours complètes en Markdown avec titres, listes à puces et points de vigilance. RÈGLE CRITIQUE: Ne commence JAMAIS par une formule d\'introduction ou méta (interdit d\'écrire "En tant que...", "Voici les notes..."). Rentre DIRECTEMENT dans le premier titre ou paragraphe du cours.',
           messages: [
             {
               role: 'user',
@@ -385,7 +394,7 @@ export class RegenerateLessonSectionUseCase {
           maxTokens: 900,
         });
         if (res.content.trim().length > 80) {
-          structuredNotes = res.content.trim();
+          structuredNotes = cleanAiEducationalText(res.content);
         }
       } catch {
         structuredNotes = `${existingPkg.structuredNotes}\n\n### Complément pédagogique\n${input.instructions || 'Approfondissement méthodologique ajouté.'}`;
