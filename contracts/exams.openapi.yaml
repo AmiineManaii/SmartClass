@@ -1,14 +1,16 @@
 openapi: 3.1.0
 info:
   title: SmartClass API — Exams & Integrity
-  version: 0.1.0
+  version: 0.2.0
   description: >
-    Anti-fraud reporting backing the admin discipline screens (fraud reports,
-    summary, status transitions). Full exam engine (UC9) arrives in Sprint 5;
-    only the integrity-reporting slice is implemented here. RG20/RG26 state
-    that the final disciplinary decision belongs to the teacher — this slice
-    additionally grants ADMIN the transition right because the admin discipline
-    screens require it; TEACHER-scoped transitions arrive with the exams module.
+    Official exam engine (UC9) plus integrity reporting. Teachers author exams
+    manually, by file import or with the local AI model, then publish them.
+    Students start a single server-owned attempt, answer with autosave and
+    submit; the backend is the only clock, grader and sanction decider.
+    Correct answers are never sent to a student projection. Anti-fraud signals
+    are timestamped and bound to the attempt server-side; technical
+    interruptions (network, camera permission) are recorded but never punished.
+    The existing admin fraud-report slice is kept unchanged.
 servers:
   - url: /api/v1
     description: SmartClass API v1 prefix
@@ -215,7 +217,966 @@ paths:
                   requestId: 9f84725e-38aa-4e12-b162-817346ac7901
         '422':
           $ref: './common.yaml#/components/responses/ValidationError'
+  /exams:
+    post:
+      operationId: createExam
+      tags: [exams]
+      summary: Create a draft exam (manual, imported or AI-assisted)
+      description: >
+        TEACHER/ADMIN only. Creates a DRAFT owned by the caller for a class the
+        caller teaches. Questions are normalized server-side (option ids A, B,
+        C…). The teacher must call `publishExam` before students can see it
+        (RG4: the AI never publishes).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExamRequest'
+      responses:
+        '201':
+          description: Draft exam created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ExamDetail'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /exams/mine:
+    get:
+      operationId: listMyExams
+      tags: [exams]
+      summary: List exams authored by the current teacher
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Authored exams (all statuses)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExamSummary'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+  /exams/available:
+    get:
+      operationId: listAvailableExams
+      tags: [exams]
+      summary: List published exams addressed to the student's classes
+      description: >
+        STUDENT only. Includes upcoming/active/ended exams and the student's
+        attempt state so the UI can offer Start or Resume without polling.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Available exams with availability and attempt state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AvailableExam'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+  /exams/import:
+    post:
+      operationId: previewExamImport
+      tags: [exams]
+      summary: Parse an uploaded exam file into a reviewable question preview
+      description: >
+        TEACHER/ADMIN only. Supports .json, .csv and .txt. Nothing is persisted
+        and no attempt/answer is created. To save the exam, call `createExam`
+        with `source: IMPORT` and the reviewed questions.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: .json, .csv or .txt file (max 10 MB)
+      responses:
+        '200':
+          description: Normalized preview (teacher-only, includes answers)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ImportedExamPreview'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          description: Unsupported format or invalid file (IMPORT_FORMAT_UNSUPPORTED / VALIDATION_ERROR)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+  /exams/classes/{classGroupId}/courses:
+    get:
+      operationId: listExamClassCourses
+      tags: [exams]
+      summary: List published and validated courses usable as AI exam sources
+      description: >
+        TEACHER/ADMIN only, and only for a class the caller teaches. Returns
+        the class's PUBLISHED courses, plus the caller's own published courses
+        that are not assigned to any class yet (the courses UI can leave a
+        course unrestricted). Publication requires every generated section to
+        be VALIDATED, so the list contains only generated and validated
+        courses. Course bodies are never returned.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: classGroupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Published and validated courses of the class
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExamClassCourseOption'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          description: Unknown class (VALIDATION_ERROR)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+  /exams/ai/generate:
+    post:
+      operationId: generateExamWithAi
+      tags: [exams]
+      summary: Generate an exam preview from courses selected by the teacher
+      description: >
+        TEACHER/ADMIN only. Uses ONLY the courses the teacher selects through
+        `courseIds`; every selected course must be PUBLISHED and linked to the
+        selected class (published courses are generated and validated).
+        Verifies that the local model `hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1` is
+        installed before generating and NEVER pulls a model. Returns a preview
+        only: the teacher reviews it and calls `createExam` with `source: AI`.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [classGroupId]
+              properties:
+                classGroupId:
+                  type: string
+                  format: uuid
+                courseIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items:
+                    type: string
+                    format: uuid
+                  description: >
+                    Published and validated courses selected by the teacher.
+                    Each id must belong to `classGroupId`; unknown or
+                    unpublished ids are rejected with VALIDATION_ERROR. When
+                    omitted, all published courses of the class are used
+                    (legacy behaviour); the app always sends an explicit
+                    selection.
+                title:
+                  type: string
+                  maxLength: 300
+                difficulty:
+                  type: string
+                  enum: [facile, moyen, difficile]
+                questionCount:
+                  type: integer
+                  minimum: 1
+                  maximum: 30
+              additionalProperties: false
+      responses:
+        '200':
+          description: Generated questions preview
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/GeneratedExamPreview'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '422':
+          description: No published course for this class (VALIDATION_ERROR)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '502':
+          description: The model output was not valid JSON (AI_INVALID_OUTPUT)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '503':
+          description: Ollama unreachable or required model not installed (AI_MODEL_UNAVAILABLE)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '504':
+          description: >
+            The model is reachable but did not finish within `AI_TIMEOUT_MS`
+            (AI_TIMEOUT). Retry with fewer questions or a shorter course.
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+  /exams/{examId}:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+    get:
+      operationId: getTeacherExam
+      tags: [exams]
+      summary: Read an exam as its teacher (includes correct answers)
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Teacher projection
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ExamDetail'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+    patch:
+      operationId: updateExam
+      tags: [exams]
+      summary: Update a DRAFT exam (metadata, window, settings or questions)
+      description: Published/closed exams are immutable (409 CONFLICT).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExamRequest'
+      responses:
+        '200':
+          description: Updated exam
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ExamDetail'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './common.yaml#/components/responses/Conflict'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /exams/{examId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+    patch:
+      operationId: publishExam
+      tags: [exams]
+      summary: Publish a draft exam
+      description: Requires at least one question and an end date in the future.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Published exam
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ExamDetail'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          $ref: './common.yaml#/components/responses/Conflict'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /exams/{examId}/close:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+    patch:
+      operationId: closeExam
+      tags: [exams]
+      summary: Close an exam and release results
+      description: >
+        Freezes every remaining attempt as AUTO_SUBMITTED using server-side
+        grading. When `showResultsAfterClose` is true, students can then read
+        their score (never the correct option ids).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Closed exam and number of auto-submitted attempts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [exam, finalizedAttempts]
+                    properties:
+                      exam:
+                        $ref: '#/components/schemas/ExamDetail'
+                      finalizedAttempts:
+                        type: integer
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+  /exams/{examId}/start:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+    post:
+      operationId: startExamAttempt
+      tags: [exams]
+      summary: Start or resume the student's single attempt
+      description: >
+        STUDENT only. Refuses an unpublished/out-of-window exam or a student
+        outside the class (IDOR). `expiresAt = min(startedAt + duration,
+        exam.endsAt)` is computed server-side. A terminal attempt is returned
+        with `canResume: false` instead of creating a second attempt.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Attempt state and student question projection
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AttemptSession'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          description: Exam not published / outside its window (EXAM_NOT_AVAILABLE)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+  /exams/{examId}/attempt:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+    get:
+      operationId: getExamAttempt
+      tags: [exams]
+      summary: Resume the current attempt without creating one
+      description: STUDENT only. Auto-submits the attempt if its server deadline passed.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Current attempt and saved answers
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AttemptSession'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+  /exams/{examId}/attempt/answers:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+    put:
+      operationId: saveExamAnswers
+      tags: [exams]
+      summary: Save answers (autosave) while the attempt is active
+      description: >
+        STUDENT only. Validates every question id against the exam and every
+        selected option against the question. Expired attempts are
+        auto-submitted before any write and then rejected (EXAM_ATTEMPT_CLOSED).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answers]
+              properties:
+                answers:
+                  type: array
+                  maxItems: 300
+                  items:
+                    type: object
+                    required: [questionId, selectedOptionIds]
+                    properties:
+                      questionId:
+                        type: string
+                        format: uuid
+                      selectedOptionIds:
+                        type: array
+                        maxItems: 8
+                        items:
+                          type: string
+                    additionalProperties: false
+              additionalProperties: false
+      responses:
+        '200':
+          description: Saved answers and authoritative remaining time
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SaveAnswersResponse'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          description: Attempt already closed (EXAM_ATTEMPT_CLOSED)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /exams/{examId}/attempt/submit:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+    post:
+      operationId: submitExamAttempt
+      tags: [exams]
+      summary: Submit the attempt (server-side grading)
+      description: >
+        STUDENT only. Grades on the server and freezes the attempt. A second
+        submission is rejected (EXAM_ATTEMPT_CLOSED). If the deadline already
+        passed, the attempt is AUTO_SUBMITTED instead.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Submitted attempt state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SubmitAttemptResponse'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          description: Attempt already closed (EXAM_ATTEMPT_CLOSED)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+  /exams/{examId}/attempt/result:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+    get:
+      operationId: getStudentExamResult
+      tags: [exams]
+      summary: Read the student's score after results are released
+      description: >
+        STUDENT only. Available when the exam is CLOSED and
+        `showResultsAfterClose` is true. Returns per-question correctness and
+        the score, NEVER the correct option ids or explanations.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Student result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StudentResult'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          description: Results not released yet (EXAM_RESULTS_NOT_AVAILABLE)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+  /exams/{examId}/attempt/events:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+    post:
+      operationId: reportExamEvent
+      tags: [exams]
+      summary: Report an anti-fraud signal for the current attempt
+      description: >
+        STUDENT only. The client reports a signal; the backend timestamps it,
+        binds it to the attempt, decides severity/decision and terminates when
+        the deterministic policy requires it. NETWORK_LOST,
+        NETWORK_RESTORED, CAMERA_DENIED and TECHNICAL_INTERRUPTION are recorded
+        with decision NONE. A confirmed exit (TAB_HIDDEN, PAGE_LEAVE,
+        APP_BACKGROUND, FULLSCREEN_EXIT) terminates on first occurrence when
+        durationMs is null or >= 1500 ms. Copy/paste/screenshot attempts
+        accumulate up to `maxViolationCount`.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - TAB_HIDDEN
+                    - FOCUS_LOST
+                    - PAGE_LEAVE
+                    - PAGE_REFRESH
+                    - FULLSCREEN_EXIT
+                    - APP_BACKGROUND
+                    - COPY_ATTEMPT
+                    - PASTE_ATTEMPT
+                    - CUT_ATTEMPT
+                    - CONTEXT_MENU
+                    - SCREENSHOT_ATTEMPT
+                    - NETWORK_LOST
+                    - NETWORK_RESTORED
+                    - CAMERA_DENIED
+                    - GAZE_OFF_SCREEN
+                    - TECHNICAL_INTERRUPTION
+                durationMs:
+                  type:
+                    - integer
+                    - 'null'
+                  minimum: 0
+                  maximum: 86400000
+                source:
+                  type: string
+                  maxLength: 20
+                  example: web
+                clientOccurredAt:
+                  type:
+                    - string
+                    - 'null'
+                  maxLength: 40
+                  description: Client clock hint; the server timestamp stays authoritative.
+                metadata:
+                  type: object
+                  additionalProperties: true
+              additionalProperties: false
+      responses:
+        '201':
+          description: Recorded event and automatic decision
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RecordEventResponse'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '409':
+          description: Attempt already closed (EXAM_ATTEMPT_CLOSED)
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /exams/{examId}/attempt/recordings:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+    post:
+      operationId: uploadExamRecording
+      tags: [exams]
+      summary: Upload a rolling-buffer video segment as evidence
+      description: >
+        STUDENT only, for their own attempt. WebM or MP4, max
+        STORAGE_MAX_UPLOAD_MB. A recording is optional: absence means no video
+        evidence exists and the teacher UI must not claim otherwise.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                eventId:
+                  type: string
+                  format: uuid
+                durationMs:
+                  type: integer
+                  minimum: 0
+                kind:
+                  type: string
+                  maxLength: 40
+      responses:
+        '201':
+          description: Stored recording metadata (never a storage key)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ExamRecordingView'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /exams/{examId}/results:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+    get:
+      operationId: getExamResults
+      tags: [exams]
+      summary: Teacher results table for an exam
+      description: TEACHER/ADMIN only. Includes correct counts computed server-side.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Results and average
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ExamResults'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+  /exams/{examId}/attempts/{attemptId}:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getExamAttemptMonitoring
+      tags: [exams]
+      summary: Teacher monitoring detail (answers, events, recordings)
+      description: >
+        TEACHER/ADMIN only. Returns the real event history and any uploaded
+        recordings. A missing recording list means no video evidence exists.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Attempt, events, recordings and questions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AttemptMonitoring'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+  /exams/{examId}/events/{eventId}:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateExamEventState
+      tags: [exams]
+      summary: Mark an anti-fraud event as REVIEWED or CONFIRMED
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [state]
+              properties:
+                state:
+                  type: string
+                  enum: [NEW, REVIEWED, CONFIRMED]
+              additionalProperties: false
+      responses:
+        '200':
+          description: Updated event
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ExamEvent'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /exams/{examId}/recordings/{recordingId}/stream:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+      - name: recordingId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: streamExamRecording
+      tags: [exams]
+      summary: Stream a recording with HTTP Range support
+      description: >
+        TEACHER/ADMIN only. Returns 206 for a valid Range request and 416 for
+        an unsatisfiable range. No storage key is ever exposed.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: Range
+          in: header
+          required: false
+          schema:
+            type: string
+            example: bytes=0-1048575
+      responses:
+        '200':
+          description: Full recording
+          content:
+            video/webm:
+              schema:
+                type: string
+                format: binary
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+        '206':
+          description: Partial content (Range)
+          content:
+            video/webm:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '416':
+          description: Unsatisfiable range
+  /exams/{examId}/recordings/{recordingId}:
+    parameters:
+      - $ref: '#/components/parameters/ExamId'
+      - name: recordingId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      operationId: deleteExamRecording
+      tags: [exams]
+      summary: Delete a recording (retention policy)
+      description: TEACHER/ADMIN only. Removes the DB row and the stored media file.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Recording deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [deleted]
+                    properties:
+                      deleted:
+                        type: boolean
+                        const: true
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
 components:
+  parameters:
+    ExamId:
+      name: examId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
   securitySchemes:
     bearerAuth:
       $ref: './common.yaml#/components/securitySchemes/bearerAuth'
@@ -300,4 +1261,921 @@ components:
         createdAt:
           type: string
           format: date-time
+      additionalProperties: false
+    ExamSettings:
+      type: object
+      required:
+        - shuffleQuestions
+        - requireCamera
+        - allowQuestionSkip
+        - showResultsAfterClose
+        - maxViolationCount
+      properties:
+        shuffleQuestions:
+          type: boolean
+        requireCamera:
+          type: boolean
+        allowQuestionSkip:
+          type: boolean
+        showResultsAfterClose:
+          type: boolean
+        maxViolationCount:
+          type: integer
+          minimum: 1
+          maximum: 20
+      additionalProperties: false
+    ExamSettingsInput:
+      type: object
+      properties:
+        shuffleQuestions:
+          type: boolean
+        requireCamera:
+          type: boolean
+        allowQuestionSkip:
+          type: boolean
+        showResultsAfterClose:
+          type: boolean
+        maxViolationCount:
+          type: integer
+          minimum: 1
+          maximum: 20
+      additionalProperties: false
+    ExamOption:
+      type: object
+      required: [id, text]
+      properties:
+        id:
+          type: string
+          maxLength: 8
+          example: A
+        text:
+          type: string
+          example: Paris
+      additionalProperties: false
+    ExamQuestionInput:
+      type: object
+      required: [prompt, options]
+      properties:
+        prompt:
+          type: string
+          maxLength: 5000
+        hint:
+          type:
+            - string
+            - 'null'
+          maxLength: 2000
+        options:
+          type: array
+          minItems: 2
+          maxItems: 8
+          items:
+            oneOf:
+              - type: string
+              - $ref: '#/components/schemas/ExamOption'
+        correctOptionIds:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            type: string
+        correctOptionId:
+          type: string
+          description: Alias accepted by the normalizer (letter, id or exact option text).
+        answer:
+          type: string
+          description: Alias accepted by the normalizer (letter, id, index or exact option text).
+        explanation:
+          type:
+            - string
+            - 'null'
+          maxLength: 5000
+        points:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 1
+      additionalProperties: false
+    TeacherQuestion:
+      type: object
+      required:
+        - id
+        - order
+        - type
+        - prompt
+        - options
+        - correctOptionIds
+        - points
+        - examId
+      properties:
+        id:
+          type: string
+          format: uuid
+        examId:
+          type: string
+          format: uuid
+        order:
+          type: integer
+        type:
+          type: string
+          enum: [SINGLE_CHOICE]
+        prompt:
+          type: string
+        hint:
+          type:
+            - string
+            - 'null'
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamOption'
+        correctOptionIds:
+          type: array
+          items:
+            type: string
+        explanation:
+          type:
+            - string
+            - 'null'
+        points:
+          type: integer
+      additionalProperties: false
+    StudentQuestion:
+      type: object
+      required: [id, order, type, prompt, options, points]
+      properties:
+        id:
+          type: string
+          format: uuid
+        order:
+          type: integer
+        type:
+          type: string
+          enum: [SINGLE_CHOICE]
+        prompt:
+          type: string
+        hint:
+          type:
+            - string
+            - 'null'
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamOption'
+        points:
+          type: integer
+      additionalProperties: false
+    ExamSummary:
+      type: object
+      required:
+        - id
+        - title
+        - classGroupId
+        - authorId
+        - durationMinutes
+        - startsAt
+        - endsAt
+        - status
+        - source
+        - settings
+        - questionCount
+        - totalPoints
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+        classGroupId:
+          type: string
+          format: uuid
+        className:
+          type:
+            - string
+            - 'null'
+        authorId:
+          type: string
+          format: uuid
+        durationMinutes:
+          type: integer
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, CLOSED]
+        source:
+          type: string
+          enum: [MANUAL, IMPORT, AI]
+        settings:
+          $ref: '#/components/schemas/ExamSettings'
+        questionCount:
+          type: integer
+        totalPoints:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ExamDetail:
+      allOf:
+        - $ref: '#/components/schemas/ExamSummary'
+        - type: object
+          required: [questions]
+          properties:
+            questions:
+              type: array
+              items:
+                $ref: '#/components/schemas/TeacherQuestion'
+    CreateExamRequest:
+      type: object
+      required: [title, classGroupId, durationMinutes, startsAt, endsAt, questions]
+      properties:
+        title:
+          type: string
+          maxLength: 300
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 5000
+        classGroupId:
+          type: string
+          format: uuid
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 600
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        source:
+          type: string
+          enum: [MANUAL, IMPORT, AI]
+          default: MANUAL
+        settings:
+          $ref: '#/components/schemas/ExamSettingsInput'
+        questions:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/ExamQuestionInput'
+      additionalProperties: false
+    UpdateExamRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 300
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 5000
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 600
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        settings:
+          $ref: '#/components/schemas/ExamSettingsInput'
+        questions:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/ExamQuestionInput'
+      additionalProperties: false
+    ExamClassCourseOption:
+      type: object
+      required: [id, title, subject]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        subject:
+          type:
+            - string
+            - 'null'
+      additionalProperties: false
+    ImportedExamPreview:
+      type: object
+      required: [title, sourceFormat, questions]
+      properties:
+        title:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+        sourceFormat:
+          type: string
+          enum: [json, csv, txt]
+        questions:
+          type: array
+          items:
+            type: object
+            required: [prompt, options, correctOptionIds, points]
+            properties:
+              prompt:
+                type: string
+              hint:
+                type:
+                  - string
+                  - 'null'
+              options:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExamOption'
+              correctOptionIds:
+                type: array
+                items:
+                  type: string
+              explanation:
+                type:
+                  - string
+                  - 'null'
+              points:
+                type: integer
+            additionalProperties: false
+      additionalProperties: false
+    GeneratedExamPreview:
+      type: object
+      required: [title, questions, model, source]
+      properties:
+        title:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+        questions:
+          type: array
+          items:
+            type: object
+            required: [prompt, options, correctOptionIds, points]
+            properties:
+              prompt:
+                type: string
+              hint:
+                type:
+                  - string
+                  - 'null'
+              options:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExamOption'
+              correctOptionIds:
+                type: array
+                items:
+                  type: string
+              explanation:
+                type:
+                  - string
+                  - 'null'
+              points:
+                type: integer
+            additionalProperties: false
+        model:
+          type: string
+          example: hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1
+        source:
+          type: string
+          const: AI
+      additionalProperties: false
+    AvailableExam:
+      allOf:
+        - $ref: '#/components/schemas/ExamSummary'
+        - type: object
+          required: [availability, attemptStatus, canStart, canResume]
+          properties:
+            availability:
+              type: string
+              enum: [UPCOMING, ACTIVE, ENDED, CLOSED]
+            attemptStatus:
+              type:
+                - string
+                - 'null'
+              enum: [IN_PROGRESS, SUBMITTED, AUTO_SUBMITTED, TERMINATED]
+            canStart:
+              type: boolean
+            canResume:
+              type: boolean
+            remainingMs:
+              type:
+                - integer
+                - 'null'
+    StudentAttempt:
+      type: object
+      required:
+        - id
+        - examId
+        - status
+        - startedAt
+        - expiresAt
+        - remainingMs
+        - violationCount
+      properties:
+        id:
+          type: string
+          format: uuid
+        examId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [IN_PROGRESS, SUBMITTED, AUTO_SUBMITTED, TERMINATED]
+        startedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        submittedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        remainingMs:
+          type: integer
+          description: Authoritative remaining time from the server clock.
+        violationCount:
+          type: integer
+        terminatedReason:
+          type:
+            - string
+            - 'null'
+      additionalProperties: false
+    StudentAnswer:
+      type: object
+      required: [questionId, selectedOptionIds, savedAt]
+      properties:
+        questionId:
+          type: string
+          format: uuid
+        selectedOptionIds:
+          type: array
+          items:
+            type: string
+        savedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    StudentExam:
+      type: object
+      required:
+        - id
+        - title
+        - durationMinutes
+        - startsAt
+        - endsAt
+        - status
+        - settings
+        - questionCount
+        - totalPoints
+        - questions
+        - serverNow
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+        className:
+          type:
+            - string
+            - 'null'
+        durationMinutes:
+          type: integer
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, CLOSED]
+        settings:
+          type: object
+          required: [requireCamera, allowQuestionSkip, shuffleQuestions]
+          properties:
+            requireCamera:
+              type: boolean
+            allowQuestionSkip:
+              type: boolean
+            shuffleQuestions:
+              type: boolean
+          additionalProperties: false
+        questionCount:
+          type: integer
+        totalPoints:
+          type: integer
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentQuestion'
+        serverNow:
+          type: string
+          format: date-time
+      additionalProperties: false
+    AttemptSession:
+      type: object
+      required: [exam, attempt, answers, resumed, canResume, serverNow]
+      properties:
+        exam:
+          $ref: '#/components/schemas/StudentExam'
+        attempt:
+          $ref: '#/components/schemas/StudentAttempt'
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentAnswer'
+        resumed:
+          type: boolean
+        canResume:
+          type: boolean
+        serverNow:
+          type: string
+          format: date-time
+      additionalProperties: false
+    SaveAnswersResponse:
+      type: object
+      required: [savedAt, answers, remainingMs, serverNow]
+      properties:
+        savedAt:
+          type: string
+          format: date-time
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentAnswer'
+        remainingMs:
+          type: integer
+        serverNow:
+          type: string
+          format: date-time
+      additionalProperties: false
+    SubmitAttemptResponse:
+      type: object
+      required: [attempt, autoSubmitted, serverNow]
+      properties:
+        attempt:
+          $ref: '#/components/schemas/StudentAttempt'
+        autoSubmitted:
+          type: boolean
+        serverNow:
+          type: string
+          format: date-time
+      additionalProperties: false
+    StudentResult:
+      type: object
+      required:
+        - examId
+        - examTitle
+        - status
+        - score
+        - maxScore
+        - correctCount
+        - questionCount
+        - items
+      properties:
+        examId:
+          type: string
+          format: uuid
+        examTitle:
+          type: string
+        status:
+          type: string
+          enum: [SUBMITTED, AUTO_SUBMITTED, TERMINATED]
+        score:
+          type: number
+        maxScore:
+          type: number
+        correctCount:
+          type: integer
+        questionCount:
+          type: integer
+        submittedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        terminatedReason:
+          type:
+            - string
+            - 'null'
+        items:
+          type: array
+          items:
+            type: object
+            required: [questionId, selectedOptionIds, correct, pointsAwarded, pointsMax]
+            properties:
+              questionId:
+                type: string
+                format: uuid
+              selectedOptionIds:
+                type: array
+                items:
+                  type: string
+              correct:
+                type: boolean
+              pointsAwarded:
+                type: number
+              pointsMax:
+                type: integer
+            additionalProperties: false
+      additionalProperties: false
+    ExamResultEntry:
+      type: object
+      required:
+        - attemptId
+        - studentId
+        - studentName
+        - status
+        - maxScore
+        - correctCount
+        - questionCount
+        - violationCount
+      properties:
+        attemptId:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+          format: uuid
+        studentName:
+          type: string
+        status:
+          type: string
+          enum: [IN_PROGRESS, SUBMITTED, AUTO_SUBMITTED, TERMINATED]
+        score:
+          type:
+            - number
+            - 'null'
+        maxScore:
+          type: number
+        correctCount:
+          type: integer
+        questionCount:
+          type: integer
+        submittedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        violationCount:
+          type: integer
+      additionalProperties: false
+    ExamResults:
+      type: object
+      required: [examId, examTitle, status, attemptCount, averageScore, results]
+      properties:
+        examId:
+          type: string
+          format: uuid
+        examTitle:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, CLOSED]
+        attemptCount:
+          type: integer
+        averageScore:
+          type:
+            - number
+            - 'null'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamResultEntry'
+      additionalProperties: false
+    ExamEvent:
+      type: object
+      required:
+        - id
+        - attemptId
+        - examId
+        - studentId
+        - type
+        - severity
+        - state
+        - occurredAt
+        - source
+        - metadata
+        - decision
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        attemptId:
+          type: string
+          format: uuid
+        examId:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+            - TAB_HIDDEN
+            - FOCUS_LOST
+            - PAGE_LEAVE
+            - PAGE_REFRESH
+            - FULLSCREEN_EXIT
+            - APP_BACKGROUND
+            - COPY_ATTEMPT
+            - PASTE_ATTEMPT
+            - CUT_ATTEMPT
+            - CONTEXT_MENU
+            - SCREENSHOT_ATTEMPT
+            - NETWORK_LOST
+            - NETWORK_RESTORED
+            - CAMERA_DENIED
+            - GAZE_OFF_SCREEN
+            - TECHNICAL_INTERRUPTION
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+        state:
+          type: string
+          enum: [NEW, REVIEWED, CONFIRMED]
+        occurredAt:
+          type: string
+          format: date-time
+        durationMs:
+          type:
+            - integer
+            - 'null'
+        source:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        decision:
+          type: string
+          enum: [NONE, WARNING, TERMINATED]
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    RecordEventResponse:
+      type: object
+      required: [event, attempt, decision, severity, remainingMs, serverNow]
+      properties:
+        event:
+          $ref: '#/components/schemas/ExamEvent'
+        attempt:
+          $ref: '#/components/schemas/StudentAttempt'
+        decision:
+          type: string
+          enum: [NONE, WARNING, TERMINATED]
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+        remainingMs:
+          type: integer
+        serverNow:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ExamRecordingView:
+      type: object
+      required: [id, attemptId, examId, kind, mimeType, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        attemptId:
+          type: string
+          format: uuid
+        examId:
+          type: string
+          format: uuid
+        eventId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        kind:
+          type: string
+        mimeType:
+          type: string
+        sizeBytes:
+          type:
+            - integer
+            - 'null'
+        durationMs:
+          type:
+            - integer
+            - 'null'
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    AttemptMonitoring:
+      type: object
+      required: [examId, examTitle, questionCount, attempt, events, recordings, questions]
+      properties:
+        examId:
+          type: string
+          format: uuid
+        examTitle:
+          type: string
+        questionCount:
+          type: integer
+        attempt:
+          type: object
+          required:
+            - id
+            - studentId
+            - studentName
+            - status
+            - startedAt
+            - expiresAt
+            - maxScore
+            - violationCount
+            - answers
+          properties:
+            id:
+              type: string
+              format: uuid
+            studentId:
+              type: string
+              format: uuid
+            studentName:
+              type: string
+            status:
+              type: string
+              enum: [IN_PROGRESS, SUBMITTED, AUTO_SUBMITTED, TERMINATED]
+            startedAt:
+              type: string
+              format: date-time
+            expiresAt:
+              type: string
+              format: date-time
+            submittedAt:
+              type:
+                - string
+                - 'null'
+              format: date-time
+            score:
+              type:
+                - number
+                - 'null'
+            maxScore:
+              type: number
+            violationCount:
+              type: integer
+            terminatedReason:
+              type:
+                - string
+                - 'null'
+            answers:
+              type: array
+              items:
+                $ref: '#/components/schemas/StudentAnswer'
+          additionalProperties: false
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamEvent'
+        recordings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamRecordingView'
+        questions:
+          type: array
+          description: Teacher-only questions (include correct answers).
+          items:
+            $ref: '#/components/schemas/TeacherQuestion'
       additionalProperties: false

@@ -226,7 +226,6 @@ class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
             } else {
               // Defensive: metadata without the saved section → resync.
               state = state.copyWith(resetStreaming: true);
-              unawaited(load());
             }
           },
           onError: (err) {
@@ -239,6 +238,13 @@ class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
             );
           },
         );
+
+    // Always re-fetch from server after stream ends to guarantee the UI
+    // reflects the persisted state — even when the SSE `done` frame was
+    // lost, incomplete, or its section JSON could not be parsed.
+    if (mounted && run == _streamRun) {
+      await load();
+    }
   }
 
   /// Sequentially generates and validates all pending or unvalidated sections of the outline.

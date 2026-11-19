@@ -79,10 +79,17 @@ export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
   });
   router.use('/courses', coursesModule.router);
 
-  // 4. Exams integrity slice (/api/v1/exams)
+  // 4. Exams (/api/v1/exams): teacher authoring, student attempts,
+  // server grading and anti-fraud monitoring. Admin fraud slice stays scoped.
   const examsModule = createExamsModule({
     ...options.examsModuleOptions,
-    ...adminGuard,
+    authenticateMiddleware: adminGuard.authenticateMiddleware,
+    requireAdminMiddleware: adminGuard.requireAdminMiddleware,
+    requireTeacherMiddleware: authModule.requireApprovedTeacherMiddleware([
+      'TEACHER',
+      'ADMIN',
+    ] as Role[]),
+    requireStudentMiddleware: authModule.requireRoleMiddleware(['STUDENT'] as Role[]),
   });
   router.use('/exams', examsModule.router);
 

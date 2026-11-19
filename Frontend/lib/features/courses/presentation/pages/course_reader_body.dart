@@ -159,6 +159,14 @@ class _CourseReaderBodyState extends ConsumerState<CourseReaderBody> {
   }
 
   Future<void> _publish(BuildContext context) async {
+    final sectionState = ref.read(courseSectionBuildProvider(widget.course.id));
+    if (sectionState.remainingToValidate > 0) {
+      context.showWarningToast(
+        context.tr('ai_build_remaining', args: {'count': sectionState.remainingToValidate.toString()}),
+      );
+      return;
+    }
+
     try {
       await ref.read(generatedCoursesDataSourceProvider).publish(widget.course.id);
       ref
@@ -493,6 +501,14 @@ class _SectionBuildPanel extends ConsumerWidget {
     final colorScheme = theme.colorScheme;
     final state = ref.watch(courseSectionBuildProvider(courseId));
 
+    ref.listen<CourseSectionBuildState>(courseSectionBuildProvider(courseId), (prev, next) {
+      if (next.streamError != null && prev?.streamError != next.streamError) {
+        // En cas d'erreur de stream (ex: timeout), forcer un reload car le backend a peut-être fini
+        ref.read(courseSectionBuildProvider(courseId).notifier).load();
+        _showCourseFailure(context, next.streamError!);
+      }
+    });
+
     if (state.loading) {
       return const SmartLoader.medium(message: 'Chargement des sections...');
     }
@@ -709,6 +725,8 @@ class _SectionBuildPanel extends ConsumerWidget {
           sectionKey: sectionKey,
           regenerate: regenerate,
         );
+    if (!context.mounted) return;
+    await ref.read(courseSectionBuildProvider(courseId).notifier).load();
   }
 
   Future<void> _validateSection(
@@ -718,8 +736,15 @@ class _SectionBuildPanel extends ConsumerWidget {
   ) async {
     try {
       await ref.read(courseSectionBuildProvider(courseId).notifier).validate(sectionKey);
+      ref
+        ..invalidate(generatedCourseProvider(courseId))
+        ..invalidate(myGeneratedCoursesProvider)
+        ..invalidate(publishedCoursesProvider);
       if (!context.mounted) return;
-      context.showSuccessToast(context.tr('ai_build_validated_snack', args: {'count': '0'}));
+      final remaining = ref.read(courseSectionBuildProvider(courseId)).remainingToValidate;
+      context.showSuccessToast(
+        context.tr('ai_build_validated_snack', args: {'count': remaining.toString()}),
+      );
     } catch (e) {
       if (!context.mounted) return;
       _showCourseFailure(context, e);

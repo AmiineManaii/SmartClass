@@ -27,8 +27,12 @@ import '../features/courses/presentation/pages/courses_page.dart';
 import '../features/groups/presentation/pages/groups_page.dart';
 import '../features/groups/presentation/pages/class_detail_page.dart';
 import '../features/exams/presentation/pages/exams_page.dart';
-import '../features/exams/presentation/pages/secure_exam_page.dart';
-import '../features/exams/presentation/pages/exam_ai_score_page.dart';
+import '../features/exams/presentation/pages/exam_attempt_page.dart';
+import '../features/exams/presentation/pages/exam_authoring_page.dart';
+import '../features/exams/presentation/pages/exam_manage_page.dart';
+import '../features/exams/presentation/pages/exam_monitoring_page.dart';
+import '../features/exams/presentation/pages/exam_result_page.dart';
+import '../features/exams/presentation/pages/exam_results_page.dart';
 import '../features/videoconference/presentation/pages/videoconference_page.dart';
 import '../features/videoconference/presentation/pages/lobby_page.dart';
 import '../features/videoconference/presentation/pages/live_room_page.dart';
@@ -223,14 +227,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AiQuizPage(),
       ),
       GoRoute(
-        path: '/exams/secure-session',
-        name: 'secure-exam-session',
-        builder: (context, state) => const SecureExamPage(),
-      ),
-      GoRoute(
-        path: '/exams/ai-score',
-        name: 'exam-ai-score',
-        builder: (context, state) => const ExamAiScorePage(),
+        path: '/exams/:examId/take',
+        name: 'exam-take',
+        builder: (context, state) => ExamAttemptPage(
+          examId: state.pathParameters['examId'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/videoconference/:sessionId/lobby',
@@ -317,6 +318,47 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/exams',
             name: 'exams',
             builder: (context, state) => const ExamsPage(),
+          ),
+          GoRoute(
+            path: '/exams/new',
+            name: 'exam-authoring-new',
+            builder: (context, state) => const ExamAuthoringPage(),
+          ),
+          GoRoute(
+            path: '/exams/:examId/edit',
+            name: 'exam-authoring-edit',
+            builder: (context, state) => ExamAuthoringPage(
+              examId: state.pathParameters['examId'] ?? '',
+            ),
+          ),
+          GoRoute(
+            path: '/exams/:examId/manage',
+            name: 'exam-manage',
+            builder: (context, state) => ExamManagePage(
+              examId: state.pathParameters['examId'] ?? '',
+            ),
+          ),
+          GoRoute(
+            path: '/exams/:examId/results',
+            name: 'exam-results',
+            builder: (context, state) => ExamResultsPage(
+              examId: state.pathParameters['examId'] ?? '',
+            ),
+          ),
+          GoRoute(
+            path: '/exams/:examId/attempts/:attemptId',
+            name: 'exam-monitoring',
+            builder: (context, state) => ExamMonitoringPage(
+              examId: state.pathParameters['examId'] ?? '',
+              attemptId: state.pathParameters['attemptId'] ?? '',
+            ),
+          ),
+          GoRoute(
+            path: '/exams/:examId/result',
+            name: 'exam-result',
+            builder: (context, state) => ExamResultPage(
+              examId: state.pathParameters['examId'] ?? '',
+            ),
           ),
           GoRoute(
             path: '/videoconference',

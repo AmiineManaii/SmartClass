@@ -189,14 +189,18 @@ class LiveSpeechRecorder {
 
       recognition['onresult'] = (dynamic event) {
         try {
-          final results = event['results'];
-          final int resultIndex = event['resultIndex'] ?? 0;
-          final int length = results['length'] ?? 0;
+          final jsEvent = js.JsObject.fromBrowserObject(event as Object);
+          final dynamic results = jsEvent['results'];
+          if (results == null) return;
+          final int resultIndex = (jsEvent['resultIndex'] as num?)?.toInt() ?? 0;
+          final int length = (results['length'] as num?)?.toInt() ?? 0;
           for (var i = resultIndex; i < length; i++) {
-            final res = results[i];
+            final dynamic res = results[i];
+            if (res == null) continue;
             final bool isFinal = res['isFinal'] == true;
             if (isFinal) {
-              final alt = res[0];
+              final dynamic alt = res[0];
+              if (alt == null) continue;
               final transcript = (alt['transcript'] as String? ?? '').trim();
               if (transcript.isNotEmpty) {
                 final now = DateTime.now();
@@ -351,13 +355,11 @@ class LiveSpeechRecorder {
       });
 
       // 5. Capture Stream from Canvas + Microphone Audio
-      final jsCanvas = js.JsObject.fromBrowserObject(canvas);
       html.MediaStream compositeStream;
-      if (jsCanvas.hasProperty('captureStream')) {
-        final rawStream = jsCanvas.callMethod('captureStream', [30]);
-        compositeStream = rawStream as html.MediaStream;
-      } else {
+      try {
         compositeStream = canvas.captureStream(30);
+      } catch (_) {
+        compositeStream = canvas.captureStream();
       }
 
       if (micStream != null) {

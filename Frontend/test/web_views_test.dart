@@ -20,8 +20,8 @@ import 'package:smartclass/features/home/presentation/widgets/student_dashboard_
 import 'package:smartclass/features/ai_assistant/presentation/pages/ai_assistant_page.dart';
 import 'package:smartclass/features/courses/presentation/pages/ai_course_creator_page.dart';
 import 'package:smartclass/features/exams/presentation/pages/exams_page.dart';
-import 'package:smartclass/features/exams/presentation/pages/secure_exam_page.dart';
-import 'package:smartclass/features/exams/presentation/pages/exam_ai_score_page.dart';
+import 'package:smartclass/features/exams/application/providers/exam_providers.dart';
+import 'package:smartclass/features/exams/domain/entities/exam_attempt.dart';
 import 'package:smartclass/features/courses/presentation/pages/course_reader_page.dart';
 import 'package:smartclass/features/courses/application/providers/courses_provider.dart';
 import 'package:smartclass/features/courses/domain/entities/course_entry.dart';
@@ -462,76 +462,27 @@ void main() {
     });
 
     testWidgets(
-        'SecureExamPage renders anti-fraud telemetry banner, timer, segmented progress and radio options',
+        'ExamsPage renders the student list scaffold with the empty state',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(1440, 900);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(
-        _buildDesktopTestHarness(const SecureExamPage()),
-      );
-      await tester.pump(const Duration(milliseconds: 300));
-
-      expect(find.byType(SecureExamPage), findsOneWidget);
-      expect(find.text('Active Exam Session'), findsOneWidget);
-      expect(find.text('Locked Proctoring Active'), findsOneWidget);
-      expect(find.text('Mode Anti-fraude Actif'), findsOneWidget);
-      expect(find.text('Détection d\'onglet & écran scellé'), findsOneWidget);
-      expect(find.text('Question 3'), findsOneWidget);
-      expect(find.text('sur 10'), findsOneWidget);
-      expect(find.text('Choix unique'), findsOneWidget);
-      expect(find.text('O(n²)'), findsOneWidget);
-      expect(find.text('Protocole d\'intégrité actif : Quitter l\'application, changer d\'écran ou effectuer une capture déclenche un signalement automatique et invalidera la session.'), findsOneWidget);
-    });
-
-    testWidgets(
-        'ExamAiScorePage renders radial score ring, cohort benchmark, AI pedagogical synthesis and filter tabs',
-        (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(1440, 900);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-
-      await tester.pumpWidget(
-        _buildDesktopTestHarness(const ExamAiScorePage()),
-      );
-      await tester.pump(const Duration(milliseconds: 300));
-
-      expect(find.byType(ExamAiScorePage), findsOneWidget);
-      expect(find.text('Résultats De L\'Examen'), findsOneWidget);
-      expect(find.text('16'), findsOneWidget);
-      expect(find.text('/ 20'), findsOneWidget);
-      expect(find.text('SCORE GLOBAL'), findsOneWidget);
-      expect(find.text('Validé avec succès (+3.2 pts vs promo)'), findsOneWidget);
-      expect(find.text('8 / 10'), findsOneWidget);
-      expect(find.text('80%'), findsOneWidget);
-      expect(find.text('2 / 10'), findsOneWidget);
-      expect(find.text('20%'), findsOneWidget);
-      expect(find.text('4e'), findsOneWidget);
-      expect(find.text('Tuteur IA SmartClass'), findsOneWidget);
-      expect(find.text('Diagnostic instantané'), findsOneWidget);
-      expect(find.text('Générer 3 fiches de remédiation'), findsOneWidget);
-      expect(find.text('Détail des Questions'), findsOneWidget);
-      expect(find.text('Toutes (10)'), findsOneWidget);
-      expect(find.text('Erreurs (2)'), findsOneWidget);
-      expect(find.text('Réussies (8)'), findsOneWidget);
-    });
-
-    testWidgets(
-        'ExamsPage renders tabbed list and launches secure anti-fraud exam modal',
-        (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(1440, 900);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
-
-      await tester.pumpWidget(
-        _buildDesktopTestHarness(const ExamsPage()),
+        _buildDesktopTestHarness(
+          const ExamsPage(),
+          overrides: [
+            availableExamsProvider.overrideWith(
+              (ref) async => <AvailableExam>[],
+            ),
+          ],
+        ),
       );
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.byType(ExamsPage), findsOneWidget);
       expect(find.text('Mes examens'), findsOneWidget);
-      expect(find.text('Examen final - Programmation OO'), findsOneWidget);
+      expect(find.text('Aucun examen disponible'), findsOneWidget);
     });
   });
 }

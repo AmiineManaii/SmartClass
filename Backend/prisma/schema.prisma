@@ -80,6 +80,54 @@ enum VideoSessionStatus {
   CANCELED
 }
 
+enum ExamStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum ExamSource {
+  MANUAL
+  IMPORT
+  AI
+}
+
+enum ExamQuestionType {
+  SINGLE_CHOICE
+}
+
+enum ExamAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  AUTO_SUBMITTED
+  TERMINATED
+}
+
+enum ExamEventType {
+  TAB_HIDDEN
+  FOCUS_LOST
+  PAGE_LEAVE
+  PAGE_REFRESH
+  FULLSCREEN_EXIT
+  APP_BACKGROUND
+  COPY_ATTEMPT
+  PASTE_ATTEMPT
+  CUT_ATTEMPT
+  CONTEXT_MENU
+  SCREENSHOT_ATTEMPT
+  NETWORK_LOST
+  NETWORK_RESTORED
+  CAMERA_DENIED
+  GAZE_OFF_SCREEN
+  TECHNICAL_INTERRUPTION
+}
+
+enum ExamEventState {
+  NEW
+  REVIEWED
+  CONFIRMED
+}
+
 enum RecordingStatus {
   NOT_STARTED
   STARTING
@@ -165,6 +213,10 @@ model User {
   lessonBookmarks         StudentLessonBookmark[]
   lessonNotes             StudentLessonNote[]
   tutorConversations      LessonTutorConversation[]
+  authoredExams           Exam[]                      @relation("AuthoredExams")
+  examAttempts            ExamAttempt[]
+  examEvents              ExamEvent[]
+  examRecordings          ExamRecording[]
 
   @@index([email])
   @@index([role])
@@ -200,6 +252,7 @@ model ClassGroup {
   courses       CourseClassGroup[]
   videoSessions VideoSession[]
   recordings    Recording[]
+  exams         Exam[]
 
   @@index([level])
   @@index([status])
@@ -433,6 +486,164 @@ model FraudReport {
   @@map("fraud_reports")
 }
 
+/// Official exam created by a teacher for one class. Questions and their
+/// correct answers live server-side only: the student projection never
+/// carries `correctOptionIds`.
+model Exam {
+  id              String     @id @default(uuid()) @db.Uuid
+  title           String
+  description     String?    @db.Text
+  classGroupId    String     @map("class_group_id") @db.Uuid
+  authorId        String     @map("author_id") @db.Uuid
+  durationMinutes Int        @map("duration_minutes")
+  startsAt        DateTime   @map("starts_at") @db.Timestamptz
+  endsAt          DateTime   @map("ends_at") @db.Timestamptz
+  status          ExamStatus @default(DRAFT)
+  source          ExamSource @default(MANUAL)
+  /// Runtime policy: shuffleQuestions, requireCamera, maxViolationCount,
+  /// allowQuestionSkip, showResultsAfterClose.
+  settings        Json       @default("{}")
+  publishedAt     DateTime?  @map("published_at") @db.Timestamptz
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  classGroup ClassGroup     @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  author     User           @relation("AuthoredExams", fields: [authorId], references: [id], onDelete: Cascade)
+  questions  ExamQuestion[]
+  attempts   ExamAttempt[]
+  events     ExamEvent[]
+  recordings ExamRecording[]
+
+  @@index([classGroupId, status])
+  @@index([authorId])
+  @@index([startsAt, endsAt])
+  @@map("exams")
+}
+
+/// One question of an exam. `options` is `[{id:"A", text:"..."}]`;
+/// `correctOptionIds` is `["A"]` and is NEVER exposed to the student API.
+model ExamQuestion {
+  id               String           @id @default(uuid()) @db.Uuid
+  examId           String           @map("exam_id") @db.Uuid
+  order            Int
+  type             ExamQuestionType @default(SINGLE_CHOICE)
+  prompt           String           @db.Text
+  hint             String?          @db.Text
+  options          Json             @default("[]")
+  correctOptionIds Json             @default("[]") @map("correct_option_ids")
+  explanation      String?          @db.Text
+  points           Int              @default(1)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  exam    Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  answers ExamAnswer[]
+
+  @@unique([examId, order])
+  @@index([examId])
+  @@map("exam_questions")
+}
+
+/// A student's single attempt per exam. `expiresAt` is computed server-side
+/// as min(startedAt + duration, exam.endsAt): the backend is the only clock.
+model ExamAttempt {
+  id               String            @id @default(uuid()) @db.Uuid
+  examId           String            @map("exam_id") @db.Uuid
+  studentId        String            @map("student_id") @db.Uuid
+  status           ExamAttemptStatus @default(IN_PROGRESS)
+  startedAt        DateTime          @map("started_at") @db.Timestamptz
+  expiresAt        DateTime          @map("expires_at") @db.Timestamptz
+  submittedAt      DateTime?         @map("submitted_at") @db.Timestamptz
+  lastSeenAt       DateTime          @default(now()) @map("last_seen_at") @db.Timestamptz
+  score            Float?
+  maxScore         Int               @default(0)
+  violationCount   Int               @default(0) @map("violation_count")
+  terminatedReason String?           @map("terminated_reason") @db.Text
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+
+  exam       Exam            @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student    User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers    ExamAnswer[]
+  events     ExamEvent[]
+  recordings ExamRecording[]
+
+  @@unique([examId, studentId])
+  @@index([examId, status])
+  @@index([studentId])
+  @@map("exam_attempts")
+}
+
+model ExamAnswer {
+  id               String   @id @default(uuid()) @db.Uuid
+  attemptId        String   @map("attempt_id") @db.Uuid
+  questionId       String   @map("question_id") @db.Uuid
+  selectedOptionIds Json    @default("[]") @map("selected_option_ids")
+  savedAt          DateTime @default(now()) @map("saved_at") @db.Timestamptz
+
+  attempt  ExamAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@map("exam_answers")
+}
+
+/// Anti-fraud signal reported by the client. The backend decides the
+/// sanction: `decision` = NONE | WARNING | TERMINATED. Technical
+/// interruptions (network, camera permission) are recorded, never punished.
+model ExamEvent {
+  id           String         @id @default(uuid()) @db.Uuid
+  attemptId    String         @map("attempt_id") @db.Uuid
+  examId       String         @map("exam_id") @db.Uuid
+  studentId    String         @map("student_id") @db.Uuid
+  type         ExamEventType
+  severity     FraudSeverity  @default(LOW)
+  state        ExamEventState @default(NEW)
+  occurredAt   DateTime       @map("occurred_at") @db.Timestamptz
+  durationMs   Int?           @map("duration_ms")
+  source       String         @default("web")
+  metadata     Json           @default("{}")
+  decision     String         @default("NONE")
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  attempt    ExamAttempt     @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  exam       Exam            @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student    User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  recordings ExamRecording[]
+
+  @@index([attemptId, occurredAt])
+  @@index([examId, occurredAt])
+  @@index([studentId])
+  @@index([state])
+  @@map("exam_events")
+}
+
+/// Video evidence for an exam attempt. Segments are uploaded by the client
+/// after a confirmed event (rolling buffer). Absent = no video proof was
+/// captured; the UI must never claim one exists.
+model ExamRecording {
+  id         String   @id @default(uuid()) @db.Uuid
+  attemptId  String   @map("attempt_id") @db.Uuid
+  examId     String   @map("exam_id") @db.Uuid
+  studentId  String   @map("student_id") @db.Uuid
+  eventId    String?  @map("event_id") @db.Uuid
+  kind       String   @default("SEGMENT")
+  storageKey String   @map("storage_key")
+  mimeType   String   @default("video/webm") @map("mime_type")
+  sizeBytes  BigInt?  @map("size_bytes")
+  durationMs Int?     @map("duration_ms")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  attempt ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  exam    Exam        @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  event   ExamEvent?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([attemptId, createdAt])
+  @@index([examId])
+  @@map("exam_recordings")
+}
+
 model RefreshToken {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
@@ -496,6 +707,9 @@ model VideoSession {
   timetableSlotId        String?            @map("timetable_slot_id") @db.Uuid
   courseId               String?            @map("course_id") @db.Uuid
   cancelReason           String?            @map("cancel_reason") @db.Text
+  recordingUrl           String?            @map("recording_url") @db.Text
+  recordingEgressId      String?            @map("recording_egress_id") @db.VarChar(100)
+  transcript             String?            @db.Text
   createdAt              DateTime           @default(now()) @map("created_at") @db.Timestamptz
   updatedAt              DateTime           @updatedAt @map("updated_at") @db.Timestamptz
 

@@ -1,5 +1,6 @@
 import { getEnv } from '../../../config/env.js';
 import {
+  AiTimeoutError,
   InternalError,
   ServiceUnavailableError,
 } from '../../../shared/errors/app-error.js';
@@ -264,6 +265,13 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
       return await this.postMessages(messages, input, tools, this.timeoutMs, modelName);
     } catch (error) {
       logger.warn({ err: error, model: modelName }, 'AI gateway request failed');
+      // An aborted fetch means the model is running but too slow, not down.
+      const name = (error as { name?: string } | null)?.name;
+      if (name === 'AbortError' || name === 'TimeoutError') {
+        throw new AiTimeoutError(
+          'The local AI model took too long to answer. Retry with fewer questions or a shorter course.',
+        );
+      }
       throw new ServiceUnavailableError(
         'The local AI model is currently unreachable. Start Ollama and retry.',
       );
@@ -289,6 +297,9 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
       try {
         raw = await this.postMessagesOrThrow(messages, input, tools, activeModel);
       } catch (err) {
+        // A timeout means the model is alive but slow: retrying a larger
+        // fallback model would only double the wait.
+        if (err instanceof AiTimeoutError) throw err;
         if (this.fallbackModel && this.fallbackModel !== activeModel) {
           logger.warn(
             { primary: activeModel, fallback: this.fallbackModel, error: err },
@@ -517,6 +528,12 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
         error instanceof InternalError
       ) {
         throw error;
+      }
+      const name = (error as { name?: string } | null)?.name;
+      if (name === 'AbortError' || name === 'TimeoutError') {
+        throw new AiTimeoutError(
+          'The local AI model took too long to answer. Retry with fewer questions or a shorter course.',
+        );
       }
       logger.warn({ err: error }, 'AI gateway stream unreachable');
       throw new ServiceUnavailableError(

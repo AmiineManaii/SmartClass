@@ -103,6 +103,31 @@ describe('Unit: OpenAICompatibleGateway', () => {
     await expect(gateway.checkHealth()).resolves.toMatchObject({ available: false });
   });
 
+  it('throws 504 AI_TIMEOUT (not 503) when the model is too slow', async () => {
+    const { createServer: create } = await import('node:http');
+    const slow = create((_req, res) => {
+      // Never answers: the client must abort on its own timeout.
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+    });
+    await new Promise<void>((resolve) => slow.listen(0, '127.0.0.1', resolve));
+    const address = slow.address();
+    const port = typeof address === 'object' && address ? address.port : 0;
+    try {
+      const gateway = new OpenAICompatibleGateway({
+        baseUrl: `http://127.0.0.1:${port}`,
+        timeoutMs: 150,
+        statusTimeoutMs: 150,
+      });
+      await expect(gateway.chatCompletion(input)).rejects.toMatchObject({
+        statusCode: 504,
+        code: 'AI_TIMEOUT',
+      });
+    } finally {
+      slow.closeAllConnections?.();
+      await new Promise<void>((resolve) => slow.close(() => resolve()));
+    }
+  });
+
   it('throws 500 on empty completions', async () => {
     const baseUrl = await stub(() => ({
       status: 200,

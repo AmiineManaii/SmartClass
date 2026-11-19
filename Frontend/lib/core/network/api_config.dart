@@ -29,6 +29,12 @@ class ApiConfig {
   /// Must stay well above the backend SSE heartbeat interval (10 s).
   static const Duration streamReceiveTimeout = Duration(minutes: 10);
 
+  /// Non-streaming AI calls (exam generation) run on the local model and can
+  /// take several minutes. The backend itself gives up after 15 minutes
+  /// (`AI_TIMEOUT_MS`), so the client waits a little longer to receive that
+  /// real error instead of aborting first and showing a fake network error.
+  static const Duration aiGenerationTimeout = Duration(minutes: 16);
+
   static const String accessTokenKey = 'smartclass_access_token';
   static const String refreshTokenKey = 'smartclass_refresh_token';
 }

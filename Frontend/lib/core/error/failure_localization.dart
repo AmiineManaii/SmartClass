@@ -47,6 +47,8 @@ import 'failures.dart';
       return (key: 'too_many_requests', args: noArgs);
     case 'SERVICE_UNAVAILABLE':
       return (key: 'ai_model_offline', args: noArgs);
+    case 'SECTIONS_NOT_VALIDATED':
+      return (key: 'sections_not_validated_error', args: noArgs);
     case 'VALIDATION_ERROR':
       return (key: _validationKey(failure as ValidationFailure), args: noArgs);
     default:

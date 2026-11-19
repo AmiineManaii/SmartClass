@@ -147,6 +147,61 @@ export class StorageAccessDeniedError extends AppError {
   }
 }
 
+/** Exam cannot be started right now (outside its window / not published). */
+export class ExamNotAvailableError extends AppError {
+  constructor(message = 'Exam is not available right now', details: unknown[] = []) {
+    super(message, 409, ErrorCodes.EXAM_NOT_AVAILABLE, details);
+  }
+}
+
+/** The attempt is already terminal (submitted / auto-submitted / terminated). */
+export class ExamAttemptClosedError extends AppError {
+  constructor(message = 'This exam attempt is closed and can no longer be modified', details: unknown[] = []) {
+    super(message, 409, ErrorCodes.EXAM_ATTEMPT_CLOSED, details);
+  }
+}
+
+/** Results are not visible until the teacher closes the exam. */
+export class ExamResultsNotAvailableError extends AppError {
+  constructor(message = 'Results are not available yet', details: unknown[] = []) {
+    super(message, 403, ErrorCodes.EXAM_RESULTS_NOT_AVAILABLE, details);
+  }
+}
+
+/** The configured Ollama model is not installed locally (never auto-pull). */
+export class AiModelUnavailableError extends AppError {
+  constructor(message = 'The configured local AI model is not available', details: unknown[] = []) {
+    super(message, 503, ErrorCodes.AI_MODEL_UNAVAILABLE, details);
+  }
+}
+
+/** The local model answered with a payload that does not satisfy the schema. */
+export class AiInvalidOutputError extends AppError {
+  constructor(message = 'The local AI returned an invalid exam payload', details: unknown[] = []) {
+    super(message, 502, ErrorCodes.AI_INVALID_OUTPUT, details);
+  }
+}
+
+/**
+ * The local model is reachable but did not finish within `AI_TIMEOUT_MS`.
+ * Distinct from an unreachable model: the fix is to retry with fewer
+ * questions, not to start Ollama.
+ */
+export class AiTimeoutError extends AppError {
+  constructor(
+    message = 'The local AI model took too long to answer. Retry with fewer questions.',
+    details: unknown[] = [],
+  ) {
+    super(message, 504, ErrorCodes.AI_TIMEOUT, details);
+  }
+}
+
+export class ImportFormatUnsupportedError extends AppError {
+  constructor(message = 'Unsupported import format', details: unknown[] = []) {
+    super(message, 422, ErrorCodes.IMPORT_FORMAT_UNSUPPORTED, details);
+  }
+}
+
 export class InternalError extends AppError {
   constructor(message = 'Internal server error', details: unknown[] = []) {
     super(message, 500, ErrorCodes.INTERNAL_ERROR, details, false);

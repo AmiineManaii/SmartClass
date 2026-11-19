@@ -584,6 +584,7 @@ export class AiController {
             send({ error: { code: ErrorCodes.INTERNAL_ERROR, message: 'Internal server error' } });
           }
           res.end();
+          res.end();
         },
       )
       .catch(next);

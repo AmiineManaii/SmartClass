@@ -52,30 +52,50 @@ class _LobbyPageState extends ConsumerState<LobbyPage> {
   Future<void> _initPreviewCamera() async {
     if (!_cameraEnabled) return;
     setState(() => _isCameraInitializing = true);
+    lk.LocalVideoTrack? track;
     try {
-      final track = await lk.LocalVideoTrack.createCameraTrack(
+      track = await lk.LocalVideoTrack.createCameraTrack(
         const lk.CameraCaptureOptions(
           maxFrameRate: 30,
           params: lk.VideoParametersPresets.h720_169,
         ),
       );
-      if (mounted && _cameraEnabled) {
-        setState(() {
-          _previewCameraTrack = track;
-          _isCameraInitializing = false;
-        });
-      } else {
-        await track.stop();
-        await track.dispose();
+    } catch (_) {
+      try {
+        // Fallback with default options if strict 720p fails
+        track = await lk.LocalVideoTrack.createCameraTrack();
+      } catch (e) {
+        debugPrint('[LobbyPage] Failed to start preview camera: $e');
+        if (mounted) {
+          setState(() {
+            _cameraEnabled = false;
+            _isCameraInitializing = false;
+          });
+          final isNotReadable = e.toString().contains('NotReadableError');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isNotReadable
+                    ? 'Caméra inaccessible : elle est déjà utilisée par une autre application (Teams, Zoom, autre onglet) ou indisponible.'
+                    : 'Impossible d\'activer la caméra. Vérifiez vos autorisations.',
+              ),
+              backgroundColor: const Color(0xFFEF4444),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
       }
-    } catch (e) {
-      debugPrint('[LobbyPage] Failed to start preview camera: $e');
-      if (mounted) {
-        setState(() {
-          _cameraEnabled = false;
-          _isCameraInitializing = false;
-        });
-      }
+    }
+
+    if (mounted && _cameraEnabled && track != null) {
+      setState(() {
+        _previewCameraTrack = track;
+        _isCameraInitializing = false;
+      });
+    } else if (track != null) {
+      await track.stop();
+      await track.dispose();
     }
   }
 
@@ -257,9 +277,11 @@ class _LobbyPageState extends ConsumerState<LobbyPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Class badge + Phase badge
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
                         if (session.className != null) ...[
                           Container(
@@ -308,7 +330,6 @@ class _LobbyPageState extends ConsumerState<LobbyPage> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 8),
                         ],
                         SessionPhaseBadge(phase: phase),
                       ],
