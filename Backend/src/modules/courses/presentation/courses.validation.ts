@@ -58,3 +58,39 @@ export const updateCourseBodySchema = z
 export type SaveCourseBodyInput = z.infer<typeof saveCourseBodySchema>;
 export type UpdateCourseBodyInput = z.infer<typeof updateCourseBodySchema>;
 
+const summaryModeSchema = z.enum([
+  'short',
+  'medium',
+  'detailed',
+  'exam',
+  'eli15',
+  'bullet_points',
+]);
+
+const studyLanguageSchema = z.enum(['fr', 'en']);
+
+/** Student study material generation (summary or flashcard deck). */
+export const generateCourseStudyBodySchema = z
+  .object({
+    kind: z.enum(['SUMMARY', 'FLASHCARDS']),
+    language: studyLanguageSchema.default('fr'),
+    summaryMode: summaryModeSchema.optional(),
+    flashcardCount: z.number().int().min(4).max(20).optional(),
+    focus: z.string().trim().max(200).optional(),
+  })
+  .strict();
+
+/** Course-scoped tutor question (off-course questions are refused). */
+export const askCourseTutorBodySchema = z
+  .object({
+    question: z.string().trim().min(3).max(1000),
+    conversationId: uuidSchema.optional(),
+    language: studyLanguageSchema.default('fr'),
+  })
+  .strict();
+
+export const courseStudyArtifactParamsSchema = z
+  .object({ id: uuidSchema, artifactId: uuidSchema })
+  .strict();
+
+

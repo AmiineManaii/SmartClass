@@ -305,8 +305,9 @@ export class MediaProcessingWorker {
         // --- Fallback: try to synthesize a placeholder MP4 from live_capture.json ---
         const liveCapture = await this.loadLiveCaptureHints(recording.sessionId);
         if (liveCapture && liveCapture.capturedSegments && liveCapture.capturedSegments.length > 0) {
-          const lastSeg = liveCapture.capturedSegments[liveCapture.capturedSegments.length - 1];
-          const durationSec = Math.max(10, Math.ceil((lastSeg.endSeconds ?? 60) + 2));
+          const lastSeg =
+            liveCapture.capturedSegments[liveCapture.capturedSegments.length - 1];
+          const durationSec = Math.max(10, Math.ceil((lastSeg?.endSeconds ?? 60) + 2));
           const targetPath2 = this.deps.storage.resolveSafePath(storageKey);
           await fs.mkdir(path.dirname(targetPath2), { recursive: true });
           console.warn(

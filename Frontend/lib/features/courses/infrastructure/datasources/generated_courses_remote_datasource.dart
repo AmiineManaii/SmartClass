@@ -2,6 +2,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_config.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../domain/entities/course_outline.dart';
+import '../../domain/entities/course_study.dart';
 import '../../domain/entities/generated_course.dart';
 
 /// Teacher-generated course library (`contracts/courses.openapi.yaml`).
@@ -127,5 +128,84 @@ class GeneratedCoursesRemoteDataSource {
   Future<void> deleteCourse(String id) async {
     await _client.delete<dynamic>('$_base/courses/$id');
   }
-}
 
+  // ── Student study workspace ──────────────────────────────────────────
+  // Summaries, flashcards and the course-scoped tutor. All artifacts are
+  // private to the caller; off-course tutor questions are refused by the
+  // backend (`inScope: false`), never answered from outside knowledge.
+
+  /// Chapters + caller artifacts + private tutor threads in one call.
+  Future<CourseStudyWorkspace> getCourseStudyWorkspace(String id) async {
+    final res = await _client.get<dynamic>('$_base/courses/$id/study');
+    final body = res.data;
+    if (body is Map<String, dynamic> && body['data'] is Map<String, dynamic>) {
+      return CourseStudyWorkspace.fromJson(
+        body['data'] as Map<String, dynamic>,
+      );
+    }
+    throw const ApiException(message: 'Unexpected response format');
+  }
+
+  /// Generates a summary or a flashcard deck grounded in the course.
+  Future<CourseStudyArtifact> generateStudyArtifact({
+    required String id,
+    required String kind,
+    String language = 'fr',
+    String? summaryMode,
+    int? flashcardCount,
+    String? focus,
+  }) async {
+    final res = await _client.post<dynamic>(
+      '$_base/courses/$id/study/artifacts',
+      data: {
+        'kind': kind,
+        'language': language,
+        'summaryMode': ?summaryMode,
+        'flashcardCount': ?flashcardCount,
+        if (focus != null && focus.trim().isNotEmpty) 'focus': focus.trim(),
+      },
+    );
+    final body = res.data;
+    if (body is Map<String, dynamic> && body['data'] is Map<String, dynamic>) {
+      return CourseStudyArtifact.fromJson(body['data'] as Map<String, dynamic>);
+    }
+    throw const ApiException(message: 'Unexpected response format');
+  }
+
+  /// Deletes one of the caller's artifacts (idempotent 204).
+  Future<void> deleteStudyArtifact({
+    required String id,
+    required String artifactId,
+  }) async {
+    await _client.delete<dynamic>(
+      '$_base/courses/$id/study/artifacts/$artifactId',
+    );
+  }
+
+  /// Sends one course-scoped tutor question.
+  ///
+  /// Pass [conversationId] to continue an existing thread; omit it to start
+  /// a new one. An off-course question returns `assistantMessage.inScope ==
+  /// false` and a refusal message.
+  Future<CourseTutorExchange> askCourseTutor({
+    required String id,
+    required String question,
+    String? conversationId,
+    String language = 'fr',
+  }) async {
+    final res = await _client.post<dynamic>(
+      '$_base/courses/$id/tutor/ask',
+      data: {
+        'question': question,
+        'language': language,
+        if (conversationId != null && conversationId.isNotEmpty)
+          'conversationId': conversationId,
+      },
+    );
+    final body = res.data;
+    if (body is Map<String, dynamic> && body['data'] is Map<String, dynamic>) {
+      return CourseTutorExchange.fromJson(body['data'] as Map<String, dynamic>);
+    }
+    throw const ApiException(message: 'Unexpected response format');
+  }
+}

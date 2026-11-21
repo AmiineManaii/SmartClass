@@ -1,11 +1,22 @@
 import { Router, type RequestHandler } from 'express';
 import type { CoursesController } from './courses.controller.js';
 import { validate } from '../../../shared/http/validate.middleware.js';
+import { createRateLimiter } from '../../../shared/http/rate-limiter.js';
 import {
+  askCourseTutorBodySchema,
   courseIdParamsSchema,
+  courseStudyArtifactParamsSchema,
+  generateCourseStudyBodySchema,
   saveCourseBodySchema,
   updateCourseBodySchema,
 } from './courses.validation.js';
+
+/** LLM-backed endpoints: cap per-user generation to protect the local GPU. */
+const studyGenerateRateLimiter = createRateLimiter({
+  windowMs: 60000,
+  limit: 10,
+  message: 'Too many AI study requests, please try again later',
+});
 
 export interface CoursesRouterOptions {
   controller: CoursesController;
@@ -30,6 +41,38 @@ export const createCoursesRouter = (options: CoursesRouterOptions): Router => {
   router.get('/mine', authenticateMiddleware, requireTeacherMiddleware, controller.listMyCourses);
 
   router.get('/published', authenticateMiddleware, controller.listPublishedCourses);
+
+  // Student study workspace: everything the reader screen needs in one call.
+  router.get(
+    '/:id/study',
+    authenticateMiddleware,
+    validate({ params: courseIdParamsSchema }),
+    controller.getCourseStudy,
+  );
+
+  router.post(
+    '/:id/study/artifacts',
+    authenticateMiddleware,
+    studyGenerateRateLimiter,
+    validate({ params: courseIdParamsSchema, body: generateCourseStudyBodySchema }),
+    controller.generateCourseStudyArtifact,
+  );
+
+  router.delete(
+    '/:id/study/artifacts/:artifactId',
+    authenticateMiddleware,
+    validate({ params: courseStudyArtifactParamsSchema }),
+    controller.deleteCourseStudyArtifact,
+  );
+
+  /** Course-scoped tutor: off-course questions are refused server-side. */
+  router.post(
+    '/:id/tutor/ask',
+    authenticateMiddleware,
+    studyGenerateRateLimiter,
+    validate({ params: courseIdParamsSchema, body: askCourseTutorBodySchema }),
+    controller.askCourseTutor,
+  );
 
   router.get(
     '/:id',

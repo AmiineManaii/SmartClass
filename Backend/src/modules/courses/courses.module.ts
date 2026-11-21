@@ -7,8 +7,16 @@ import {
 } from '../auth/index.js';
 import type { CourseRepositoryPort } from './domain/course-repository.port.js';
 import type { CourseSectionRepositoryPort } from './domain/course-section-repository.port.js';
+import type { CourseStudyRepositoryPort } from './domain/course-study-repository.port.js';
+import type { CoursePassageRetrievalPort } from './domain/course-passage-retrieval.port.js';
 import { PrismaCourseRepositoryAdapter } from './infrastructure/prisma-course-repository.adapter.js';
 import { PrismaCourseSectionRepositoryAdapter } from './infrastructure/prisma-course-section-repository.adapter.js';
+import { PrismaCourseStudyRepositoryAdapter } from './infrastructure/prisma-course-study-repository.adapter.js';
+import { PrismaCoursePassageRetrievalAdapter } from './infrastructure/prisma-course-passage-retrieval.adapter.js';
+import {
+  SmartModelRouterAdapter,
+  type SmartModelRouterPort,
+} from '../ai-assistant/index.js';
 import { SaveCourseUseCase } from './application/save-course.use-case.js';
 import { UpdateCourseUseCase } from './application/update-course.use-case.js';
 import { ListMyCoursesUseCase } from './application/list-my-courses.use-case.js';
@@ -17,6 +25,12 @@ import { GetCourseUseCase } from './application/get-course.use-case.js';
 import { PublishCourseUseCase } from './application/publish-course.use-case.js';
 import { UnpublishCourseUseCase } from './application/unpublish-course.use-case.js';
 import { DeleteCourseUseCase } from './application/delete-course.use-case.js';
+import {
+  DeleteCourseStudyArtifactUseCase,
+  GetCourseStudyWorkspaceUseCase,
+} from './application/course-study.use-cases.js';
+import { GenerateCourseStudyArtifactUseCase } from './application/generate-course-study-artifact.use-case.js';
+import { AskCourseTutorUseCase } from './application/ask-course-tutor.use-case.js';
 import { CoursesController } from './presentation/courses.controller.js';
 import { createCoursesRouter } from './presentation/courses.routes.js';
 
@@ -26,6 +40,9 @@ export interface CoursesModuleOptions {
   courseRepository?: CourseRepositoryPort;
   sectionRepository?: CourseSectionRepositoryPort;
   groupRepository?: GroupRepositoryPort;
+  studyRepository?: CourseStudyRepositoryPort;
+  passageRetrieval?: CoursePassageRetrievalPort;
+  modelRouter?: SmartModelRouterPort;
   tokenService?: TokenServicePort;
   authenticateMiddleware?: RequestHandler;
   requireTeacherMiddleware?: RequestHandler;
@@ -51,6 +68,35 @@ export const createCoursesModule = (options: CoursesModuleOptions = {}): Courses
   const unpublishCourseUseCase = new UnpublishCourseUseCase(courseRepository);
   const deleteCourseUseCase = new DeleteCourseUseCase(courseRepository);
 
+  // Student study slice: summaries, flashcards and the course-scoped tutor.
+  const studyRepository = options.studyRepository ?? new PrismaCourseStudyRepositoryAdapter();
+  const passageRetrieval =
+    options.passageRetrieval ?? new PrismaCoursePassageRetrievalAdapter();
+  const modelRouter = options.modelRouter ?? new SmartModelRouterAdapter();
+  const getCourseStudyUseCase = new GetCourseStudyWorkspaceUseCase(
+    courseRepository,
+    groupRepository,
+    studyRepository,
+  );
+  const generateCourseStudyArtifactUseCase = new GenerateCourseStudyArtifactUseCase(
+    courseRepository,
+    groupRepository,
+    studyRepository,
+    modelRouter,
+  );
+  const deleteCourseStudyArtifactUseCase = new DeleteCourseStudyArtifactUseCase(
+    courseRepository,
+    groupRepository,
+    studyRepository,
+  );
+  const askCourseTutorUseCase = new AskCourseTutorUseCase(
+    courseRepository,
+    groupRepository,
+    studyRepository,
+    passageRetrieval,
+    modelRouter,
+  );
+
   const controller = new CoursesController(
     saveCourseUseCase,
     updateCourseUseCase,
@@ -60,6 +106,10 @@ export const createCoursesModule = (options: CoursesModuleOptions = {}): Courses
     publishCourseUseCase,
     unpublishCourseUseCase,
     deleteCourseUseCase,
+    getCourseStudyUseCase,
+    generateCourseStudyArtifactUseCase,
+    deleteCourseStudyArtifactUseCase,
+    askCourseTutorUseCase,
   );
 
   let authenticateMiddleware = options.authenticateMiddleware;

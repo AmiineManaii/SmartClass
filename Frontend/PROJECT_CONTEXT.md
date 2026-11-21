@@ -821,9 +821,17 @@ Le lecteur de cours (`/courses/:courseId`) n'affiche **aucune donnée fabriquée
 ```
 lib/features/courses/presentation/pages/
   course_reader_page.dart      (~100 lines) : ConsumerWidget, observe generatedCourseProvider
-  course_reader_body.dart      (~200 lines) : ConsumerStatefulWidget, meta + sommaire + contenu + sections + actions
+  course_reader_body.dart      (~280 lines) : ConsumerStatefulWidget, onglets étudiants + contenu
 
 lib/features/courses/presentation/widgets/
+  course_reader_meta_strip_part.dart    (~96 lines)  : auteur/statut/durée de lecture (part)
+  course_reader_sommaire_part.dart      (~164 lines) : sommaire Markdown + icônes de titres (part)
+  course_reader_outline_part.dart       (~175 lines) : aperçu du plan d'un brouillon (part)
+  course_reader_section_build_part.dart (~435 lines) : panneau de construction par sections (part)
+  course_study_shared.dart              (~132 lines) : gate async, erreur + retry, badge repli extractif
+  course_study_summary_tab.dart         (~307 lines) : résumé IA (modes + focus chapitre)
+  course_study_flashcards_tab.dart      (~298 lines) : paquet de cartes à retourner
+  course_study_tutor_tab.dart           (~382 lines) : tuteur IA scopé au cours
   course_section_card.dart     (~150 lines) : carte section (statut, générer, régénérer, valider, image)
   course_image_search_dialog.dart (~150 lines) : dialog 5 images web par section
   course_reader_actions.dart   (~100 lines) : barre actions modérateur (Valider/Dépublier/Supprimer/Raffiner)
@@ -884,12 +892,29 @@ Le backend implémente `SectionMemoryPort` → `PrismaSectionMemoryAdapter` (pgv
 | POST | `/ai/courses/sections/image/jobs` | Démarrer job ComfyUI |
 | GET | `/ai/courses/sections/image/jobs/:jobId` | Poller statut job |
 | POST | `/ai/courses/sections/image/apply` | Insérer image dans section |
+| GET | `/api/v1/courses/:id/study` | Espace d'étude : chapitres + artefacts + fils du tuteur |
+| POST | `/api/v1/courses/:id/study/artifacts` | Générer un résumé ou un paquet de flashcards |
+| DELETE | `/api/v1/courses/:id/study/artifacts/:artifactId` | Supprimer un artefact du caller (204) |
+| POST | `/api/v1/courses/:id/tutor/ask` | Question au tuteur (refus hors-cours, 10 req/min) |
 
 ### État des sections et publication
 
 - Un cours DRAFT ne peut **pas** être publié tant qu'une section n'est pas VALIDATED (409 `SECTIONS_NOT_VALIDATED`)
 - Une fois toutes les sections VALIDATED, le cours peut être publié
 - La validation d'une section insère son contenu dans la mémoire vectorielle de l'auteur
+
+### Espace d'étude étudiant : résumé, flashcards, tuteur IA (v2.4.0)
+
+Un **étudiant** (`role == 'student'`) voit 4 onglets dans le lecteur : `Contenu`, `Résumé`, `Flashcards`, `Tuteur IA`. Un enseignant/admin conserve le lecteur actuel (1 seul onglet, pas d'espace d'étude).
+
+- **Source unique = le cours publié** : un brouillon reste invisible pour l'étudiant (404 backend) et chaque artefact est privé — un étudiant ne voit jamais ceux d'un autre.
+- **Onglet Résumé** : 6 styles (`short`, `medium`, `detailed`, `exam`, `eli15`, `bullet_points`) + focus optionnel sur un chapitre (`chapters` = passages `p-1`, `p-2`, … renvoyés par l'API).
+- **Onglet Flashcards** : paquet généré (4 à 20 cartes), retournement au toucher, navigation précédent/suivant, compteur `Carte X sur Y`.
+- **Onglet Tuteur IA** : le backend refuse toute question hors du cours **avant** d'appeler le modèle (`inScope: false`) ; l'app rend ce refus comme un avertissement, jamais comme une réponse. Les réponses ancrées affichent leurs citations (chapitre source).
+- **Dégradation gracieuse** : si le modèle local est indisponible, le backend renvoie un artefact extrait du cours (`modelUsed: 'extractive-fallback'`) et l'app l'annonce via `CourseStudyFallbackBadge`.
+- **Aucun polling** : `courseStudyWorkspaceProvider(courseId)` charge tout en un appel, invalidé après génération/suppression ; le fil du tuteur est hydraté une fois depuis `conversations[0]` puis conservé par `courseTutorProvider(courseId)`.
+
+Fichiers : `application/providers/course_study_provider.dart` (workspace, génération, suppression, tuteur), `domain/entities/course_study.dart` (workspace, artefact, carte, citation, message), widgets `course_study_*_tab.dart`.
 
 ---
 

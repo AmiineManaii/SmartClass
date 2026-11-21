@@ -1,8 +1,8 @@
-import { NotFoundError } from '../../../shared/errors/app-error.js';
 import type { Role } from '../../auth/index.js';
 import type { CourseDetail } from '../domain/course.entity.js';
 import type { CourseRepositoryPort } from '../domain/course-repository.port.js';
 import type { GroupRepositoryPort } from '../../groups/domain/group-repository.port.js';
+import { loadReadableCourse } from './course-access.js';
 
 export interface GetCourseDTO {
   requesterId: string;
@@ -23,27 +23,6 @@ export class GetCourseUseCase {
   ) {}
 
   public async execute(dto: GetCourseDTO): Promise<CourseDetail> {
-    const course = await this.courses.findById(dto.courseId);
-    if (!course) {
-      throw new NotFoundError('Course not found');
-    }
-    if (course.authorId === dto.requesterId || dto.requesterRole === 'ADMIN') {
-      return course;
-    }
-    if (course.status !== 'PUBLISHED') {
-      throw new NotFoundError('Course not found');
-    }
-
-    if (this.groups && course.classGroupIds && course.classGroupIds.length > 0) {
-      const myGroups = await this.groups.listMyGroups(dto.requesterId);
-      const myGroupIds = new Set(myGroups.map((g) => g.id));
-      const hasAccess = course.classGroupIds.some((id) => myGroupIds.has(id));
-      if (!hasAccess) {
-        throw new NotFoundError('Course not found');
-      }
-    }
-
-    return course;
+    return loadReadableCourse(this.courses, dto, this.groups);
   }
 }
-

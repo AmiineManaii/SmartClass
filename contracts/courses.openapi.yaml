@@ -404,11 +404,481 @@ paths:
                 $ref: './common.yaml#/components/schemas/ErrorResponse'
         '422':
           $ref: './common.yaml#/components/responses/ValidationError'
+  /courses/{id}/study:
+    get:
+      operationId: getCourseStudyWorkspace
+      tags:
+        - courses
+      summary: Student study workspace for one course
+      description: >
+        Everything the student study screen needs in a single round-trip:
+        the course chapters (used as summary/flashcard focus and citations),
+        the caller's own generated artifacts, and their private tutor
+        conversations. Drafts stay invisible to non-authors (404). Any
+        authenticated reader of the course may call this endpoint; the
+        payload only ever contains the CALLER's artifacts and threads.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      responses:
+        '200':
+          description: Study workspace (caller-scoped artifacts and conversations)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CourseStudyWorkspace'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '404':
+          description: Unknown course, draft of another author, or not enrolled in its class groups
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /courses/{id}/study/artifacts:
+    post:
+      operationId: generateCourseStudyArtifact
+      tags:
+        - courses
+      summary: Generate a summary or a flashcard deck
+      description: >
+        Generates a study artifact strictly grounded in the published course
+        content, using the local model router (STUDENT_SUMMARY /
+        QUIZ_FLASHCARDS roles). When the local model is unavailable the
+        service degrades to a deterministic extractive summary/deck, so the
+        response is never empty. The artifact is persisted for the caller
+        only. Rate-limited (10/minute per caller).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - kind
+              properties:
+                kind:
+                  type: string
+                  enum: [SUMMARY, FLASHCARDS]
+                language:
+                  type: string
+                  enum: [fr, en]
+                  default: fr
+                summaryMode:
+                  type: string
+                  enum: [short, medium, detailed, exam, eli15, bullet_points]
+                  description: SUMMARY only (default medium)
+                flashcardCount:
+                  type: integer
+                  minimum: 4
+                  maximum: 20
+                  description: FLASHCARDS only (default 8)
+                focus:
+                  type: string
+                  maxLength: 200
+                  description: Optional chapter title/keyword to focus the artifact on
+              additionalProperties: false
+      responses:
+        '201':
+          description: Generated artifact
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CourseStudyArtifact'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '404':
+          description: Unknown course, draft of another author, or not enrolled in its class groups
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          $ref: './common.yaml#/components/responses/TooManyRequests'
+  /courses/{id}/study/artifacts/{artifactId}:
+    delete:
+      operationId: deleteCourseStudyArtifact
+      tags:
+        - courses
+      summary: Delete one of my study artifacts
+      description: >
+        Deletes an artifact owned by the caller. An artifact belonging to
+        another student is not deleted (idempotent 204 — no ownership oracle).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+        - name: artifactId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Artifact deleted (or never owned by the caller)
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '404':
+          description: Unknown course or not readable by the caller
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+  /courses/{id}/tutor/ask:
+    post:
+      operationId: askCourseTutor
+      tags:
+        - courses
+      summary: Ask the course-scoped AI tutor
+      description: >
+        Answers a student question strictly from the selected published
+        course (deterministic scope gate, then local RAG generation with
+        citations). An OFF-COURSE question is refused: the reply carries
+        `inScope: false` and a refusal message, and never reaches the local
+        model. The conversation is private to the caller and reused when
+        `conversationId` is supplied. Rate-limited (10/minute per caller).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - question
+              properties:
+                question:
+                  type: string
+                  minLength: 3
+                  maxLength: 1000
+                  example: Comment fonctionne une fonction récursive en Python ?
+                conversationId:
+                  type: string
+                  format: uuid
+                  description: Continue an existing thread (must belong to the caller and this course)
+                language:
+                  type: string
+                  enum: [fr, en]
+                  default: fr
+              additionalProperties: false
+      responses:
+        '201':
+          description: Exchange persisted (user message + assistant reply)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CourseTutorExchange'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '404':
+          description: Unknown course, draft of another author, or not enrolled in its class groups
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+        '429':
+          $ref: './common.yaml#/components/responses/TooManyRequests'
 components:
+  parameters:
+    CourseId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
   securitySchemes:
     bearerAuth:
       $ref: './common.yaml#/components/securitySchemes/bearerAuth'
   schemas:
+    CourseStudyChapter:
+      type: object
+      required:
+        - id
+        - title
+      properties:
+        id:
+          type: string
+          example: p-1
+        title:
+          type: string
+          example: Chapitre 1 — Introduction
+    CourseSummaryContent:
+      type: object
+      required:
+        - mode
+        - markdown
+        - keyTakeaways
+        - sections
+      properties:
+        mode:
+          type: string
+          enum: [short, medium, detailed, exam, eli15, bullet_points]
+        markdown:
+          type: string
+          description: Rendering-ready Markdown summary
+        keyTakeaways:
+          type: array
+          maxItems: 8
+          items:
+            type: string
+        sections:
+          type: array
+          items:
+            type: object
+            required:
+              - title
+              - excerpt
+            properties:
+              title:
+                type: string
+              excerpt:
+                type: string
+    CourseFlashcard:
+      type: object
+      required:
+        - id
+        - front
+        - back
+      properties:
+        id:
+          type: string
+          example: fc-1
+        front:
+          type: string
+        back:
+          type: string
+        sectionTitle:
+          type:
+            - string
+            - 'null'
+    CourseFlashcardsContent:
+      type: object
+      required:
+        - focus
+        - cards
+      properties:
+        focus:
+          type: string
+          example: all
+        cards:
+          type: array
+          maxItems: 30
+          items:
+            $ref: '#/components/schemas/CourseFlashcard'
+    CourseStudyArtifact:
+      type: object
+      required:
+        - id
+        - courseId
+        - userId
+        - kind
+        - title
+        - language
+        - config
+        - content
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        courseId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [SUMMARY, FLASHCARDS]
+        title:
+          type: string
+        language:
+          type: string
+          enum: [fr, en, auto]
+        config:
+          type: object
+          additionalProperties: true
+        content:
+          description: CourseSummaryContent for SUMMARY, CourseFlashcardsContent for FLASHCARDS
+          oneOf:
+            - $ref: '#/components/schemas/CourseSummaryContent'
+            - $ref: '#/components/schemas/CourseFlashcardsContent'
+        modelUsed:
+          type:
+            - string
+            - 'null'
+          description: Local model id, or `extractive-fallback` when the LLM was unavailable
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CourseTutorCitation:
+      type: object
+      required:
+        - passageId
+        - sectionTitle
+        - excerpt
+        - score
+      properties:
+        passageId:
+          type: string
+          example: p-2
+        sectionTitle:
+          type: string
+        excerpt:
+          type: string
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+    CourseTutorMessage:
+      type: object
+      required:
+        - id
+        - conversationId
+        - role
+        - content
+        - citations
+        - inScope
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseTutorCitation'
+        inScope:
+          type: boolean
+          description: False when the question was outside the course and refused
+        modelUsed:
+          type:
+            - string
+            - 'null'
+        createdAt:
+          type: string
+          format: date-time
+    CourseTutorConversation:
+      type: object
+      required:
+        - id
+        - courseId
+        - userId
+        - title
+        - messages
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        courseId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseTutorMessage'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CourseTutorExchange:
+      type: object
+      required:
+        - conversationId
+        - userMessage
+        - assistantMessage
+      properties:
+        conversationId:
+          type: string
+          format: uuid
+        userMessage:
+          $ref: '#/components/schemas/CourseTutorMessage'
+        assistantMessage:
+          $ref: '#/components/schemas/CourseTutorMessage'
+    CourseStudyWorkspace:
+      type: object
+      required:
+        - courseId
+        - courseTitle
+        - chapters
+        - artifacts
+        - conversations
+      properties:
+        courseId:
+          type: string
+          format: uuid
+        courseTitle:
+          type: string
+        chapters:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseStudyChapter'
+        artifacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseStudyArtifact'
+        conversations:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseTutorConversation'
     CourseSummary:
       type: object
       required:
