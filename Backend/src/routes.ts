@@ -128,6 +128,8 @@ export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
           (() => knowledgeModule.embedding.checkHealth())),
     sectionMemory: sectionMemoryBridge,
     knowledgeIndexer: options.aiModuleOptions?.knowledgeIndexer ?? knowledgeModule.indexer,
+    knowledgeRetrieval:
+      options.aiModuleOptions?.knowledgeRetrieval ?? knowledgeModule.retrieval,
     authenticateMiddleware: adminGuard.authenticateMiddleware,
     requireTeacherMiddleware: approvedTeacherMiddleware,
   });

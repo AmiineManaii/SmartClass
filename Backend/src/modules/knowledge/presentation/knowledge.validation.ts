@@ -32,6 +32,7 @@ export const searchKnowledgeSchema = z
       .object({
         sourceTypes: z.array(z.enum(KNOWLEDGE_SOURCE_TYPES)).min(1).max(7).optional(),
         sourceIds: z.array(z.string().trim().min(1)).min(1).max(25).optional(),
+        documentIds: z.array(z.string().uuid()).min(1).max(25).optional(),
         subject: z.string().trim().min(1).max(160).optional(),
         classGroupIds: z.array(z.string().uuid()).min(1).max(25).optional(),
         trustTiers: z.array(z.enum(KNOWLEDGE_TRUST_TIERS)).min(1).max(2).optional(),

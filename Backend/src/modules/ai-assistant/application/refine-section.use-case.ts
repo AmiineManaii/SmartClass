@@ -1,10 +1,20 @@
+import type { Role } from '../../auth/index.js';
 import type { CourseRepositoryPort } from '../../courses/domain/course-repository.port.js';
 import type { AiGatewayPort } from '../domain/ai-gateway.port.js';
 import { buildRefineSectionPrompt } from '../domain/course-prompt.js';
+import type {
+  KnowledgeGroundingOptions,
+  KnowledgeGroundingOutcome,
+  KnowledgeGroundingSearchMode,
+  KnowledgeSourceAttribution,
+} from '../domain/knowledge-grounding.types.js';
 import { InternalError } from '../../../shared/errors/app-error.js';
 import { logger } from '../../../shared/infrastructure/logger.js';
 import { loadOwnedCourse } from './course-access.js';
+import type { CourseKnowledgeGroundingService } from './course-knowledge-grounding.service.js';
 import type { SectionMemoryService } from './section-memory.service.js';
+
+const REFINE_GROUNDING_MAX_CHARS = 2800;
 
 export interface RefineSectionInput {
   courseTitle?: string;
@@ -16,7 +26,8 @@ export interface RefineSectionInput {
   courseContent?: string;
   /** Caller identity for memory scoping (controller injects req.user). */
   requesterId?: string;
-  requesterRole?: 'TEACHER' | 'ADMIN' | 'STUDENT' | null;
+  requesterRole?: Role | null;
+  knowledge?: KnowledgeGroundingOptions;
 }
 
 export interface RefineSectionResult {
@@ -27,6 +38,9 @@ export interface RefineSectionResult {
   /** One-sentence summary of the change (null when unavailable). */
   explanation: string | null;
   model: string;
+  knowledgeSources: KnowledgeSourceAttribution[];
+  knowledgeSearchMode: KnowledgeGroundingSearchMode;
+  knowledgeDegradedReason: string | null;
 }
 
 /**
@@ -42,6 +56,7 @@ export class RefineSectionUseCase {
     private readonly aiGateway: AiGatewayPort,
     private readonly courses?: CourseRepositoryPort,
     private readonly memory?: SectionMemoryService,
+    private readonly grounding?: CourseKnowledgeGroundingService,
   ) {}
 
   public async execute(input: RefineSectionInput): Promise<RefineSectionResult> {
@@ -52,7 +67,50 @@ export class RefineSectionUseCase {
       throw new InternalError('No modification instruction provided.');
     }
 
-    const memory = await this.recallMemory(input);
+    let authorId = input.requesterId;
+    let subject: string | null = null;
+    if (input.courseId && this.courses && input.requesterId) {
+      const course = await loadOwnedCourse(this.courses, {
+        requesterId: input.requesterId,
+        requesterRole: input.requesterRole ?? null,
+        courseId: input.courseId,
+      });
+      authorId = course.authorId;
+      subject = course.subject;
+    }
+
+    const query = [
+      input.courseTitle ?? '',
+      input.instruction,
+      input.selectedText.slice(0, 400),
+    ]
+      .filter(Boolean)
+      .join('. ');
+
+    let memory: { title: string; content: string }[] = [];
+    let grounded: KnowledgeGroundingOutcome = {
+      promptContext: '',
+      sources: [],
+      searchMode: 'DISABLED',
+      degradedReason: null,
+    };
+
+    if (this.grounding && authorId) {
+      grounded = await this.grounding.resolve({
+        requesterId: authorId,
+        requesterRole: 'TEACHER',
+        query,
+        options: input.knowledge,
+        maxChars: REFINE_GROUNDING_MAX_CHARS,
+      });
+    } else if (this.memory && authorId && input.knowledge?.enabled !== false) {
+      memory = await this.memory.recall({
+        authorId,
+        subject,
+        query,
+        k: 2,
+      });
+    }
 
     const prompt = buildRefineSectionPrompt({
       courseTitle: input.courseTitle,
@@ -60,6 +118,7 @@ export class RefineSectionUseCase {
       instruction: input.instruction.trim(),
       fullContext: input.fullContext || input.courseContent,
       memory,
+      knowledgeContext: grounded.promptContext || undefined,
     });
 
     const completion = await this.aiGateway.chatCompletion({
@@ -76,37 +135,10 @@ export class RefineSectionUseCase {
       revisedText: refinedText,
       explanation: await this.explainChange(input, refinedText),
       model: completion.model,
+      knowledgeSources: grounded.sources,
+      knowledgeSearchMode: grounded.searchMode,
+      knowledgeDegradedReason: grounded.degradedReason,
     };
-  }
-
-  /** Vector recall scoped to the course author (best-effort, never throws). */
-  private async recallMemory(input: RefineSectionInput): Promise<
-    { title: string; content: string }[]
-  > {
-    if (!this.memory || !input.requesterId) return [];
-    let authorId = input.requesterId;
-    let subject: string | null = null;
-    if (input.courseId && this.courses) {
-      const course = await loadOwnedCourse(this.courses, {
-        requesterId: input.requesterId,
-        requesterRole: input.requesterRole ?? null,
-        courseId: input.courseId,
-      });
-      authorId = course.authorId;
-      subject = course.subject;
-    }
-    return this.memory.recall({
-      authorId,
-      subject,
-      query: [
-        input.courseTitle ?? '',
-        input.instruction,
-        input.selectedText.slice(0, 400),
-      ]
-        .filter(Boolean)
-        .join('. '),
-      k: 2,
-    });
   }
 
   /** One-sentence explanation of the revision (best-effort, never throws). */

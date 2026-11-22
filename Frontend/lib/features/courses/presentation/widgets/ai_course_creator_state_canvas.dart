@@ -33,6 +33,7 @@ extension on _AiCourseCreatorPageState {
             fullCourseContent: displayed,
             level: _level,
             difficulty: _difficulty,
+            knowledgeConfig: _knowledgeConfig,
             onApply: _onApplyRefinedSection,
           );
         },
@@ -65,9 +66,13 @@ extension on _AiCourseCreatorPageState {
 
     // 4. Proposed Outline state (shown when outline is ready for review before full generation)
     if (_outline != null) {
+      final planJob = ref.watch(coursePlanJobProvider);
       return CourseOutlineEditorCard(
         outline: _outline!,
         generating: running,
+        knowledgeSources: planJob.knowledgeSources,
+        knowledgeSearchMode: planJob.knowledgeSearchMode,
+        knowledgeDegradedReason: planJob.knowledgeDegradedReason,
         onOutlineChanged: (o) {
           updateState(() => _outline = o);
           ref.read(coursePlanJobProvider.notifier).updateOutline(o);

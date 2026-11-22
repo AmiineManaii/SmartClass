@@ -5,6 +5,8 @@ import '../../../../core/extensions/extensions.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../application/providers/ai_course_options_provider.dart';
+import '../../domain/entities/knowledge_grounding.dart';
+import 'knowledge_sources_attribution_card.dart';
 import 'markdown_course_view.dart';
 
 class AiSectionRefineDialog extends ConsumerStatefulWidget {
@@ -12,6 +14,7 @@ class AiSectionRefineDialog extends ConsumerStatefulWidget {
   final String? initialSelectedText;
   final String? level;
   final String? difficulty;
+  final KnowledgeGroundingConfig? knowledgeConfig;
   final Future<void> Function(String oldText, String newText) onApply;
 
   const AiSectionRefineDialog({
@@ -20,6 +23,7 @@ class AiSectionRefineDialog extends ConsumerStatefulWidget {
     this.initialSelectedText,
     this.level,
     this.difficulty,
+    this.knowledgeConfig,
     required this.onApply,
   });
 
@@ -29,6 +33,7 @@ class AiSectionRefineDialog extends ConsumerStatefulWidget {
     String? initialSelectedText,
     String? level,
     String? difficulty,
+    KnowledgeGroundingConfig? knowledgeConfig,
     required Future<void> Function(String oldText, String newText) onApply,
   }) {
     return showModalBottomSheet(
@@ -40,6 +45,7 @@ class AiSectionRefineDialog extends ConsumerStatefulWidget {
         initialSelectedText: initialSelectedText,
         level: level,
         difficulty: difficulty,
+        knowledgeConfig: knowledgeConfig,
         onApply: onApply,
       ),
     );
@@ -58,6 +64,9 @@ class _AiSectionRefineDialogState extends ConsumerState<AiSectionRefineDialog> {
   String? _revisedText;
   String? _explanation;
   String? _model;
+  List<KnowledgeSourceAttribution> _knowledgeSources = const [];
+  String? _knowledgeSearchMode;
+  String? _knowledgeDegradedReason;
   List<String> _detectedHeadings = [];
 
   @override
@@ -145,6 +154,7 @@ class _AiSectionRefineDialogState extends ConsumerState<AiSectionRefineDialog> {
         instruction: instruction,
         level: widget.level,
         difficulty: widget.difficulty,
+        knowledge: widget.knowledgeConfig,
       );
 
       if (!mounted) return;
@@ -153,6 +163,10 @@ class _AiSectionRefineDialogState extends ConsumerState<AiSectionRefineDialog> {
         _revisedText = result['revisedText']?.toString() ?? '';
         _explanation = result['explanation']?.toString();
         _model = result['model']?.toString();
+        _knowledgeSources = parseKnowledgeSources(result['knowledgeSources']);
+        _knowledgeSearchMode = result['knowledgeSearchMode']?.toString();
+        _knowledgeDegradedReason =
+            result['knowledgeDegradedReason']?.toString();
       });
     } catch (e) {
       if (!mounted) return;
@@ -560,6 +574,13 @@ class _AiSectionRefineDialogState extends ConsumerState<AiSectionRefineDialog> {
                             ),
                           ],
                           const SizedBox(height: 16),
+
+                          KnowledgeSourcesAttributionCard(
+                            sources: _knowledgeSources,
+                            searchMode: _knowledgeSearchMode,
+                            degradedReason: _knowledgeDegradedReason,
+                            compact: true,
+                          ),
 
                           // Revised Text Preview
                           Text(

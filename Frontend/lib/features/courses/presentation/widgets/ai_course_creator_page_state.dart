@@ -11,6 +11,7 @@ class _AiCourseCreatorPageState extends ConsumerState<AiCourseCreatorPage> {
   static const _format = 'resume';
   bool _exExamples = true;
   bool _exMermaid = true;
+  KnowledgeGroundingConfig _knowledgeConfig = const KnowledgeGroundingConfig();
   // Plan: no thinking/search. Sections (builder): thinking + web search.
   // URL imports default to web search, PDF imports to thinking + search.
   bool get _thinkingForSource => _mode == 'pdf';

@@ -251,6 +251,11 @@ class _ResultCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+          KnowledgeSourcesAttributionCard(
+            sources: parseKnowledgeSources(result['knowledgeSources']),
+            searchMode: result['knowledgeSearchMode']?.toString(),
+            degradedReason: result['knowledgeDegradedReason']?.toString(),
+          ),
           Container(
             constraints: const BoxConstraints(maxHeight: 480),
             padding: const EdgeInsets.all(12),

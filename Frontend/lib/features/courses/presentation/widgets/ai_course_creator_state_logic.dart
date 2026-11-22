@@ -110,6 +110,7 @@ extension on _AiCourseCreatorPageState {
       pdfName: _mode == 'pdf' ? _pdfName : null,
       examples: _exExamples,
       mermaid: _exMermaid,
+      knowledge: _knowledgeConfig,
     );
   }
 
@@ -156,6 +157,7 @@ extension on _AiCourseCreatorPageState {
             thinking: _thinkingForSource,
             generateImages: false,
             outline: useOutline ? _outline : null,
+            knowledge: _knowledgeConfig,
           ),
         );
     WidgetsBinding.instance.addPostFrameCallback((_) {

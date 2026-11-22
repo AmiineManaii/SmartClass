@@ -162,6 +162,7 @@ export interface KnowledgeIndexInput {
 export interface KnowledgeSearchFilters {
   sourceTypes?: KnowledgeSourceType[];
   sourceIds?: string[];
+  documentIds?: string[];
   subject?: string;
   classGroupIds?: string[];
   trustTiers?: KnowledgeTrustTier[];

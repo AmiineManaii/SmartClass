@@ -67,6 +67,9 @@ const requireUser = (req: Request): { id: string; role: Role | null } => {
   return { id: req.user.id, role: req.user.role };
 };
 
+const optionalUser = (req: Request): { requesterId?: string; requesterRole?: Role | null } =>
+  req.user ? { requesterId: req.user.id, requesterRole: req.user.role } : {};
+
 /** Stable 422 from a Zod failure (ZodError is not mapped centrally). */
 const toValidationError = (error: {
   errors: { path: (string | number)[]; message: string }[];
@@ -123,7 +126,10 @@ export class AiController {
       if (!parsed.success) {
         throw toValidationError(parsed.error);
       }
-      const result = await this.generateOutlineUseCase.execute(parsed.data);
+      const result = await this.generateOutlineUseCase.execute({
+        ...parsed.data,
+        ...optionalUser(req),
+      });
       res.status(200).json({
         data: result,
       });
@@ -354,6 +360,7 @@ export class AiController {
       level: parsed.data.level,
       difficulty: parsed.data.difficulty,
       extras: parsed.data.extras,
+      knowledge: parsed.data.knowledge,
     };
     this.streamCourse(
       req,
@@ -370,7 +377,10 @@ export class AiController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const result = await this.generateCourseUseCase.execute(req.body);
+      const result = await this.generateCourseUseCase.execute({
+        ...(req.body as GenerateCourseDTO),
+        ...optionalUser(req),
+      });
       res.status(200).json({
         data: result,
       });
@@ -387,6 +397,7 @@ export class AiController {
         level: 'equilibre',
         format: 'resume',
         ...body,
+        ...optionalUser(req),
         mode: 'topic',
       });
       res.status(200).json({
@@ -404,6 +415,7 @@ export class AiController {
         level: 'equilibre',
         format: 'resume',
         ...body,
+        ...optionalUser(req),
         mode: 'url',
       });
       res.status(200).json({
@@ -439,6 +451,8 @@ export class AiController {
         extras: parsed.data.extras,
         format: parsed.data.format as GenerateFormat,
         outline: parsed.data.outline,
+        knowledge: parsed.data.knowledge,
+        ...optionalUser(req),
       });
       res.status(200).json({
         data: result,
@@ -473,8 +487,15 @@ export class AiController {
     res: Response,
     next: NextFunction,
   ): Promise<void> => {
-    this.streamCourse(req, res, next, (onDelta) =>
-      this.generateCourseUseCase.stream(req.body as GenerateCourseDTO, onDelta),
+    this.streamCourse(req, res, next, (onDelta, onPhase) =>
+      this.generateCourseUseCase.stream(
+        {
+          ...(req.body as GenerateCourseDTO),
+          ...optionalUser(req),
+        },
+        onDelta,
+        onPhase,
+      ),
     );
   };
 
@@ -503,7 +524,7 @@ export class AiController {
       next,
       // Extraction happens inside the use-case: report it before the
       // model starts so clients can tell a long PDF parse apart from
-      // model silence (`extracting` → `generating` → deltas).
+      // model silence (`extracting` → `knowledge` → `generating` → deltas).
       (onDelta, onPhase) =>
         this.improvePdfUseCase.stream(
           {
@@ -517,6 +538,8 @@ export class AiController {
             extras: parsed.data.extras,
             format: parsed.data.format as GenerateFormat,
             outline: parsed.data.outline,
+            knowledge: parsed.data.knowledge,
+            ...optionalUser(req),
           },
           onDelta,
           onPhase,
@@ -583,7 +606,6 @@ export class AiController {
           } else {
             send({ error: { code: ErrorCodes.INTERNAL_ERROR, message: 'Internal server error' } });
           }
-          res.end();
           res.end();
         },
       )

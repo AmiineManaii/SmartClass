@@ -9,6 +9,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../application/providers/course_section_build_provider.dart';
 import '../../domain/entities/course_section.dart';
+import '../widgets/knowledge_sources_attribution_card.dart';
 import '../widgets/markdown_course_view.dart';
 import '../../../../core/widgets/smart_loader.dart';
 

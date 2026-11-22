@@ -141,6 +141,10 @@ const buildScopeAndFilterClauses = (
     params.push(filters.sourceIds);
     clauses.push(`d.source_id = ANY($${params.length}::text[])`);
   }
+  if (filters?.documentIds && filters.documentIds.length > 0) {
+    params.push(filters.documentIds);
+    clauses.push(`d.id = ANY($${params.length}::uuid[])`);
+  }
   if (filters?.subject && filters.subject.trim().length > 0) {
     params.push(filters.subject.trim());
     clauses.push(`lower(coalesce(d.subject, '')) = lower($${params.length})`);

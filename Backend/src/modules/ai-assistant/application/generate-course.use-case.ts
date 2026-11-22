@@ -1,5 +1,6 @@
 import { getEnv } from '../../../config/env.js';
 import { ValidationError } from '../../../shared/errors/app-error.js';
+import type { Role } from '../../auth/index.js';
 import type {
   AiGatewayPort,
   GenerateDifficulty,
@@ -17,7 +18,16 @@ import {
   shouldOfferTools,
   type CourseOutline,
 } from '../domain/course-prompt.js';
+import type {
+  KnowledgeGroundingOptions,
+  KnowledgeGroundingOutcome,
+  KnowledgeGroundingSearchMode,
+  KnowledgeSourceAttribution,
+} from '../domain/knowledge-grounding.types.js';
 import type { UrlFetcherPort } from '../domain/url-fetcher.port.js';
+import type { CourseKnowledgeGroundingService } from './course-knowledge-grounding.service.js';
+
+const COURSE_GROUNDING_MAX_CHARS = 5500;
 
 export const DEFAULT_EXTRAS: GenerateExtras = {
   examples: true,
@@ -58,6 +68,9 @@ export interface GenerateCourseDTO {
   sourceText?: string;
   url?: string;
   outline?: CourseOutline;
+  requesterId?: string;
+  requesterRole?: Role | null;
+  knowledge?: KnowledgeGroundingOptions;
 }
 
 export interface GenerateCourseResult {
@@ -72,17 +85,23 @@ export interface GenerateCourseResult {
   sourceChars: number;
   toolsUsed: boolean;
   usage: { promptTokens: number | null; completionTokens: number | null };
+  knowledgeSources: KnowledgeSourceAttribution[];
+  knowledgeSearchMode: KnowledgeGroundingSearchMode;
+  knowledgeDegradedReason: string | null;
 }
 
 export class GenerateCourseUseCase {
   constructor(
     private readonly gateway: AiGatewayPort,
     private readonly urlFetcher: UrlFetcherPort,
+    private readonly grounding?: CourseKnowledgeGroundingService,
   ) {}
 
   public async execute(dto: GenerateCourseDTO): Promise<GenerateCourseResult> {
     const env = getEnv();
     const prepared = await this.prepare(dto);
+    const grounded = await this.resolveKnowledge(dto, prepared);
+    const knowledgeContext = grounded.promptContext || undefined;
     const prompt = prepared.outline
       ? buildCourseFromOutlinePrompt({
           outline: prepared.outline,
@@ -91,8 +110,13 @@ export class GenerateCourseUseCase {
           extras: prepared.extras,
           format: prepared.format,
           toolsOffered: prepared.toolsOffered,
+          sourceText: prepared.sourceText,
+          knowledgeContext,
         })
-      : buildCoursePrompt(prepared);
+      : buildCoursePrompt({
+          ...prepared,
+          knowledgeContext,
+        });
 
     const completion = await this.gateway.chatCompletion({
       system: prompt.system,
@@ -123,6 +147,9 @@ export class GenerateCourseUseCase {
         promptTokens: completion.promptTokens,
         completionTokens: completion.completionTokens,
       },
+      knowledgeSources: grounded.sources,
+      knowledgeSearchMode: grounded.searchMode,
+      knowledgeDegradedReason: grounded.degradedReason,
     };
   }
 
@@ -134,9 +161,21 @@ export class GenerateCourseUseCase {
   public async stream(
     dto: GenerateCourseDTO,
     onDelta: (delta: string) => void,
+    onPhase?: (phase: string) => void,
   ): Promise<Omit<GenerateCourseResult, 'content'>> {
     const env = getEnv();
     const prepared = await this.prepare(dto);
+    const willSearchKnowledge = Boolean(
+      this.grounding && dto.requesterId && dto.knowledge?.enabled !== false,
+    );
+    if (willSearchKnowledge) {
+      onPhase?.('knowledge');
+    }
+    const grounded = await this.resolveKnowledge(dto, prepared);
+    if (willSearchKnowledge) {
+      onPhase?.('generating');
+    }
+    const knowledgeContext = grounded.promptContext || undefined;
     const prompt = prepared.outline
       ? buildCourseFromOutlinePrompt({
           outline: prepared.outline,
@@ -145,8 +184,13 @@ export class GenerateCourseUseCase {
           extras: prepared.extras,
           format: prepared.format,
           toolsOffered: prepared.toolsOffered,
+          sourceText: prepared.sourceText,
+          knowledgeContext,
         })
-      : buildCoursePrompt(prepared);
+      : buildCoursePrompt({
+          ...prepared,
+          knowledgeContext,
+        });
 
     const usage = await this.gateway.streamCompletion(
       {
@@ -174,7 +218,44 @@ export class GenerateCourseUseCase {
         promptTokens: usage.promptTokens,
         completionTokens: usage.completionTokens,
       },
+      knowledgeSources: grounded.sources,
+      knowledgeSearchMode: grounded.searchMode,
+      knowledgeDegradedReason: grounded.degradedReason,
     };
+  }
+
+  private async resolveKnowledge(
+    dto: GenerateCourseDTO,
+    prepared: {
+      subject?: string;
+      sourceText?: string;
+      outline?: CourseOutline;
+    },
+  ): Promise<KnowledgeGroundingOutcome> {
+    if (!this.grounding) {
+      return {
+        promptContext: '',
+        sources: [],
+        searchMode: 'DISABLED',
+        degradedReason: null,
+      };
+    }
+    const query = [
+      prepared.subject,
+      prepared.outline?.title,
+      prepared.outline?.sections.map((section) => section.title).join(', '),
+      prepared.sourceText?.slice(0, 800),
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    return this.grounding.resolve({
+      requesterId: dto.requesterId,
+      requesterRole: dto.requesterRole,
+      query,
+      options: dto.knowledge,
+      maxChars: COURSE_GROUNDING_MAX_CHARS,
+    });
   }
 
   private async prepare(dto: GenerateCourseDTO): Promise<{
@@ -246,6 +327,7 @@ export class GenerateCourseUseCase {
       }),
       truncatedSource,
       sourceChars: sourceText?.length ?? 0,
+      outline: dto.outline,
     };
   }
 }

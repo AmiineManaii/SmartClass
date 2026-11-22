@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../domain/entities/course_outline.dart';
+import '../../domain/entities/knowledge_grounding.dart';
+import 'knowledge_sources_attribution_card.dart';
 
 class CourseOutlineEditorCard extends StatefulWidget {
   final CourseOutline outline;
@@ -23,6 +25,11 @@ class CourseOutlineEditorCard extends StatefulWidget {
   /// Whether the outline has been saved as a draft.
   final bool outlineSaved;
 
+  /// Attributed Phase 2 RAG sources used to propose this outline.
+  final List<KnowledgeSourceAttribution> knowledgeSources;
+  final String? knowledgeSearchMode;
+  final String? knowledgeDegradedReason;
+
   const CourseOutlineEditorCard({
     super.key,
     required this.outline,
@@ -34,6 +41,9 @@ class CourseOutlineEditorCard extends StatefulWidget {
     this.onBuildSections,
     this.building = false,
     this.outlineSaved = false,
+    this.knowledgeSources = const [],
+    this.knowledgeSearchMode,
+    this.knowledgeDegradedReason,
   });
 
   @override
@@ -695,6 +705,16 @@ class _CourseOutlineEditorCardState extends State<CourseOutlineEditorCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (widget.knowledgeSources.isNotEmpty ||
+                    widget.knowledgeSearchMode == 'FTS_ONLY') ...[
+                  KnowledgeSourcesAttributionCard(
+                    sources: widget.knowledgeSources,
+                    searchMode: widget.knowledgeSearchMode,
+                    degradedReason: widget.knowledgeDegradedReason,
+                    compact: true,
+                  ),
+                  const SizedBox(height: 6),
+                ],
                 // Chapters Header Info
                 Wrap(
                   spacing: 16,

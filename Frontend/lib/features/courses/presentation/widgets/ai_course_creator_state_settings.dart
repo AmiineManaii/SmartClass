@@ -203,6 +203,11 @@ extension on _AiCourseCreatorPageState {
             _exMermaid = mermaid;
           }),
         ),
+        const SizedBox(height: 16),
+        KnowledgeGroundingControlsCard(
+          config: _knowledgeConfig,
+          onChanged: (cfg) => updateState(() => _knowledgeConfig = cfg),
+        ),
         const SizedBox(height: 22),
 
         // Action Launch Box

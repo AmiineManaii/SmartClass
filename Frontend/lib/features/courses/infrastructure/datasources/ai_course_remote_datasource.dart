@@ -6,6 +6,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_config.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../domain/entities/course_outline.dart';
+import '../../domain/entities/knowledge_grounding.dart';
 
 /// Teacher side of the AI course generation API
 /// (`contracts/ai-assistant.openapi.yaml`, TEACHER or ADMIN).
@@ -17,8 +18,28 @@ class AiCourseRemoteDataSource {
 
   static String get _base => ApiConfig.apiPrefix;
 
-  /// Rapidly generates a structured course outline in ~3s.
-  Future<CourseOutline> generateOutline({
+  /// Lists the authenticated teacher's indexed knowledge base documents
+  /// (`GET /knowledge/documents`) for explicit source picking in Course Creator.
+  Future<List<KnowledgeDocumentSummary>> listMyKnowledgeDocuments({
+    int limit = 50,
+  }) async {
+    final res = await _client.get<dynamic>(
+      '$_base/knowledge/documents',
+      queryParameters: {'page': 1, 'limit': limit},
+    );
+    final body = res.data;
+    if (body is Map<String, dynamic> && body['data'] is List) {
+      return (body['data'] as List)
+          .whereType<Map<String, dynamic>>()
+          .map(KnowledgeDocumentSummary.fromJson)
+          .where((doc) => doc.id.isNotEmpty)
+          .toList();
+    }
+    throw const ApiException(message: 'Invalid knowledge documents response');
+  }
+
+  /// Rapidly generates a structured course outline with RAG source attribution.
+  Future<OutlineGenerationResult> generateOutlineWithSources({
     required String mode,
     required String level,
     required String difficulty,
@@ -34,6 +55,7 @@ class AiCourseRemoteDataSource {
     bool webSearch = false,
     bool thinking = false,
     bool generateImages = false,
+    KnowledgeGroundingConfig? knowledge,
   }) async {
     final cleanSubject = subject?.trim();
     dynamic requestData;
@@ -56,6 +78,7 @@ class AiCourseRemoteDataSource {
           'thinking': thinking,
           'generateImages': generateImages,
         }),
+        if (knowledge != null) 'knowledge': jsonEncode(knowledge.toJson()),
       });
     } else {
       requestData = {
@@ -80,6 +103,7 @@ class AiCourseRemoteDataSource {
           'thinking': thinking,
           'generateImages': generateImages,
         },
+        if (knowledge != null) 'knowledge': knowledge.toJson(),
       };
     }
     final res = await _client.post<dynamic>(
@@ -90,9 +114,55 @@ class AiCourseRemoteDataSource {
     final env = apiEnvelope(res);
     final outlineData = env['outline'];
     if (outlineData is Map<String, dynamic>) {
-      return CourseOutline.fromJson(outlineData);
+      return OutlineGenerationResult(
+        outline: CourseOutline.fromJson(outlineData),
+        model: env['model']?.toString(),
+        knowledgeSources: parseKnowledgeSources(env['knowledgeSources']),
+        knowledgeSearchMode: env['knowledgeSearchMode']?.toString(),
+        knowledgeDegradedReason: env['knowledgeDegradedReason']?.toString(),
+      );
     }
     throw const ApiException(message: 'Invalid outline response');
+  }
+
+  /// Rapidly generates a structured course outline in ~3s.
+  Future<CourseOutline> generateOutline({
+    required String mode,
+    required String level,
+    required String difficulty,
+    required String format,
+    String? subject,
+    String? sourceText,
+    String? url,
+    List<int>? pdfBytes,
+    String? pdfName,
+    bool examples = true,
+    bool mermaid = true,
+    bool webImages = false,
+    bool webSearch = false,
+    bool thinking = false,
+    bool generateImages = false,
+    KnowledgeGroundingConfig? knowledge,
+  }) async {
+    final res = await generateOutlineWithSources(
+      mode: mode,
+      level: level,
+      difficulty: difficulty,
+      format: format,
+      subject: subject,
+      sourceText: sourceText,
+      url: url,
+      pdfBytes: pdfBytes,
+      pdfName: pdfName,
+      examples: examples,
+      mermaid: mermaid,
+      webImages: webImages,
+      webSearch: webSearch,
+      thinking: thinking,
+      generateImages: generateImages,
+      knowledge: knowledge,
+    );
+    return res.outline;
   }
 
   /// Selectively refines, expands, simplifies or edits a course section.
@@ -102,6 +172,7 @@ class AiCourseRemoteDataSource {
     required String instruction,
     String? level,
     String? difficulty,
+    KnowledgeGroundingConfig? knowledge,
   }) async {
     final res = await _client.post<dynamic>(
       '$_base/ai/courses/refine-section',
@@ -115,6 +186,7 @@ class AiCourseRemoteDataSource {
         if (level != null) 'level': level,
         // ignore: use_null_aware_elements
         if (difficulty != null) 'difficulty': difficulty,
+        if (knowledge != null) 'knowledge': knowledge.toJson(),
       },
     );
     return apiEnvelope(res);

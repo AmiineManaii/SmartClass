@@ -44,6 +44,8 @@ class _LiveProgressCard extends StatelessWidget {
                     Text(
                       phase == 'extracting'
                           ? context.tr('phase_extracting')
+                          : phase == 'knowledge'
+                          ? context.tr('phase_knowledge')
                           : context.tr(
                               'ai_generating_live',
                               args: {

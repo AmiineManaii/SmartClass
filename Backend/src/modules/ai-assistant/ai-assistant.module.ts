@@ -41,12 +41,13 @@ import { SearchSectionImagesUseCase } from './application/search-section-images.
 import { ApplySectionImageUseCase } from './application/apply-section-image.use-case.js';
 import { SectionImageJobService } from './application/section-image-job.service.js';
 import { SectionMemoryService } from './application/section-memory.service.js';
+import { CourseKnowledgeGroundingService } from './application/course-knowledge-grounding.service.js';
 import { AiController } from './presentation/ai.controller.js';
 import { createAiRouter } from './presentation/ai.routes.js';
 
 import type { SearchPort } from './domain/search.port.js';
 import type { SectionImageJobStorePort } from './domain/section-image-job.port.js';
-import type { KnowledgeIndexerPort } from '../knowledge/index.js';
+import type { KnowledgeIndexerPort, KnowledgeRetrievalPort } from '../knowledge/index.js';
 import { HybridSearchAdapter } from './infrastructure/hybrid-search.adapter.js';
 import { InMemorySectionImageJobStore } from './infrastructure/in-memory-section-image-job.store.js';
 
@@ -62,6 +63,7 @@ export interface AiModuleOptions {
   embedding?: EmbeddingPort;
   sectionMemory?: SectionMemoryPort;
   knowledgeIndexer?: KnowledgeIndexerPort;
+  knowledgeRetrieval?: KnowledgeRetrievalPort;
   imageGenerator?: ImageGeneratorPort;
   imagePromptOptimizer?: ImagePromptOptimizerPort;
   imageJobStore?: SectionImageJobStorePort;
@@ -112,15 +114,32 @@ export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
       };
     });
 
-  const generateCourseUseCase = new GenerateCourseUseCase(gateway, urlFetcher);
-  const improvePdfUseCase = new ImprovePdfUseCase(pdfExtractor, gateway);
+  const courseKnowledgeGrounding = options.knowledgeRetrieval
+    ? new CourseKnowledgeGroundingService(options.knowledgeRetrieval)
+    : undefined;
+
+  const generateCourseUseCase = new GenerateCourseUseCase(
+    gateway,
+    urlFetcher,
+    courseKnowledgeGrounding,
+  );
+  const improvePdfUseCase = new ImprovePdfUseCase(
+    pdfExtractor,
+    gateway,
+    courseKnowledgeGrounding,
+  );
   const getAiStatusUseCase = new GetAiStatusUseCase(
     gateway,
     options.modelRouter,
     options.gateway && !options.modelRouter ? undefined : checkEmbeddings,
   );
-  const generateOutlineUseCase = new GenerateOutlineUseCase(gateway);
-  const refineSectionUseCase = new RefineSectionUseCase(gateway, courseRepository, memoryService);
+  const generateOutlineUseCase = new GenerateOutlineUseCase(gateway, courseKnowledgeGrounding);
+  const refineSectionUseCase = new RefineSectionUseCase(
+    gateway,
+    courseRepository,
+    memoryService,
+    courseKnowledgeGrounding,
+  );
   const getCourseBuildUseCase = new GetCourseBuildUseCase(courseRepository, sectionRepository);
   const generateSectionUseCase = new GenerateSectionUseCase(
     gateway,
@@ -128,6 +147,7 @@ export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
     sectionRepository,
     memoryService,
     options.knowledgeIndexer,
+    courseKnowledgeGrounding,
   );
   const validateSectionUseCase = new ValidateSectionUseCase(
     courseRepository,

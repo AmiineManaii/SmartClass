@@ -8,11 +8,19 @@ import type { AiGatewayPort, GenerateDifficulty, GenerateLevel } from '../domain
 import type { KnowledgeIndexerPort } from '../../knowledge/index.js';
 import { FETCH_URL_TOOL, WEB_SEARCH_TOOL } from '../domain/ai-tools.js';
 import { buildSectionPrompt, COURSE_PROMPT_VERSION } from '../domain/course-prompt.js';
+import type {
+  KnowledgeGroundingOptions,
+  KnowledgeGroundingOutcome,
+  KnowledgeGroundingSearchMode,
+  KnowledgeSourceAttribution,
+} from '../domain/knowledge-grounding.types.js';
 import { loadOwnedCourse } from './course-access.js';
+import type { CourseKnowledgeGroundingService } from './course-knowledge-grounding.service.js';
 import type { SectionMemoryService } from './section-memory.service.js';
 
 /** Output budget for a single section (a chapter, not the whole course). */
 const SECTION_MAX_TOKENS = 8192;
+const SECTION_GROUNDING_MAX_CHARS = 3500;
 
 export interface GenerateSectionDTO {
   requesterId: string;
@@ -24,6 +32,7 @@ export interface GenerateSectionDTO {
   level?: GenerateLevel;
   difficulty?: GenerateDifficulty;
   extras?: { examples?: boolean; mermaid?: boolean };
+  knowledge?: KnowledgeGroundingOptions;
 }
 
 /** Alias (not interface) so the SSE controller can spread it into frames. */
@@ -38,6 +47,9 @@ export type GenerateSectionMeta = {
   /** True when the section already had content that was overwritten. */
   regenerated: boolean;
   usage: { promptTokens: number | null; completionTokens: number | null };
+  knowledgeSources: KnowledgeSourceAttribution[];
+  knowledgeSearchMode: KnowledgeGroundingSearchMode;
+  knowledgeDegradedReason: string | null;
 };
 
 /**
@@ -53,6 +65,7 @@ export class GenerateSectionUseCase {
     private readonly sectionRepository: CourseSectionRepositoryPort,
     private readonly memory: SectionMemoryService,
     private readonly knowledgeIndexer?: KnowledgeIndexerPort,
+    private readonly grounding?: CourseKnowledgeGroundingService,
   ) {}
 
   public async stream(
@@ -76,20 +89,44 @@ export class GenerateSectionUseCase {
       );
     }
 
-    onPhase('memory');
-    const memory = await this.memory.recall({
-      authorId: course.authorId,
-      subject: course.subject,
-      query: [
-        course.title,
-        target.title,
-        target.description,
-        target.keyTopics.join(', '),
-      ]
-        .filter(Boolean)
-        .join('. '),
-      k: 3,
-    });
+    const query = [
+      course.title,
+      target.title,
+      target.description,
+      target.keyTopics.join(', '),
+    ]
+      .filter(Boolean)
+      .join('. ');
+
+    let memory = [] as Awaited<ReturnType<SectionMemoryService['recall']>>;
+    let grounded: KnowledgeGroundingOutcome = {
+      promptContext: '',
+      sources: [],
+      searchMode: 'DISABLED',
+      degradedReason: null,
+    };
+
+    if (this.grounding) {
+      onPhase('knowledge');
+      grounded = await this.grounding.resolve({
+        requesterId: course.authorId,
+        requesterRole: 'TEACHER',
+        query,
+        options: dto.knowledge,
+        maxChars: SECTION_GROUNDING_MAX_CHARS,
+        excludeSourceIds: [target.id],
+      });
+    } else {
+      onPhase('memory');
+      if (dto.knowledge?.enabled !== false) {
+        memory = await this.memory.recall({
+          authorId: course.authorId,
+          subject: course.subject,
+          query,
+          k: 3,
+        });
+      }
+    }
 
     const prompt = buildSectionPrompt({
       courseTitle: course.title,
@@ -109,6 +146,7 @@ export class GenerateSectionUseCase {
         .filter((section) => section.content?.trim())
         .map((section) => section.title),
       memory,
+      knowledgeContext: grounded.promptContext || undefined,
       extras: {
         examples: dto.extras?.examples ?? true,
         mermaid: dto.extras?.mermaid ?? true,
@@ -173,12 +211,15 @@ export class GenerateSectionUseCase {
       model: usage.model,
       promptVersion: COURSE_PROMPT_VERSION,
       writtenBefore: index,
-      memoryHits: memory.length,
+      memoryHits: this.grounding ? grounded.sources.length : memory.length,
       regenerated: hadContent,
       usage: {
         promptTokens: usage.promptTokens,
         completionTokens: usage.completionTokens,
       },
+      knowledgeSources: grounded.sources,
+      knowledgeSearchMode: grounded.searchMode,
+      knowledgeDegradedReason: grounded.degradedReason,
     };
   }
 }

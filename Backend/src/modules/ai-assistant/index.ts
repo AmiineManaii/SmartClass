@@ -22,4 +22,11 @@ export { OllamaEmbeddingAdapter, embedWithFallback, computeDeterministicLexicalV
 export { PrismaSectionMemoryAdapter } from './infrastructure/prisma-section-memory.adapter.js';
 export { UnpdfTextExtractor, type PdfTextExtractorPort } from './infrastructure/pdf-text-extractor.adapter.js';
 export { buildCoursePrompt, COURSE_PROMPT_VERSION, maxTokensForLevel, shouldOfferTools } from './domain/course-prompt.js';
+export { CourseKnowledgeGroundingService } from './application/course-knowledge-grounding.service.js';
+export type {
+  KnowledgeGroundingOptions,
+  KnowledgeGroundingOutcome,
+  KnowledgeGroundingSearchMode,
+  KnowledgeSourceAttribution,
+} from './domain/knowledge-grounding.types.js';
 

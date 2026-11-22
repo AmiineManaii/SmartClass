@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/course_outline.dart';
+import '../../domain/entities/knowledge_grounding.dart';
 import 'ai_course_options_provider.dart';
 import 'courses_provider.dart';
 
@@ -26,6 +27,9 @@ class CoursePlanJobState {
   final bool examples;
   final bool mermaid;
   final CourseOutline? outline;
+  final List<KnowledgeSourceAttribution> knowledgeSources;
+  final String? knowledgeSearchMode;
+  final String? knowledgeDegradedReason;
   final String? draftCourseId;
   final bool outlineSaved;
   final Object? error;
@@ -45,6 +49,9 @@ class CoursePlanJobState {
     this.examples = true,
     this.mermaid = true,
     this.outline,
+    this.knowledgeSources = const [],
+    this.knowledgeSearchMode,
+    this.knowledgeDegradedReason,
     this.draftCourseId,
     this.outlineSaved = false,
     this.error,
@@ -65,6 +72,9 @@ class CoursePlanJobState {
     bool? examples,
     bool? mermaid,
     CourseOutline? outline,
+    List<KnowledgeSourceAttribution>? knowledgeSources,
+    String? knowledgeSearchMode,
+    String? knowledgeDegradedReason,
     String? draftCourseId,
     bool? outlineSaved,
     Object? error,
@@ -84,6 +94,10 @@ class CoursePlanJobState {
       examples: examples ?? this.examples,
       mermaid: mermaid ?? this.mermaid,
       outline: outline ?? this.outline,
+      knowledgeSources: knowledgeSources ?? this.knowledgeSources,
+      knowledgeSearchMode: knowledgeSearchMode ?? this.knowledgeSearchMode,
+      knowledgeDegradedReason:
+          knowledgeDegradedReason ?? this.knowledgeDegradedReason,
       draftCourseId: draftCourseId ?? this.draftCourseId,
       outlineSaved: outlineSaved ?? this.outlineSaved,
       error: error,
@@ -116,6 +130,7 @@ class CoursePlanJobNotifier extends StateNotifier<CoursePlanJobState> {
     String? pdfName,
     bool examples = true,
     bool mermaid = true,
+    KnowledgeGroundingConfig? knowledge,
   }) async {
     _timer?.cancel();
     state = CoursePlanJobState(
@@ -141,7 +156,7 @@ class CoursePlanJobNotifier extends StateNotifier<CoursePlanJobState> {
 
     try {
       final remote = _ref.read(aiCourseRemoteDataSourceProvider);
-      final outline = await remote.generateOutline(
+      final planResult = await remote.generateOutlineWithSources(
         mode: mode,
         level: level,
         difficulty: difficulty,
@@ -156,7 +171,9 @@ class CoursePlanJobNotifier extends StateNotifier<CoursePlanJobState> {
         webSearch: false,
         thinking: false,
         generateImages: false,
+        knowledge: knowledge,
       );
+      final outline = planResult.outline;
 
       _timer?.cancel();
       if (!mounted) return;
@@ -187,6 +204,9 @@ class CoursePlanJobNotifier extends StateNotifier<CoursePlanJobState> {
       state = state.copyWith(
         status: CoursePlanJobStatus.completed,
         outline: outline,
+        knowledgeSources: planResult.knowledgeSources,
+        knowledgeSearchMode: planResult.knowledgeSearchMode,
+        knowledgeDegradedReason: planResult.knowledgeDegradedReason,
         draftCourseId: savedId,
         outlineSaved: saved,
       );

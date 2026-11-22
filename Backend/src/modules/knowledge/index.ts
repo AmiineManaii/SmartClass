@@ -1,4 +1,5 @@
 export { createKnowledgeModule, type KnowledgeModule, type KnowledgeModuleOptions } from './knowledge.module.js';
+export { KNOWLEDGE_SOURCE_TYPES } from './presentation/knowledge.validation.js';
 export type {
   KnowledgeSourceType,
   KnowledgeVisibility,

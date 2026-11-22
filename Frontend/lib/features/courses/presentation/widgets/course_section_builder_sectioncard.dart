@@ -342,6 +342,8 @@ class _SectionCard extends StatelessWidget {
                             child: Text(
                               state.streamingPhase == 'web_search'
                                   ? '🔍 Recherche d\x27informations sur le web...'
+                                  : state.streamingPhase == 'knowledge'
+                                  ? context.tr('phase_knowledge')
                                   : (state.streamingPhase == 'memory'
                                         ? context.tr('ai_build_phase_memory')
                                         : '✍️ R\xE9daction du cours en cours...'),
@@ -381,6 +383,14 @@ class _SectionCard extends StatelessWidget {
                   ),
                 ),
               ] else ...[
+                // Attributed Phase 2 RAG sources for this generated section.
+                KnowledgeSourcesAttributionCard(
+                  sources: state.sectionSources[section.sectionKey] ?? const [],
+                  searchMode: state.sectionSearchModes[section.sectionKey],
+                  degradedReason:
+                      state.sectionDegradedReasons[section.sectionKey],
+                  compact: true,
+                ),
                 // Markdown preview of the generated content.
                 if (section.hasContent) ...[
                   const SizedBox(height: 6),

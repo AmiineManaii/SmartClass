@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/network_providers.dart';
+import '../../domain/entities/knowledge_grounding.dart';
 import '../../infrastructure/datasources/ai_course_remote_datasource.dart';
 
 final aiCourseRemoteDataSourceProvider = Provider<AiCourseRemoteDataSource>((ref) {
@@ -21,3 +22,11 @@ final aiModelStatusProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     return const {'available': false, 'model': ''};
   }
 });
+
+/// Indexed private documents belonging to the authenticated teacher.
+final myKnowledgeDocumentsProvider =
+    FutureProvider.autoDispose<List<KnowledgeDocumentSummary>>((ref) async {
+      return ref
+          .watch(aiCourseRemoteDataSourceProvider)
+          .listMyKnowledgeDocuments();
+    });

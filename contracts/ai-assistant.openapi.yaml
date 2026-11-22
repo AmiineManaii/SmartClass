@@ -20,9 +20,13 @@ info:
     background job (202 + poll `sections/image/jobs/{jobId}`) because a
     generation takes 4-5 minutes. `sections/image/search` returns up to five web image
     candidates and `sections/image/apply` inserts the teacher's choice
-    into the section Markdown. `refine-section` revises a selection with the
-    same memory recall and returns `refinedText` AND `revisedText`.
-    The prompt is versioned (v6) and adapts to length — cours court
+    into the section Markdown. `refine-section` revises a selection with
+    RAG grounding and returns `refinedText` AND `revisedText`.
+    Generation endpoints accept optional `knowledge` grounding controls
+    (defaulting to private teacher `VERIFIED` sources only, with opt-in
+    `includeDrafts`) and return `knowledgeSources`, `knowledgeSearchMode`,
+    and `knowledgeDegradedReason`.
+    The prompt is versioned (v7) and adapts to length — cours court
     (≤800 mots: objectifs, synthèse, points clés, quiz 5 QCM), cours
     normal (1200-2000 mots: plan, intro, parties avec exemples, étude de
     cas + correction, quiz 5 QCM + correction, conclusion), cours complet
@@ -207,6 +211,8 @@ paths:
                   maxLength: 2000
                   description: Required for url mode (http(s) HTML page)
                   example: https://fr.wikipedia.org/wiki/Arbre_AVL
+                knowledge:
+                  $ref: '#/components/schemas/KnowledgeGroundingOptions'
               additionalProperties: false
       responses:
         '200':
@@ -219,60 +225,7 @@ paths:
                   - data
                 properties:
                   data:
-                    type: object
-                    required:
-                      - content
-                      - mode
-                      - level
-                      - format
-                      - model
-                      - promptVersion
-                      - truncatedSource
-                      - sourceChars
-                      - toolsUsed
-                      - usage
-                    properties:
-                      content:
-                        type: string
-                        description: Generated course in Markdown
-                      mode:
-                        type: string
-                        enum: [topic, text, url]
-                      level:
-                        type: string
-                        enum: [concis, equilibre, detaille]
-                      difficulty:
-                        type: string
-                        enum: [facile, moyen, difficile]
-                      format:
-                        type: string
-                        enum: [resume, flashcards, carte-mentale]
-                      model:
-                        type: string
-                      promptVersion:
-                        type: string
-                        example: 2026-10-11.v2
-                      truncatedSource:
-                        type: boolean
-                      sourceChars:
-                        type: integer
-                      toolsUsed:
-                        type: boolean
-                        description: False when the server lacks tool support
-                      usage:
-                        type: object
-                        required:
-                          - promptTokens
-                          - completionTokens
-                        properties:
-                          promptTokens:
-                            type:
-                              - integer
-                              - 'null'
-                          completionTokens:
-                            type:
-                              - integer
-                              - 'null'
+                    $ref: '#/components/schemas/GeneratedCourse'
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':
@@ -356,6 +309,8 @@ paths:
                       type: boolean
                     thinking:
                       type: boolean
+                knowledge:
+                  $ref: '#/components/schemas/KnowledgeGroundingOptions'
               additionalProperties: false
       responses:
         '200':
@@ -439,6 +394,8 @@ paths:
                       type: boolean
                     thinking:
                       type: boolean
+                knowledge:
+                  $ref: '#/components/schemas/KnowledgeGroundingOptions'
               additionalProperties: false
       responses:
         '200':
@@ -601,6 +558,9 @@ paths:
                   type: string
                   enum: [resume, flashcards, carte-mentale]
                   default: resume
+                knowledge:
+                  type: string
+                  description: Optional JSON-encoded KnowledgeGroundingOptions object
       responses:
         '200':
           description: SSE stream of deltas, done frame, or error event
@@ -657,6 +617,9 @@ paths:
                   type: string
                   enum: [resume, flashcards, carte-mentale]
                   default: resume
+                knowledge:
+                  type: string
+                  description: Optional JSON-encoded KnowledgeGroundingOptions object
       responses:
         '200':
           description: Improved course (Markdown)
@@ -708,6 +671,16 @@ paths:
                         type: integer
                       toolsUsed:
                         type: boolean
+                      knowledgeSources:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/KnowledgeSourceAttribution'
+                      knowledgeSearchMode:
+                        $ref: '#/components/schemas/KnowledgeGroundingSearchMode'
+                      knowledgeDegradedReason:
+                        type:
+                          - string
+                          - 'null'
                       usage:
                         type: object
                         required:
@@ -804,6 +777,8 @@ paths:
                 url:
                   type: string
                   maxLength: 2000
+                knowledge:
+                  $ref: '#/components/schemas/KnowledgeGroundingOptions'
       responses:
         '200':
           description: Proposed outline (JSON)
@@ -861,6 +836,16 @@ paths:
                                   example: 15
                       model:
                         type: string
+                      knowledgeSources:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/KnowledgeSourceAttribution'
+                      knowledgeSearchMode:
+                        $ref: '#/components/schemas/KnowledgeGroundingSearchMode'
+                      knowledgeDegradedReason:
+                        type:
+                          - string
+                          - 'null'
               example:
                 data:
                   outline:
@@ -936,6 +921,8 @@ paths:
                 courseContent:
                   type: string
                   maxLength: 200000
+                knowledge:
+                  $ref: '#/components/schemas/KnowledgeGroundingOptions'
       responses:
         '200':
           description: Replacement text (+ change summary)
@@ -966,6 +953,16 @@ paths:
                         description: One-sentence summary of the change
                       model:
                         type: string
+                      knowledgeSources:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/KnowledgeSourceAttribution'
+                      knowledgeSearchMode:
+                        $ref: '#/components/schemas/KnowledgeGroundingSearchMode'
+                      knowledgeDegradedReason:
+                        type:
+                          - string
+                          - 'null'
               example:
                 data:
                   refinedText: Le tri rapide est **instable** ; voir l'exemple ci-dessous.
@@ -1171,6 +1168,8 @@ paths:
                       type: boolean
                     mermaid:
                       type: boolean
+                knowledge:
+                  $ref: '#/components/schemas/KnowledgeGroundingOptions'
               additionalProperties: false
       responses:
         '200':
@@ -1244,6 +1243,8 @@ paths:
                       type: boolean
                     mermaid:
                       type: boolean
+                knowledge:
+                  $ref: '#/components/schemas/KnowledgeGroundingOptions'
               additionalProperties: false
       responses:
         '200':
@@ -1903,13 +1904,23 @@ components:
           type: string
         promptVersion:
           type: string
-          example: 2026-10-11.v2
+          example: 2026-11-22.v7
         truncatedSource:
           type: boolean
         sourceChars:
           type: integer
         toolsUsed:
           type: boolean
+        knowledgeSources:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeSourceAttribution'
+        knowledgeSearchMode:
+          $ref: '#/components/schemas/KnowledgeGroundingSearchMode'
+        knowledgeDegradedReason:
+          type:
+            - string
+            - 'null'
         usage:
           type: object
           required:
@@ -1924,3 +1935,100 @@ components:
               type:
                 - integer
                 - 'null'
+    KnowledgeGroundingSearchMode:
+      type: string
+      enum:
+        - HYBRID
+        - FTS_ONLY
+        - VECTOR_ONLY
+        - DISABLED
+    KnowledgeGroundingOptions:
+      type: object
+      additionalProperties: false
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        sourceTypes:
+          type: array
+          minItems: 1
+          maxItems: 7
+          items:
+            $ref: './knowledge.openapi.yaml#/components/schemas/KnowledgeSourceType'
+        documentIds:
+          type: array
+          minItems: 1
+          maxItems: 25
+          items:
+            type: string
+            format: uuid
+        includeDrafts:
+          type: boolean
+          default: false
+          description: Unvalidated DRAFT_AI content is excluded unless explicitly opted in
+        maxChunks:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+    KnowledgeSourceAttribution:
+      type: object
+      additionalProperties: false
+      required:
+        - documentId
+        - chunkId
+        - sourceType
+        - sourceId
+        - title
+        - sectionTitle
+        - trustTier
+        - score
+        - vectorScore
+        - ftsScore
+        - startSeconds
+        - sourcePage
+        - slideNumber
+        - snippet
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        chunkId:
+          type: string
+          format: uuid
+        sourceType:
+          $ref: './knowledge.openapi.yaml#/components/schemas/KnowledgeSourceType'
+        sourceId:
+          type: string
+        title:
+          type: string
+        sectionTitle:
+          type:
+            - string
+            - 'null'
+        trustTier:
+          $ref: './knowledge.openapi.yaml#/components/schemas/KnowledgeTrustTier'
+        score:
+          type: number
+        vectorScore:
+          type:
+            - number
+            - 'null'
+        ftsScore:
+          type:
+            - number
+            - 'null'
+        startSeconds:
+          type:
+            - integer
+            - 'null'
+        sourcePage:
+          type:
+            - integer
+            - 'null'
+        slideNumber:
+          type:
+            - integer
+            - 'null'
+        snippet:
+          type: string

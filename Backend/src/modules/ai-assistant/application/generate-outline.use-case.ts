@@ -1,9 +1,16 @@
+import { InternalError } from '../../../shared/errors/app-error.js';
+import type { Role } from '../../auth/index.js';
 import type { AiGatewayPort, GenerateDifficulty, GenerateLevel } from '../domain/ai-gateway.port.js';
 import {
   buildOutlinePrompt,
   type CourseOutline,
 } from '../domain/course-prompt.js';
-import { InternalError } from '../../../shared/errors/app-error.js';
+import type {
+  KnowledgeGroundingOptions,
+  KnowledgeGroundingSearchMode,
+  KnowledgeSourceAttribution,
+} from '../domain/knowledge-grounding.types.js';
+import type { CourseKnowledgeGroundingService } from './course-knowledge-grounding.service.js';
 
 export interface GenerateOutlineInput {
   topic?: string;
@@ -12,7 +19,20 @@ export interface GenerateOutlineInput {
   difficulty?: GenerateDifficulty;
   sourceContext?: string;
   sourceText?: string;
+  requesterId?: string;
+  requesterRole?: Role | null;
+  knowledge?: KnowledgeGroundingOptions;
 }
+
+export interface GenerateOutlineResult {
+  outline: CourseOutline;
+  model: string;
+  knowledgeSources: KnowledgeSourceAttribution[];
+  knowledgeSearchMode: KnowledgeGroundingSearchMode;
+  knowledgeDegradedReason: string | null;
+}
+
+const OUTLINE_GROUNDING_MAX_CHARS = 3500;
 
 const parseOutlineJson = (content: string, defaultTopic: string): CourseOutline => {
   // Strip ```json and ``` if wrapped
@@ -52,17 +72,17 @@ const parseOutlineJson = (content: string, defaultTopic: string): CourseOutline 
       prerequisites,
       sections,
     };
-  } catch (err) {
+  } catch {
     // Fallback if model output isn't strict JSON: split by lines/headers
     const lines = content.split('\n').filter((l) => l.trim().length > 0);
     const fallbackSections = lines
-      .filter((l) => l.startsWith('#') || l.match(/^(\d+\.|\-|\*)/))
+      .filter((l) => l.startsWith('#') || /^(?:\d+\.|[-*])/.test(l))
       .slice(0, 6)
       .map((l, idx) => ({
         id: `sec-${idx + 1}`,
-        title: l.replace(/^[#\d\.\-\*\s]+/, '').trim(),
+        title: l.replace(/^[#\d.*\s-]+/, '').trim(),
         description: `Notions fondamentales de la partie ${idx + 1}`,
-        keyTopics: [l.replace(/^[#\d\.\-\*\s]+/, '').trim()],
+        keyTopics: [l.replace(/^[#\d.*\s-]+/, '').trim()],
         estimatedMinutes: 15,
       }));
 
@@ -80,15 +100,35 @@ const parseOutlineJson = (content: string, defaultTopic: string): CourseOutline 
 };
 
 export class GenerateOutlineUseCase {
-  constructor(private readonly aiGateway: AiGatewayPort) {}
+  constructor(
+    private readonly aiGateway: AiGatewayPort,
+    private readonly grounding?: CourseKnowledgeGroundingService,
+  ) {}
 
-  public async execute(input: GenerateOutlineInput): Promise<{ outline: CourseOutline; model: string }> {
+  public async execute(input: GenerateOutlineInput): Promise<GenerateOutlineResult> {
     const topic = (input.topic || input.subject || 'Cours').trim();
+    const rawContext = input.sourceContext || input.sourceText;
+    const grounded = this.grounding
+      ? await this.grounding.resolve({
+          requesterId: input.requesterId,
+          requesterRole: input.requesterRole,
+          query: [topic, (rawContext ?? '').slice(0, 600)].filter(Boolean).join('\n'),
+          options: input.knowledge,
+          maxChars: OUTLINE_GROUNDING_MAX_CHARS,
+        })
+      : {
+          promptContext: '',
+          sources: [],
+          searchMode: 'DISABLED' as const,
+          degradedReason: null,
+        };
+
     const prompt = buildOutlinePrompt({
       topic,
       level: input.level ?? 'equilibre',
       difficulty: input.difficulty ?? 'moyen',
-      sourceContext: input.sourceContext || input.sourceText,
+      sourceContext: rawContext,
+      knowledgeContext: grounded.promptContext || undefined,
     });
 
     const completion = await this.aiGateway.chatCompletion({
@@ -103,6 +143,9 @@ export class GenerateOutlineUseCase {
     return {
       outline,
       model: completion.model,
+      knowledgeSources: grounded.sources,
+      knowledgeSearchMode: grounded.searchMode,
+      knowledgeDegradedReason: grounded.degradedReason,
     };
   }
 }

@@ -7,7 +7,17 @@ import type {
 } from './ai-gateway.port.js';
 
 /** Prompt template version (track iterations per the prompt-engineer skill). */
-export const COURSE_PROMPT_VERSION = '2026-10-12.v6';
+export const COURSE_PROMPT_VERSION = '2026-11-22.v7';
+
+const formatKnowledgeContextBlock = (knowledgeContext?: string): string => {
+  if (!knowledgeContext || knowledgeContext.trim().length === 0) return '';
+  return (
+    `--- BASE DE CONNAISSANCES DE L'ENSEIGNANT (sources [KB-1..N]) ---\n` +
+    `${knowledgeContext.trim()}\n` +
+    `--- FIN DE LA BASE DE CONNAISSANCES ---\n` +
+    `Consignes d'utilisation de ces références : appuie-toi sur les concepts, exemples et conventions terminologiques validés ci-dessus pour assurer la continuité pédagogique avec les cours et séances de l'enseignant, évite de dupliquer mot pour mot des chapitres déjà traités, et n'invente jamais de source ou de citation non présente ci-dessus.\n\n`
+  );
+};
 
 /** Max output tokens per course length: court 8K, normal 20K, complet 32K. */
 export const MAX_TOKENS_BY_LEVEL: Record<GenerateLevel, number> = {
@@ -28,6 +38,7 @@ export interface CoursePromptInput {
   subject?: string;
   sourceText?: string;
   sourceUrl?: string | null;
+  knowledgeContext?: string;
   /**
    * Whether COURSE_TOOLS are attached to this request. Must match the
    * gateway call (see `shouldOfferTools`) so the Outils paragraph never
@@ -198,16 +209,19 @@ export const buildCoursePrompt = (input: CoursePromptInput): CoursePrompt => {
     `${DIFFICULTY_GUIDANCE[input.difficulty]}\n` +
     `${extrasGuidance(input.extras)}\n${FORMAT_GUIDANCE[input.format]}`;
 
+  const knowledgeBlock = formatKnowledgeContextBlock(input.knowledgeContext);
   let user: string;
   switch (input.mode) {
     case 'topic':
       user =
+        knowledgeBlock +
         `Sujet du cours : ${input.subject}\n` +
         'Construis le support complet sur ce sujet en respectant le niveau ' +
         'et le format demandés.';
       break;
     case 'url':
       user =
+        knowledgeBlock +
         `Améliore et restructure le contenu source ci-dessous en support de ` +
         `cours conforme aux normes LMD : corrige les erreurs, clarifie les ` +
         `passages obscurs, complète les manques du programme, puis applique ` +
@@ -218,6 +232,7 @@ export const buildCoursePrompt = (input: CoursePromptInput): CoursePrompt => {
     case 'text':
     case 'pdf':
       user =
+        knowledgeBlock +
         `Améliore et restructure le cours source ci-dessous (document fourni ` +
         `par l'enseignant : ancien PDF ou notes) en support conforme aux ` +
         `normes LMD : corrige les erreurs, clarifie, complète les manques, ` +
@@ -249,6 +264,7 @@ export const buildOutlinePrompt = (input: {
   level: GenerateLevel;
   difficulty: GenerateDifficulty;
   sourceContext?: string;
+  knowledgeContext?: string;
 }): CoursePrompt => {
   const system =
     `Tu es un concepteur pédagogique universitaire expert.\n` +
@@ -270,7 +286,9 @@ export const buildOutlinePrompt = (input: {
     `  ]\n` +
     `}`;
 
+  const knowledgeBlock = formatKnowledgeContextBlock(input.knowledgeContext);
   const user =
+    knowledgeBlock +
     `Sujet du cours : ${input.topic}\n` +
     (input.sourceContext ? `Contenu de référence extrait :\n${input.sourceContext.slice(0, 4000)}\n\n` : '') +
     `Génère entre 4 et 7 chapitres structurés au format JSON pur.`;
@@ -286,6 +304,7 @@ export const buildCourseFromOutlinePrompt = (input: {
   format: GenerateFormat;
   toolsOffered: boolean;
   sourceText?: string;
+  knowledgeContext?: string;
 }): CoursePrompt => {
   const base = buildCoursePrompt({
     mode: 'topic',
@@ -306,10 +325,12 @@ export const buildCourseFromOutlinePrompt = (input: {
     )
     .join('\n\n');
 
+  const knowledgeBlock = formatKnowledgeContextBlock(input.knowledgeContext);
   const customUser =
     `Titre du cours validé : ${input.outline.title}\n` +
     `Public cible : ${input.outline.targetAudience}\n` +
     (input.outline.prerequisites.length > 0 ? `Prérequis : ${input.outline.prerequisites.join(', ')}\n\n` : '\n') +
+    knowledgeBlock +
     (input.sourceText
       ? `--- CONTENU DE RÉFÉRENCE SOURCE (PDF / NOTES DE L'ENSEIGNANT) ---\n${input.sourceText}\n--- FIN DU CONTENU SOURCE ---\n\n`
       : '') +
@@ -333,6 +354,7 @@ export const buildRefineSectionPrompt = (input: {
   fullContext?: string;
   /** Teacher's validated past content recalled from vector memory. */
   memory?: SectionMemoryContext[];
+  knowledgeContext?: string;
 }): CoursePrompt => {
   const system =
     `Tu es un assistant pédagogique universitaire de haut niveau.\n` +
@@ -340,14 +362,17 @@ export const buildRefineSectionPrompt = (input: {
     `Ta mission : appliquer STRICTEMENT la consigne demandée par l'enseignant sur le passage sélectionné, tout en maintenant un ton académique, clair et rigoureux.\n` +
     `- Format de sortie : uniquement le texte Markdown de remplacement (la nouvelle version du passage). N'ajoute aucune formule de politesse, ni introduction. Produis directement le contenu prêt à remplacer le passage sélectionné.`;
 
+  const knowledgeBlock = formatKnowledgeContextBlock(input.knowledgeContext);
   const memoryBlock =
-    input.memory && input.memory.length > 0
-      ? `--- CONTENUS DÉJÀ VALIDÉS PAR L'ENSEIGNANT (style et terminologie de référence) ---\n` +
-        input.memory
-          .map((m, idx) => `[${idx + 1}] ${m.title}\n${m.content.slice(0, 1200)}`)
-          .join('\n\n') +
-        `\n--- FIN ---\n\n`
-      : '';
+    knowledgeBlock.length > 0
+      ? knowledgeBlock
+      : input.memory && input.memory.length > 0
+        ? `--- CONTENUS DÉJÀ VALIDÉS PAR L'ENSEIGNANT (style et terminologie de référence) ---\n` +
+          input.memory
+            .map((m, idx) => `[${idx + 1}] ${m.title}\n${m.content.slice(0, 1200)}`)
+            .join('\n\n') +
+          `\n--- FIN ---\n\n`
+        : '';
 
   const user =
     (input.courseTitle ? `Titre du cours : ${input.courseTitle}\n\n` : '') +
@@ -391,6 +416,7 @@ export interface SectionPromptInput {
   writtenTitles: string[];
   /** Teacher's previously validated content recalled from vector memory. */
   memory?: SectionMemoryContext[];
+  knowledgeContext?: string;
   /** Structural extras (examples and figures are on by default). */
   extras?: { examples?: boolean; mermaid?: boolean };
   /** Whether the web_search/fetch_url tools are attached to this request. */
@@ -434,16 +460,19 @@ export const buildSectionPrompt = (input: SectionPromptInput): CoursePrompt => {
     .map((title, idx) => `${idx + 1}. ${title}${idx + 1 === index ? '  ← SECTION EN COURS' : ''}`)
     .join('\n');
 
+  const knowledgeBlock = formatKnowledgeContextBlock(input.knowledgeContext);
   const memoryBlock =
-    input.memory && input.memory.length > 0
-      ? `\n--- CONTENUS DÉJÀ VALIDÉS PAR L'ENSEIGNANT (référence de style et de terminologie) ---\n` +
-        input.memory
-          .map((m, idx) => `[${idx + 1}] ${m.title}\n${m.content.slice(0, 1500)}`)
-          .join('\n\n') +
-        `\n--- FIN ---\n` +
-        `Inspire-toi de la terminologie, du niveau de langue et des conventions pédagogiques de ces contenus ` +
-        `(c'est l'enseignant qui les a validés), sans jamais en recopier la substance si elle porte sur un autre sujet.\n`
-      : '';
+    knowledgeBlock.length > 0
+      ? `\n${knowledgeBlock}`
+      : input.memory && input.memory.length > 0
+        ? `\n--- CONTENUS DÉJÀ VALIDÉS PAR L'ENSEIGNANT (référence de style et de terminologie) ---\n` +
+          input.memory
+            .map((m, idx) => `[${idx + 1}] ${m.title}\n${m.content.slice(0, 1500)}`)
+            .join('\n\n') +
+          `\n--- FIN ---\n` +
+          `Inspire-toi de la terminologie, du niveau de langue et des conventions pédagogiques de ces contenus ` +
+          `(c'est l'enseignant qui les a validés), sans jamais en recopier la substance si elle porte sur un autre sujet.\n`
+        : '';
 
   const user =
     `Titre du cours : ${input.courseTitle}\n` +

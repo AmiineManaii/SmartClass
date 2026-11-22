@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../../domain/entities/course_outline.dart';
+import '../../domain/entities/knowledge_grounding.dart';
 import '../derive_course_title.dart';
 import 'ai_course_options_provider.dart';
 import 'courses_provider.dart';
@@ -31,6 +32,7 @@ class GenerationJobParams {
   final bool thinking;
   final bool generateImages;
   final CourseOutline? outline;
+  final KnowledgeGroundingConfig? knowledge;
 
   const GenerationJobParams({
     required this.mode,
@@ -48,6 +50,7 @@ class GenerationJobParams {
     required this.thinking,
     this.generateImages = false,
     this.outline,
+    this.knowledge,
   });
 }
 
@@ -266,6 +269,7 @@ class CourseGenerationJob extends StateNotifier<GenerationJobState> {
         'difficulty': params.difficulty,
         'format': params.format,
         if (params.outline != null) 'outline': params.outline!.toJson(),
+        if (params.knowledge != null) 'knowledge': params.knowledge!.toJson(),
         'extras': {
           'examples': params.examples,
           'mermaid': params.mermaid,
@@ -285,6 +289,8 @@ class CourseGenerationJob extends StateNotifier<GenerationJobState> {
               'format': params.format,
               if (params.outline != null)
                 'outline': jsonEncode(params.outline!.toJson()),
+              if (params.knowledge != null)
+                'knowledge': jsonEncode(params.knowledge!.toJson()),
               // Multipart has no nesting: the server parses this JSON string.
               'extras': jsonEncode({
                 'examples': params.examples,

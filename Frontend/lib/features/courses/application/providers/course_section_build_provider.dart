@@ -7,6 +7,7 @@ import '../../../../core/network/api_config.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/network/network_providers.dart';
 import '../../domain/entities/course_section.dart';
+import '../../domain/entities/knowledge_grounding.dart';
 import '../../infrastructure/datasources/course_section_remote_datasource.dart';
 import 'ai_course_options_provider.dart';
 import 'courses_provider.dart';
@@ -38,6 +39,9 @@ class CourseSectionBuildState {
     this.streamError,
     this.imageJobs = const {},
     this.isGeneratingAll = false,
+    this.sectionSources = const {},
+    this.sectionSearchModes = const {},
+    this.sectionDegradedReasons = const {},
   });
 
   /// Initial fetch in flight.
@@ -69,6 +73,11 @@ class CourseSectionBuildState {
   /// notifier so a generation survives leaving the builder page.
   final Map<String, SectionImageJob> imageJobs;
 
+  /// Attributed Phase 2 RAG sources per generated section key.
+  final Map<String, List<KnowledgeSourceAttribution>> sectionSources;
+  final Map<String, String> sectionSearchModes;
+  final Map<String, String?> sectionDegradedReasons;
+
   bool get isStreaming => streamingKey != null;
 
   SectionImageJob? imageJob(String sectionKey) => imageJobs[sectionKey];
@@ -99,6 +108,9 @@ class CourseSectionBuildState {
     Object? streamError,
     Map<String, SectionImageJob>? imageJobs,
     bool? isGeneratingAll,
+    Map<String, List<KnowledgeSourceAttribution>>? sectionSources,
+    Map<String, String>? sectionSearchModes,
+    Map<String, String?>? sectionDegradedReasons,
   }) {
     return CourseSectionBuildState(
       loading: loading ?? this.loading,
@@ -117,6 +129,10 @@ class CourseSectionBuildState {
       streamError: streamError,
       imageJobs: imageJobs ?? this.imageJobs,
       isGeneratingAll: isGeneratingAll ?? this.isGeneratingAll,
+      sectionSources: sectionSources ?? this.sectionSources,
+      sectionSearchModes: sectionSearchModes ?? this.sectionSearchModes,
+      sectionDegradedReasons:
+          sectionDegradedReasons ?? this.sectionDegradedReasons,
     );
   }
 }
@@ -171,6 +187,7 @@ class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
   Future<void> generate({
     required String sectionKey,
     required bool regenerate,
+    KnowledgeGroundingConfig? knowledge,
   }) async {
     if (state.isStreaming) return;
     final target = state.section(sectionKey);
@@ -186,7 +203,7 @@ class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
     state = state.copyWith(
       streamingKey: sectionKey,
       streamingText: '',
-      streamingPhase: 'memory',
+      streamingPhase: 'knowledge',
     );
 
     await _ref
@@ -199,6 +216,7 @@ class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
             'sectionKey': sectionKey,
             if (state.course != null) 'level': state.course!.level,
             if (state.course != null) 'difficulty': state.course!.difficulty,
+            if (knowledge != null) 'knowledge': knowledge.toJson(),
           },
           cancelToken: cancel,
           onDelta: (delta) {
@@ -214,6 +232,21 @@ class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
             if (!mounted || run != _streamRun) return;
             _cancel = null;
             final sectionJson = meta['section'];
+            final sources = parseKnowledgeSources(meta['knowledgeSources']);
+            final searchMode = meta['knowledgeSearchMode']?.toString();
+            final degradedReason = meta['knowledgeDegradedReason']?.toString();
+            final nextSources = {
+              ...state.sectionSources,
+              sectionKey: sources,
+            };
+            final nextModes = {
+              ...state.sectionSearchModes,
+              sectionKey: ?searchMode,
+            };
+            final nextReasons = {
+              ...state.sectionDegradedReasons,
+              sectionKey: degradedReason,
+            };
             if (sectionJson is Map<String, dynamic>) {
               final updated = CourseSectionEntry.fromJson(sectionJson);
               state = state.copyWith(
@@ -221,11 +254,19 @@ class CourseSectionBuild extends StateNotifier<CourseSectionBuildState> {
                   for (final item in state.sections)
                     if (item.sectionKey == sectionKey) updated else item,
                 ],
+                sectionSources: nextSources,
+                sectionSearchModes: nextModes,
+                sectionDegradedReasons: nextReasons,
                 resetStreaming: true,
               );
             } else {
               // Defensive: metadata without the saved section → resync.
-              state = state.copyWith(resetStreaming: true);
+              state = state.copyWith(
+                sectionSources: nextSources,
+                sectionSearchModes: nextModes,
+                sectionDegradedReasons: nextReasons,
+                resetStreaming: true,
+              );
             }
           },
           onError: (err) {

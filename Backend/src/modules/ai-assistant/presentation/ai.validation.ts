@@ -1,9 +1,35 @@
 import { z } from 'zod';
+import { KNOWLEDGE_SOURCE_TYPES } from '../../knowledge/index.js';
 
 const modeSchema = z.enum(['topic', 'text', 'url', 'pdf']);
 const levelSchema = z.enum(['concis', 'equilibre', 'detaille']);
 const difficultySchema = z.enum(['facile', 'moyen', 'difficile']);
 const formatSchema = z.enum(['resume', 'flashcards', 'carte-mentale']);
+
+const knowledgeGroundingObjectSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    sourceTypes: z.array(z.enum(KNOWLEDGE_SOURCE_TYPES)).min(1).max(7).optional(),
+    documentIds: z.array(z.string().uuid()).min(1).max(25).optional(),
+    includeDrafts: z.boolean().optional(),
+    maxChunks: z.coerce.number().int().min(1).max(10).optional(),
+  })
+  .strict()
+  .optional();
+
+export const knowledgeGroundingSchema = z.preprocess((val) => {
+  // Multipart fields arrive as JSON-encoded strings.
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed.length === 0) return undefined;
+    try {
+      return JSON.parse(trimmed) as unknown;
+    } catch {
+      return val;
+    }
+  }
+  return val;
+}, knowledgeGroundingObjectSchema);
 
 const extrasSchema = z.preprocess(
   (val) => {
@@ -35,6 +61,7 @@ const courseOptions = {
   difficulty: difficultySchema.default('moyen'),
   format: formatSchema.default('resume'),
   extras: extrasSchema,
+  knowledge: knowledgeGroundingSchema,
 };
 
 const outlineSectionSchema = z
@@ -82,6 +109,7 @@ export const generateOutlineBodySchema = z
     sourceText: z.string().max(200000).optional(),
     url: z.string().trim().max(2000).optional(),
     extras: extrasSchema.optional(),
+    knowledge: knowledgeGroundingSchema,
   })
   .passthrough()
   .refine(
@@ -99,6 +127,7 @@ export const generateOutlineBodySchema = z
     level: data.level,
     difficulty: data.difficulty,
     sourceContext: data.sourceContext || data.sourceText || data.url,
+    knowledge: data.knowledge,
   }));
 
 export const refineSectionBodySchema = z
@@ -111,6 +140,7 @@ export const refineSectionBodySchema = z
     courseContent: z.string().max(200000).optional(),
     level: levelSchema.optional(),
     difficulty: difficultySchema.optional(),
+    knowledge: knowledgeGroundingSchema,
   })
   .passthrough()
   .transform((data) => ({
@@ -119,6 +149,7 @@ export const refineSectionBodySchema = z
     selectedText: data.selectedText,
     instruction: data.instruction,
     fullContext: data.fullContext || data.courseContent,
+    knowledge: data.knowledge,
   }));
 
 /** `/ai/courses/:id/build` path params. */
@@ -140,6 +171,7 @@ export const generateSectionBodySchema = z
       .object({ examples: z.boolean().optional(), mermaid: z.boolean().optional() })
       .strict()
       .optional(),
+    knowledge: knowledgeGroundingSchema,
   })
   .strict();
 
@@ -224,6 +256,7 @@ export const improvePdfFieldsSchema = z
     format: formatSchema.default('resume'),
     extras: extrasSchema,
     outline: outlinePreprocess,
+    knowledge: knowledgeGroundingSchema,
   })
   .strict();
 

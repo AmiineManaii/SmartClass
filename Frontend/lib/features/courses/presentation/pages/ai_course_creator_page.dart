@@ -16,8 +16,11 @@ import '../../application/providers/course_generation_job_provider.dart';
 import '../../application/providers/course_plan_job_provider.dart';
 import '../../application/providers/courses_provider.dart';
 import '../../domain/entities/course_outline.dart';
+import '../../domain/entities/knowledge_grounding.dart';
 import '../widgets/ai_section_refine_dialog.dart';
 import '../widgets/course_outline_editor_card.dart';
+import '../widgets/knowledge_grounding_controls_card.dart';
+import '../widgets/knowledge_sources_attribution_card.dart';
 import '../widgets/markdown_course_view.dart';
 
 part '../widgets/ai_course_creator_page_state.dart';
