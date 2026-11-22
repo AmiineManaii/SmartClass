@@ -183,6 +183,11 @@ export {
   buildVttFromSegments,
   buildSrtFromSegments,
 } from './domain/recording.entity.js';
+export {
+  sanitizeMathAndMarkdown,
+  sanitizeSlideVisionOutput,
+  isMostlyDesktopNoise,
+} from './domain/lesson-text-sanitizer.js';
 
 export type { EgressServicePort, StartEgressParams, StartEgressResult, StopEgressResult } from './domain/egress-service.port.js';
 export type { RecordingRepositoryPort, UpsertRecordingInput } from './domain/recording-repository.port.js';

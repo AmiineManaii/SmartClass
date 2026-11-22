@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../application/recording_providers.dart';
 import '../../domain/entities/recording_models.dart';
 import 'lesson_ai_tutor_panel.dart';
 import 'replay_ai_summary_tab.dart';
@@ -16,6 +17,9 @@ class ReplayLearningTabsView extends ConsumerWidget {
   final VoidCallback onAddNote;
   final ValueChanged<double> onSeekTo;
   final VoidCallback onRefreshWorkspace;
+  final VoidCallback? onOpenQuiz;
+  final int studyLabModeIndex;
+  final int studyLabModeNonce;
 
   const ReplayLearningTabsView({
     super.key,
@@ -26,12 +30,18 @@ class ReplayLearningTabsView extends ConsumerWidget {
     required this.onAddNote,
     required this.onSeekTo,
     required this.onRefreshWorkspace,
+    this.onOpenQuiz,
+    this.studyLabModeIndex = 0,
+    this.studyLabModeNonce = 0,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final pkg = workspace.lessonPackage;
+    final accessToken = ref.watch(recordingAccessTokenProvider).valueOrNull;
+    final recordingDs = ref.watch(recordingRemoteDataSourceProvider);
+    final quizCount = pkg.quizQuestions.length;
 
     return Column(
       children: [
@@ -55,8 +65,8 @@ class ReplayLearningTabsView extends ConsumerWidget {
               fontWeight: FontWeight.w800,
               fontSize: 13,
             ),
-            tabs: const [
-              Tab(
+            tabs: [
+              const Tab(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -67,10 +77,14 @@ class ReplayLearningTabsView extends ConsumerWidget {
                   ],
                 ),
               ),
-              Tab(text: 'Fiches & Quiz'),
-              Tab(text: 'Transcription'),
-              Tab(text: 'Notes & Repères'),
-              Tab(text: 'Tuteur IA'),
+              Tab(
+                text: quizCount > 0
+                    ? 'Fiches & Quiz ($quizCount Q)'
+                    : 'Fiches & Quiz',
+              ),
+              const Tab(text: 'Transcription'),
+              const Tab(text: 'Notes & Repères'),
+              const Tab(text: 'Tuteur IA'),
             ],
           ),
         ),
@@ -78,13 +92,21 @@ class ReplayLearningTabsView extends ConsumerWidget {
           child: TabBarView(
             controller: tabController,
             children: [
-              // 1. AI Summary, Key Takeaways & Interactive Rebound (Stitch design)
+              // 1. AI Summary, Key Takeaways, Teacher Quiz CTA & Interactive Rebound
               ListView(
                 padding: EdgeInsets.zero,
                 children: [
                   ReplayAiSummaryTab(
                     workspace: workspace,
                     onSeekTo: onSeekTo,
+                    onOpenQuiz: onOpenQuiz,
+                    frameUrlBuilder: accessToken != null
+                        ? (idx) => recordingDs.buildAuthenticatedFrameUrl(
+                              sessionId,
+                              idx,
+                              accessToken,
+                            )
+                        : null,
                     onAskTutor: (prompt) {
                       tabController.animateTo(4);
                     },
@@ -92,13 +114,15 @@ class ReplayLearningTabsView extends ConsumerWidget {
                 ],
               ),
 
-              // 2. Student Study Lab (Flashcards & Quizzes)
+              // 2. Student Study Lab (Summaries, Teacher + AI Quizzes & Flashcards)
               StudentStudyLabPanel(
                 sessionId: sessionId,
                 lessonPackage: pkg,
                 initialArtifacts: workspace.studyArtifacts,
                 initialQuizAttempts: workspace.quizAttempts,
                 onRefreshWorkspace: onRefreshWorkspace,
+                requestedModeIndex: studyLabModeIndex,
+                modeRequestVersion: studyLabModeNonce,
               ),
 
               // 3. Synchronized Live Transcript

@@ -33,6 +33,11 @@ import {
   buildSrtFromSegments,
   buildVttFromSegments,
 } from '../domain/recording.entity.js';
+import {
+  isMostlyDesktopNoise,
+  sanitizeMathAndMarkdown,
+  sanitizeSlideVisionOutput,
+} from '../domain/lesson-text-sanitizer.js';
 import type { RecordingRepositoryPort } from '../domain/recording-repository.port.js';
 import type { SessionChatRepositoryPort } from '../domain/session-chat-repository.port.js';
 import type { VideoSessionRepositoryPort } from '../domain/video-session-repository.port.js';
@@ -1229,7 +1234,7 @@ export class MediaProcessingWorker {
             ? `Spoken transcript around ${this.formatClock(ts)}: "${matchingSegment.text.slice(0, 220)}"`
             : '';
           const visionRes = await this.deps.modelRouter.analyzeVisualFrame({
-            system: `You are SmartClass's multimodal lecture slide analyzer. Return ONLY a strict JSON object with keys: {"slideTitle": "short exact heading visible on screen", "ocrText": "all readable headings, bullet points, terms, formulas, code or diagram labels shown on the slide", "visualSummary": "concise 1-2 sentence explanation of the visual content"}. Write explanations in ${outputLang} while keeping exact on-screen technical terms verbatim. Never wrap in prose.`,
+            system: `You are SmartClass's multimodal lecture slide analyzer. Return ONLY a strict JSON object with keys: {"slideTitle": "short exact heading visible on screen", "ocrText": "all readable educational headings, bullet points, terms, formulas, code or diagram labels shown on the slide", "visualSummary": "concise 1-2 sentence explanation of the educational slide content"}. CRITICAL RULES: Transcribe ONLY actual lecture slide, whiteboard, code, or diagram content. STRICTLY IGNORE browser tabs, address bars (http://localhost), OS taskbars, desktop windows, video-call participant tiles, SmartClass UI overlays, or unrelated open apps (Docker, IDE tabs, news feeds). If a frame shows only a desktop/browser/meeting window with no readable slide content, set "ocrText": "" and "visualSummary": "". NEVER repeat symbols ("$ $ $"), NEVER invent gibberish, and use plain Unicode arrows/symbols (→, ×, ≤, ≥) — NEVER write raw LaTeX like "$\\rightarrow$". Write explanations in ${outputLang} while keeping exact on-screen technical terms verbatim. Never wrap in prose.`,
             user: `Analyze this lecture frame from "${sessionTitle}" (${sessionSubject}) at ${this.formatClock(ts)}. ${spokenHint}`,
             imageBase64: base64Img,
             mimeType: 'image/jpeg',
@@ -1250,21 +1255,21 @@ export class MediaProcessingWorker {
                 .trim();
             };
 
-            const slideTitle = (
+            const rawSlideTitle = (
               typeof parsed?.slideTitle === 'string'
                 ? parsed.slideTitle
                 : extractPartialJsonField(rawContent, 'slideTitle')
             )
               .replace(/\s+/g, ' ')
               .trim();
-            const parsedOcr = (
+            const rawParsedOcr = (
               typeof parsed?.ocrText === 'string'
                 ? parsed.ocrText
                 : extractPartialJsonField(rawContent, 'ocrText')
             )
               .replace(/\s+/g, ' ')
               .trim();
-            const parsedSummary = (
+            const rawParsedSummary = (
               typeof parsed?.visualSummary === 'string'
                 ? parsed.visualSummary
                 : extractPartialJsonField(rawContent, 'visualSummary')
@@ -1272,17 +1277,33 @@ export class MediaProcessingWorker {
               .replace(/\s+/g, ' ')
               .trim();
 
-            if (parsedOcr || parsedSummary || slideTitle) {
-              ocrText = [slideTitle, parsedOcr].filter(Boolean).join(' — ').slice(0, 500) || ocrText;
-              visualSummary = (parsedSummary || parsedOcr || slideTitle).slice(0, 400);
+            const slideTitle = sanitizeSlideVisionOutput(rawSlideTitle);
+            const parsedOcr = sanitizeSlideVisionOutput(rawParsedOcr);
+            const parsedSummary = sanitizeSlideVisionOutput(rawParsedSummary);
+            const combinedRaw = `${rawSlideTitle} ${rawParsedOcr}`.trim();
+            const cleanedAlnumCount = `${slideTitle} ${parsedOcr}`
+              .replace(/[^\p{L}\p{N}]/gu, '')
+              .length;
+
+            if (isMostlyDesktopNoise(combinedRaw) && cleanedAlnumCount < 20) {
+              modelUsed = visionRes.model || modelUsed;
+            } else if (parsedOcr || parsedSummary || slideTitle) {
+              ocrText =
+                sanitizeSlideVisionOutput([slideTitle, parsedOcr].filter(Boolean).join(' — ')).slice(0, 500) ||
+                ocrText;
+              visualSummary =
+                sanitizeSlideVisionOutput(parsedSummary || parsedOcr || slideTitle).slice(0, 400) ||
+                visualSummary;
               modelUsed = visionRes.model || modelUsed;
               visionSucceededCount++;
             } else if (!rawContent.startsWith('{') && !rawContent.startsWith('```')) {
-              const cleaned = rawContent.replace(/\s+/g, ' ').trim();
-              visualSummary = cleaned.slice(0, 400);
-              ocrText = `${sessionTitle} — ${cleaned.slice(0, 180)}`;
+              const cleaned = sanitizeSlideVisionOutput(rawContent.replace(/\s+/g, ' ').trim());
+              if (!isMostlyDesktopNoise(rawContent) && cleaned.length >= 15) {
+                visualSummary = cleaned.slice(0, 400);
+                ocrText = `${sessionTitle} — ${cleaned.slice(0, 180)}`;
+                visionSucceededCount++;
+              }
               modelUsed = visionRes.model || modelUsed;
-              visionSucceededCount++;
             }
           }
         } catch (err: unknown) {
@@ -1296,8 +1317,8 @@ export class MediaProcessingWorker {
         timestampSeconds: ts,
         storageKey: frameKey,
         perceptualHash: dHash,
-        ocrText,
-        visualSummary,
+        ocrText: sanitizeSlideVisionOutput(ocrText) || `${sessionTitle} — Slide ${slideCounter} (${sessionSubject})`,
+        visualSummary: sanitizeSlideVisionOutput(visualSummary) || `Visual frame captured from ${sessionTitle} at ${this.formatClock(ts)}.`,
         sourcePage: slideCounter,
         modelUsed,
       });
@@ -1332,10 +1353,13 @@ export class MediaProcessingWorker {
     const slidesBlock =
       slideFrames.length > 0
         ? slideFrames
-            .map(
-              (f, idx) =>
-                `[${this.formatClock(f.timestampSeconds)}] Slide #${idx + 1} (${f.timestampSeconds}s):\n  On-screen text (OCR): ${f.ocrText}\n  Visual content: ${f.visualSummary}`,
-            )
+            .map((f, idx) => {
+              const cleanOcr = isMostlyDesktopNoise(f.ocrText)
+                ? '(Screen-share frame showing meeting UI / desktop window; rely on spoken transcript)'
+                : sanitizeSlideVisionOutput(f.ocrText);
+              const cleanSummary = sanitizeSlideVisionOutput(f.visualSummary);
+              return `[${this.formatClock(f.timestampSeconds)}] Slide #${idx + 1} (${f.timestampSeconds}s):\n  On-screen text (OCR): ${cleanOcr}\n  Visual content: ${cleanSummary}`;
+            })
             .join('\n')
         : '(No visual slide frames available)';
 
@@ -1496,7 +1520,7 @@ export class MediaProcessingWorker {
     let generatedChapters: typeof defaultChapters | null = null;
     try {
       const chRes = await this.deps.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
-        systemPrompt: `You are SmartClass's pedagogical lecture structuring expert. Segment this recorded lecture into 4 to 6 coherent chronological chapters grounded strictly in BOTH the visual slides (OCR/visuals) AND the spoken transcript. Write in ${outputLang} while keeping exact technical terms from the lecture. Respond ONLY with a valid JSON array of objects: [{"title": "1. ...", "summary": "concise 2-sentence summary citing actual slide & spoken topics", "startSeconds": 0, "endSeconds": 35, "keyConcepts": ["term1", "term2", "term3"]}]. Timestamps must span from 0 to ${durationSeconds}s monotonically without gaps. No text outside the JSON array.`,
+        systemPrompt: `You are SmartClass's pedagogical lecture structuring expert. Segment this recorded lecture into 4 to 6 coherent chronological chapters grounded strictly in BOTH the visual slides (OCR/visuals) AND the spoken transcript. Ignore any browser tabs, localhost URLs, IDE chrome, or unrelated desktop artifacts. Write in ${outputLang} while keeping exact technical terms from the lecture. Use plain Unicode arrows/symbols (→, ×, ≤, ≥) — NEVER write raw LaTeX like $\\rightarrow$. Respond ONLY with a valid JSON array of objects: [{"title": "1. ...", "summary": "concise 2-sentence summary citing actual slide & spoken topics", "startSeconds": 0, "endSeconds": 35, "keyConcepts": ["term1", "term2", "term3"]}]. Timestamps must span from 0 to ${durationSeconds}s monotonically without gaps. No text outside the JSON array.`,
         messages: [
           {
             role: 'user',
@@ -1526,18 +1550,21 @@ export class MediaProcessingWorker {
           return {
             orderIndex: idx,
             title:
-              typeof ch?.title === 'string' && ch.title.trim().length > 3
-                ? ch.title.trim()
+              typeof ch?.title === 'string' && sanitizeMathAndMarkdown(ch.title).length > 3
+                ? sanitizeMathAndMarkdown(ch.title)
                 : fallback.title,
             summary:
-              typeof ch?.summary === 'string' && ch.summary.trim().length > 10
-                ? ch.summary.trim()
+              typeof ch?.summary === 'string' && sanitizeMathAndMarkdown(ch.summary).length > 10
+                ? sanitizeMathAndMarkdown(ch.summary)
                 : fallback.summary,
             startSeconds,
             endSeconds: Math.max(startSeconds + 1, endSeconds),
             keyConcepts:
               Array.isArray(ch?.keyConcepts) && ch.keyConcepts.length > 0
-                ? ch.keyConcepts.map((v: unknown) => String(v).trim()).filter(Boolean).slice(0, 5)
+                ? ch.keyConcepts
+                    .map((v: unknown) => sanitizeMathAndMarkdown(String(v)))
+                    .filter(Boolean)
+                    .slice(0, 5)
                 : fallback.keyConcepts,
             slideFrameId: slideMatch.id,
             sourcePage: slideMatch.page,
@@ -1639,7 +1666,7 @@ export class MediaProcessingWorker {
       while (preambleRegex.test(cleaned)) {
         cleaned = cleaned.replace(preambleRegex, '').trim();
       }
-      return cleaned;
+      return sanitizeMathAndMarkdown(cleaned);
     };
 
     const outputLang = this.resolveOutputLanguage(transcript.language);
@@ -1708,7 +1735,7 @@ export class MediaProcessingWorker {
     // 1A. Multimodal Synthesis Call (Plain Markdown sections — immune to JSON escaping/truncation)
     try {
       const notesRes = await this.deps.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
-        systemPrompt: `You are a university professor creating accurate, comprehensive lecture study material from a recorded class. Use BOTH the extracted visual slides (OCR & visual summaries) AND the timestamped spoken transcript. Write in ${outputLang} while keeping exact technical terms from the lecture verbatim. NEVER invent topics not present in the slides or transcript. NEVER start with greetings or meta introductions.
+        systemPrompt: `You are a university professor creating accurate, comprehensive lecture study material from a recorded class. Use BOTH the extracted visual slides (OCR & visual summaries) AND the timestamped spoken transcript. Write in ${outputLang} while keeping exact technical terms from the lecture verbatim. NEVER invent topics not present in the slides or transcript. NEVER start with greetings or meta introductions. Use plain Unicode arrows/symbols (→, ×, ≤, ≥) — NEVER write raw LaTeX like $\\rightarrow$. Ignore any browser tabs, localhost URLs, IDE labels, Docker windows, or desktop chrome artifacts.
 Output EXACTLY these three delimited sections:
 
 ===SUMMARY===
@@ -1759,7 +1786,7 @@ Output EXACTLY these three delimited sections:
       const knowledgeRes = await this.deps.modelRouter.generateForRole(
         'LESSON_PACKAGE_GENERATION',
         {
-          systemPrompt: `You are a university professor extracting structured pedagogical metadata strictly from the recorded lecture (BOTH visual slides and spoken transcript). Write in ${outputLang} keeping exact technical terms verbatim.
+          systemPrompt: `You are a university professor extracting structured pedagogical metadata strictly from the recorded lecture (BOTH visual slides and spoken transcript). Write in ${outputLang} keeping exact technical terms verbatim. Use plain Unicode arrows/symbols (→, ×, ≤, ≥) — NEVER write raw LaTeX like $\\rightarrow$. Ignore any browser tabs, localhost URLs, IDE chrome, or desktop window labels.
 Return ONLY a valid JSON object (no markdown fences, no extra text) with this exact schema:
 {
   "learningObjectives": ["3 to 5 concrete objectives covered in this lecture"],
@@ -1781,13 +1808,13 @@ Keep strings concise. CRITICAL for mindMapMermaid: MUST start with "flowchart TD
       if (parsed) {
         if (Array.isArray(parsed.learningObjectives)) {
           aiLearningObjectives = parsed.learningObjectives
-            .map((v: unknown) => String(v).trim())
+            .map((v: unknown) => sanitizeMathAndMarkdown(String(v)))
             .filter((v: string) => v.length > 5)
             .slice(0, 6);
         }
         if (Array.isArray(parsed.formulasAndRules)) {
           aiFormulasAndRules = parsed.formulasAndRules
-            .map((v: unknown) => String(v).trim())
+            .map((v: unknown) => sanitizeMathAndMarkdown(String(v)))
             .filter((v: string) => v.length > 5)
             .slice(0, 6);
         }
@@ -1797,11 +1824,13 @@ Keep strings concise. CRITICAL for mindMapMermaid: MUST start with "flowchart TD
               (m: unknown): m is Record<string, unknown> => typeof m === 'object' && m !== null,
             )
             .map((m) => ({
-              label: typeof m.label === 'string' ? m.label.trim() : '',
+              label: typeof m.label === 'string' ? sanitizeMathAndMarkdown(m.label) : '',
               timestampSeconds: clampTs(m.timestampSeconds, 0),
-              reason: typeof m.reason === 'string' ? m.reason.trim() : '',
+              reason: typeof m.reason === 'string' ? sanitizeMathAndMarkdown(m.reason) : '',
               chapterTitle:
-                typeof m.chapterTitle === 'string' ? m.chapterTitle.trim() : undefined,
+                typeof m.chapterTitle === 'string'
+                  ? sanitizeMathAndMarkdown(m.chapterTitle)
+                  : undefined,
             }))
             .filter((m) => m.label.length > 3 && m.reason.length > 5)
             .slice(0, 6);
@@ -1817,8 +1846,9 @@ Keep strings concise. CRITICAL for mindMapMermaid: MUST start with "flowchart TD
                 chapters[idx % Math.max(1, chapters.length)]?.startSeconds ?? 0,
               );
               return {
-                name: typeof c.name === 'string' ? c.name.trim() : '',
-                explanation: typeof c.explanation === 'string' ? c.explanation.trim() : '',
+                name: typeof c.name === 'string' ? sanitizeMathAndMarkdown(c.name) : '',
+                explanation:
+                  typeof c.explanation === 'string' ? sanitizeMathAndMarkdown(c.explanation) : '',
                 chapterOrder:
                   typeof c.chapterOrder === 'number' && Number.isFinite(c.chapterOrder)
                     ? Math.max(1, Math.min(chapters.length || 4, Math.round(c.chapterOrder)))
@@ -1836,11 +1866,12 @@ Keep strings concise. CRITICAL for mindMapMermaid: MUST start with "flowchart TD
               (d: unknown): d is Record<string, unknown> => typeof d === 'object' && d !== null,
             )
             .map((d, idx) => ({
-              term: typeof d.term === 'string' ? d.term.trim() : '',
-              definition: typeof d.definition === 'string' ? d.definition.trim() : '',
+              term: typeof d.term === 'string' ? sanitizeMathAndMarkdown(d.term) : '',
+              definition:
+                typeof d.definition === 'string' ? sanitizeMathAndMarkdown(d.definition) : '',
               chapterTitle:
                 typeof d.chapterTitle === 'string' && d.chapterTitle.trim().length > 0
-                  ? d.chapterTitle.trim()
+                  ? sanitizeMathAndMarkdown(d.chapterTitle)
                   : (chapters[idx % Math.max(1, chapters.length)]?.title ?? sessionTitle),
               timestampSeconds: clampTs(d.timestampSeconds, 0),
             }))
@@ -1853,10 +1884,13 @@ Keep strings concise. CRITICAL for mindMapMermaid: MUST start with "flowchart TD
               (e: unknown): e is Record<string, unknown> => typeof e === 'object' && e !== null,
             )
             .map((e) => ({
-              title: typeof e.title === 'string' ? e.title.trim() : '',
-              description: typeof e.description === 'string' ? e.description.trim() : '',
+              title: typeof e.title === 'string' ? sanitizeMathAndMarkdown(e.title) : '',
+              description:
+                typeof e.description === 'string' ? sanitizeMathAndMarkdown(e.description) : '',
               solutionOrWalkthrough:
-                typeof e.solutionOrWalkthrough === 'string' ? e.solutionOrWalkthrough.trim() : '',
+                typeof e.solutionOrWalkthrough === 'string'
+                  ? sanitizeMathAndMarkdown(e.solutionOrWalkthrough)
+                  : '',
               timestampSeconds: clampTs(e.timestampSeconds, 0),
             }))
             .filter((e) => e.title.length > 2 && e.description.length > 8)
@@ -1878,7 +1912,7 @@ Keep strings concise. CRITICAL for mindMapMermaid: MUST start with "flowchart TD
     // 2. Multimodal Assessment Call: Flashcards & Quizzes (dedicated call so JSON never truncates)
     try {
       const studyRes = await this.deps.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
-        systemPrompt: `You are a university professor designing accurate assessment materials strictly from the recorded lecture (BOTH visual slides and spoken transcript). Write in ${outputLang} keeping exact technical terms verbatim.
+        systemPrompt: `You are a university professor designing accurate assessment materials strictly from the recorded lecture (BOTH visual slides and spoken transcript). Write in ${outputLang} keeping exact technical terms verbatim. Use plain Unicode arrows/symbols (→, ×, ≤, ≥) — NEVER write raw LaTeX like $\\rightarrow$. Ignore any browser tabs, localhost URLs, IDE chrome, or unrelated desktop artifacts.
 Return ONLY a valid JSON object (no markdown fences, no extra prose) with this exact schema:
 {
   "flashcards": [{"front": "clear question or prompt", "back": "accurate concise answer", "chapterTitle": "chapter", "difficulty": "facile", "timestampSeconds": 22}],
@@ -1908,11 +1942,11 @@ REQUIREMENTS:
               );
               return {
                 id: `fc_${idx + 1}`,
-                front: typeof f.front === 'string' ? f.front.trim() : '',
-                back: typeof f.back === 'string' ? f.back.trim() : '',
+                front: typeof f.front === 'string' ? sanitizeMathAndMarkdown(f.front) : '',
+                back: typeof f.back === 'string' ? sanitizeMathAndMarkdown(f.back) : '',
                 chapterTitle:
                   typeof f.chapterTitle === 'string' && f.chapterTitle.trim().length > 0
-                    ? f.chapterTitle.trim()
+                    ? sanitizeMathAndMarkdown(f.chapterTitle)
                     : (chapters[idx % Math.max(1, chapters.length)]?.title ?? sessionTitle),
                 difficulty: normDiff(f.difficulty),
                 timestampSeconds: ts,
@@ -1934,11 +1968,13 @@ REQUIREMENTS:
                 chapters[idx % Math.max(1, chapters.length)]?.startSeconds ?? 0,
               );
               const rawOpts = Array.isArray(q.options)
-                ? q.options.map((o: unknown) => String(o).trim()).filter(Boolean)
+                ? q.options.map((o: unknown) => sanitizeMathAndMarkdown(String(o))).filter(Boolean)
                 : [];
               const options = Array.from(new Set(rawOpts));
               const rawCorrect =
-                typeof q.correctAnswer === 'string' ? q.correctAnswer.trim() : '';
+                typeof q.correctAnswer === 'string'
+                  ? sanitizeMathAndMarkdown(q.correctAnswer)
+                  : '';
               const exactMatch = options.find(
                 (opt) => opt.toLowerCase() === rawCorrect.toLowerCase(),
               );
@@ -1946,17 +1982,17 @@ REQUIREMENTS:
               return {
                 id: `qz_${idx + 1}`,
                 type: normQuizType(q.type),
-                question: typeof q.question === 'string' ? q.question.trim() : '',
+                question: typeof q.question === 'string' ? sanitizeMathAndMarkdown(q.question) : '',
                 options,
                 correctAnswer,
                 explanation:
                   typeof q.explanation === 'string' && q.explanation.trim().length > 3
-                    ? q.explanation.trim()
+                    ? sanitizeMathAndMarkdown(q.explanation)
                     : `Basé sur le contenu présenté vers ${this.formatClock(ts)}.`,
                 difficulty: normDiff(q.difficulty),
                 chapterTitle:
                   typeof q.chapterTitle === 'string' && q.chapterTitle.trim().length > 0
-                    ? q.chapterTitle.trim()
+                    ? sanitizeMathAndMarkdown(q.chapterTitle)
                     : (chapters[idx % Math.max(1, chapters.length)]?.title ?? sessionTitle),
                 timestampSeconds: ts,
                 sourcePage: this.findClosestSlideFrame(slideFrames, ts, ts, idx).page,

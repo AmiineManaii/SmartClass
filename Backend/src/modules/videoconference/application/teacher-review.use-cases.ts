@@ -29,6 +29,10 @@ import {
   canApproveLesson,
   canPublishLesson,
 } from '../domain/recording.entity.js';
+import {
+  sanitizeMathAndMarkdown,
+  sanitizeSlideVisionOutput,
+} from '../domain/lesson-text-sanitizer.js';
 import type { RecordingRepositoryPort } from '../domain/recording-repository.port.js';
 import type { VideoSessionRepositoryPort } from '../domain/video-session-repository.port.js';
 import { canHost, type UserContext } from '../domain/video-session-policy.js';
@@ -418,7 +422,7 @@ export class RegenerateLessonSectionUseCase {
         ? `\nDiapositives extraites :\n${slideFrames
             .map(
               (f, idx) =>
-                `- [${f.timestampSeconds}s] Slide #${idx + 1}: ${f.ocrText} | ${f.visualSummary}`,
+                `- [${f.timestampSeconds}s] Slide #${idx + 1}: ${sanitizeSlideVisionOutput(f.ocrText)} | ${sanitizeSlideVisionOutput(f.visualSummary)}`,
             )
             .join('\n')}`
         : '';
@@ -441,13 +445,13 @@ export class RegenerateLessonSectionUseCase {
       while (preambleRegex.test(cleaned)) {
         cleaned = cleaned.replace(preambleRegex, '').trim();
       }
-      return cleaned;
+      return sanitizeMathAndMarkdown(cleaned);
     };
 
     if (input.section === 'summary') {
       try {
         const res = await this.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
-          systemPrompt: `You are a university professor on SmartClass. Regenerate a clear, accurate 2-paragraph executive summary in ${outputLang} grounded in BOTH the spoken transcript and extracted slide frames. NEVER start with greetings or meta introductions.`,
+          systemPrompt: `You are a university professor on SmartClass. Regenerate a clear, accurate 2-paragraph executive summary in ${outputLang} grounded in BOTH the spoken transcript and extracted slide frames. Use plain Unicode arrows/symbols (→, ×, ≤, ≥) — NEVER write raw LaTeX like $\\rightarrow$. Ignore any browser/desktop UI chrome. NEVER start with greetings or meta introductions.`,
           messages: [
             {
               role: 'user',
@@ -466,7 +470,7 @@ export class RegenerateLessonSectionUseCase {
     } else if (input.section === 'structuredNotes') {
       try {
         const res = await this.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
-          systemPrompt: `You are a university professor on SmartClass. Regenerate comprehensive Markdown lecture notes in ${outputLang} with headings, bullet points, slide details, and key takeaways grounded in BOTH the transcript and extracted slides. NEVER start with greetings or meta introductions.`,
+          systemPrompt: `You are a university professor on SmartClass. Regenerate comprehensive Markdown lecture notes in ${outputLang} with headings, bullet points, slide details, and key takeaways grounded in BOTH the transcript and extracted slides. Use plain Unicode arrows/symbols (→, ×, ≤, ≥) — NEVER write raw LaTeX like $\\rightarrow$. Ignore any browser/desktop UI chrome. NEVER start with greetings or meta introductions.`,
           messages: [
             {
               role: 'user',
@@ -521,7 +525,7 @@ export class RegenerateLessonSectionUseCase {
       let added = false;
       try {
         const res = await this.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
-          systemPrompt: `Generate 2 new flashcards in ${outputLang} strictly grounded in the lecture transcript and slides. Return ONLY a JSON array: [{"front": "...", "back": "...", "chapterTitle": "...", "difficulty": "moyen", "timestampSeconds": 0}].`,
+          systemPrompt: `Generate 2 new flashcards in ${outputLang} strictly grounded in the lecture transcript and slides. Use plain Unicode arrows/symbols (→, ×, ≤, ≥) — NEVER write raw LaTeX like $\\rightarrow$. Return ONLY a JSON array: [{"front": "...", "back": "...", "chapterTitle": "...", "difficulty": "moyen", "timestampSeconds": 0}].`,
           messages: [
             {
               role: 'user',
@@ -547,10 +551,12 @@ export class RegenerateLessonSectionUseCase {
                 const rec = item as Record<string, unknown>;
                 flashcards.push({
                   id: `fc_${Date.now()}_${flashcards.length + 1}`,
-                  front: String(rec.front).trim(),
-                  back: String(rec.back).trim(),
+                  front: sanitizeMathAndMarkdown(String(rec.front)),
+                  back: sanitizeMathAndMarkdown(String(rec.back)),
                   chapterTitle:
-                    typeof rec.chapterTitle === 'string' ? rec.chapterTitle.trim() : session.title,
+                    typeof rec.chapterTitle === 'string'
+                      ? sanitizeMathAndMarkdown(rec.chapterTitle)
+                      : session.title,
                   difficulty: 'moyen',
                   timestampSeconds:
                     typeof rec.timestampSeconds === 'number' ? Math.round(rec.timestampSeconds) : 0,
@@ -577,7 +583,7 @@ export class RegenerateLessonSectionUseCase {
       let added = false;
       try {
         const res = await this.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
-          systemPrompt: `Generate 2 new quiz questions in ${outputLang} strictly grounded in the lecture transcript and slides. Return ONLY a JSON array: [{"type": "MULTIPLE_CHOICE", "question": "...", "options": ["A", "B", "C", "D"], "correctAnswer": "A", "explanation": "...", "difficulty": "moyen", "chapterTitle": "...", "timestampSeconds": 0}]. correctAnswer MUST exactly match one of options.`,
+          systemPrompt: `Generate 2 new quiz questions in ${outputLang} strictly grounded in the lecture transcript and slides. Use plain Unicode arrows/symbols (→, ×, ≤, ≥) — NEVER write raw LaTeX like $\\rightarrow$. Return ONLY a JSON array: [{"type": "MULTIPLE_CHOICE", "question": "...", "options": ["A", "B", "C", "D"], "correctAnswer": "A", "explanation": "...", "difficulty": "moyen", "chapterTitle": "...", "timestampSeconds": 0}]. correctAnswer MUST exactly match one of options.`,
           messages: [
             {
               role: 'user',
@@ -597,10 +603,14 @@ export class RegenerateLessonSectionUseCase {
               if (typeof item === 'object' && item !== null) {
                 const rec = item as Record<string, unknown>;
                 const opts = Array.isArray(rec.options)
-                  ? rec.options.map((o) => String(o).trim()).filter(Boolean)
+                  ? rec.options.map((o) => sanitizeMathAndMarkdown(String(o))).filter(Boolean)
                   : [];
-                const qText = typeof rec.question === 'string' ? rec.question.trim() : '';
-                const ans = typeof rec.correctAnswer === 'string' ? rec.correctAnswer.trim() : '';
+                const qText =
+                  typeof rec.question === 'string' ? sanitizeMathAndMarkdown(rec.question) : '';
+                const ans =
+                  typeof rec.correctAnswer === 'string'
+                    ? sanitizeMathAndMarkdown(rec.correctAnswer)
+                    : '';
                 const matched = opts.find((o) => o.toLowerCase() === ans.toLowerCase()) ?? opts[0];
                 if (qText.length > 8 && opts.length >= 2 && matched) {
                   quizzes.push({
@@ -610,11 +620,13 @@ export class RegenerateLessonSectionUseCase {
                     options: opts,
                     correctAnswer: matched,
                     explanation:
-                      typeof rec.explanation === 'string' ? rec.explanation.trim() : session.title,
+                      typeof rec.explanation === 'string'
+                        ? sanitizeMathAndMarkdown(rec.explanation)
+                        : session.title,
                     difficulty: 'moyen',
                     chapterTitle:
                       typeof rec.chapterTitle === 'string'
-                        ? rec.chapterTitle.trim()
+                        ? sanitizeMathAndMarkdown(rec.chapterTitle)
                         : session.title,
                     timestampSeconds:
                       typeof rec.timestampSeconds === 'number'

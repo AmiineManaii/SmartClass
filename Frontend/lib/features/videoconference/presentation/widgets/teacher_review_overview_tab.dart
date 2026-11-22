@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../../core/widgets/smart_toast.dart';
+import 'lesson_text_formatter.dart';
 
 enum NotesViewMode { split, editorOnly, previewOnly }
 
@@ -164,7 +165,8 @@ class _TeacherReviewOverviewTabState extends State<TeacherReviewOverviewTab> {
           const SizedBox(height: 10),
           TextField(
             controller: widget.detailedSummaryCtrl,
-            maxLines: 4,
+            minLines: 4,
+            maxLines: 8,
             style: TextStyle(
               fontSize: 13,
               height: 1.45,
@@ -296,7 +298,9 @@ class _TeacherReviewOverviewTabState extends State<TeacherReviewOverviewTab> {
                       padding: const EdgeInsets.all(16),
                       child: SingleChildScrollView(
                         child: MarkdownBody(
-                          data: widget.markdownCtrl.text.isNotEmpty ? widget.markdownCtrl.text : '*Aucune note rédigée*',
+                          data: widget.markdownCtrl.text.isNotEmpty
+                              ? sanitizeLessonDisplayText(widget.markdownCtrl.text)
+                              : '*Aucune note rédigée*',
                           selectable: true,
                         ),
                       ),
@@ -327,7 +331,9 @@ class _TeacherReviewOverviewTabState extends State<TeacherReviewOverviewTab> {
               padding: const EdgeInsets.all(18),
               constraints: const BoxConstraints(minHeight: 320),
               child: MarkdownBody(
-                data: widget.markdownCtrl.text.isNotEmpty ? widget.markdownCtrl.text : '*Aucune note rédigée*',
+                data: widget.markdownCtrl.text.isNotEmpty
+                    ? sanitizeLessonDisplayText(widget.markdownCtrl.text)
+                    : '*Aucune note rédigée*',
                 selectable: true,
               ),
             ),

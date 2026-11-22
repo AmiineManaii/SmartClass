@@ -26,6 +26,10 @@ import type {
   TutorSourceCitation,
 } from '../domain/recording.entity.js';
 import { formatClockTimestamp } from '../domain/recording.entity.js';
+import {
+  sanitizeMathAndMarkdown,
+  sanitizeSlideVisionOutput,
+} from '../domain/lesson-text-sanitizer.js';
 import type { RecordingRepositoryPort } from '../domain/recording-repository.port.js';
 import type { VideoSessionRepositoryPort } from '../domain/video-session-repository.port.js';
 import { canHost, type UserContext } from '../domain/video-session-policy.js';
@@ -564,10 +568,14 @@ export class GenerateStudentStudyArtifactUseCase {
       this.classAccessPort,
     );
 
-    const [transcript, allChapters, pkg] = await Promise.all([
+    const [transcript, allChapters, pkg, slides, existingArtifacts] = await Promise.all([
       this.recordingRepository.getTranscript(recording.id),
       this.recordingRepository.listChapters(recording.id),
       this.recordingRepository.getLessonPackage(recording.id),
+      this.recordingRepository.listSlideFrames(recording.id),
+      input.kind === 'SUMMARY'
+        ? Promise.resolve([] as StudentLessonArtifactEntity[])
+        : this.recordingRepository.listStudyArtifacts(recording.id, user.id, input.kind),
     ]);
 
     const requestedChapterTitle = input.chapterTitle ?? (
@@ -585,12 +593,56 @@ export class GenerateStudentStudyArtifactUseCase {
             )
           : allChapters;
 
-    const chaptersContext = (selectedChapters.length > 0 ? selectedChapters : allChapters)
+    const effectiveChapters = selectedChapters.length > 0 ? selectedChapters : allChapters;
+    const chaptersContext = effectiveChapters
       .map(
         (c) =>
-          `[${formatClockTimestamp(c.startSeconds)} - ${formatClockTimestamp(c.endSeconds)}] ${c.title}: ${c.summary}`,
+          `[${formatClockTimestamp(c.startSeconds)} - ${formatClockTimestamp(c.endSeconds)}] ${c.title}: ${sanitizeMathAndMarkdown(c.summary)}`,
       )
       .join('\n');
+
+    const slidesContext = slides
+      .slice(0, 12)
+      .map((s, idx) => {
+        const ocr = sanitizeSlideVisionOutput(s.ocrText);
+        const vis = sanitizeSlideVisionOutput(s.visualSummary);
+        const line = [ocr, vis].filter(Boolean).join(' | ');
+        return `[${formatClockTimestamp(s.timestampSeconds)}] Diapositive #${idx + 1}: ${line.slice(0, 260)}`;
+      })
+      .filter((line) => line.length > 20)
+      .join('\n');
+
+    const conceptsContext = (pkg?.keyConcepts ?? [])
+      .slice(0, 10)
+      .map((c) => `- ${sanitizeMathAndMarkdown(c.name)}: ${sanitizeMathAndMarkdown(c.explanation)}`)
+      .join('\n');
+
+    const definitionsContext = (pkg?.definitions ?? [])
+      .slice(0, 10)
+      .map((d) => `- ${sanitizeMathAndMarkdown(d.term)}: ${sanitizeMathAndMarkdown(d.definition)}`)
+      .join('\n');
+
+    const rulesContext = (pkg?.formulasAndRules ?? [])
+      .slice(0, 8)
+      .map((r) => `- ${sanitizeMathAndMarkdown(r)}`)
+      .join('\n');
+
+    const transcriptExcerpt = sanitizeMathAndMarkdown(
+      (pkg?.structuredNotes ?? transcript?.fullText ?? '').slice(0, 2600),
+    );
+
+    const studySourceContext = [
+      `Cours: ${session.title}${session.subject ? ` (${session.subject})` : ''}`,
+      chaptersContext ? `Chapitres:\n${chaptersContext}` : '',
+      conceptsContext ? `Concepts clés:\n${conceptsContext}` : '',
+      definitionsContext ? `Définitions:\n${definitionsContext}` : '',
+      rulesContext ? `Règles et méthodes:\n${rulesContext}` : '',
+      slidesContext ? `Diapositives:\n${slidesContext}` : '',
+      transcriptExcerpt ? `Notes et transcription de référence:\n${transcriptExcerpt}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n')
+      .slice(0, 6500);
 
     const rawLang = input.language ?? 'fr';
     const language: 'fr' | 'en' = rawLang === 'en' ? 'en' : 'fr';
@@ -620,45 +672,47 @@ export class GenerateStudentStudyArtifactUseCase {
       };
 
       let markdown = '';
-      let modelUsed = 'gemma4:e4b';
+      let modelUsed = 'fallback-extractive';
 
       try {
         const res = await this.modelRouter.generateForRole('STUDENT_SUMMARY', {
-          systemPrompt: `Tu es le tuteur académique SmartClass. Génère uniquement à partir de ce cours un "${modeLabel[mode] ?? mode}" ${langInstruction}. Cite les horodatages [MM:SS] des chapitres correspondants.`,
+          systemPrompt: `Tu es le tuteur académique SmartClass. Génère uniquement à partir de ce cours un "${modeLabel[mode] ?? mode}" ${langInstruction}. Cite les horodatages [MM:SS] des chapitres correspondants. Utilise des symboles Unicode simples (→, ×, ≤, ≥) — n'écris JAMAIS de LaTeX brut comme $\\rightarrow$. Ignore tout texte parasite de navigateur ou bureau.`,
           messages: [
             {
               role: 'user',
-              content: `Cours: ${session.title}\nChapitres sélectionnés:\n${chaptersContext}\nNotes de référence:\n${(pkg?.structuredNotes ?? transcript?.fullText ?? '').slice(0, 2200)}`,
+              content: studySourceContext,
             },
           ],
           temperature: 0.25,
           maxTokens: 900,
         });
-        modelUsed = res.modelUsed;
         if (res.content.trim().length > 50) {
-          markdown = res.content.trim();
+          markdown = sanitizeMathAndMarkdown(res.content);
+          modelUsed = res.modelUsed;
         }
       } catch {
         // Fallback deterministic personalized summary below
       }
 
       if (!markdown) {
-        markdown = [
-          `# ${modeLabel[mode] ?? 'Résumé personnalisé'} — ${session.title}`,
-          '',
-          `### Points essentiels du cours`,
-          ...(selectedChapters.length > 0 ? selectedChapters : allChapters).map(
-            (c) =>
-              `- **[${formatClockTimestamp(c.startSeconds)}] ${c.title}** : ${c.summary}`,
-          ),
-          '',
-          `### Concepts et règles à maîtriser`,
-          ...(pkg?.formulasAndRules ?? []).map((r) => `- ${r}`),
-          '',
-          mode === 'exam'
-            ? `### Conseil examen\nVérifiez systématiquement les hypothèses initiales ([00:00]) et la validation sur les cas limites.`
-            : `### Synthèse générale\n${pkg?.generalSummary ?? ''}`,
-        ].join('\n');
+        markdown = sanitizeMathAndMarkdown(
+          [
+            `# ${modeLabel[mode] ?? 'Résumé personnalisé'} — ${session.title}`,
+            '',
+            `### Points essentiels du cours`,
+            ...effectiveChapters.map(
+              (c) =>
+                `- **[${formatClockTimestamp(c.startSeconds)}] ${c.title}** : ${c.summary}`,
+            ),
+            '',
+            `### Concepts et règles à maîtriser`,
+            ...(pkg?.formulasAndRules ?? []).map((r) => `- ${r}`),
+            '',
+            mode === 'exam'
+              ? `### Conseil examen\nVérifiez systématiquement les hypothèses initiales ([00:00]) et la validation sur les cas limites.`
+              : `### Synthèse générale\n${pkg?.generalSummary ?? ''}`,
+          ].join('\n'),
+        );
       }
 
       return this.recordingRepository.createStudyArtifact({
@@ -668,17 +722,27 @@ export class GenerateStudentStudyArtifactUseCase {
         title: `${modeLabel[mode] ?? 'Résumé'} — ${session.title}`,
         language,
         chapterIds: input.chapterIds ?? [],
-        config: { mode, requestedLanguage: rawLang },
+        config: { mode, requestedLanguage: rawLang, chapterTitle: requestedChapterTitle ?? null },
         content: {
           mode,
           markdown,
-          keyTakeaways: (selectedChapters.length > 0 ? selectedChapters : allChapters).map(
-            (c) => `[${formatClockTimestamp(c.startSeconds)}] ${c.title}: ${c.summary}`,
+          keyTakeaways: effectiveChapters.map(
+            (c) =>
+              `[${formatClockTimestamp(c.startSeconds)}] ${sanitizeMathAndMarkdown(c.title)}: ${sanitizeMathAndMarkdown(c.summary)}`,
           ),
         },
         modelUsed,
       });
     }
+
+    const normalizeKey = (text: string): string =>
+      text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
     if (input.kind === 'QUIZ') {
       const rawDiff = input.difficulty ?? 'moyen';
@@ -690,102 +754,463 @@ export class GenerateStudentStudyArtifactUseCase {
             : rawDiff === 'hard'
               ? 'difficile'
               : rawDiff;
-      const requestedCount = Math.max(2, Math.min(10, input.questionCount ?? 4));
-      const baseQuestions = pkg?.quizzes ?? [];
+      const requestedCount = Math.max(2, Math.min(10, input.questionCount ?? 5));
 
-      const questions: GeneratedQuizQuestion[] = [];
-      for (let i = 0; i < requestedCount; i++) {
-        const template = baseQuestions[i % Math.max(1, baseQuestions.length)];
-        const chapter =
-          selectedChapters[i % Math.max(1, selectedChapters.length)] ?? allChapters[0];
-        if (template && i < baseQuestions.length) {
-          questions.push({
-            ...template,
-            id: `sq_${i + 1}`,
+      const teacherQuestionTexts = (pkg?.quizzes ?? []).map((q) =>
+        sanitizeMathAndMarkdown(q.question),
+      );
+      const previousStudentQuestions = existingArtifacts
+        .filter((a) => (a.config as Record<string, unknown> | undefined)?.source !== 'lesson_package')
+        .flatMap((a) => {
+          const rawQs = (a.content as Record<string, unknown> | undefined)?.questions;
+          if (!Array.isArray(rawQs)) return [];
+          return rawQs
+            .map((q) =>
+              typeof q === 'object' &&
+              q !== null &&
+              typeof (q as Record<string, unknown>).question === 'string'
+                ? sanitizeMathAndMarkdown(String((q as Record<string, unknown>).question))
+                : '',
+            )
+            .filter(Boolean);
+        });
+
+      const forbiddenQuestionsList = Array.from(
+        new Set([...teacherQuestionTexts, ...previousStudentQuestions]),
+      ).slice(0, 20);
+      const forbiddenNormalizedSet = new Set(forbiddenQuestionsList.map(normalizeKey));
+
+      const quizSchema: Record<string, unknown> = {
+        type: 'object',
+        additionalProperties: false,
+        required: ['questions'],
+        properties: {
+          questions: {
+            type: 'array',
+            minItems: requestedCount,
+            maxItems: requestedCount,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: [
+                'type',
+                'question',
+                'options',
+                'correctAnswer',
+                'explanation',
+                'difficulty',
+                'chapterTitle',
+                'timestampSeconds',
+              ],
+              properties: {
+                type: { type: 'string', enum: ['MULTIPLE_CHOICE', 'TRUE_FALSE'] },
+                question: { type: 'string' },
+                options: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 4 },
+                correctAnswer: { type: 'string' },
+                explanation: { type: 'string' },
+                difficulty: { type: 'string', enum: ['facile', 'moyen', 'difficile'] },
+                chapterTitle: { type: 'string' },
+                timestampSeconds: { type: 'integer' },
+              },
+            },
+          },
+        },
+      };
+
+      const forbiddenBlock =
+        forbiddenQuestionsList.length > 0
+          ? `QUESTIONS EXISTANTES À NE JAMAIS COPIER NI PARAPHRASER:\n${forbiddenQuestionsList.map((q, i) => `- ${i + 1}. ${q}`).join('\n')}`
+          : 'Aucune question précédente enregistrée.';
+
+      const generatedQuestions: GeneratedQuizQuestion[] = [];
+      let llmModelUsed = '';
+
+      try {
+        const res = await this.modelRouter.completeForRole('QUIZ_FLASHCARDS', {
+          system: [
+            `Tu es un professeur universitaire expert sur SmartClass qui crée un NOUVEAU quiz d'auto-évaluation pour un étudiant.`,
+            `Génère exactement ${requestedCount} NOUVELLES questions ${langInstruction}, de difficulté "${difficulty}", ancrées strictement dans le contenu du cours fourni.`,
+            `RÈGLE STRICTE DE NON-DUPLICATION : N'utilise JAMAIS ni ne paraphrase les questions listées dans QUESTIONS EXISTANTES. Crée des questions totalement inédites testant d'autres concepts, définitions, distinctions, ou mises en situation du cours.`,
+            `Pour MULTIPLE_CHOICE, fournis 4 options distinctes et plausibles ; pour TRUE_FALSE, fournis 2 options (Vrai / Faux ou équivalent).`,
+            `correctAnswer DOIT correspondre EXACTEMENT à l'une des chaînes de options.`,
+            `Utilise uniquement des symboles Unicode simples (→, ×, ≤, ≥) — n'écris JAMAIS de LaTeX brut comme $\\rightarrow$.`,
+            `Retourne UNIQUEMENT un objet JSON conforme au schéma fourni.`,
+          ].join(' '),
+          user: `${studySourceContext}\n\n${forbiddenBlock}`,
+          temperature: 0.35,
+          maxTokens: 2048,
+          thinking: false,
+          responseFormat: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'student_custom_quiz',
+              strict: true,
+              schema: quizSchema,
+            },
+          },
+        });
+
+        const raw = res.content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+        let parsedObj: Record<string, unknown> | null = null;
+        if (raw.startsWith('{')) {
+          try {
+            const p: unknown = JSON.parse(raw);
+            if (typeof p === 'object' && p !== null) parsedObj = p as Record<string, unknown>;
+          } catch {
+            // Try slicing outer braces below
+          }
+        }
+        if (!parsedObj) {
+          const s = raw.indexOf('{');
+          const e = raw.lastIndexOf('}');
+          if (s !== -1 && e > s) {
+            try {
+              const p: unknown = JSON.parse(raw.slice(s, e + 1));
+              if (typeof p === 'object' && p !== null) parsedObj = p as Record<string, unknown>;
+            } catch {
+              parsedObj = null;
+            }
+          }
+        }
+
+        const rawList = Array.isArray(parsedObj?.questions)
+          ? parsedObj.questions
+          : [];
+        const seenBatch = new Set<string>();
+
+        for (const item of rawList) {
+          if (typeof item !== 'object' || item === null) continue;
+          const rec = item as Record<string, unknown>;
+          const qText =
+            typeof rec.question === 'string' ? sanitizeMathAndMarkdown(rec.question) : '';
+          const normQ = normalizeKey(qText);
+          if (
+            qText.length <= 8 ||
+            forbiddenNormalizedSet.has(normQ) ||
+            seenBatch.has(normQ)
+          ) {
+            continue;
+          }
+
+          const rawOpts = Array.isArray(rec.options)
+            ? rec.options.map((o) => sanitizeMathAndMarkdown(String(o))).filter(Boolean)
+            : [];
+          const options = Array.from(new Set(rawOpts));
+          if (options.length < 2) continue;
+
+          const rawAns =
+            typeof rec.correctAnswer === 'string'
+              ? sanitizeMathAndMarkdown(rec.correctAnswer)
+              : '';
+          const correctAnswer =
+            options.find((opt) => opt.toLowerCase() === rawAns.toLowerCase()) ?? options[0]!;
+
+          const chMatch =
+            effectiveChapters[generatedQuestions.length % Math.max(1, effectiveChapters.length)] ??
+            allChapters[0];
+          const ts =
+            typeof rec.timestampSeconds === 'number' && Number.isFinite(rec.timestampSeconds)
+              ? Math.max(0, Math.round(rec.timestampSeconds))
+              : (chMatch?.startSeconds ?? 0);
+
+          const rawType = String(rec.type ?? 'MULTIPLE_CHOICE').toUpperCase();
+          const qType: GeneratedQuizQuestion['type'] =
+            rawType === 'TRUE_FALSE' ? 'TRUE_FALSE' : 'MULTIPLE_CHOICE';
+
+          seenBatch.add(normQ);
+          generatedQuestions.push({
+            id: `sq_${Date.now()}_${generatedQuestions.length + 1}`,
+            type: qType,
+            question: qText,
+            options,
+            correctAnswer,
+            explanation:
+              typeof rec.explanation === 'string' && rec.explanation.trim().length > 3
+                ? sanitizeMathAndMarkdown(rec.explanation)
+                : `Basé sur le chapitre "${chMatch?.title ?? session.title}" à [${formatClockTimestamp(ts)}].`,
             difficulty,
-          });
-        } else {
-          questions.push({
-            id: `sq_${i + 1}`,
-            type:
-              input.questionTypes?.[i % (input.questionTypes.length || 1)] ?? 'MULTIPLE_CHOICE',
-            question: `Dans "${chapter?.title ?? session.title}", quel principe méthodologique est mis en avant à [${formatClockTimestamp(chapter?.startSeconds ?? 0)}] ?`,
-            options: [
-              chapter?.summary.slice(0, 120) ||
-                'La vérification rigoureuse des hypothèses et la validation par étape',
-              'L’absence de structuration analytique',
-              'La suppression des vérifications aux limites',
-              'Une approche purement aléatoire sans modèle',
-            ],
-            correctAnswer:
-              chapter?.summary.slice(0, 120) ||
-              'La vérification rigoureuse des hypothèses et la validation par étape',
-            explanation: `Référence au chapitre "${chapter?.title ?? 'Cours'}" à [${formatClockTimestamp(chapter?.startSeconds ?? 0)}] : ${chapter?.summary ?? ''}`,
-            difficulty,
-            chapterTitle: chapter?.title ?? session.title,
-            timestampSeconds: chapter?.startSeconds ?? 0,
-            sourcePage: chapter?.sourcePage ?? 1,
+            chapterTitle:
+              typeof rec.chapterTitle === 'string' && rec.chapterTitle.trim().length > 0
+                ? sanitizeMathAndMarkdown(rec.chapterTitle)
+                : (chMatch?.title ?? session.title),
+            timestampSeconds: ts,
+            sourcePage: chMatch?.sourcePage ?? 1,
           });
         }
+
+        if (generatedQuestions.length > 0) {
+          llmModelUsed = res.model || 'gemma4:e4b';
+        }
+      } catch {
+        // Fallback below if local LLM fails or returns invalid JSON
       }
+
+      // Deterministic grounded fallback to top up if LLM unavailable or filtered duplicates
+      const fallbackCandidates: GeneratedQuizQuestion[] = [];
+      for (const [idx, concept] of (pkg?.keyConcepts ?? []).entries()) {
+        const ch = effectiveChapters[idx % Math.max(1, effectiveChapters.length)] ?? allChapters[0];
+        const ts = concept.timestampSeconds ?? ch?.startSeconds ?? 0;
+        const otherConcept = pkg?.keyConcepts[(idx + 1) % (pkg.keyConcepts.length || 1)];
+        const opts = Array.from(
+          new Set([
+            sanitizeMathAndMarkdown(concept.explanation),
+            sanitizeMathAndMarkdown(
+              otherConcept?.explanation && otherConcept.name !== concept.name
+                ? `${otherConcept.name} : ${otherConcept.explanation}`
+                : 'Une configuration statique ignorée lors du traitement des données',
+            ),
+            'La suppression complète des étapes de validation et de contrôle',
+            'Un paramètre visuel sans rapport avec la logique du cours',
+          ]),
+        );
+        fallbackCandidates.push({
+          id: `sq_fb_c_${idx + 1}`,
+          type: 'MULTIPLE_CHOICE',
+          question: `Quel rôle joue la notion "${sanitizeMathAndMarkdown(concept.name)}" abordée vers [${formatClockTimestamp(ts)}] ?`,
+          options: opts,
+          correctAnswer: opts[0]!,
+          explanation: `Dans le cours (${ch?.title ?? session.title} à [${formatClockTimestamp(ts)}]) : ${sanitizeMathAndMarkdown(concept.explanation)}`,
+          difficulty,
+          chapterTitle: ch?.title ?? session.title,
+          timestampSeconds: ts,
+          sourcePage: concept.sourcePage ?? ch?.sourcePage ?? 1,
+        });
+      }
+      for (const [idx, def] of (pkg?.definitions ?? []).entries()) {
+        const ch = effectiveChapters[idx % Math.max(1, effectiveChapters.length)] ?? allChapters[0];
+        const ts = def.timestampSeconds ?? ch?.startSeconds ?? 0;
+        const opts = Array.from(
+          new Set([
+            sanitizeMathAndMarkdown(def.definition),
+            'Une règle facultative destinée uniquement aux graphiques décoratifs',
+            'Un protocole matériel incompatible avec ce module',
+            'Une approximation sans hypothèse ni vérification',
+          ]),
+        );
+        fallbackCandidates.push({
+          id: `sq_fb_d_${idx + 1}`,
+          type: 'MULTIPLE_CHOICE',
+          question: `Quelle définition correspond le mieux au terme "${sanitizeMathAndMarkdown(def.term)}" vu en séance ?`,
+          options: opts,
+          correctAnswer: opts[0]!,
+          explanation: `Définition tirée du chapitre "${def.chapterTitle ?? ch?.title ?? session.title}" : ${sanitizeMathAndMarkdown(def.definition)}`,
+          difficulty,
+          chapterTitle: def.chapterTitle ?? ch?.title ?? session.title,
+          timestampSeconds: ts,
+          sourcePage: ch?.sourcePage ?? 1,
+        });
+      }
+      for (const [idx, ch] of effectiveChapters.entries()) {
+        fallbackCandidates.push({
+          id: `sq_fb_ch_${idx + 1}`,
+          type: 'MULTIPLE_CHOICE',
+          question: `Quel objectif précis est traité dans le chapitre "${sanitizeMathAndMarkdown(ch.title)}" (${formatClockTimestamp(ch.startSeconds)}) ?`,
+          options: [
+            sanitizeMathAndMarkdown(ch.summary.slice(0, 140)) ||
+              'Maîtriser les notions fondamentales et la démarche pratique présentées',
+            'Désactiver la collecte et l’analyse structurée des données',
+            'Remplacer la vérification expérimentale par une estimation arbitraire',
+            'Ignorer les étapes intermédiaires du processus étudié',
+          ],
+          correctAnswer:
+            sanitizeMathAndMarkdown(ch.summary.slice(0, 140)) ||
+            'Maîtriser les notions fondamentales et la démarche pratique présentées',
+          explanation: `Référence au chapitre "${sanitizeMathAndMarkdown(ch.title)}" [${formatClockTimestamp(ch.startSeconds)}] : ${sanitizeMathAndMarkdown(ch.summary)}`,
+          difficulty,
+          chapterTitle: sanitizeMathAndMarkdown(ch.title),
+          timestampSeconds: ch.startSeconds,
+          sourcePage: ch.sourcePage ?? 1,
+        });
+      }
+
+      const existingInResult = new Set(generatedQuestions.map((q) => normalizeKey(q.question)));
+      for (const cand of fallbackCandidates) {
+        if (generatedQuestions.length >= requestedCount) break;
+        const key = normalizeKey(cand.question);
+        if (forbiddenNormalizedSet.has(key) || existingInResult.has(key)) continue;
+        existingInResult.add(key);
+        generatedQuestions.push({
+          ...cand,
+          id: `sq_${Date.now()}_${generatedQuestions.length + 1}`,
+        });
+      }
+
+      const finalQuestions = generatedQuestions.slice(0, requestedCount);
+      const customCount = existingArtifacts.filter(
+        (a) => (a.config as Record<string, unknown> | undefined)?.source !== 'lesson_package',
+      ).length;
 
       return this.recordingRepository.createStudyArtifact({
         recordingId: recording.id,
         userId: user.id,
         kind: 'QUIZ',
-        title: `Quiz d’entraînement (${difficulty.toUpperCase()} · ${questions.length} Q)`,
+        title: `Quiz IA #${customCount + 1} (${difficulty.toUpperCase()} · ${finalQuestions.length} Q)`,
         language,
         chapterIds: input.chapterIds ?? [],
         config: {
+          source: 'student_ai',
           difficulty,
-          questionCount: questions.length,
-          questionTypes: input.questionTypes ?? ['MULTIPLE_CHOICE'],
+          questionCount: finalQuestions.length,
+          requestedLanguage: rawLang,
+          chapterTitle: requestedChapterTitle ?? null,
+          questionTypes: input.questionTypes ?? ['MULTIPLE_CHOICE', 'TRUE_FALSE'],
         },
         content: {
+          source: 'student_ai',
           difficulty,
-          questions,
+          questions: finalQuestions,
         },
-        modelUsed: 'Qwen3.5-4B-GGUF:Q4_1',
+        modelUsed: llmModelUsed || 'fallback-extractive',
       });
     }
 
     // FLASHCARDS
     const requestedCards = Math.max(3, Math.min(16, input.flashcardCount ?? 4));
     const focus = input.focus ?? 'all';
-    const baseCards = pkg?.flashcards ?? [];
-    const cards: GeneratedFlashcard[] = [];
+    const existingFronts = new Set(
+      (pkg?.flashcards ?? []).map((f) => normalizeKey(sanitizeMathAndMarkdown(f.front))),
+    );
+    let generatedCards: GeneratedFlashcard[] = [];
+    let flashcardsModelUsed = '';
 
-    for (let i = 0; i < requestedCards; i++) {
-      const existing = baseCards[i];
-      if (existing) {
-        cards.push({ ...existing, id: `sfc_${i + 1}` });
-      } else {
-        const ch = selectedChapters[i % Math.max(1, selectedChapters.length)] ?? allChapters[0];
-        cards.push({
-          id: `sfc_${i + 1}`,
-          front: `[${ch?.title ?? session.title}] Quelle est l’idée clé présentée à ${formatClockTimestamp(ch?.startSeconds ?? 0)} ?`,
-          back: ch?.summary ?? `Maîtriser les concepts fondamentaux de ${session.title}.`,
-          chapterTitle: ch?.title ?? session.title,
-          difficulty: 'moyen',
-          timestampSeconds: ch?.startSeconds ?? 0,
-          sourcePage: ch?.sourcePage ?? 1,
+    try {
+      const flashcardsSchema: Record<string, unknown> = {
+        type: 'object',
+        additionalProperties: false,
+        required: ['cards'],
+        properties: {
+          cards: {
+            type: 'array',
+            minItems: requestedCards,
+            maxItems: requestedCards,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['front', 'back', 'chapterTitle', 'difficulty', 'timestampSeconds'],
+              properties: {
+                front: { type: 'string' },
+                back: { type: 'string' },
+                chapterTitle: { type: 'string' },
+                difficulty: { type: 'string', enum: ['facile', 'moyen', 'difficile'] },
+                timestampSeconds: { type: 'integer' },
+              },
+            },
+          },
+        },
+      };
+
+      const res = await this.modelRouter.completeForRole('QUIZ_FLASHCARDS', {
+        system: `Tu es un tuteur universitaire SmartClass. Génère exactement ${requestedCards} NOUVELLES flashcards ${langInstruction} (focus: ${focus}) strictement basées sur ce cours. Évite de recopier les cartes existantes. Utilise des symboles Unicode simples (→, ×, ≤, ≥) — jamais de LaTeX brut.`,
+        user: studySourceContext,
+        temperature: 0.35,
+        maxTokens: 1600,
+        thinking: false,
+        responseFormat: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'student_custom_flashcards',
+            strict: true,
+            schema: flashcardsSchema,
+          },
+        },
+      });
+
+      const raw = res.content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+      const s = raw.indexOf('{');
+      const e = raw.lastIndexOf('}');
+      if (s !== -1 && e > s) {
+        const parsed: unknown = JSON.parse(raw.slice(s, e + 1));
+        const rawCards =
+          typeof parsed === 'object' &&
+          parsed !== null &&
+          Array.isArray((parsed as Record<string, unknown>).cards)
+            ? ((parsed as Record<string, unknown>).cards as unknown[])
+            : [];
+        for (const item of rawCards) {
+          if (typeof item !== 'object' || item === null) continue;
+          const rec = item as Record<string, unknown>;
+          const front = typeof rec.front === 'string' ? sanitizeMathAndMarkdown(rec.front) : '';
+          const back = typeof rec.back === 'string' ? sanitizeMathAndMarkdown(rec.back) : '';
+          if (front.length < 4 || back.length < 3 || existingFronts.has(normalizeKey(front))) {
+            continue;
+          }
+          const ch =
+            effectiveChapters[generatedCards.length % Math.max(1, effectiveChapters.length)] ??
+            allChapters[0];
+          const diff =
+            rec.difficulty === 'facile' || rec.difficulty === 'difficile'
+              ? rec.difficulty
+              : 'moyen';
+          generatedCards.push({
+            id: `sfc_${Date.now()}_${generatedCards.length + 1}`,
+            front,
+            back,
+            chapterTitle:
+              typeof rec.chapterTitle === 'string' && rec.chapterTitle.trim().length > 0
+                ? sanitizeMathAndMarkdown(rec.chapterTitle)
+                : (ch?.title ?? session.title),
+            difficulty: diff,
+            timestampSeconds:
+              typeof rec.timestampSeconds === 'number'
+                ? Math.max(0, Math.round(rec.timestampSeconds))
+                : (ch?.startSeconds ?? 0),
+            sourcePage: ch?.sourcePage ?? 1,
+          });
+        }
+        if (generatedCards.length > 0) {
+          flashcardsModelUsed = res.model || 'gemma4:e4b';
+        }
+      }
+    } catch {
+      // Fallback below
+    }
+
+    const baseCards = pkg?.flashcards ?? [];
+    for (let i = 0; generatedCards.length < requestedCards && i < requestedCards + baseCards.length; i++) {
+      const ch = effectiveChapters[i % Math.max(1, effectiveChapters.length)] ?? allChapters[0];
+      const candidate = baseCards[i];
+      if (candidate && !existingFronts.has(normalizeKey(candidate.front))) {
+        generatedCards.push({
+          ...candidate,
+          front: sanitizeMathAndMarkdown(candidate.front),
+          back: sanitizeMathAndMarkdown(candidate.back),
+          id: `sfc_${Date.now()}_${generatedCards.length + 1}`,
         });
+      } else {
+        const front = `[${sanitizeMathAndMarkdown(ch?.title ?? session.title)}] Quelle est l’idée clé présentée à ${formatClockTimestamp(ch?.startSeconds ?? 0)} ?`;
+        if (!generatedCards.some((c) => c.front === front)) {
+          generatedCards.push({
+            id: `sfc_${Date.now()}_${generatedCards.length + 1}`,
+            front,
+            back:
+              sanitizeMathAndMarkdown(ch?.summary ?? '') ||
+              `Maîtriser les concepts fondamentaux de ${session.title}.`,
+            chapterTitle: sanitizeMathAndMarkdown(ch?.title ?? session.title),
+            difficulty: 'moyen',
+            timestampSeconds: ch?.startSeconds ?? 0,
+            sourcePage: ch?.sourcePage ?? 1,
+          });
+        } else {
+          break;
+        }
       }
     }
+    generatedCards = generatedCards.slice(0, requestedCards);
 
     return this.recordingRepository.createStudyArtifact({
       recordingId: recording.id,
       userId: user.id,
       kind: 'FLASHCARDS',
-      title: `Flashcards de révision (${focus.toUpperCase()} · ${cards.length} cartes)`,
+      title: `Flashcards de révision (${focus.toUpperCase()} · ${generatedCards.length} cartes)`,
       language,
       chapterIds: input.chapterIds ?? [],
-      config: { focus, count: cards.length },
+      config: { source: 'student_ai', focus, count: generatedCards.length, requestedLanguage: rawLang },
       content: {
+        source: 'student_ai',
         focus,
-        cards,
+        cards: generatedCards,
       },
-      modelUsed: 'Qwen3.5-4B-GGUF:Q4_1',
+      modelUsed: flashcardsModelUsed || 'fallback-extractive',
     });
   }
 }
@@ -823,7 +1248,12 @@ export class SubmitStudentQuizAttemptUseCase {
 
     if (resolvedArtifactId && resolvedArtifactId !== 'teacher_default') {
       const artifact = await this.recordingRepository.findStudyArtifactById(resolvedArtifactId);
-      if (artifact && Array.isArray(artifact.content.questions)) {
+      if (
+        artifact &&
+        artifact.userId === user.id &&
+        artifact.recordingId === recording.id &&
+        Array.isArray(artifact.content.questions)
+      ) {
         questions = artifact.content.questions as GeneratedQuizQuestion[];
       }
     }
@@ -831,19 +1261,30 @@ export class SubmitStudentQuizAttemptUseCase {
     if (questions.length === 0) {
       const pkg = await this.recordingRepository.getLessonPackage(recording.id);
       questions = pkg?.quizzes ?? [];
-      // Ensure a backing artifact exists if grading against the default teacher quiz
-      const created = await this.recordingRepository.createStudyArtifact({
-        recordingId: recording.id,
-        userId: user.id,
-        kind: 'QUIZ',
-        title: 'Quiz officiel de la séance',
-        language: 'fr',
-        chapterIds: [],
-        config: { source: 'lesson_package' },
-        content: { questions },
-        modelUsed: pkg?.primaryModel ?? 'gemma4:e4b',
-      });
-      resolvedArtifactId = created.id;
+      const existingQuizzes = await this.recordingRepository.listStudyArtifacts(
+        recording.id,
+        user.id,
+        'QUIZ',
+      );
+      const existingBacking = existingQuizzes.find(
+        (a) => (a.config as Record<string, unknown> | undefined)?.source === 'lesson_package',
+      );
+      if (existingBacking) {
+        resolvedArtifactId = existingBacking.id;
+      } else {
+        const created = await this.recordingRepository.createStudyArtifact({
+          recordingId: recording.id,
+          userId: user.id,
+          kind: 'QUIZ',
+          title: 'Quiz officiel de la séance',
+          language: 'fr',
+          chapterIds: [],
+          config: { source: 'lesson_package' },
+          content: { source: 'lesson_package', questions },
+          modelUsed: pkg?.primaryModel ?? 'gemma4:e4b',
+        });
+        resolvedArtifactId = created.id;
+      }
     }
 
     const normalizedAnswers: Array<{ questionId: string; answer: string }> = [];
@@ -892,9 +1333,9 @@ export class SubmitStudentQuizAttemptUseCase {
         questionId: q.id,
         isCorrect,
         userAnswer,
-        correctAnswer: q.correctAnswer,
-        explanation: q.explanation,
-        chapterTitle: q.chapterTitle,
+        correctAnswer: sanitizeMathAndMarkdown(q.correctAnswer),
+        explanation: sanitizeMathAndMarkdown(q.explanation),
+        chapterTitle: sanitizeMathAndMarkdown(q.chapterTitle),
         timestampSeconds: q.timestampSeconds,
       };
     });

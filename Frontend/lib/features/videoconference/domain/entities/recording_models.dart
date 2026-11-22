@@ -306,23 +306,55 @@ class SlideSegmentEntity extends Equatable {
     this.sourcePage,
   });
 
-  factory SlideSegmentEntity.fromJson(Map<String, dynamic> json) {
+  factory SlideSegmentEntity.fromJson(
+    Map<String, dynamic> json, {
+    int? fallbackIndex,
+    double? nextTimestampSec,
+  }) {
     final ts =
         (json['timestampSec'] ?? json['timestampSeconds'] as num?)?.toDouble() ??
             0.0;
-    final endTs =
-        (json['endTimestampSec'] as num?)?.toDouble() ?? (ts + 60.0);
+    final explicitEnd = (json['endTimestampSec'] as num?)?.toDouble();
+    final endTs = explicitEnd ??
+        ((nextTimestampSec != null && nextTimestampSec > ts)
+            ? nextTimestampSec
+            : (ts + 60.0));
+    final parsedSlideIdx = (json['slideIndex'] as num?)?.toInt();
+    final parsedSourcePage = (json['sourcePage'] as num?)?.toInt();
+    final resolvedIndex = parsedSlideIdx ??
+        fallbackIndex ??
+        (parsedSourcePage != null && parsedSourcePage > 0
+            ? parsedSourcePage - 1
+            : 0);
     return SlideSegmentEntity(
       id: json['id'] as String? ?? '',
-      slideIndex: (json['slideIndex'] as num?)?.toInt() ?? 0,
+      slideIndex: resolvedIndex < 0 ? 0 : resolvedIndex,
       timestampSec: ts,
       endTimestampSec: endTs,
       extractedText:
           (json['extractedText'] ?? json['ocrText']) as String? ?? '',
       visualExplanation:
           (json['visualExplanation'] ?? json['visualSummary']) as String? ?? '',
-      sourcePage: (json['sourcePage'] as num?)?.toInt(),
+      sourcePage: parsedSourcePage,
     );
+  }
+
+  static List<SlideSegmentEntity> fromJsonList(List<dynamic> rawSlides) {
+    final maps = rawSlides.whereType<Map<String, dynamic>>().toList();
+    return List.generate(maps.length, (idx) {
+      double? nextTs;
+      if (idx + 1 < maps.length) {
+        final nextMap = maps[idx + 1];
+        nextTs =
+            (nextMap['timestampSec'] ?? nextMap['timestampSeconds'] as num?)
+                ?.toDouble();
+      }
+      return SlideSegmentEntity.fromJson(
+        maps[idx],
+        fallbackIndex: idx,
+        nextTimestampSec: nextTs,
+      );
+    });
   }
 
   @override
@@ -525,6 +557,8 @@ class LessonPackageEntity extends Equatable {
   final String detailedSummary;
   final List<String> keyTakeaways;
   final String structuredMarkdown;
+  final String revisionSheet;
+  final List<String> formulasAndRules;
   final String? mindMapMermaid;
   final List<LessonGlossaryItemEntity> glossary;
   final List<LessonChapterEntity> chapters;
@@ -542,6 +576,8 @@ class LessonPackageEntity extends Equatable {
     required this.detailedSummary,
     this.keyTakeaways = const [],
     required this.structuredMarkdown,
+    this.revisionSheet = '',
+    this.formulasAndRules = const [],
     this.mindMapMermaid,
     this.glossary = const [],
     this.chapters = const [],
@@ -572,6 +608,7 @@ class LessonPackageEntity extends Equatable {
     final rawTakeaways = (json['keyTakeaways'] ??
         json['learningObjectives'] ??
         const []) as List<dynamic>;
+    final rawRules = (json['formulasAndRules'] as List<dynamic>? ?? const []);
 
     double? parsedQuality;
     if (json['qualityScore'] is num) {
@@ -597,6 +634,8 @@ class LessonPackageEntity extends Equatable {
       structuredMarkdown:
           (json['structuredMarkdown'] ?? json['structuredNotes']) as String? ??
               '',
+      revisionSheet: json['revisionSheet'] as String? ?? '',
+      formulasAndRules: rawRules.map((e) => e.toString()).toList(),
       mindMapMermaid: json['mindMapMermaid'] as String?,
       glossary: rawGlossary
           .whereType<Map<String, dynamic>>()
@@ -794,10 +833,7 @@ class TeacherReviewWorkspaceEntity extends Equatable {
               fallbackStatus: rec?.status,
             )
           : null,
-      slides: rawSlides
-          .whereType<Map<String, dynamic>>()
-          .map(SlideSegmentEntity.fromJson)
-          .toList(),
+      slides: SlideSegmentEntity.fromJsonList(rawSlides),
       jobs: parsedJobs,
       versions: (json['versions'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
@@ -888,6 +924,7 @@ class StudentStudyArtifactEntity extends Equatable {
   final String id;
   final String artifactType;
   final String title;
+  final Map<String, dynamic> config;
   final Map<String, dynamic> contentJson;
   final String? modelUsed;
 
@@ -895,9 +932,15 @@ class StudentStudyArtifactEntity extends Equatable {
     required this.id,
     required this.artifactType,
     required this.title,
+    this.config = const {},
     required this.contentJson,
     this.modelUsed,
   });
+
+  bool get isTeacherBackingArtifact =>
+      config['source'] == 'lesson_package' ||
+      contentJson['source'] == 'lesson_package' ||
+      title == 'Quiz officiel de la séance';
 
   factory StudentStudyArtifactEntity.fromJson(Map<String, dynamic> json) {
     return StudentStudyArtifactEntity(
@@ -905,6 +948,7 @@ class StudentStudyArtifactEntity extends Equatable {
       artifactType:
           (json['artifactType'] ?? json['kind']) as String? ?? 'SUMMARY',
       title: json['title'] as String? ?? 'Ressource IA',
+      config: json['config'] as Map<String, dynamic>? ?? const {},
       contentJson: (json['contentJson'] ?? json['content'])
               as Map<String, dynamic>? ??
           const {},
@@ -913,7 +957,7 @@ class StudentStudyArtifactEntity extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, artifactType, title, contentJson];
+  List<Object?> get props => [id, artifactType, title, config, contentJson];
 }
 
 typedef StudentStudyArtifactItem = StudentStudyArtifactEntity;
@@ -1133,10 +1177,7 @@ class StudentLessonWorkspaceEntity extends Equatable {
         fallbackTitle: json['sessionTitle'] as String?,
         fallbackStatus: rec?.status,
       ),
-      slides: rawSlides
-          .whereType<Map<String, dynamic>>()
-          .map(SlideSegmentEntity.fromJson)
-          .toList(),
+      slides: SlideSegmentEntity.fromJsonList(rawSlides),
       bookmarks: (json['bookmarks'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(StudentBookmarkEntity.fromJson)

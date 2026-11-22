@@ -9,6 +9,7 @@ import '../../../../core/widgets/smart_toast.dart';
 import '../../application/recording_providers.dart';
 import '../../domain/entities/recording_models.dart';
 import '../widgets/interactive_replay_player.dart';
+import '../widgets/lesson_text_formatter.dart';
 import '../widgets/teacher_review_chapter_timeline.dart';
 import '../widgets/teacher_review_pipeline_banner.dart';
 import '../widgets/teacher_review_publishing_toolbar.dart';
@@ -125,9 +126,9 @@ class _TeacherReviewStudioPageState extends ConsumerState<TeacherReviewStudioPag
     _initializedPackageId = '${pkg.id}_v${pkg.currentVersion}';
 
     _titleCtrl.text = pkg.title;
-    _shortSummaryCtrl.text = _cleanAiPreamble(pkg.shortSummary);
-    _detailedSummaryCtrl.text = _cleanAiPreamble(pkg.detailedSummary);
-    _markdownCtrl.text = _cleanAiPreamble(pkg.structuredMarkdown);
+    _shortSummaryCtrl.text = sanitizeLessonDisplayText(_cleanAiPreamble(pkg.shortSummary));
+    _detailedSummaryCtrl.text = sanitizeLessonDisplayText(_cleanAiPreamble(pkg.detailedSummary));
+    _markdownCtrl.text = sanitizeLessonDisplayText(_cleanAiPreamble(pkg.structuredMarkdown));
     _mindmapCtrl.text = pkg.mindMapMermaid ?? '';
     _editedSegments = List<TranscriptSegmentEntity>.from(
       workspace.transcript?.segments ?? const [],

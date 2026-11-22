@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/recording_providers.dart';
 import '../../domain/entities/recording_models.dart';
+import 'lesson_text_formatter.dart';
 import 'replay_timeline_bar.dart';
 import 'replay_video_surface.dart';
 
@@ -396,7 +397,9 @@ class _InteractiveReplayPlayerState
                     children: [
                       Text(
                         activeSlide?.extractedText.isNotEmpty == true
-                            ? activeSlide!.extractedText
+                            ? (sanitizeSlideDisplayText(activeSlide!.extractedText).isNotEmpty
+                                ? sanitizeSlideDisplayText(activeSlide.extractedText)
+                                : 'Slide #${activeSlide.slideIndex + 1}')
                             : (activeChapter?.title ?? widget.sessionTitle),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
@@ -405,11 +408,12 @@ class _InteractiveReplayPlayerState
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      if (activeSlide?.visualExplanation.isNotEmpty ==
-                          true) ...[
+                      if (activeSlide != null &&
+                          sanitizeSlideDisplayText(activeSlide.visualExplanation)
+                              .isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text(
-                          activeSlide!.visualExplanation,
+                          sanitizeSlideDisplayText(activeSlide.visualExplanation),
                           textAlign: TextAlign.center,
                           maxLines: 4,
                           overflow: TextOverflow.ellipsis,

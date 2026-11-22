@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../application/recording_providers.dart';
 import '../../domain/entities/recording_models.dart';
+import 'lesson_text_formatter.dart';
 
 class TeacherReviewChaptersSlidesTab extends ConsumerWidget {
   final String sessionId;
@@ -73,12 +74,12 @@ class TeacherReviewChaptersSlidesTab extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          c.title,
+                          sanitizeLessonDisplayText(c.title),
                           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          c.summary,
+                          sanitizeLessonDisplayText(c.summary),
                           style: TextStyle(
                             color: theme.colorScheme.onSurfaceVariant,
                             fontSize: 12.5,
@@ -101,11 +102,16 @@ class TeacherReviewChaptersSlidesTab extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 10),
-        ...slides.map((s) {
+        ...slides.asMap().entries.map((entry) {
+          final listIdx = entry.key;
+          final s = entry.value;
+          final displaySlideNum = s.slideIndex >= 0 ? s.slideIndex + 1 : listIdx + 1;
+          final cleanedOcr = sanitizeSlideDisplayText(s.extractedText);
+          final cleanedExplanation = sanitizeSlideDisplayText(s.visualExplanation);
           final frameUrl = accessToken != null
               ? recordingDs.buildAuthenticatedFrameUrl(
                   sessionId,
-                  s.slideIndex,
+                  s.slideIndex >= 0 ? s.slideIndex : listIdx,
                   accessToken,
                 )
               : '';
@@ -119,49 +125,80 @@ class TeacherReviewChaptersSlidesTab extends ConsumerWidget {
                 color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
               ),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (frameUrl.isNotEmpty)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: SizedBox(
-                      width: 140,
-                      height: 80,
-                      child: Image.network(
-                        frameUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const ColoredBox(
-                          color: Color(0xFF1E293B),
-                          child: Center(
-                            child: Icon(Icons.slideshow_rounded, color: Colors.white54),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () {
+                ref.read(replayPositionSecondsProvider(sessionId).notifier).state =
+                    s.timestampSec;
+              },
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (frameUrl.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: SizedBox(
+                        width: 140,
+                        height: 80,
+                        child: Image.network(
+                          frameUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => const ColoredBox(
+                            color: Color(0xFF1E293B),
+                            child: Center(
+                              child: Icon(Icons.slideshow_rounded, color: Colors.white54),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Slide #${s.slideIndex + 1} • ${s.extractedText}',
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        s.visualExplanation,
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 12.5,
-                          height: 1.35,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2563EB).withValues(alpha: 0.16),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'Slide #$displaySlideNum • ${formatDurationTimestamp(s.timestampSec)}',
+                                style: const TextStyle(
+                                  color: Color(0xFF60A5FA),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 6),
+                        Text(
+                          cleanedOcr.isNotEmpty
+                              ? cleanedOcr
+                              : 'Diapositive #$displaySlideNum',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                        ),
+                        if (cleanedExplanation.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            cleanedExplanation,
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontSize: 12.5,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         }),
@@ -227,7 +264,7 @@ class TeacherReviewQuizFlashcardsTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Q${idx + 1}. ${q.question}',
+                  'Q${idx + 1}. ${sanitizeLessonDisplayText(q.question)}',
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                 ),
                 const SizedBox(height: 8),
@@ -245,7 +282,7 @@ class TeacherReviewQuizFlashcardsTab extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            opt.value,
+                            sanitizeLessonDisplayText(opt.value),
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: isCorrect ? FontWeight.w700 : FontWeight.w400,
@@ -259,7 +296,7 @@ class TeacherReviewQuizFlashcardsTab extends StatelessWidget {
                 }),
                 const SizedBox(height: 6),
                 Text(
-                  '💡 Explication : ${q.explanation}',
+                  '💡 Explication : ${sanitizeLessonDisplayText(q.explanation)}',
                   style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
                 ),
               ],
@@ -286,9 +323,9 @@ class TeacherReviewQuizFlashcardsTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(f.front, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                Text(sanitizeLessonDisplayText(f.front), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
                 const SizedBox(height: 6),
-                Text(f.back, style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12.5)),
+                Text(sanitizeLessonDisplayText(f.back), style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12.5)),
               ],
             ),
           ),

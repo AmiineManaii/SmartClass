@@ -1245,6 +1245,302 @@ describe('SmartClass Lecture Recording, 7-Stage AI Pipeline, Review Studio & Stu
       const recOverview = await getRec.execute(teacherUser, sessionId);
       expect(recOverview.id).toBe(started.id);
     });
+
+    it('generates distinct non-duplicate student AI quizzes with json_schema and grades teacher vs custom artifacts without creating duplicate backing artifacts', async () => {
+      const sessionId = '550e8400-e29b-41d4-a716-446655440999';
+      const classGroupId = '550e8400-e29b-41d4-a716-446655440998';
+      const teacherUser = { id: 'teacher-quiz', role: 'TEACHER' as const };
+      const studentUser = { id: 'student-quiz', role: 'STUDENT' as const };
+
+      const liveSession: VideoSession = {
+        id: sessionId,
+        classGroupId,
+        hostId: teacherUser.id,
+        hostName: 'Prof. Data',
+        subject: 'Data Science',
+        title: 'Introduction au cours de Data Science',
+        description: 'Venn diagram and data workflow',
+        startsAt: new Date(Date.now() - 1800_000),
+        endsAt: new Date(Date.now() + 1800_000),
+        startedAt: new Date(Date.now() - 1200_000),
+        endedAt: null,
+        status: 'COMPLETED',
+        roomName: `room-${sessionId}`,
+        joinOpensMinutesBefore: 10,
+        chatEnabled: true,
+        timetableSlotId: null,
+        courseId: null,
+        cancelReason: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const sessionRepository: VideoSessionRepositoryPort = {
+        create: async (s) => s,
+        findById: async (id) => (id === sessionId ? liveSession : null),
+        findByRoomName: async () => liveSession,
+        update: async () => liveSession,
+        updateStatusAtomic: async () => liveSession,
+        list: async () => ({ items: [liveSession], total: 1 }),
+        findOverlappingForClass: async () => [],
+        findNextForClasses: async () => ({ liveSession, upcomingSession: null }),
+      };
+
+      const classAccessPort: ClassAccessPort = {
+        getClassAccess: async (userId) => ({
+          isMember: userId === studentUser.id || userId === teacherUser.id,
+          isTeacherAssigned: userId === teacherUser.id,
+          isReferent: userId === teacherUser.id,
+          isApprovedTeacher: userId === teacherUser.id,
+        }),
+        getUserClassGroupIds: async () => [classGroupId],
+        getClassMemberUserIds: async () => [teacherUser.id, studentUser.id],
+      };
+
+      const recordingRepository = new InMemoryRecordingRepository();
+      const recording = await recordingRepository.upsertBySessionId({
+        sessionId,
+        classGroupId,
+        hostId: teacherUser.id,
+        status: 'PUBLISHED',
+        durationSeconds: 120,
+      });
+
+      await recordingRepository.replaceChapters(recording.id, [
+        {
+          orderIndex: 0,
+          title: '1. Définition de la Data Science',
+          summary: 'Résoudre des problèmes avec des données.',
+          startSeconds: 0,
+          endSeconds: 60,
+          keyConcepts: ['Data Science'],
+        },
+        {
+          orderIndex: 1,
+          title: '2. Compétences du Data Scientist',
+          summary: 'Mathématiques, statistiques, hacking skills et expertise domaine.',
+          startSeconds: 60,
+          endSeconds: 120,
+          keyConcepts: ['Venn Diagram'],
+        },
+      ]);
+
+      await recordingRepository.saveLessonPackage(recording.id, {
+        version: 1,
+        generalSummary: 'Cours introductif à la Data Science.',
+        structuredNotes: '# Notes Data Science\nProcessus : Collecte $\\rightarrow$ Solution.',
+        keyConcepts: [
+          {
+            name: 'Diagramme de Venn',
+            explanation: 'Intersection entre mathématiques, programmation et expertise métier.',
+            chapterOrder: 2,
+            timestampSeconds: 65,
+          },
+        ],
+        definitions: [],
+        importantExamples: [],
+        learningObjectives: [],
+        formulasAndRules: [],
+        importantMoments: [],
+        revisionSheet: '',
+        mindMapMermaid: 'flowchart TD\n  Root["DS"] --> B["Venn"]',
+        suggestedStudyOrder: [],
+        qualityReport: {
+          isValid: true,
+          score: 96,
+          warnings: [],
+          checkedAt: new Date().toISOString(),
+          transcriptCoverageRatio: 1,
+          chaptersAlignedCount: 2,
+        },
+        flashcards: [],
+        quizzes: [
+          {
+            id: 'teacher_q1',
+            type: 'MULTIPLE_CHOICE',
+            question: 'Selon la définition présentée, la Data Science consiste à quoi ?',
+            options: [
+              'Créer des sites web',
+              'Résoudre des problèmes avec des données',
+              'Gérer uniquement du SQL',
+              'Lire des journaux',
+            ],
+            correctAnswer: 'Résoudre des problèmes avec des données',
+            explanation: 'Collect $\\rightarrow$ Understand $\\rightarrow$ Clean.',
+            difficulty: 'facile',
+            chapterTitle: '1. Définition de la Data Science',
+            timestampSeconds: 15,
+          },
+        ],
+        primaryModel: 'gemma4:e4b',
+        secondaryModel: null,
+        approvedById: teacherUser.id,
+        approvedAt: new Date(),
+        publishedAt: new Date(),
+      });
+
+      const capturedInputs: ChatCompletionInput[] = [];
+      const mockRouter = new SmartModelRouterAdapter(
+        (model: string): AiGatewayPort => ({
+          async chatCompletion(input: ChatCompletionInput): Promise<ChatCompletionResult> {
+            capturedInputs.push(input);
+            return {
+              content: JSON.stringify({
+                questions: [
+                  {
+                    type: 'MULTIPLE_CHOICE',
+                    question: 'Selon la définition présentée, la Data Science consiste à quoi ?',
+                    options: ['A', 'B', 'C', 'D'],
+                    correctAnswer: 'A',
+                    explanation: 'Duplicate that must be filtered out.',
+                    difficulty: 'moyen',
+                    chapterTitle: '1. Définition de la Data Science',
+                    timestampSeconds: 15,
+                  },
+                  {
+                    type: 'MULTIPLE_CHOICE',
+                    question:
+                      'Quelles trois dimensions composent le diagramme de Venn du Data Scientist ?',
+                    options: [
+                      'Math/Stats, Hacking Skills et Expertise métier',
+                      'Design UI, Réseau et Comptabilité',
+                      'Docker, CSS et Marketing uniquement',
+                      'SQL seul et Hardware',
+                    ],
+                    correctAnswer: 'Math/Stats, Hacking Skills et Expertise métier',
+                    explanation: 'Flux complet : Données $\\rightarrow$ Validation $\\rightarrow$ Décision.',
+                    difficulty: 'moyen',
+                    chapterTitle: '2. Compétences du Data Scientist',
+                    timestampSeconds: 70,
+                  },
+                  {
+                    type: 'TRUE_FALSE',
+                    question:
+                      'Le nettoyage et le formatage des données précèdent la création de la solution finale.',
+                    options: ['Vrai', 'Faux'],
+                    correctAnswer: 'Vrai',
+                    explanation: 'Collect $\\rightarrow$ Clean & Format $\\rightarrow$ Use data.',
+                    difficulty: 'moyen',
+                    chapterTitle: '1. Définition de la Data Science',
+                    timestampSeconds: 40,
+                  },
+                ],
+              }),
+              model,
+              promptTokens: 80,
+              completionTokens: 120,
+              toolsUsed: false,
+            };
+          },
+          async streamCompletion() {
+            return { model, promptTokens: 10, completionTokens: 10 };
+          },
+          async checkHealth() {
+            return { available: true, model, latencyMs: 5 };
+          },
+        }),
+        {
+          primaryModel: 'gemma4:e4b',
+          installedModels: ['gemma4:e4b'],
+        },
+      );
+
+      const generateUseCase = new GenerateStudentStudyArtifactUseCase(
+        sessionRepository,
+        recordingRepository,
+        classAccessPort,
+        mockRouter,
+      );
+
+      const customArtifact = await generateUseCase.execute(studentUser, sessionId, {
+        kind: 'QUIZ',
+        difficulty: 'moyen',
+        questionCount: 2,
+        language: 'fr',
+      });
+
+      expect(capturedInputs).toHaveLength(1);
+      expect(capturedInputs[0]?.responseFormat?.type).toBe('json_schema');
+      expect(capturedInputs[0]?.user).toContain(
+        'Selon la définition présentée, la Data Science consiste à quoi ?',
+      );
+      expect(customArtifact.modelUsed).toBe('gemma4:e4b');
+      expect(customArtifact.modelUsed).not.toBe('Qwen3.5-4B-GGUF:Q4_1');
+      expect((customArtifact.config as Record<string, unknown>).source).toBe('student_ai');
+
+      const generatedQuestions = customArtifact.content.questions as Array<{
+        id: string;
+        question: string;
+        correctAnswer: string;
+        explanation: string;
+      }>;
+      expect(generatedQuestions).toHaveLength(2);
+      expect(generatedQuestions.some((q) => q.question.includes('diagramme de Venn'))).toBe(true);
+      // Duplicate teacher question was stripped out
+      expect(
+        generatedQuestions.some((q) =>
+          q.question.includes('Selon la définition présentée'),
+        ),
+      ).toBe(false);
+      // LaTeX arrows were normalized to Unicode
+      expect(generatedQuestions[0]?.explanation).toContain('→');
+      expect(generatedQuestions[0]?.explanation).not.toContain('\\rightarrow');
+
+      const submitUseCase = new SubmitStudentQuizAttemptUseCase(
+        sessionRepository,
+        recordingRepository,
+        classAccessPort,
+      );
+
+      // Grade twice against teacher_default -> reuses the single backing artifact
+      await submitUseCase.execute(studentUser, sessionId, {
+        artifactId: 'teacher_default',
+        answers: [
+          {
+            questionId: 'teacher_q1',
+            answer: 'Résoudre des problèmes avec des données',
+          },
+        ],
+      });
+      const teacherAttempt2 = await submitUseCase.execute(studentUser, sessionId, {
+        artifactId: 'teacher_default',
+        answers: [
+          {
+            questionId: 'teacher_q1',
+            answer: 'Résoudre des problèmes avec des données',
+          },
+        ],
+      });
+      expect(teacherAttempt2.score).toBe(100);
+      expect(teacherAttempt2.results[0]?.explanation).toContain('→');
+
+      const allQuizArtifacts = await recordingRepository.listStudyArtifacts(
+        recording.id,
+        studentUser.id,
+        'QUIZ',
+      );
+      const backingArtifacts = allQuizArtifacts.filter(
+        (a) => (a.config as Record<string, unknown>).source === 'lesson_package',
+      );
+      expect(backingArtifacts).toHaveLength(1);
+
+      // Grade against the custom student_ai quiz artifact
+      const customAttempt = await submitUseCase.execute(studentUser, sessionId, {
+        artifactId: customArtifact.id,
+        answers: [
+          {
+            questionId: generatedQuestions[0]!.id,
+            answer: generatedQuestions[0]!.correctAnswer,
+          },
+          {
+            questionId: generatedQuestions[1]!.id,
+            answer: generatedQuestions[1]!.correctAnswer,
+          },
+        ],
+      });
+      expect(customAttempt.artifactId).toBe(customArtifact.id);
+      expect(customAttempt.score).toBe(100);
+    });
   });
 });
 

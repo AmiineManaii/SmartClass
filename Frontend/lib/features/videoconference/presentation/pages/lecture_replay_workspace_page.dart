@@ -32,11 +32,21 @@ class _LectureReplayWorkspacePageState
   final TextEditingController _searchCtrl = TextEditingController();
   List<LessonSearchHitEntity> _searchHits = [];
   bool _isSearching = false;
+  int _studyLabModeIndex = 0;
+  int _studyLabModeNonce = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+  }
+
+  void _openStudyLabQuiz() {
+    setState(() {
+      _studyLabModeIndex = 1;
+      _studyLabModeNonce += 1;
+    });
+    _tabController.animateTo(1);
   }
 
   @override
@@ -187,6 +197,9 @@ class _LectureReplayWorkspacePageState
               noteCtrl: _noteCtrl,
               onAddNote: _addNote,
               onSeekTo: _seekTo,
+              onOpenQuiz: _openStudyLabQuiz,
+              studyLabModeIndex: _studyLabModeIndex,
+              studyLabModeNonce: _studyLabModeNonce,
               onRefreshWorkspace: () => ref.invalidate(
                 studentLessonWorkspaceProvider(widget.sessionId),
               ),
@@ -523,6 +536,9 @@ class _LectureReplayWorkspacePageState
                 noteCtrl: _noteCtrl,
                 onAddNote: _addNote,
                 onSeekTo: _seekTo,
+                onOpenQuiz: _openStudyLabQuiz,
+                studyLabModeIndex: _studyLabModeIndex,
+                studyLabModeNonce: _studyLabModeNonce,
                 onRefreshWorkspace: () => ref.invalidate(
                   studentLessonWorkspaceProvider(widget.sessionId),
                 ),
@@ -562,6 +578,9 @@ class _LectureReplayWorkspacePageState
             noteCtrl: _noteCtrl,
             onAddNote: _addNote,
             onSeekTo: _seekTo,
+            onOpenQuiz: _openStudyLabQuiz,
+            studyLabModeIndex: _studyLabModeIndex,
+            studyLabModeNonce: _studyLabModeNonce,
             onRefreshWorkspace: () => ref.invalidate(
               studentLessonWorkspaceProvider(widget.sessionId),
             ),

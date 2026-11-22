@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../application/recording_providers.dart';
 import '../../domain/entities/recording_models.dart';
 import 'interactive_replay_player.dart';
 import 'lesson_ai_tutor_panel.dart';
@@ -7,7 +9,7 @@ import 'replay_ai_summary_tab.dart';
 import 'student_study_lab_panel.dart';
 import 'synchronized_transcript_panel.dart';
 
-class ReplayMobileWorkspaceView extends StatelessWidget {
+class ReplayMobileWorkspaceView extends ConsumerWidget {
   final String sessionId;
   final StudentLessonWorkspaceEntity workspace;
   final TabController tabController;
@@ -15,6 +17,9 @@ class ReplayMobileWorkspaceView extends StatelessWidget {
   final VoidCallback onAddNote;
   final ValueChanged<double> onSeekTo;
   final VoidCallback onRefreshWorkspace;
+  final VoidCallback? onOpenQuiz;
+  final int studyLabModeIndex;
+  final int studyLabModeNonce;
 
   const ReplayMobileWorkspaceView({
     super.key,
@@ -25,11 +30,21 @@ class ReplayMobileWorkspaceView extends StatelessWidget {
     required this.onAddNote,
     required this.onSeekTo,
     required this.onRefreshWorkspace,
+    this.onOpenQuiz,
+    this.studyLabModeIndex = 0,
+    this.studyLabModeNonce = 0,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final pkg = workspace.lessonPackage;
+    final fidelity = pkg.qualityScore != null
+        ? 'IA Active • ${(pkg.qualityScore! * 100).round()}% fidélité'
+        : 'IA Active • Validé enseignant';
+    final quizCount = pkg.quizQuestions.length;
+    final accessToken = ref.watch(recordingAccessTokenProvider).valueOrNull;
+    final recordingDs = ref.watch(recordingRemoteDataSourceProvider);
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -65,12 +80,12 @@ class ReplayMobileWorkspaceView extends StatelessWidget {
                 ],
               ),
               Row(
-                children: const [
-                  Icon(Icons.bolt_rounded, size: 14, color: Color(0xFFF5A623)),
-                  SizedBox(width: 3),
+                children: [
+                  const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFFF5A623)),
+                  const SizedBox(width: 3),
                   Text(
-                    'IA Active • 98% fidélité',
-                    style: TextStyle(
+                    fidelity,
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       color: Color(0xFFF5A623),
                       fontSize: 10.5,
@@ -199,8 +214,8 @@ class ReplayMobileWorkspaceView extends StatelessWidget {
               fontWeight: FontWeight.w800,
               fontSize: 12,
             ),
-            tabs: const [
-              Tab(
+            tabs: [
+              const Tab(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -211,10 +226,14 @@ class ReplayMobileWorkspaceView extends StatelessWidget {
                   ],
                 ),
               ),
-              Tab(text: 'Fiches & Quiz'),
-              Tab(text: 'Transcription'),
-              Tab(text: 'Notes & Repères'),
-              Tab(text: 'Tuteur IA'),
+              Tab(
+                text: quizCount > 0
+                    ? 'Fiches & Quiz ($quizCount Q)'
+                    : 'Fiches & Quiz',
+              ),
+              const Tab(text: 'Transcription'),
+              const Tab(text: 'Notes & Repères'),
+              const Tab(text: 'Tuteur IA'),
             ],
           ),
         ),
@@ -228,17 +247,30 @@ class ReplayMobileWorkspaceView extends StatelessWidget {
                 return ReplayAiSummaryTab(
                   workspace: workspace,
                   onSeekTo: onSeekTo,
+                  onOpenQuiz: onOpenQuiz,
+                  frameUrlBuilder: accessToken != null
+                      ? (idx) => recordingDs.buildAuthenticatedFrameUrl(
+                            sessionId,
+                            idx,
+                            accessToken,
+                          )
+                      : null,
                   onAskTutor: (prompt) {
                     tabController.animateTo(4);
                   },
                 );
               case 1:
-                return StudentStudyLabPanel(
-                  sessionId: sessionId,
-                  lessonPackage: workspace.lessonPackage,
-                  initialArtifacts: workspace.studyArtifacts,
-                  initialQuizAttempts: workspace.quizAttempts,
-                  onRefreshWorkspace: onRefreshWorkspace,
+                return SizedBox(
+                  height: 640,
+                  child: StudentStudyLabPanel(
+                    sessionId: sessionId,
+                    lessonPackage: workspace.lessonPackage,
+                    initialArtifacts: workspace.studyArtifacts,
+                    initialQuizAttempts: workspace.quizAttempts,
+                    onRefreshWorkspace: onRefreshWorkspace,
+                    requestedModeIndex: studyLabModeIndex,
+                    modeRequestVersion: studyLabModeNonce,
+                  ),
                 );
               case 2:
                 return SizedBox(
