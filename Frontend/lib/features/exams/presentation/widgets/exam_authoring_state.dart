@@ -20,6 +20,10 @@ class _ExamAuthoringPageState extends ConsumerState<ExamAuthoringPage> {
   bool _importing = false;
   bool _generating = false;
   String? _loadedModel;
+  String? _knowledgeSearchMode;
+  String? _knowledgeDegradedReason;
+  List<ExamKnowledgeSource> _knowledgeSources = const <ExamKnowledgeSource>[];
+  ExamCoverageReport? _coverageReport;
   int _editorRevision = 0;
   String? _loadErrorKey;
 
@@ -288,6 +292,10 @@ class _ExamAuthoringPageState extends ConsumerState<ExamAuthoringPage> {
         _descriptionController.text = preview.description ?? '';
         _questions = List<QuestionDraft>.of(preview.questions);
         _source = ExamSource.import;
+        _knowledgeSearchMode = null;
+        _knowledgeDegradedReason = null;
+        _knowledgeSources = const <ExamKnowledgeSource>[];
+        _coverageReport = null;
         _editorRevision += 1;
       });
       context.showSuccessToast(
@@ -327,6 +335,10 @@ class _ExamAuthoringPageState extends ConsumerState<ExamAuthoringPage> {
           .generateWithAi(
             classGroupId: _classGroupId!,
             courseIds: request.courseIds,
+            chapters: request.chapters,
+            focusTopics: request.focusTopics,
+            knowledgeDocumentIds: request.knowledgeDocumentIds,
+            includeDrafts: request.includeDrafts,
             title: request.title.isEmpty ? null : request.title,
             difficulty: request.difficulty,
             questionCount: request.questionCount,
@@ -340,6 +352,10 @@ class _ExamAuthoringPageState extends ConsumerState<ExamAuthoringPage> {
         _questions = List<QuestionDraft>.of(preview.questions);
         _source = ExamSource.ai;
         _loadedModel = preview.model;
+        _knowledgeSearchMode = preview.knowledgeSearchMode;
+        _knowledgeDegradedReason = preview.knowledgeDegradedReason;
+        _knowledgeSources = preview.knowledgeSources;
+        _coverageReport = preview.coverage;
         _editorRevision += 1;
       });
       context.showSuccessToast(

@@ -154,6 +154,8 @@ export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
   const examsModule = createExamsModule({
     ...options.examsModuleOptions,
     modelRouter: options.examsModuleOptions?.modelRouter ?? sharedModelRouter,
+    knowledgeRetrieval:
+      options.examsModuleOptions?.knowledgeRetrieval ?? knowledgeModule.retrieval,
     authenticateMiddleware: adminGuard.authenticateMiddleware,
     requireAdminMiddleware: adminGuard.requireAdminMiddleware,
     requireTeacherMiddleware: approvedTeacherMiddleware,

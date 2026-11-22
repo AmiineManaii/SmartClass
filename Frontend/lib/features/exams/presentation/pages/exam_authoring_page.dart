@@ -9,8 +9,10 @@ import '../../../../core/network/api_exception.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/smart_loader.dart';
 import '../../application/providers/exam_providers.dart';
+import '../../domain/entities/exam_course_option.dart';
 import '../../domain/entities/exam_definition.dart';
 import '../../domain/repositories/exam_repository.dart';
+import '../widgets/exam_coverage_attribution_card.dart';
 import '../widgets/exam_question_editor_card.dart';
 import '../widgets/exam_tag.dart';
 import '../widgets/exam_ui.dart';
@@ -36,10 +38,18 @@ class _AiRequest {
     required this.difficulty,
     required this.questionCount,
     required this.courseIds,
+    this.chapters = const <String>[],
+    this.focusTopics = const <String>[],
+    this.knowledgeDocumentIds = const <String>[],
+    this.includeDrafts = false,
   });
 
   final String title;
   final String difficulty;
   final int questionCount;
   final List<String> courseIds;
+  final List<String> chapters;
+  final List<String> focusTopics;
+  final List<String> knowledgeDocumentIds;
+  final bool includeDrafts;
 }

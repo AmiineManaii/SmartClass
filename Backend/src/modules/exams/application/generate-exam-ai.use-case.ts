@@ -7,11 +7,16 @@ import {
 import type { AiGatewayPort } from '../../ai-assistant/index.js';
 import type { Role } from '../../auth/index.js';
 import type { ExamAiModelCatalogPort } from '../domain/exam-ai-model-catalog.port.js';
-import type { ExamRepositoryPort } from '../domain/exam-repository.port.js';
-import type { CreateExamQuestionInput } from '../domain/exam-repository.port.js';
+import type {
+  ExamCoverageReport,
+  ExamKnowledgeSearchMode,
+  ExamKnowledgeSourceAttribution,
+} from '../domain/exam-knowledge.types.js';
+import type { ExamRepositoryPort, CreateExamQuestionInput } from '../domain/exam-repository.port.js';
 import { assertCanUseClass } from './exam-access.js';
 import { normalizeQuestionInputs } from './exam-input.js';
-import { buildExamPrompt, extractJsonPayload } from './exam-ai.prompt.js';
+import { buildExamJsonSchema, buildExamPrompt, extractJsonPayload } from './exam-ai.prompt.js';
+import { ExamKnowledgeBlueprintService } from './exam-knowledge-blueprint.service.js';
 
 export interface GenerateExamAiDTO {
   requesterId: string;
@@ -19,6 +24,16 @@ export interface GenerateExamAiDTO {
   classGroupId: string;
   /** Published + validated courses the teacher explicitly selected. */
   courseIds?: string[];
+  /** Optional chapter headings filter across the selected courses. */
+  chapters?: string[];
+  /** Optional key topics/concepts to emphasize during RAG retrieval and drafting. */
+  focusTopics?: string[];
+  /** Optional Knowledge Engine document IDs (e.g. verified recorded video lectures). */
+  knowledgeDocumentIds?: string[];
+  /** Opt-in to include teacher's own unvalidated DRAFT_AI knowledge docs (default false). */
+  includeDrafts?: boolean;
+  /** Equal-weight balanced allocation across selected sources (default true). */
+  balancedCoverage?: boolean;
   title?: string;
   difficulty?: 'facile' | 'moyen' | 'difficile';
   questionCount?: number;
@@ -30,13 +45,20 @@ export interface GeneratedExamPreview {
   questions: CreateExamQuestionInput[];
   model: string;
   source: 'AI';
+  knowledgeSearchMode: ExamKnowledgeSearchMode;
+  knowledgeDegradedReason: string | null;
+  knowledgeSources: ExamKnowledgeSourceAttribution[];
+  coverage: ExamCoverageReport;
 }
 
+const normalizeModelTag = (name: string): string =>
+  name.includes(':') ? name.trim() : `${name.trim()}:latest`;
+
 /**
- * Generates a draft question preview from the selected class's published
- * courses only. The model is verified to be installed BEFORE any generation
- * and is never pulled automatically. Nothing is persisted here: the teacher
- * reviews then calls POST /exams.
+ * Generates a draft question preview from balanced published class courses
+ * and/or authorized teacher Knowledge Engine resources (never indexed into
+ * student retrieval). The local model is verified BEFORE generation and never
+ * pulled automatically. Nothing is persisted until the teacher reviews & saves.
  */
 export class GenerateExamAiUseCase {
   constructor(
@@ -44,6 +66,7 @@ export class GenerateExamAiUseCase {
     private readonly gateway: AiGatewayPort,
     private readonly catalog: ExamAiModelCatalogPort,
     private readonly modelName: string = getEnv().AI_MODEL,
+    private readonly blueprintService: ExamKnowledgeBlueprintService = new ExamKnowledgeBlueprintService(),
   ) {}
 
   public async execute(dto: GenerateExamAiDTO): Promise<GeneratedExamPreview> {
@@ -63,6 +86,8 @@ export class GenerateExamAiUseCase {
       dto.requesterId,
     );
     const requestedIds = Array.from(new Set(dto.courseIds ?? []));
+    const requestedDocIds = Array.from(new Set(dto.knowledgeDocumentIds ?? []));
+
     let courses = available;
     if (requestedIds.length > 0) {
       const byId = new Map(available.map((course) => [course.id, course]));
@@ -80,8 +105,13 @@ export class GenerateExamAiUseCase {
       }
       // Keep the teacher's selection order rather than the repository order.
       courses = requestedIds.map((courseId) => byId.get(courseId)!);
+    } else if (requestedDocIds.length > 0) {
+      // Teacher explicitly pinned Knowledge Engine sources (e.g. recorded lectures)
+      // without picking class courses; avoid dumping unrelated class courses.
+      courses = [];
     }
-    if (courses.length === 0) {
+
+    if (courses.length === 0 && requestedDocIds.length === 0) {
       throw new ValidationError('No published course in this class', [
         {
           path: requestedIds.length > 0 ? 'courseIds' : 'classGroupId',
@@ -94,7 +124,12 @@ export class GenerateExamAiUseCase {
     }
 
     const installed = await this.catalog.listInstalledModels();
-    if (!installed.includes(this.modelName)) {
+    const isModelInstalled = installed.some(
+      (entry) =>
+        entry === this.modelName ||
+        normalizeModelTag(entry) === normalizeModelTag(this.modelName),
+    );
+    if (!isModelInstalled) {
       throw new AiModelUnavailableError(
         `The required local model "${this.modelName}" is not installed. Install it manually with Ollama; it is never downloaded automatically.`,
         [{ installedModels: installed }],
@@ -102,14 +137,45 @@ export class GenerateExamAiUseCase {
     }
 
     const questionCount = Math.min(30, Math.max(1, dto.questionCount ?? 10));
+    const desiredTitle = dto.title?.trim() || `Contrôle — ${classGroup.name}`;
     const env = getEnv();
+    const blueprint = await this.blueprintService.build({
+      requesterId: dto.requesterId,
+      requesterRole: dto.requesterRole,
+      title: desiredTitle,
+      courses,
+      chapters: dto.chapters,
+      focusTopics: dto.focusTopics,
+      knowledgeDocumentIds: requestedDocIds,
+      includeDrafts: dto.includeDrafts,
+      questionCount,
+      maxSourceChars: env.AI_MAX_SOURCE_CHARS,
+      balancedCoverage: dto.balancedCoverage,
+    });
+
+    if (blueprint.coverage.coveredSources === 0 || blueprint.promptContext.trim().length === 0) {
+      throw new ValidationError(
+        'No accessible knowledge source available to generate exam',
+        [
+          {
+            path: requestedDocIds.length > 0 ? 'knowledgeDocumentIds' : 'courseIds',
+            message:
+              blueprint.coverage.warnings[0] ??
+              'Selected sources returned no accessible validated content',
+          },
+        ],
+      );
+    }
+
     const prompt = buildExamPrompt({
-      title: dto.title?.trim() || `Contrôle — ${classGroup.name}`,
+      title: desiredTitle,
       subject: courses[0]?.subject ?? null,
       difficulty: dto.difficulty ?? 'moyen',
       questionCount,
       courses,
       maxSourceChars: env.AI_MAX_SOURCE_CHARS,
+      focusTopics: dto.focusTopics,
+      blueprint,
     });
 
     // Stream the model hop: Ollama sends SSE headers immediately, which
@@ -124,6 +190,14 @@ export class GenerateExamAiUseCase {
         maxTokens: Math.min(8192, 700 + questionCount * 320),
         temperature: 0.2,
         thinking: false,
+        responseFormat: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'exam_preview',
+            strict: true,
+            schema: buildExamJsonSchema(questionCount),
+          },
+        },
       },
       (delta) => {
         content += delta;
@@ -166,12 +240,16 @@ export class GenerateExamAiUseCase {
       title:
         typeof container.title === 'string' && container.title.trim().length > 0
           ? container.title.trim()
-          : dto.title?.trim() || `Contrôle — ${classGroup.name}`,
+          : desiredTitle,
       description:
         typeof container.description === 'string' ? container.description.trim() || null : null,
       questions,
       model: usage.model || this.modelName,
       source: 'AI',
+      knowledgeSearchMode: blueprint.searchMode,
+      knowledgeDegradedReason: blueprint.degradedReason,
+      knowledgeSources: blueprint.knowledgeSources,
+      coverage: blueprint.coverage,
     };
   }
 }

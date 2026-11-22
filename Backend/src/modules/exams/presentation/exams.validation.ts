@@ -83,6 +83,16 @@ export const generateExamAiBodySchema = z
     classGroupId: uuidSchema,
     /** Published + validated courses selected by the teacher. */
     courseIds: z.array(uuidSchema).min(1).max(20).optional(),
+    /** Optional chapter headings filter across the selected courses. */
+    chapters: z.array(z.string().trim().min(1).max(200)).min(1).max(40).optional(),
+    /** Optional key concepts / topics to emphasize in retrieval and questions. */
+    focusTopics: z.array(z.string().trim().min(1).max(120)).min(1).max(20).optional(),
+    /** Optional teacher-owned Knowledge Engine documents (e.g. verified recorded lectures). */
+    knowledgeDocumentIds: z.array(uuidSchema).min(1).max(15).optional(),
+    /** Explicit opt-in to include teacher's own DRAFT_AI docs (defaults false). */
+    includeDrafts: z.boolean().optional(),
+    /** Equal-weight balanced source & chapter distribution (defaults true). */
+    balancedCoverage: z.boolean().optional(),
     title: z.string().trim().max(300).optional(),
     difficulty: z.enum(['facile', 'moyen', 'difficile']).optional(),
     questionCount: z.number().int().min(1).max(30).optional(),

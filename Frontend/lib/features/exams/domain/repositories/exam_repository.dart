@@ -143,9 +143,18 @@ abstract class ExamRepository {
   });
   /// Published + validated courses the teacher may pick as AI sources.
   Future<List<ExamCourseOption>> listClassCourses(String classGroupId);
+
+  /// Teacher-owned indexed Knowledge Engine documents usable as AI exam sources.
+  Future<List<ExamKnowledgeDocumentOption>> listKnowledgeDocuments();
+
   Future<GeneratedExamPreview> generateWithAi({
     required String classGroupId,
     required List<String> courseIds,
+    List<String> chapters = const <String>[],
+    List<String> focusTopics = const <String>[],
+    List<String> knowledgeDocumentIds = const <String>[],
+    bool includeDrafts = false,
+    bool balancedCoverage = true,
     String? title,
     required String difficulty,
     required int questionCount,

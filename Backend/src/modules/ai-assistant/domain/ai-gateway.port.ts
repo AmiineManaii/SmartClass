@@ -43,6 +43,17 @@ export interface ChatTool {
   };
 }
 
+export type ChatResponseFormat =
+  | { type: 'json_object' }
+  | {
+      type: 'json_schema';
+      json_schema: {
+        name: string;
+        strict?: boolean;
+        schema: Record<string, unknown>;
+      };
+    };
+
 export interface ChatCompletionInput {
   system: string;
   user: string;
@@ -55,6 +66,10 @@ export interface ChatCompletionInput {
    * generations. Defaults to `AI_ENABLE_THINKING` when omitted.
    */
   thinking?: boolean;
+  /** Enforces JSON object output via OpenAI-compatible response_format when supported. */
+  jsonMode?: boolean;
+  /** Enforces strict JSON or JSON Schema output via OpenAI-compatible response_format. */
+  responseFormat?: ChatResponseFormat;
 }
 
 export interface ChatCompletionResult {

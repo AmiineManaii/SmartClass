@@ -2,6 +2,7 @@ import { ValidationError } from '../../../shared/errors/app-error.js';
 import type { Role } from '../../auth/index.js';
 import type { ExamRepositoryPort } from '../domain/exam-repository.port.js';
 import { assertCanUseClass } from './exam-access.js';
+import { extractCourseChapterTitles } from './exam-knowledge-blueprint.service.js';
 
 export interface ListClassCoursesDTO {
   requesterId: string;
@@ -13,6 +14,7 @@ export interface ClassCourseOption {
   id: string;
   title: string;
   subject: string | null;
+  chapters?: string[];
 }
 
 /**
@@ -39,10 +41,14 @@ export class ListClassCoursesUseCase {
       dto.classGroupId,
       dto.requesterId,
     );
-    return courses.map((course) => ({
-      id: course.id,
-      title: course.title,
-      subject: course.subject,
-    }));
+    return courses.map((course) => {
+      const chapters = extractCourseChapterTitles(course.content);
+      return {
+        id: course.id,
+        title: course.title,
+        subject: course.subject,
+        ...(chapters.length > 0 ? { chapters } : {}),
+      };
+    });
   }
 }

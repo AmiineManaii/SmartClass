@@ -400,14 +400,17 @@ paths:
     post:
       operationId: generateExamWithAi
       tags: [exams]
-      summary: Generate an exam preview from courses selected by the teacher
+      summary: Generate an exam preview with balanced multi-course and Knowledge Engine RAG grounding
       description: >
-        TEACHER/ADMIN only. Uses ONLY the courses the teacher selects through
-        `courseIds`; every selected course must be PUBLISHED and linked to the
-        selected class (published courses are generated and validated).
-        Verifies that the local model `hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1` is
-        installed before generating and NEVER pulls a model. Returns a preview
-        only: the teacher reviews it and calls `createExam` with `source: AI`.
+        TEACHER/ADMIN only. Uses ONLY published class courses selected through
+        `courseIds` and/or authorized teacher Knowledge Engine documents selected
+        via `knowledgeDocumentIds` (verified video lectures, syntheses, slides).
+        Applies water-filling budgeting and question quota distribution so no
+        selected course or chapter is silently starved, strips practice quiz
+        answer keys before prompting, excludes DRAFT_AI documents unless
+        `includeDrafts: true` is opted in, and NEVER indexes exams or answer
+        keys into student retrieval. Verifies the configured local Ollama model
+        is installed before generating and NEVER pulls a model automatically.
       security:
         - bearerAuth: []
       x-status: implemented
@@ -433,9 +436,44 @@ paths:
                     Published and validated courses selected by the teacher.
                     Each id must belong to `classGroupId`; unknown or
                     unpublished ids are rejected with VALIDATION_ERROR. When
-                    omitted, all published courses of the class are used
-                    (legacy behaviour); the app always sends an explicit
-                    selection.
+                    both `courseIds` and `knowledgeDocumentIds` are omitted, all
+                    published courses of the class are used (legacy behaviour).
+                chapters:
+                  type: array
+                  minItems: 1
+                  maxItems: 40
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 200
+                  description: Optional chapter headings filter across the selected courses.
+                focusTopics:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 120
+                  description: Optional target concepts/topics emphasized during RAG retrieval and question drafting.
+                knowledgeDocumentIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 15
+                  items:
+                    type: string
+                    format: uuid
+                  description: >
+                    Optional teacher-owned Knowledge Engine document UUIDs (e.g.
+                    verified recorded lectures) strictly isolated per author at SQL level.
+                includeDrafts:
+                  type: boolean
+                  default: false
+                  description: Explicit opt-in to include teacher's own DRAFT_AI documents.
+                balancedCoverage:
+                  type: boolean
+                  default: true
+                  description: Equal-weight balanced coverage and question quota distribution across sources.
                 title:
                   type: string
                   maxLength: 300
@@ -1579,6 +1617,11 @@ components:
           type:
             - string
             - 'null'
+        chapters:
+          type: array
+          items:
+            type: string
+          description: Teaching chapter titles parsed from Markdown headings (practice quiz/answer-key headings excluded).
       additionalProperties: false
     ImportedExamPreview:
       type: object
@@ -1621,9 +1664,150 @@ components:
                 type: integer
             additionalProperties: false
       additionalProperties: false
+    ExamKnowledgeSource:
+      type: object
+      required:
+        - documentId
+        - sourceId
+        - sourceType
+        - title
+        - sectionTitle
+        - trustTier
+        - startSeconds
+        - slideNumber
+        - snippet
+        - allocatedQuestions
+        - retrievalOrigin
+      properties:
+        documentId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        sourceId:
+          type: string
+        sourceType:
+          type: string
+          enum:
+            - COURSE
+            - COURSE_SECTION
+            - LECTURE_TRANSCRIPT
+            - LECTURE_SLIDE
+            - LECTURE_PACKAGE
+            - RECORDING_SOURCE_DOC
+            - UPLOADED_DOCUMENT
+        title:
+          type: string
+        sectionTitle:
+          type:
+            - string
+            - 'null'
+        trustTier:
+          type: string
+          enum: [DRAFT_AI, VERIFIED]
+        startSeconds:
+          type:
+            - integer
+            - 'null'
+        slideNumber:
+          type:
+            - integer
+            - 'null'
+        snippet:
+          type: string
+        allocatedQuestions:
+          type: integer
+          minimum: 0
+        retrievalOrigin:
+          type: string
+          enum: [KNOWLEDGE_ENGINE, COURSE_STRUCTURE]
+      additionalProperties: false
+    ExamSourceCoverageEntry:
+      type: object
+      required:
+        - sourceId
+        - documentId
+        - title
+        - sourceType
+        - chapters
+        - targetQuestions
+        - charsIncluded
+        - charsOriginal
+        - trimmed
+      properties:
+        sourceId:
+          type: string
+        documentId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        title:
+          type: string
+        sourceType:
+          type: string
+          enum:
+            - COURSE
+            - COURSE_SECTION
+            - LECTURE_TRANSCRIPT
+            - LECTURE_SLIDE
+            - LECTURE_PACKAGE
+            - RECORDING_SOURCE_DOC
+            - UPLOADED_DOCUMENT
+        chapters:
+          type: array
+          items:
+            type: string
+        targetQuestions:
+          type: integer
+          minimum: 0
+        charsIncluded:
+          type: integer
+          minimum: 0
+        charsOriginal:
+          type: integer
+          minimum: 0
+        trimmed:
+          type: boolean
+      additionalProperties: false
+    ExamCoverageReport:
+      type: object
+      required:
+        - totalSources
+        - coveredSources
+        - totalChapters
+        - coveredChapters
+        - truncated
+        - warnings
+        - distribution
+      properties:
+        totalSources:
+          type: integer
+          minimum: 0
+        coveredSources:
+          type: integer
+          minimum: 0
+        totalChapters:
+          type: integer
+          minimum: 0
+        coveredChapters:
+          type: integer
+          minimum: 0
+        truncated:
+          type: boolean
+        warnings:
+          type: array
+          items:
+            type: string
+        distribution:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamSourceCoverageEntry'
+      additionalProperties: false
     GeneratedExamPreview:
       type: object
-      required: [title, questions, model, source]
+      required:
+        [title, questions, model, source, knowledgeSearchMode, knowledgeDegradedReason, knowledgeSources, coverage]
       properties:
         title:
           type: string
@@ -1660,10 +1844,23 @@ components:
             additionalProperties: false
         model:
           type: string
-          example: hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1
+          example: gemma4:e4b
         source:
           type: string
           const: AI
+        knowledgeSearchMode:
+          type: string
+          enum: [HYBRID, FTS_ONLY, VECTOR_ONLY, DIRECT_BALANCED]
+        knowledgeDegradedReason:
+          type:
+            - string
+            - 'null'
+        knowledgeSources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamKnowledgeSource'
+        coverage:
+          $ref: '#/components/schemas/ExamCoverageReport'
       additionalProperties: false
     AvailableExam:
       allOf:

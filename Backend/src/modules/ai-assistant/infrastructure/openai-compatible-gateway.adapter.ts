@@ -10,6 +10,7 @@ import type {
   AiGatewayStatus,
   ChatCompletionInput,
   ChatCompletionResult,
+  ChatResponseFormat,
   ChatTool,
   StreamCompletionUsage,
 } from '../domain/ai-gateway.port.js';
@@ -105,12 +106,21 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
     };
   }
 
+  private responseFormatParam(input: {
+    jsonMode?: boolean;
+    responseFormat?: ChatResponseFormat;
+  }): Record<string, unknown> {
+    if (input.responseFormat) return { response_format: input.responseFormat };
+    if (input.jsonMode) return { response_format: { type: 'json_object' } };
+    return {};
+  }
+
   private async executeTool(call: {
     id: string;
     function: { name: string; arguments: string };
   }): Promise<string> {
     const name = call.function.name;
-    let args: Record<string, unknown> = {};
+    let args: Record<string, unknown>;
     try {
       args = JSON.parse(call.function.arguments || '{}') as Record<string, unknown>;
     } catch {
@@ -207,7 +217,13 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
 
   private async postMessages(
     messages: Array<Record<string, unknown>>,
-    input: { maxTokens?: number; temperature?: number; thinking?: boolean },
+    input: {
+      maxTokens?: number;
+      temperature?: number;
+      thinking?: boolean;
+      jsonMode?: boolean;
+      responseFormat?: ChatResponseFormat;
+    },
     tools: ChatTool[] | undefined,
     timeoutMs: number,
     modelName: string = this.model,
@@ -227,6 +243,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
           max_tokens: input.maxTokens,
           temperature: input.temperature,
           ...this.thinkingParams(input.thinking),
+          ...this.responseFormatParam(input),
           ...(tools && tools.length > 0
             ? { tools, tool_choice: 'auto' }
             : {}),
@@ -403,7 +420,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
   public async streamCompletion(
     input: ChatCompletionInput,
     onDelta: (delta: string) => void,
-    onPhase?: (phase: string) => void,
+    _onPhase?: (phase: string) => void,
   ): Promise<StreamCompletionUsage> {
     let tools = input.tools && input.tools.length > 0 ? input.tools : undefined;
     let activeModel = this.model;
@@ -418,7 +435,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
       let turns = 0;
       while (turns < 3) {
         turns++;
-        let checkRes: (ChatCompletionsBody & { httpStatus: number }) | null = null;
+        let checkRes: ChatCompletionsBody & { httpStatus: number };
         try {
           checkRes = await this.postMessages(messages, input, tools, this.timeoutMs, activeModel);
         } catch {
@@ -442,7 +459,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
       }
     }
 
-    let stream: ReadableStream<Uint8Array> | null = null;
+    let stream: ReadableStream<Uint8Array> | null;
     try {
       stream = await this.openStreamWithMessages(messages, input, tools, activeModel);
     } catch (err) {
@@ -501,6 +518,7 @@ export class OpenAICompatibleGateway implements AiGatewayPort {
           temperature: input.temperature,
           stream: true,
           ...this.thinkingParams(input.thinking),
+          ...this.responseFormatParam(input),
           ...(tools && tools.length > 0
             ? { tools, tool_choice: 'auto' }
             : {}),

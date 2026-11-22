@@ -5,6 +5,7 @@ export type {
   AiEmbeddingStatus,
   ChatCompletionInput,
   ChatCompletionResult,
+  ChatResponseFormat,
   StreamCompletionUsage,
 } from './domain/ai-gateway.port.js';
 export type { EmbeddingPort } from './domain/embedding.port.js';

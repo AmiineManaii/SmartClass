@@ -293,6 +293,89 @@ class ImportedExamPreview {
   final List<QuestionDraft> questions;
 }
 
+/// Grounded source excerpt attributed to the generated AI exam.
+class ExamKnowledgeSource {
+  const ExamKnowledgeSource({
+    required this.sourceId,
+    required this.sourceType,
+    required this.title,
+    required this.trustTier,
+    required this.snippet,
+    required this.allocatedQuestions,
+    required this.retrievalOrigin,
+    this.documentId,
+    this.sectionTitle,
+    this.startSeconds,
+    this.slideNumber,
+  });
+
+  final String? documentId;
+  final String sourceId;
+  final String sourceType;
+  final String title;
+  final String? sectionTitle;
+  final String trustTier;
+  final int? startSeconds;
+  final int? slideNumber;
+  final String snippet;
+  final int allocatedQuestions;
+  final String retrievalOrigin;
+
+  String? get formattedTimestamp {
+    final seconds = startSeconds;
+    if (seconds == null || seconds < 0) return null;
+    final mins = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return '$mins:$secs';
+  }
+}
+
+/// Per-source allocation summary inside [ExamCoverageReport].
+class ExamSourceCoverageEntry {
+  const ExamSourceCoverageEntry({
+    required this.sourceId,
+    required this.title,
+    required this.sourceType,
+    required this.chapters,
+    required this.targetQuestions,
+    required this.charsIncluded,
+    required this.charsOriginal,
+    required this.trimmed,
+    this.documentId,
+  });
+
+  final String sourceId;
+  final String? documentId;
+  final String title;
+  final String sourceType;
+  final List<String> chapters;
+  final int targetQuestions;
+  final int charsIncluded;
+  final int charsOriginal;
+  final bool trimmed;
+}
+
+/// Balanced coverage & transparent truncation report returned by `POST /exams/ai/generate`.
+class ExamCoverageReport {
+  const ExamCoverageReport({
+    required this.totalSources,
+    required this.coveredSources,
+    required this.totalChapters,
+    required this.coveredChapters,
+    required this.truncated,
+    this.warnings = const <String>[],
+    this.distribution = const <ExamSourceCoverageEntry>[],
+  });
+
+  final int totalSources;
+  final int coveredSources;
+  final int totalChapters;
+  final int coveredChapters;
+  final bool truncated;
+  final List<String> warnings;
+  final List<ExamSourceCoverageEntry> distribution;
+}
+
 /// Result of `POST /exams/ai/generate` (preview only, never published).
 class GeneratedExamPreview {
   const GeneratedExamPreview({
@@ -300,6 +383,10 @@ class GeneratedExamPreview {
     required this.questions,
     required this.model,
     this.description,
+    this.knowledgeSearchMode,
+    this.knowledgeDegradedReason,
+    this.knowledgeSources = const <ExamKnowledgeSource>[],
+    this.coverage,
   });
 
   final String title;
@@ -308,4 +395,8 @@ class GeneratedExamPreview {
 
   /// Exact local model that produced the preview.
   final String model;
+  final String? knowledgeSearchMode;
+  final String? knowledgeDegradedReason;
+  final List<ExamKnowledgeSource> knowledgeSources;
+  final ExamCoverageReport? coverage;
 }

@@ -11,6 +11,7 @@ import type { StoragePort } from '../../shared/storage/storage.port.js';
 import { LocalStorageAdapter } from '../../shared/storage/local-storage.adapter.js';
 import type { AiGatewayPort, SmartModelRouterPort } from '../ai-assistant/index.js';
 import { OpenAICompatibleGateway } from '../ai-assistant/index.js';
+import type { KnowledgeRetrievalPort } from '../knowledge/index.js';
 import type { FraudRepositoryPort } from './domain/fraud-repository.port.js';
 import type { ExamRepositoryPort } from './domain/exam-repository.port.js';
 import type { ExamAiModelCatalogPort } from './domain/exam-ai-model-catalog.port.js';
@@ -28,6 +29,7 @@ import { PublishExamUseCase } from './application/publish-exam.use-case.js';
 import { CloseExamUseCase } from './application/close-exam.use-case.js';
 import { ImportExamUseCase } from './application/import-exam.use-case.js';
 import { GenerateExamAiUseCase } from './application/generate-exam-ai.use-case.js';
+import { ExamKnowledgeBlueprintService } from './application/exam-knowledge-blueprint.service.js';
 import { ListClassCoursesUseCase } from './application/list-class-courses.use-case.js';
 import { ListAvailableExamsUseCase } from './application/list-available-exams.use-case.js';
 import { StartAttemptUseCase } from './application/start-attempt.use-case.js';
@@ -54,6 +56,7 @@ export interface ExamsModuleOptions {
   storage?: StoragePort;
   aiGateway?: AiGatewayPort;
   modelRouter?: SmartModelRouterPort;
+  knowledgeRetrieval?: KnowledgeRetrievalPort;
   aiModelCatalog?: ExamAiModelCatalogPort;
   tokenService?: TokenServicePort;
   authenticateMiddleware?: RequestHandler;
@@ -96,11 +99,13 @@ export const createExamsModule = (options: ExamsModuleOptions = {}): ExamsModule
   const publishExamUseCase = new PublishExamUseCase(examRepository);
   const closeExamUseCase = new CloseExamUseCase(examRepository);
   const importExamUseCase = new ImportExamUseCase();
+  const examBlueprintService = new ExamKnowledgeBlueprintService(options.knowledgeRetrieval);
   const generateExamAiUseCase = new GenerateExamAiUseCase(
     examRepository,
     aiGateway,
     aiModelCatalog,
     env.AI_MODEL,
+    examBlueprintService,
   );
   const listClassCoursesUseCase = new ListClassCoursesUseCase(examRepository);
   const listAvailableExamsUseCase = new ListAvailableExamsUseCase(examRepository);

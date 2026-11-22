@@ -1,4 +1,12 @@
 export { createExamsModule, type ExamsModule, type ExamsModuleOptions } from './exams.module.js';
+export { ExamKnowledgeBlueprintService } from './application/exam-knowledge-blueprint.service.js';
+export type {
+  ExamCoverageReport,
+  ExamKnowledgeBlueprint,
+  ExamKnowledgeSearchMode,
+  ExamKnowledgeSourceAttribution,
+  ExamSourceCoverageEntry,
+} from './domain/exam-knowledge.types.js';
 export type {
   FraudClass,
   FraudReportView,

@@ -65,14 +65,24 @@ class ExamRepositoryImpl implements ExamRepository {
     final items = await remote.classCourses(classGroupId);
     return items
         .map(asMap)
-        .map(
-          (json) => ExamCourseOption(
-            id: (json['id'] as String?) ?? '',
-            title: (json['title'] as String?) ?? '',
-            subject: (json['subject'] as String?)?.trim(),
-          ),
-        )
+        .map(examCourseOptionFromJson)
         .where((course) => course.id.isNotEmpty && course.title.isNotEmpty)
+        .toList();
+  }
+
+  @override
+  Future<List<ExamKnowledgeDocumentOption>> listKnowledgeDocuments() async {
+    final items = await remote.listTeacherKnowledgeDocuments();
+    return items
+        .map(asMap)
+        .map(examKnowledgeDocumentOptionFromJson)
+        .where(
+          (doc) =>
+              doc.id.isNotEmpty &&
+              doc.title.isNotEmpty &&
+              (doc.indexStatus == 'INDEXED' ||
+                  doc.indexStatus == 'PENDING_EMBEDDING'),
+        )
         .toList();
   }
 
@@ -80,13 +90,35 @@ class ExamRepositoryImpl implements ExamRepository {
   Future<GeneratedExamPreview> generateWithAi({
     required String classGroupId,
     required List<String> courseIds,
+    List<String> chapters = const <String>[],
+    List<String> focusTopics = const <String>[],
+    List<String> knowledgeDocumentIds = const <String>[],
+    bool includeDrafts = false,
+    bool balancedCoverage = true,
     String? title,
     required String difficulty,
     required int questionCount,
   }) async {
+    final cleanChapters = chapters
+        .map((entry) => entry.trim())
+        .where((entry) => entry.isNotEmpty)
+        .toList();
+    final cleanFocusTopics = focusTopics
+        .map((entry) => entry.trim())
+        .where((entry) => entry.isNotEmpty)
+        .toList();
+    final cleanDocIds = knowledgeDocumentIds
+        .map((entry) => entry.trim())
+        .where((entry) => entry.isNotEmpty)
+        .toList();
     final data = await remote.generateWithAi({
       'classGroupId': classGroupId,
-      'courseIds': courseIds,
+      if (courseIds.isNotEmpty) 'courseIds': courseIds,
+      if (cleanChapters.isNotEmpty) 'chapters': cleanChapters,
+      if (cleanFocusTopics.isNotEmpty) 'focusTopics': cleanFocusTopics,
+      if (cleanDocIds.isNotEmpty) 'knowledgeDocumentIds': cleanDocIds,
+      'includeDrafts': includeDrafts,
+      'balancedCoverage': balancedCoverage,
       if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
       'difficulty': difficulty,
       'questionCount': questionCount,

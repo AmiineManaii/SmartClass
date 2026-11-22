@@ -42,6 +42,13 @@ final examClassCoursesProvider =
           ref.watch(examRepositoryProvider).listClassCourses(classGroupId),
     );
 
+/// Authenticated teacher's indexed Knowledge Engine documents (e.g. recorded
+/// lectures, syntheses) offered as complementary AI exam sources.
+final examKnowledgeDocumentsProvider =
+    FutureProvider.autoDispose<List<ExamKnowledgeDocumentOption>>(
+      (ref) => ref.watch(examRepositoryProvider).listKnowledgeDocuments(),
+    );
+
 /// Teacher: every exam authored by the caller (all statuses).
 final myExamsProvider = FutureProvider<List<ExamSummary>>((ref) async {
   final keepAlive = ref.keepAlive();

@@ -189,6 +189,11 @@ export class ExamTeacherController {
       const body = req.body as {
         classGroupId: string;
         courseIds?: string[];
+        chapters?: string[];
+        focusTopics?: string[];
+        knowledgeDocumentIds?: string[];
+        includeDrafts?: boolean;
+        balancedCoverage?: boolean;
         title?: string;
         difficulty?: 'facile' | 'moyen' | 'difficile';
         questionCount?: number;

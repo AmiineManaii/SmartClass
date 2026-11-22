@@ -1,4 +1,5 @@
 import '../../domain/entities/exam_attempt.dart';
+import '../../domain/entities/exam_course_option.dart';
 import '../../domain/entities/exam_definition.dart';
 import '../../domain/entities/exam_monitoring.dart';
 
@@ -189,6 +190,80 @@ ImportedExamPreview importedPreviewFromJson(Map<String, dynamic> json) {
   );
 }
 
+ExamCourseOption examCourseOptionFromJson(Map<String, dynamic> json) {
+  return ExamCourseOption(
+    id: parseString(json['id']),
+    title: parseString(json['title']),
+    subject: parseNullableString(json['subject']),
+    chapters: parseStringList(json['chapters']),
+  );
+}
+
+ExamKnowledgeDocumentOption examKnowledgeDocumentOptionFromJson(
+  Map<String, dynamic> json,
+) {
+  return ExamKnowledgeDocumentOption(
+    id: parseString(json['id']),
+    sourceType: parseString(json['sourceType']),
+    title: parseString(json['title']),
+    subject: parseNullableString(json['subject']),
+    trustTier: parseString(json['trustTier'], fallback: 'VERIFIED'),
+    chunkCount: parseInt(json['chunkCount']),
+    indexStatus: parseString(json['indexStatus'], fallback: 'INDEXED'),
+  );
+}
+
+ExamKnowledgeSource examKnowledgeSourceFromJson(Map<String, dynamic> json) {
+  return ExamKnowledgeSource(
+    documentId: parseNullableString(json['documentId']),
+    sourceId: parseString(json['sourceId']),
+    sourceType: parseString(json['sourceType'], fallback: 'COURSE'),
+    title: parseString(json['title']),
+    sectionTitle: parseNullableString(json['sectionTitle']),
+    trustTier: parseString(json['trustTier'], fallback: 'VERIFIED'),
+    startSeconds: parseNullableInt(json['startSeconds']),
+    slideNumber: parseNullableInt(json['slideNumber']),
+    snippet: parseString(json['snippet']),
+    allocatedQuestions: parseInt(json['allocatedQuestions']),
+    retrievalOrigin: parseString(
+      json['retrievalOrigin'],
+      fallback: 'COURSE_STRUCTURE',
+    ),
+  );
+}
+
+ExamSourceCoverageEntry examSourceCoverageEntryFromJson(
+  Map<String, dynamic> json,
+) {
+  return ExamSourceCoverageEntry(
+    sourceId: parseString(json['sourceId']),
+    documentId: parseNullableString(json['documentId']),
+    title: parseString(json['title']),
+    sourceType: parseString(json['sourceType'], fallback: 'COURSE'),
+    chapters: parseStringList(json['chapters']),
+    targetQuestions: parseInt(json['targetQuestions']),
+    charsIncluded: parseInt(json['charsIncluded']),
+    charsOriginal: parseInt(json['charsOriginal']),
+    trimmed: json['trimmed'] == true,
+  );
+}
+
+ExamCoverageReport? examCoverageReportFromJson(dynamic value) {
+  if (value is! Map<String, dynamic>) return null;
+  return ExamCoverageReport(
+    totalSources: parseInt(value['totalSources']),
+    coveredSources: parseInt(value['coveredSources']),
+    totalChapters: parseInt(value['totalChapters']),
+    coveredChapters: parseInt(value['coveredChapters']),
+    truncated: value['truncated'] == true,
+    warnings: parseStringList(value['warnings']),
+    distribution: asList(value['distribution'])
+        .map(asMap)
+        .map(examSourceCoverageEntryFromJson)
+        .toList(),
+  );
+}
+
 GeneratedExamPreview generatedPreviewFromJson(Map<String, dynamic> json) {
   return GeneratedExamPreview(
     title: parseString(json['title']),
@@ -198,6 +273,15 @@ GeneratedExamPreview generatedPreviewFromJson(Map<String, dynamic> json) {
         .map(asMap)
         .map(questionDraftFromJson)
         .toList(),
+    knowledgeSearchMode: parseNullableString(json['knowledgeSearchMode']),
+    knowledgeDegradedReason: parseNullableString(
+      json['knowledgeDegradedReason'],
+    ),
+    knowledgeSources: asList(json['knowledgeSources'])
+        .map(asMap)
+        .map(examKnowledgeSourceFromJson)
+        .toList(),
+    coverage: examCoverageReportFromJson(json['coverage']),
   );
 }
 

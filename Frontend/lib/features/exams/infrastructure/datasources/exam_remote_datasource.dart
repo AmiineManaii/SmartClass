@@ -84,6 +84,15 @@ class ExamRemoteDataSource {
     return _dataList(res);
   }
 
+  /// Authenticated teacher's indexed Knowledge Engine documents (e.g. recorded lectures).
+  Future<List<dynamic>> listTeacherKnowledgeDocuments({int limit = 50}) async {
+    final res = await _client.get<dynamic>(
+      '$_base/knowledge/documents',
+      queryParameters: <String, dynamic>{'page': 1, 'limit': limit},
+    );
+    return _dataList(res);
+  }
+
   Future<Map<String, dynamic>> generateWithAi(Map<String, dynamic> body) async {
     final res = await _client.post<dynamic>(
       '$_base/exams/ai/generate',

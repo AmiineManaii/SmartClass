@@ -1971,6 +1971,28 @@ const Map<String, String> _frTranslations = {
   'exam_ai_courses_error': 'Impossible de charger les cours de la classe.',
   'exam_ai_source_hint':
       'L\'IA utilise uniquement les cours publiés et validés que vous sélectionnez, et le modèle local requis.',
+  'exam_ai_chapters_label': 'Chapitres ciblés (optionnel)',
+  'exam_ai_focus_topics_label': 'Notions / thèmes ciblés (optionnel)',
+  'exam_ai_focus_topics_hint': 'Ex. Dijkstra, complexité, arbres couvrants',
+  'exam_ai_kb_label': 'Ressources complémentaires (séances vidéo, documents)',
+  'exam_ai_kb_empty':
+      'Aucune ressource indexée disponible dans votre base de connaissances.',
+  'exam_ai_kb_error':
+      'Impossible de charger votre base de connaissances.',
+  'exam_ai_kb_include_drafts': 'Inclure les brouillons IA non validés',
+  'exam_ai_kb_include_drafts_hint':
+      'Par défaut, seules les ressources vérifiées sont utilisées.',
+  'exam_ai_sources_required':
+      'Sélectionnez au moins un cours ou une ressource.',
+  'exam_ai_coverage_title': 'Couverture & sources de l\'examen IA',
+  'exam_ai_coverage_sources': '{covered}/{total} sources couvertes',
+  'exam_ai_coverage_chapters': '{covered}/{total} chapitres',
+  'exam_ai_coverage_truncated': 'Contenu condensé',
+  'exam_ai_coverage_degraded': 'Recherche vectorielle dégradée (mode lexical)',
+  'exam_ai_coverage_questions_target': '~{count} Q',
+  'exam_ai_coverage_view_extracts': 'Extraits utilisés ({count})',
+  'exam_ai_trust_verified': 'Vérifié',
+  'exam_ai_trust_draft': 'Brouillon IA',
   'exam_ai_model_name': 'Modèle : {model}',
   'exam_ai_model_used': 'Modèle local vérifié',
   'exam_import_preview_ready':
@@ -4102,6 +4124,28 @@ const Map<String, String> _enTranslations = {
   'exam_ai_courses_error': 'Could not load the class courses.',
   'exam_ai_source_hint':
       'The AI only uses the published and validated courses you select, and the required local model.',
+  'exam_ai_chapters_label': 'Targeted chapters (optional)',
+  'exam_ai_focus_topics_label': 'Key concepts / topics (optional)',
+  'exam_ai_focus_topics_hint': 'e.g. Dijkstra, complexity, spanning trees',
+  'exam_ai_kb_label': 'Knowledge Base resources (video lectures, docs)',
+  'exam_ai_kb_empty':
+      'No indexed resource available in your Knowledge Base.',
+  'exam_ai_kb_error':
+      'Could not load your Knowledge Base documents.',
+  'exam_ai_kb_include_drafts': 'Include unvalidated AI drafts',
+  'exam_ai_kb_include_drafts_hint':
+      'By default, only verified resources are used.',
+  'exam_ai_sources_required':
+      'Select at least one course or knowledge resource.',
+  'exam_ai_coverage_title': 'AI Exam Coverage & Sources',
+  'exam_ai_coverage_sources': '{covered}/{total} sources covered',
+  'exam_ai_coverage_chapters': '{covered}/{total} chapters',
+  'exam_ai_coverage_truncated': 'Condensed content',
+  'exam_ai_coverage_degraded': 'Vector search degraded (lexical fallback)',
+  'exam_ai_coverage_questions_target': '~{count} Q',
+  'exam_ai_coverage_view_extracts': 'Used excerpts ({count})',
+  'exam_ai_trust_verified': 'Verified',
+  'exam_ai_trust_draft': 'AI Draft',
   'exam_ai_model_name': 'Model: {model}',
   'exam_ai_model_used': 'Local model verified',
   'exam_import_preview_ready': 'Preview imported. Review before saving.',

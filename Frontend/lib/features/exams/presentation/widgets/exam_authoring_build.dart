@@ -61,6 +61,16 @@ extension _ExamAuthoringBuild on _ExamAuthoringPageState {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _detailsCard(context, theme),
+                  if (_coverageReport != null ||
+                      _knowledgeSources.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    ExamCoverageAttributionCard(
+                      sources: _knowledgeSources,
+                      coverage: _coverageReport,
+                      searchMode: _knowledgeSearchMode,
+                      degradedReason: _knowledgeDegradedReason,
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   _scheduleCard(context, theme),
                   const SizedBox(height: 16),
