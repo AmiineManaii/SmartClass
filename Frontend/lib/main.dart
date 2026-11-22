@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
 import 'app/app_providers.dart';
+import 'core/network/api_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,11 +20,15 @@ Future<void> main() async {
 
   final prefs = await SharedPreferences.getInstance();
   final hasSeenSplash = prefs.getBool('has_seen_splash') ?? false;
-  
+  final hasStoredSession =
+      (prefs.getString(ApiConfig.accessTokenKey)?.isNotEmpty ?? false) ||
+      (prefs.getString(ApiConfig.refreshTokenKey)?.isNotEmpty ?? false);
+
   runApp(
     ProviderScope(
       overrides: [
         hasSeenSplashProvider.overrideWith((ref) => hasSeenSplash),
+        hasStoredSessionProvider.overrideWith((ref) => hasStoredSession),
       ],
       child: const SmartClassApp(),
     ),

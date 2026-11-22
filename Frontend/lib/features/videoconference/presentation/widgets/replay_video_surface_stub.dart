@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+void enterBrowserFullscreen() {}
+
+void exitBrowserFullscreen() {}
+
 class ReplayVideoSurface extends StatelessWidget {
   final String videoUrl;
   final String posterUrl;
@@ -7,6 +11,8 @@ class ReplayVideoSurface extends StatelessWidget {
   final bool isPlaying;
   final double positionSeconds;
   final double playbackSpeed;
+  final double volume;
+  final bool isMuted;
   final ValueChanged<double>? onTimeUpdate;
   final ValueChanged<double>? onDurationDetected;
   final VoidCallback? onEnded;
@@ -19,6 +25,8 @@ class ReplayVideoSurface extends StatelessWidget {
     required this.isPlaying,
     required this.positionSeconds,
     required this.playbackSpeed,
+    this.volume = 1.0,
+    this.isMuted = false,
     this.onTimeUpdate,
     this.onDurationDetected,
     this.onEnded,
@@ -42,4 +50,3 @@ class ReplayVideoSurface extends StatelessWidget {
     );
   }
 }
-

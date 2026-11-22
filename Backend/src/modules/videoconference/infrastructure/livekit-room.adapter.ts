@@ -20,7 +20,10 @@ export class LiveKitRoomAdapter implements RoomServicePort {
   }) {
     const env = getEnv();
     const url = options?.url || env.LIVEKIT_URL || 'http://livekit:7880';
-    this.publicUrl = options?.publicUrl || env.LIVEKIT_PUBLIC_URL || 'ws://localhost:7880';
+    this.publicUrl =
+      options?.publicUrl ||
+      env.LIVEKIT_PUBLIC_URL ||
+      (env.HOST_IP ? `ws://${env.HOST_IP}:7880` : 'ws://localhost:7880');
     this.apiKey = options?.apiKey || env.LIVEKIT_API_KEY || 'devkey';
     this.apiSecret =
       options?.apiSecret ||

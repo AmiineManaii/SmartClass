@@ -72,3 +72,20 @@ final replaySpeedProvider =
 /// Subtitles toggle state.
 final replaySubtitlesEnabledProvider =
     StateProvider.family<bool, String>((ref, sessionId) => true);
+
+/// Replay audio volume (0.0 .. 1.0).
+final replayVolumeProvider =
+    StateProvider.family<double, String>((ref, sessionId) => 1.0);
+
+/// Replay mute state.
+final replayMutedProvider =
+    StateProvider.family<bool, String>((ref, sessionId) => false);
+
+/// Theater / Cinema expanded layout toggle per session.
+final replayTheaterModeProvider =
+    StateProvider.family<bool, String>((ref, sessionId) => false);
+
+/// Tracks whether the fullscreen Cinema overlay is currently open so the inline
+/// player doesn't play duplicate audio in the background.
+final replayFullscreenOpenProvider =
+    StateProvider.family<bool, String>((ref, sessionId) => false);

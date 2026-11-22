@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -454,11 +455,21 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
   String _resolveLiveKitUrl(String rawUrl) {
     try {
       final uri = Uri.parse(rawUrl);
-      if (uri.host == 'localhost' || uri.host == '127.0.0.1') {
-        final apiUri = Uri.parse(ApiConfig.baseUrl);
-        if (apiUri.host.isNotEmpty &&
-            apiUri.host != 'localhost' &&
-            apiUri.host != '127.0.0.1') {
+      final isRawIpv4 = RegExp(r'^\d{1,3}(\.\d{1,3}){3}$').hasMatch(uri.host);
+      final isLocalHost = uri.host == 'localhost' || uri.host == '127.0.0.1';
+
+      // On Web served via localhost/127.0.0.1, connect directly via loopback when
+      // the server advertised a raw LAN IP or localhost so DHCP changes never break Web.
+      if (kIsWeb &&
+          (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') &&
+          (isLocalHost || isRawIpv4)) {
+        return uri.replace(host: Uri.base.host).toString();
+      }
+
+      // Align localhost or stale raw IPv4 addresses with the active ApiConfig.baseUrl host.
+      final apiUri = Uri.parse(ApiConfig.baseUrl);
+      if (apiUri.host.isNotEmpty && apiUri.host != uri.host) {
+        if (isLocalHost || isRawIpv4) {
           return uri.replace(host: apiUri.host).toString();
         }
       }
@@ -809,6 +820,38 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
     );
   }
 
+  Future<dynamic> _stopRecordingFastWithFallback(String sessionId) async {
+    final recordingDs = _ref.read(recordingRemoteDataSourceProvider);
+    // 1. Stop browser speech & local backup instantly without uploading the large WebM file
+    final capture = await LiveSpeechRecorder.instance.stop(uploadMedia: false);
+    try {
+      // 2. Stop LiveKit Egress on the server (~1-3s; AI pipeline runs asynchronously in background)
+      final res = await recordingDs.stopRecording(
+        sessionId,
+        capturePayload: capture.toJson(),
+      );
+      LiveSpeechRecorder.instance.discardPendingBackup();
+      return res;
+    } catch (primaryErr) {
+      // 3. Fallback: Only if LiveKit Egress failed, upload the browser backup capture and retry once
+      debugPrint(
+        '[LiveRoomController] Primary stop failed ($primaryErr); uploading browser backup capture...',
+      );
+      final fallbackBase64 =
+          await LiveSpeechRecorder.instance.uploadPendingBackup();
+      final retryPayload = <String, dynamic>{
+        ...capture.toJson(),
+        'useFallbackCapture': true,
+        if (fallbackBase64 != null && fallbackBase64.isNotEmpty)
+          'mediaBase64': fallbackBase64,
+      };
+      return recordingDs.stopRecording(
+        sessionId,
+        capturePayload: retryPayload,
+      );
+    }
+  }
+
   Future<void> toggleRecording() async {
     final sessionId = state.session?.id;
     if (sessionId == null || !state.isHost || state.isRecordingBusy) return;
@@ -816,12 +859,8 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
     try {
       final recordingDs = _ref.read(recordingRemoteDataSourceProvider);
       if (state.isRecording) {
-        final capture = await LiveSpeechRecorder.instance.stop();
         try {
-          final res = await recordingDs.stopRecording(
-            sessionId,
-            capturePayload: capture.toJson(),
-          );
+          final res = await _stopRecordingFastWithFallback(sessionId);
           state = state.copyWith(
             isRecording: res.recordingStatus.isActiveRecording,
             isRecordingBusy: false,
@@ -879,13 +918,11 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
     final sessionId = state.session?.id;
     if (state.isHost && (state.isRecording || LiveSpeechRecorder.instance.isRecording)) {
       try {
-        final capture = await LiveSpeechRecorder.instance.stop();
         if (sessionId != null) {
-          final recordingDs = _ref.read(recordingRemoteDataSourceProvider);
-          await recordingDs.stopRecording(
-            sessionId,
-            capturePayload: capture.toJson(),
-          );
+          await _stopRecordingFastWithFallback(sessionId);
+        } else {
+          await LiveSpeechRecorder.instance.stop(uploadMedia: false);
+          LiveSpeechRecorder.instance.discardPendingBackup();
         }
       } catch (e) {
         debugPrint('[LiveRoomController] Auto-stop recording on leave error: $e');
@@ -900,30 +937,62 @@ class LiveRoomController extends StateNotifier<LiveRoomState> {
       } catch (_) {}
     }
     _ref.invalidate(nextSessionFeedProvider);
+    _ref.invalidate(videoSessionsProvider('live'));
+    _ref.invalidate(videoSessionsProvider('scheduled'));
+    _ref.invalidate(videoSessionsProvider('past'));
   }
 
-  Future<void> endRoomForEveryone() async {
-    if (state.session == null || !state.isHost) return;
-    final sessionId = state.session!.id;
+  Future<bool> endRoomForEveryone() async {
+    final sessionId = state.session?.id;
+    if (sessionId == null || !state.isHost) return false;
+
+    // 1. Stop any active recording cleanly BEFORE closing the LiveKit room
+    //    so Egress can finalize the MP4 and start AI analysis properly.
     if (state.isRecording || LiveSpeechRecorder.instance.isRecording) {
       try {
-        final capture = await LiveSpeechRecorder.instance.stop();
-        final recordingDs = _ref.read(recordingRemoteDataSourceProvider);
-        await recordingDs.stopRecording(
-          sessionId,
-          capturePayload: capture.toJson(),
-        );
+        await _stopRecordingFastWithFallback(sessionId);
       } catch (e) {
         debugPrint('[LiveRoomController] Auto-stop recording on end error: $e');
       }
     }
-    await WakelockPlus.disable().catchError((_) {});
-    await _roomPort.disconnect();
-    state = state.copyWith(connectionState: RoomConnectionState.endedByHost);
+
+    // 2. Terminate the session on the backend FIRST (marks COMPLETED, closes
+    //    LiveKit room for all participants, records participant leave times,
+    //    and broadcasts SSE session.ended).
+    bool endedOnServer = false;
     try {
       await _repository.endSession(sessionId);
-    } catch (_) {}
+      endedOnServer = true;
+    } catch (e) {
+      debugPrint('[LiveRoomController] endSession API error: $e');
+    }
+
+    // 3. Always release local media, wakelock, and disconnect from LiveKit.
+    await WakelockPlus.disable().catchError((_) {});
+    try {
+      await _roomPort.disconnect();
+    } catch (e) {
+      debugPrint('[LiveRoomController] disconnect on end error: $e');
+    }
+
+    if (mounted) {
+      state = state.copyWith(
+        connectionState: RoomConnectionState.endedByHost,
+        isScreenSharing: false,
+        isMicEnabled: false,
+        isCameraEnabled: false,
+        isRecording: false,
+      );
+    }
+
+    // 4. Refresh all videoconference tabs and dashboard banner immediately so
+    //    the ended session disappears from "En direct" and appears in "Historique".
     _ref.invalidate(nextSessionFeedProvider);
+    _ref.invalidate(videoSessionsProvider('live'));
+    _ref.invalidate(videoSessionsProvider('scheduled'));
+    _ref.invalidate(videoSessionsProvider('past'));
+
+    return endedOnServer;
   }
 
   @override

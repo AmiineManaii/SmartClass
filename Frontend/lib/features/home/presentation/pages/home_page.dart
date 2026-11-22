@@ -20,12 +20,27 @@ class HomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
-    final user = authState.value;
+    final user = authState.valueOrNull;
+
+    // While session restoration is running (or right before GoRouter redirects
+    // unauthenticated users to /login), never flash MissingRoleView ("Qui êtes-vous ?").
+    if (authState.isLoading || user == null || !user.isAuthenticated) {
+      return const Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 30,
+            height: 30,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+        ),
+      );
+    }
+
     // Backend is the source of truth for the role (TEACHER/STUDENT/ADMIN
     // lowercase in app). Null/empty means the onboarding role was never
     // persisted (legacy local-only flow) — send back to role-selection
     // instead of silently showing the student dashboard.
-    final role = user?.role;
+    final role = user.role;
 
     if (role == null || role.isEmpty) {
       return MissingRoleView(authState: authState);

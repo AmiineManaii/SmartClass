@@ -70,19 +70,56 @@ class VideoSessionsState {
 
 class VideoSessionsNotifier
     extends FamilyAsyncNotifier<VideoSessionsState, String> {
+  Timer? _processingPollTimer;
+
   @override
   Future<VideoSessionsState> build(String arg) async {
+    ref.onDispose(() {
+      _processingPollTimer?.cancel();
+      _processingPollTimer = null;
+    });
+
     // Listen to realtime events and auto-refresh this tab when relevant events occur
     ref.listen<AsyncValue<SessionEvent>>(liveEventsStreamProvider, (prev, next) {
       final event = next.valueOrNull;
       if (event == null) return;
-      // When resync or session lifecycle event occurs, refresh
-      if (event.type == 'resync' || event.type.startsWith('session.')) {
-        refresh();
+      // When resync, session, or recording lifecycle event occurs, refresh silently
+      if (event.type == 'resync' ||
+          event.type.startsWith('session.') ||
+          event.type.startsWith('recording.')) {
+        silentRefresh();
       }
     });
 
-    return _fetchPage(1);
+    final initial = await _fetchPage(1);
+    _syncProcessingPoller(initial);
+    return initial;
+  }
+
+  void _syncProcessingPoller(VideoSessionsState current) {
+    final hasProcessing =
+        (arg == 'past' || arg == 'ended') &&
+        current.sessions.any((s) => s.isAiProcessing);
+
+    if (hasProcessing) {
+      _processingPollTimer ??= Timer.periodic(
+        const Duration(seconds: 4),
+        (_) => silentRefresh(),
+      );
+    } else {
+      _processingPollTimer?.cancel();
+      _processingPollTimer = null;
+    }
+  }
+
+  Future<void> silentRefresh() async {
+    try {
+      final fresh = await _fetchPage(1);
+      _syncProcessingPoller(fresh);
+      state = AsyncValue.data(fresh);
+    } catch (_) {
+      // Keep existing state on transient background poll failure
+    }
   }
 
   Future<VideoSessionsState> _fetchPage(int page) async {
@@ -113,7 +150,11 @@ class VideoSessionsNotifier
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => _fetchPage(1));
+    final next = await AsyncValue.guard(() => _fetchPage(1));
+    if (next.hasValue) {
+      _syncProcessingPoller(next.requireValue);
+    }
+    state = next;
   }
 
   Future<void> loadMore() async {

@@ -2,6 +2,18 @@ export type VideoSessionStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CA
 
 export type SessionPhase = 'UPCOMING' | 'JOIN_OPEN' | 'LIVE' | 'ENDED' | 'CANCELED';
 
+export interface VideoSessionRecordingSummary {
+  status: string;
+  hasVideo: boolean;
+  hasLessonPackage: boolean;
+  errorCode: string | null;
+  errorMessage: string | null;
+  jobStatus: string | null;
+  jobStage: string | null;
+  jobProgress: number | null;
+  jobStartedAt: Date | null;
+}
+
 export interface VideoSession {
   id: string;
   classGroupId: string;
@@ -21,6 +33,7 @@ export interface VideoSession {
   timetableSlotId: string | null;
   courseId: string | null;
   cancelReason: string | null;
+  recordingSummary?: VideoSessionRecordingSummary | null;
   createdAt: Date;
   updatedAt: Date;
 }

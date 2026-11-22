@@ -34,6 +34,72 @@ enum VideoSessionStatus {
   }
 }
 
+class VideoSessionRecordingSummary extends Equatable {
+  final String status;
+  final bool hasVideo;
+  final bool hasLessonPackage;
+  final String? errorCode;
+  final String? errorMessage;
+  final String? jobStatus;
+  final String? jobStage;
+  final int? jobProgress;
+  final DateTime? jobStartedAt;
+
+  const VideoSessionRecordingSummary({
+    required this.status,
+    this.hasVideo = false,
+    this.hasLessonPackage = false,
+    this.errorCode,
+    this.errorMessage,
+    this.jobStatus,
+    this.jobStage,
+    this.jobProgress,
+    this.jobStartedAt,
+  });
+
+  bool get isProcessing =>
+      jobStatus == 'QUEUED' ||
+      jobStatus == 'RUNNING' ||
+      status == 'PROCESSING' ||
+      status == 'FINALIZING' ||
+      status == 'RECORDED' ||
+      status == 'STARTING' ||
+      status == 'RECORDING';
+
+  bool get isFailed => !isProcessing && (status == 'FAILED' || jobStatus == 'FAILED');
+
+  bool get isPublished => !isProcessing && !isFailed && status == 'PUBLISHED';
+
+  bool get isApproved => !isProcessing && !isFailed && status == 'APPROVED';
+
+  bool get isReadyForReview =>
+      !isProcessing &&
+      !isFailed &&
+      (status == 'READY_FOR_REVIEW' ||
+          status == 'APPROVED' ||
+          (hasLessonPackage && status != 'PUBLISHED'));
+
+  bool get hasNoRecording =>
+      !isProcessing &&
+      !isFailed &&
+      !isPublished &&
+      !isReadyForReview &&
+      (status == 'NOT_STARTED' || status == 'DELETED' || !hasVideo);
+
+  @override
+  List<Object?> get props => [
+        status,
+        hasVideo,
+        hasLessonPackage,
+        errorCode,
+        errorMessage,
+        jobStatus,
+        jobStage,
+        jobProgress,
+        jobStartedAt,
+      ];
+}
+
 class VideoSession extends Equatable {
   final String id;
   final String classGroupId;
@@ -56,6 +122,7 @@ class VideoSession extends Equatable {
   final DateTime updatedAt;
   final String? className;
   final int? participantCount;
+  final VideoSessionRecordingSummary? recordingSummary;
 
   const VideoSession({
     required this.id,
@@ -79,10 +146,13 @@ class VideoSession extends Equatable {
     required this.updatedAt,
     this.className,
     this.participantCount,
+    this.recordingSummary,
   });
 
   DateTime get joinOpensAt =>
       startsAt.subtract(Duration(minutes: joinOpensMinutesBefore));
+
+  bool get isAiProcessing => recordingSummary?.isProcessing ?? false;
 
   VideoSession copyWith({
     String? id,
@@ -106,6 +176,7 @@ class VideoSession extends Equatable {
     DateTime? updatedAt,
     String? className,
     int? participantCount,
+    VideoSessionRecordingSummary? recordingSummary,
   }) {
     return VideoSession(
       id: id ?? this.id,
@@ -130,6 +201,7 @@ class VideoSession extends Equatable {
       updatedAt: updatedAt ?? this.updatedAt,
       className: className ?? this.className,
       participantCount: participantCount ?? this.participantCount,
+      recordingSummary: recordingSummary ?? this.recordingSummary,
     );
   }
 
@@ -156,5 +228,6 @@ class VideoSession extends Equatable {
         updatedAt,
         className,
         participantCount,
+        recordingSummary,
       ];
 }

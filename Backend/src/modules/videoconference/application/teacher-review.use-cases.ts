@@ -341,8 +341,21 @@ export class RegenerateLessonSectionUseCase {
     }
 
     const transcript = await this.recordingRepository.getTranscript(recording.id);
-    const contextText = transcript?.fullText ?? existingPkg.structuredNotes;
+    const slideFrames = await this.recordingRepository.listSlideFrames(recording.id);
+    const slidesContext =
+      slideFrames.length > 0
+        ? `\nDiapositives extraites :\n${slideFrames
+            .map(
+              (f, idx) =>
+                `- [${f.timestampSeconds}s] Slide #${idx + 1}: ${f.ocrText} | ${f.visualSummary}`,
+            )
+            .join('\n')}`
+        : '';
+    const contextText = `${transcript?.fullText ?? existingPkg.structuredNotes}${slidesContext}`;
     const customHint = input.instructions ? `\nConsigne enseignant : ${input.instructions}` : '';
+    const outputLang = (transcript?.language ?? 'fr').toLowerCase().startsWith('en')
+      ? 'English'
+      : 'French';
 
     let generalSummary = existingPkg.generalSummary;
     let structuredNotes = existingPkg.structuredNotes;
@@ -352,7 +365,8 @@ export class RegenerateLessonSectionUseCase {
 
     const cleanAiEducationalText = (raw: string): string => {
       let cleaned = raw.trim();
-      const preambleRegex = /^(?:En tant que|Voici le r[eé]sum[eé]|Bonjour|Bienvenue|Je suis|En r[eé]ponse)[^\n]*\n+(?:\*{3,}|-{3,})?\s*/i;
+      const preambleRegex =
+        /^(?:En tant que|Voici le r[eé]sum[eé]|Bonjour|Bienvenue|Je suis|En r[eé]ponse|Here is|Sure,)[^\n]*\n+(?:\*{3,}|-{3,})?\s*/i;
       while (preambleRegex.test(cleaned)) {
         cleaned = cleaned.replace(preambleRegex, '').trim();
       }
@@ -361,17 +375,16 @@ export class RegenerateLessonSectionUseCase {
 
     if (input.section === 'summary') {
       try {
-        const res = await this.modelRouter.generateForRole('STUDENT_SUMMARY', {
-          systemPrompt:
-            'Tu es un professeur universitaire sur SmartClass. Régénère un résumé exécutif clair et structuré en français à partir du cours fourni. RÈGLE CRITIQUE: Ne commence JAMAIS par une formule d\'introduction ou méta (interdit d\'écrire "En tant que...", "Voici le résumé..."). Rentre DIRECTEMENT dans le sujet du cours.',
+        const res = await this.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
+          systemPrompt: `You are a university professor on SmartClass. Regenerate a clear, accurate 2-paragraph executive summary in ${outputLang} grounded in BOTH the spoken transcript and extracted slide frames. NEVER start with greetings or meta introductions.`,
           messages: [
             {
               role: 'user',
-              content: `Cours: ${session.title}\nTranscription:\n${contextText.slice(0, 2000)}${customHint}`,
+              content: `Course: ${session.title}\n${contextText.slice(0, 6000)}${customHint}`,
             },
           ],
-          temperature: 0.3,
-          maxTokens: 500,
+          temperature: 0.25,
+          maxTokens: 600,
         });
         if (res.content.trim().length > 40) {
           generalSummary = cleanAiEducationalText(res.content);
@@ -382,16 +395,15 @@ export class RegenerateLessonSectionUseCase {
     } else if (input.section === 'structuredNotes') {
       try {
         const res = await this.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
-          systemPrompt:
-            'Tu es un professeur universitaire sur SmartClass. Régénère des notes de cours complètes en Markdown avec titres, listes à puces et points de vigilance. RÈGLE CRITIQUE: Ne commence JAMAIS par une formule d\'introduction ou méta (interdit d\'écrire "En tant que...", "Voici les notes..."). Rentre DIRECTEMENT dans le premier titre ou paragraphe du cours.',
+          systemPrompt: `You are a university professor on SmartClass. Regenerate comprehensive Markdown lecture notes in ${outputLang} with headings, bullet points, slide details, and key takeaways grounded in BOTH the transcript and extracted slides. NEVER start with greetings or meta introductions.`,
           messages: [
             {
               role: 'user',
-              content: `Cours: ${session.title}\nTranscription:\n${contextText.slice(0, 2200)}${customHint}`,
+              content: `Course: ${session.title}\n${contextText.slice(0, 6000)}${customHint}`,
             },
           ],
-          temperature: 0.3,
-          maxTokens: 900,
+          temperature: 0.25,
+          maxTokens: 1400,
         });
         if (res.content.trim().length > 80) {
           structuredNotes = cleanAiEducationalText(res.content);
@@ -400,41 +412,172 @@ export class RegenerateLessonSectionUseCase {
         structuredNotes = `${existingPkg.structuredNotes}\n\n### Complément pédagogique\n${input.instructions || 'Approfondissement méthodologique ajouté.'}`;
       }
     } else if (input.section === 'mindMap') {
+      let generatedMap = '';
+      try {
+        const res = await this.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
+          systemPrompt: `Generate ONLY a valid Mermaid "flowchart TD" diagram in ${outputLang} summarizing the real topics from this lecture and its slides. Quote all node labels in ["..."], never use "mindmap", no prose or markdown fences.`,
+          messages: [
+            {
+              role: 'user',
+              content: `Course: ${session.title}\n${contextText.slice(0, 4500)}${customHint}`,
+            },
+          ],
+          temperature: 0.2,
+          maxTokens: 500,
+        });
+        const cleaned = res.content
+          .trim()
+          .replace(/^```(?:mermaid)?\s*/i, '')
+          .replace(/\s*```$/i, '')
+          .trim();
+        if (cleaned.startsWith('flowchart') && cleaned.includes('-->') && !cleaned.toLowerCase().includes('mindmap')) {
+          generatedMap = cleaned;
+        }
+      } catch {
+        // Fallback below
+      }
       const safeTitle = session.title.replace(/["[\]()]/g, '');
-      mindMapMermaid = [
-        'flowchart TD',
-        `  Root["${safeTitle}"] --> A["1. Fondements & Définitions"]`,
-        `  Root --> B["2. Architecture & Invariants"]`,
-        `  Root --> C["3. Cas Pratique & Démonstration"]`,
-        `  Root --> D["4. Synthèse & Auto-évaluation"]`,
-      ].join('\n');
+      mindMapMermaid =
+        generatedMap ||
+        [
+          'flowchart TD',
+          `  Root["${safeTitle}"] --> A["1. Fondements & Définitions"]`,
+          `  Root --> B["2. Architecture & Invariants"]`,
+          `  Root --> C["3. Cas Pratique & Démonstration"]`,
+          `  Root --> D["4. Synthèse & Auto-évaluation"]`,
+        ].join('\n');
     } else if (input.section === 'flashcards') {
-      flashcards.push({
-        id: `fc_${Date.now()}`,
-        front: `Point d'approfondissement : ${input.instructions || `Synthèse de ${session.title}`}`,
-        back: `Retenir l'articulation entre les hypothèses du chapitre 1, le modèle du chapitre 2 et la vérification finale du chapitre 3.`,
-        chapterTitle: 'Synthèse globale',
-        difficulty: 'moyen',
-        timestampSeconds: 0,
-      });
+      let added = false;
+      try {
+        const res = await this.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
+          systemPrompt: `Generate 2 new flashcards in ${outputLang} strictly grounded in the lecture transcript and slides. Return ONLY a JSON array: [{"front": "...", "back": "...", "chapterTitle": "...", "difficulty": "moyen", "timestampSeconds": 0}].`,
+          messages: [
+            {
+              role: 'user',
+              content: `Course: ${session.title}\n${contextText.slice(0, 5000)}${customHint}`,
+            },
+          ],
+          temperature: 0.3,
+          maxTokens: 500,
+        });
+        const raw = res.content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+        const s = raw.indexOf('[');
+        const e = raw.lastIndexOf(']');
+        if (s !== -1 && e > s) {
+          const parsed: unknown = JSON.parse(raw.slice(s, e + 1));
+          if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+              if (
+                typeof item === 'object' &&
+                item !== null &&
+                typeof (item as Record<string, unknown>).front === 'string' &&
+                typeof (item as Record<string, unknown>).back === 'string'
+              ) {
+                const rec = item as Record<string, unknown>;
+                flashcards.push({
+                  id: `fc_${Date.now()}_${flashcards.length + 1}`,
+                  front: String(rec.front).trim(),
+                  back: String(rec.back).trim(),
+                  chapterTitle:
+                    typeof rec.chapterTitle === 'string' ? rec.chapterTitle.trim() : session.title,
+                  difficulty: 'moyen',
+                  timestampSeconds:
+                    typeof rec.timestampSeconds === 'number' ? Math.round(rec.timestampSeconds) : 0,
+                });
+                added = true;
+              }
+            }
+          }
+        }
+      } catch {
+        // Fallback below
+      }
+      if (!added) {
+        flashcards.push({
+          id: `fc_${Date.now()}`,
+          front: `Point d'approfondissement : ${input.instructions || `Synthèse de ${session.title}`}`,
+          back: `Retenir l'articulation entre les hypothèses du chapitre 1, le modèle du chapitre 2 et la vérification finale du chapitre 3.`,
+          chapterTitle: 'Synthèse globale',
+          difficulty: 'moyen',
+          timestampSeconds: 0,
+        });
+      }
     } else if (input.section === 'quiz') {
-      quizzes.push({
-        id: `qz_${Date.now()}`,
-        type: 'MULTIPLE_CHOICE',
-        question: `Question complémentaire (${input.instructions || session.title}) : quelle approche garantit la fiabilité de la méthode ?`,
-        options: [
-          'Vérifier systématiquement les hypothèses et valider sur un cas concret',
-          'Ignorer les contraintes initiales',
-          'Omettre la vérification finale',
-          'Appliquer une formule aléatoire',
-        ],
-        correctAnswer: 'Vérifier systématiquement les hypothèses et valider sur un cas concret',
-        explanation:
-          'La rigueur méthodologique repose sur la validation des hypothèses et le contrôle final.',
-        difficulty: 'moyen',
-        chapterTitle: 'Synthèse globale',
-        timestampSeconds: 0,
-      });
+      let added = false;
+      try {
+        const res = await this.modelRouter.generateForRole('LESSON_PACKAGE_GENERATION', {
+          systemPrompt: `Generate 2 new quiz questions in ${outputLang} strictly grounded in the lecture transcript and slides. Return ONLY a JSON array: [{"type": "MULTIPLE_CHOICE", "question": "...", "options": ["A", "B", "C", "D"], "correctAnswer": "A", "explanation": "...", "difficulty": "moyen", "chapterTitle": "...", "timestampSeconds": 0}]. correctAnswer MUST exactly match one of options.`,
+          messages: [
+            {
+              role: 'user',
+              content: `Course: ${session.title}\n${contextText.slice(0, 5000)}${customHint}`,
+            },
+          ],
+          temperature: 0.3,
+          maxTokens: 700,
+        });
+        const raw = res.content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+        const s = raw.indexOf('[');
+        const e = raw.lastIndexOf(']');
+        if (s !== -1 && e > s) {
+          const parsed: unknown = JSON.parse(raw.slice(s, e + 1));
+          if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+              if (typeof item === 'object' && item !== null) {
+                const rec = item as Record<string, unknown>;
+                const opts = Array.isArray(rec.options)
+                  ? rec.options.map((o) => String(o).trim()).filter(Boolean)
+                  : [];
+                const qText = typeof rec.question === 'string' ? rec.question.trim() : '';
+                const ans = typeof rec.correctAnswer === 'string' ? rec.correctAnswer.trim() : '';
+                const matched = opts.find((o) => o.toLowerCase() === ans.toLowerCase()) ?? opts[0];
+                if (qText.length > 8 && opts.length >= 2 && matched) {
+                  quizzes.push({
+                    id: `qz_${Date.now()}_${quizzes.length + 1}`,
+                    type: 'MULTIPLE_CHOICE',
+                    question: qText,
+                    options: opts,
+                    correctAnswer: matched,
+                    explanation:
+                      typeof rec.explanation === 'string' ? rec.explanation.trim() : session.title,
+                    difficulty: 'moyen',
+                    chapterTitle:
+                      typeof rec.chapterTitle === 'string'
+                        ? rec.chapterTitle.trim()
+                        : session.title,
+                    timestampSeconds:
+                      typeof rec.timestampSeconds === 'number'
+                        ? Math.round(rec.timestampSeconds)
+                        : 0,
+                  });
+                  added = true;
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // Fallback below
+      }
+      if (!added) {
+        quizzes.push({
+          id: `qz_${Date.now()}`,
+          type: 'MULTIPLE_CHOICE',
+          question: `Question complémentaire (${input.instructions || session.title}) : quelle approche garantit la fiabilité de la méthode ?`,
+          options: [
+            'Vérifier systématiquement les hypothèses et valider sur un cas concret',
+            'Ignorer les contraintes initiales',
+            'Omettre la vérification finale',
+            'Appliquer une formule aléatoire',
+          ],
+          correctAnswer: 'Vérifier systématiquement les hypothèses et valider sur un cas concret',
+          explanation:
+            'La rigueur méthodologique repose sur la validation des hypothèses et le contrôle final.',
+          difficulty: 'moyen',
+          chapterTitle: 'Synthèse globale',
+          timestampSeconds: 0,
+        });
+      }
     }
 
     const nextVersion = existingPkg.version + 1;

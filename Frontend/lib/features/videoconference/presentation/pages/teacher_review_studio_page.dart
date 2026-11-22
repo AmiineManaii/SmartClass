@@ -40,6 +40,7 @@ class _TeacherReviewStudioPageState extends ConsumerState<TeacherReviewStudioPag
   List<TranscriptSegmentEntity> _editedSegments = [];
   bool _hasTranscriptEdits = false;
   bool _isBusy = false;
+  bool _wasProcessing = false;
   Timer? _pollTimer;
 
   @override
@@ -62,12 +63,16 @@ class _TeacherReviewStudioPageState extends ConsumerState<TeacherReviewStudioPag
 
   void _setupPollingIfNeeded(TeacherReviewWorkspaceEntity workspace) {
     final latestJob = workspace.jobs.isNotEmpty ? workspace.jobs.first : null;
-    final isProcessing = workspace.recording?.status == 'PROCESSING' ||
-        latestJob?.status == 'RUNNING' ||
-        (workspace.recording?.status != 'FAILED' &&
+    final recStatus = workspace.recording?.status ?? '';
+    final isFailed = recStatus == 'FAILED' || (latestJob?.isFailed ?? false);
+    final isProcessing = !isFailed &&
+        (recStatus == 'PROCESSING' ||
+            recStatus == 'RECORDED' ||
+            (latestJob?.isActive ?? false) ||
             workspace.lessonPackage == null);
     if (isProcessing) {
-      _pollTimer ??= Timer.periodic(const Duration(seconds: 3), (_) {
+      _wasProcessing = true;
+      _pollTimer ??= Timer.periodic(const Duration(milliseconds: 2500), (_) {
         if (!mounted) return;
         ref.invalidate(teacherReviewWorkspaceProvider(widget.sessionId));
       });
@@ -76,6 +81,27 @@ class _TeacherReviewStudioPageState extends ConsumerState<TeacherReviewStudioPag
         _pollTimer?.cancel();
         _pollTimer = null;
         _initializedPackageId = null;
+      }
+      if (_wasProcessing) {
+        _wasProcessing = false;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (isFailed) {
+            SmartToast.error(
+              context,
+              latestJob?.errorMessage ??
+                  workspace.recording?.errorMessage ??
+                  'L\'analyse IA a échoué.',
+              title: 'Analyse IA interrompue',
+            );
+          } else if (workspace.lessonPackage != null) {
+            SmartToast.success(
+              context,
+              'Analyse IA terminée ! Le résumé, les diapositives, les flashcards et le quiz sont prêts pour révision.',
+              title: 'Studio IA prêt',
+            );
+          }
+        });
       }
     }
   }
@@ -267,8 +293,19 @@ class _TeacherReviewStudioPageState extends ConsumerState<TeacherReviewStudioPag
           final pkg = workspace.lessonPackage;
           final latestJob =
               workspace.jobs.isNotEmpty ? workspace.jobs.first : null;
-          final isProcessing = workspace.recording?.status == 'PROCESSING' ||
-              latestJob?.status == 'RUNNING';
+          final recStatus = workspace.recording?.status ?? '';
+          final isFailed =
+              recStatus == 'FAILED' || (latestJob?.isFailed ?? false);
+          final isProcessing = !isFailed &&
+              (recStatus == 'PROCESSING' ||
+                  recStatus == 'RECORDED' ||
+                  (latestJob?.isActive ?? false));
+          final failedMsg = latestJob?.errorMessage ??
+              workspace.recording?.errorMessage ??
+              'L\'analyse IA a échoué. Vérifiez qu\'Ollama est démarré puis relancez l\'analyse.';
+
+          final isTheater =
+              ref.watch(replayTheaterModeProvider(widget.sessionId));
 
           return Column(
             children: [
@@ -283,8 +320,14 @@ class _TeacherReviewStudioPageState extends ConsumerState<TeacherReviewStudioPag
                 onPublish: () => _runStatusAction('publish'),
                 onUnpublish: () => _runStatusAction('unpublish'),
               ),
-              if (isProcessing)
+              if (isProcessing && pkg != null)
                 TeacherReviewActiveProcessingBanner(workspace: workspace),
+              if (isFailed && pkg != null)
+                TeacherReviewFailedBanner(
+                  errorMessage: failedMsg,
+                  isBusy: _isBusy,
+                  onRetry: () => _runStatusAction('retry'),
+                ),
               Expanded(
                 child: pkg == null
                     ? TeacherReviewEmptyPipelineState(
@@ -292,16 +335,35 @@ class _TeacherReviewStudioPageState extends ConsumerState<TeacherReviewStudioPag
                         isBusy: _isBusy,
                         onRetry: () => _runStatusAction('retry'),
                       )
-                    : isWide
-                        ? Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                    : (isWide && isTheater)
+                        ? ListView(
+                            padding: EdgeInsets.zero,
                             children: [
-                              SizedBox(
-                                width: 480,
-                                child: _buildLeftStagePane(theme, workspace),
+                              Container(
+                                color: const Color(0xFF060A14),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 16,
+                                ),
+                                child: Center(
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 1120,
+                                    ),
+                                    child: InteractiveReplayPlayer(
+                                      sessionId: widget.sessionId,
+                                      sessionTitle: workspace.sessionTitle,
+                                      recording: workspace.recording,
+                                      transcript: workspace.transcript,
+                                      chapters: pkg.chapters,
+                                      slides: workspace.slides,
+                                      enableTheaterToggle: true,
+                                    ),
+                                  ),
+                                ),
                               ),
-                              const VerticalDivider(width: 1),
-                              Expanded(
+                              SizedBox(
+                                height: 680,
                                 child: TeacherReviewTabsView(
                                   sessionId: widget.sessionId,
                                   tabController: _tabController,
@@ -324,34 +386,66 @@ class _TeacherReviewStudioPageState extends ConsumerState<TeacherReviewStudioPag
                               ),
                             ],
                           )
-                        : ListView(
-                            children: [
-                              _buildLeftStagePane(theme, workspace),
-                              const Divider(height: 1),
-                              SizedBox(
-                                height: 600,
-                                child: TeacherReviewTabsView(
-                                  sessionId: widget.sessionId,
-                                  tabController: _tabController,
-                                  workspace: workspace,
-                                  titleCtrl: _titleCtrl,
-                                  shortSummaryCtrl: _shortSummaryCtrl,
-                                  detailedSummaryCtrl: _detailedSummaryCtrl,
-                                  markdownCtrl: _markdownCtrl,
-                                  mindmapCtrl: _mindmapCtrl,
-                                  editedSegments: _editedSegments,
-                                  isBusy: _isBusy,
-                                  onRegenerateSection: _regenerateSection,
-                                  onSegmentEdited: (idx, updated) {
-                                    setState(() {
-                                      _editedSegments[idx] = updated;
-                                      _hasTranscriptEdits = true;
-                                    });
-                                  },
-                                ),
+                        : isWide
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  SizedBox(
+                                    width: 480,
+                                    child: _buildLeftStagePane(theme, workspace),
+                                  ),
+                                  const VerticalDivider(width: 1),
+                                  Expanded(
+                                    child: TeacherReviewTabsView(
+                                      sessionId: widget.sessionId,
+                                      tabController: _tabController,
+                                      workspace: workspace,
+                                      titleCtrl: _titleCtrl,
+                                      shortSummaryCtrl: _shortSummaryCtrl,
+                                      detailedSummaryCtrl: _detailedSummaryCtrl,
+                                      markdownCtrl: _markdownCtrl,
+                                      mindmapCtrl: _mindmapCtrl,
+                                      editedSegments: _editedSegments,
+                                      isBusy: _isBusy,
+                                      onRegenerateSection: _regenerateSection,
+                                      onSegmentEdited: (idx, updated) {
+                                        setState(() {
+                                          _editedSegments[idx] = updated;
+                                          _hasTranscriptEdits = true;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : ListView(
+                                children: [
+                                  _buildLeftStagePane(theme, workspace),
+                                  const Divider(height: 1),
+                                  SizedBox(
+                                    height: 600,
+                                    child: TeacherReviewTabsView(
+                                      sessionId: widget.sessionId,
+                                      tabController: _tabController,
+                                      workspace: workspace,
+                                      titleCtrl: _titleCtrl,
+                                      shortSummaryCtrl: _shortSummaryCtrl,
+                                      detailedSummaryCtrl: _detailedSummaryCtrl,
+                                      markdownCtrl: _markdownCtrl,
+                                      mindmapCtrl: _mindmapCtrl,
+                                      editedSegments: _editedSegments,
+                                      isBusy: _isBusy,
+                                      onRegenerateSection: _regenerateSection,
+                                      onSegmentEdited: (idx, updated) {
+                                        setState(() {
+                                          _editedSegments[idx] = updated;
+                                          _hasTranscriptEdits = true;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
               ),
             ],
           );
@@ -483,6 +577,7 @@ class _TeacherReviewStudioPageState extends ConsumerState<TeacherReviewStudioPag
           transcript: workspace.transcript,
           chapters: pkg.chapters,
           slides: workspace.slides,
+          enableTheaterToggle: true,
         ),
         const SizedBox(height: 14),
         TeacherReviewChapterTimeline(

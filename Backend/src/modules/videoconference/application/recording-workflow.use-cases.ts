@@ -225,6 +225,7 @@ export class StopRecordingUseCase {
         }>;
         mediaBase64?: string;
         mimeType?: string;
+        useFallbackCapture?: boolean;
       };
     },
   ): Promise<RecordingOverviewDto> {
@@ -252,8 +253,12 @@ export class StopRecordingUseCase {
       await this.mediaWorker.saveLiveCaptureHints(session.id, options.capturePayload);
     }
 
-    // Idempotent if already stopped/processing/ready
-    if (!canStopRecording(existing.status)) {
+    const isFailedFallbackRecovery =
+      existing.status === 'FAILED' &&
+      Boolean(options?.capturePayload?.useFallbackCapture || options?.capturePayload?.mediaBase64);
+
+    // Idempotent if already stopped/processing/ready (except explicit browser-backup recovery after Egress failure)
+    if (!canStopRecording(existing.status) && !isFailedFallbackRecovery) {
       const latestJob = await this.recordingRepository.findLatestJobByRecordingId(existing.id);
       return toRecordingOverviewDto(existing, latestJob);
     }
@@ -262,7 +267,9 @@ export class StopRecordingUseCase {
     let stopResult;
     try {
       stopResult = await this.egressService.stopRoomRecording({
-        egressId: existing.egressId ?? `egress_local_${session.id}`,
+        egressId: isFailedFallbackRecovery
+          ? `egress_local_${session.id}`
+          : (existing.egressId ?? `egress_local_${session.id}`),
         storageKey,
         startedAt: existing.startedAt,
         sessionTitle: session.title,

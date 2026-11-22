@@ -31,8 +31,12 @@ class LiveSpeechRecorder {
     _preferredLanguage = language;
   }
 
-  Future<LiveRecordingCaptureResult> stop() async {
+  Future<LiveRecordingCaptureResult> stop({bool uploadMedia = false}) async {
     _isRecording = false;
     return LiveRecordingCaptureResult(detectedLanguage: _preferredLanguage);
   }
+
+  Future<String?> uploadPendingBackup() async => null;
+
+  void discardPendingBackup() {}
 }

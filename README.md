@@ -224,6 +224,33 @@ flutter run -d windows
 
 ---
 
+## 🔐 Demo Accounts & Role Credentials
+
+The database is pre-seeded with active, verified accounts for every portal and role:
+
+| Role | Portal / Purpose | Email | Password | Name | Status |
+|---|---|---|---|---|---|
+| **ADMIN** | Administration & Governance Dashboard | `admin@smartclass.com` | `Admin123!` | Admin SmartClass | Active • Verified |
+| **ADMIN** | Local Admin Fallback | `admin@smartclass.local` | `Admin123!` | Admin SmartClass | Active • Verified |
+| **TEACHER** | Course Studio, Live Sessions & Grading | `teacher@smartclass.com` | `Teacher123!` | Teacher SmartClass | Active • Approved |
+| **TEACHER** | University Faculty (Informatique) | `amine.mansouri@univ-smartclass.fr` | `Teacher123!` | Pr. Amine Mansouri | Active • Approved |
+| **TEACHER** | University Faculty (Réseaux) | `laurent.valette@univ-smartclass.fr` | `Teacher123!` | Pr. Laurent Valette | Active • Approved |
+| **STUDENT** | Learning Lab, AI Tutor & Anti-Fraud Exams | `student@smartclass.com` | `Student123!` | Student SmartClass | Active • Verified |
+| **STUDENT** | Class Student Member (Informatique 3A) | `salma.idrissi@univ-smartclass.fr` | `Student123!` | Salma Idrissi | Active • Verified |
+| **STUDENT** | Class Student Member (Informatique 3A) | `karim.bennani@univ-smartclass.fr` | `Student123!` | Karim Bennani | Active • Verified |
+| **STUDENT** | Class Student Member (Informatique 3A) | `yasmine.belkacem@univ-smartclass.fr` | `Student123!` | Yasmine Belkacem | Active • Verified |
+
+> **💡 How to re-seed or refresh accounts**:
+> ```bash
+> # From Docker container
+> docker exec smartclass-api npm run db:seed
+>
+> # Or locally from Backend directory
+> cd Backend && npm run db:seed
+> ```
+
+---
+
 ## 📡 API Contracts & Documentation
 
 SmartClass adheres to a **Contract-First API design pattern**. The Flutter client integrates directly against versioned OpenAPI specifications:

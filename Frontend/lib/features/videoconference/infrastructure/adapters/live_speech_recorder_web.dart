@@ -30,6 +30,10 @@ class LiveSpeechRecorder {
   final List<html.Blob> _mediaChunks = [];
   final List<html.MediaStream> _activeStreams = [];
   String _recordedMimeType = 'video/webm';
+  html.Blob? _pendingBackupBlob;
+  String? _pendingSessionId;
+  String? _pendingAuthToken;
+  String? _pendingBackendUrl;
 
   // Canvas Compositor for Zoom/Teams Meeting Recording
   html.CanvasElement? _canvas;
@@ -512,7 +516,7 @@ class LiveSpeechRecorder {
     }
   }
 
-  Future<LiveRecordingCaptureResult> stop() async {
+  Future<LiveRecordingCaptureResult> stop({bool uploadMedia = false}) async {
     _isRecording = false;
     _renderTimer?.cancel();
     _renderTimer = null;
@@ -532,7 +536,7 @@ class LiveSpeechRecorder {
         });
         _mediaRecorder!.stop();
         await completer.future.timeout(
-          const Duration(seconds: 4),
+          const Duration(seconds: 2),
           onTimeout: () {},
         );
       }
@@ -563,55 +567,21 @@ class LiveSpeechRecorder {
     _canvas = null;
     _ctx = null;
 
-    String? mediaBase64;
-    // Direct binary upload to backend
-    if (_mediaChunks.isNotEmpty && _sessionId != null && _backendUrl != null) {
-      try {
-        final fullBlob = html.Blob(_mediaChunks, _recordedMimeType);
-        debugPrint(
-          '[LiveSpeechRecorder] Uploading recorded blob (${fullBlob.size} bytes) to backend...',
-        );
-        if (fullBlob.size > 500) {
-          final uploadUrl =
-              '$_backendUrl/api/v1/videoconference/sessions/$_sessionId/recording/media';
-          final req = html.HttpRequest();
-          req.open('POST', uploadUrl);
-          if (_authToken != null && _authToken!.isNotEmpty) {
-            req.setRequestHeader('Authorization', 'Bearer $_authToken');
-          }
-          req.setRequestHeader('Content-Type', _recordedMimeType);
-
-          final completer = Completer<void>();
-          req.onLoadEnd.listen((_) {
-            debugPrint(
-              '[LiveSpeechRecorder] Media upload finished with status ${req.status}',
-            );
-            if (!completer.isCompleted) completer.complete();
-          });
-          req.onError.listen((e) {
-            debugPrint('[LiveSpeechRecorder] Media upload error: $e');
-            if (!completer.isCompleted) completer.complete();
-          });
-
-          req.send(fullBlob);
-          await completer.future.timeout(
-            const Duration(seconds: 45),
-            onTimeout: () {
-              debugPrint('[LiveSpeechRecorder] Media upload timed out after 45s');
-            },
-          );
-
-          if (fullBlob.size <= 30 * 1024 * 1024) {
-            mediaBase64 = await _blobToBase64(fullBlob);
-          }
-        }
-      } catch (e) {
-        debugPrint('[LiveSpeechRecorder] Blob direct upload failed: $e');
-      }
-    }
+    // Keep finalized backup blob in memory without blocking stop; upload ONLY if LiveKit Egress fails.
+    _pendingBackupBlob = _mediaChunks.isNotEmpty
+        ? html.Blob(_mediaChunks, _recordedMimeType)
+        : null;
+    _pendingSessionId = _sessionId;
+    _pendingAuthToken = _authToken;
+    _pendingBackendUrl = _backendUrl;
 
     _mediaRecorder = null;
     _mediaChunks.clear();
+
+    String? mediaBase64;
+    if (uploadMedia) {
+      mediaBase64 = await uploadPendingBackup();
+    }
 
     final fullText = _segments.map((s) => s.text).join(' ').trim();
     return LiveRecordingCaptureResult(
@@ -621,6 +591,70 @@ class LiveSpeechRecorder {
       mediaBase64: mediaBase64,
       mimeType: _recordedMimeType,
     );
+  }
+
+  /// Uploads the browser backup blob to `/recording/media` only when LiveKit Egress
+  /// failed to finalize `lecture.mp4`. Returns base64 only if the direct upload failed.
+  Future<String?> uploadPendingBackup() async {
+    final blob = _pendingBackupBlob;
+    final sessionId = _pendingSessionId;
+    final backendUrl = _pendingBackendUrl;
+    final authToken = _pendingAuthToken;
+    discardPendingBackup();
+
+    if (blob == null || blob.size <= 500 || sessionId == null || backendUrl == null) {
+      return null;
+    }
+
+    bool directUploadOk = false;
+    try {
+      debugPrint(
+        '[LiveSpeechRecorder] Uploading backup blob (${blob.size} bytes) to backend...',
+      );
+      final uploadUrl =
+          '$backendUrl/api/v1/videoconference/sessions/$sessionId/recording/media';
+      final req = html.HttpRequest();
+      req.open('POST', uploadUrl);
+      if (authToken != null && authToken.isNotEmpty) {
+        req.setRequestHeader('Authorization', 'Bearer $authToken');
+      }
+      req.setRequestHeader('Content-Type', _recordedMimeType);
+
+      final completer = Completer<void>();
+      req.onLoadEnd.listen((_) {
+        directUploadOk = req.status != null && req.status! >= 200 && req.status! < 300;
+        debugPrint(
+          '[LiveSpeechRecorder] Backup upload finished with status ${req.status}',
+        );
+        if (!completer.isCompleted) completer.complete();
+      });
+      req.onError.listen((e) {
+        debugPrint('[LiveSpeechRecorder] Backup upload error: $e');
+        if (!completer.isCompleted) completer.complete();
+      });
+
+      req.send(blob);
+      await completer.future.timeout(
+        const Duration(seconds: 60),
+        onTimeout: () {
+          debugPrint('[LiveSpeechRecorder] Backup upload timed out after 60s');
+        },
+      );
+    } catch (e) {
+      debugPrint('[LiveSpeechRecorder] Blob direct upload failed: $e');
+    }
+
+    if (!directUploadOk && blob.size <= 30 * 1024 * 1024) {
+      return _blobToBase64(blob);
+    }
+    return null;
+  }
+
+  void discardPendingBackup() {
+    _pendingBackupBlob = null;
+    _pendingSessionId = null;
+    _pendingAuthToken = null;
+    _pendingBackendUrl = null;
   }
 
   Future<String?> _blobToBase64(html.Blob blob) async {

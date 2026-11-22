@@ -57,9 +57,9 @@ services:
     image: livekit/livekit-server:v1.13.10
     container_name: smartclass-livekit
     restart: unless-stopped
-    command: --config /etc/livekit.yaml --node-ip ${LIVEKIT_NODE_IP:-192.168.100.107}
+    command: --config /etc/livekit.yaml --node-ip ${HOST_IP:-127.0.0.1}
     environment:
-      - NODE_IP=${LIVEKIT_NODE_IP:-192.168.100.107}
+      - NODE_IP=${HOST_IP:-127.0.0.1}
     ports:
       - "7880:7880"
       - "7881:7881"
@@ -106,6 +106,7 @@ services:
       - ASR_MODEL_SIZE=${ASR_MODEL_SIZE:-tiny}
       - ASR_DEVICE=${ASR_DEVICE:-auto}
       - ASR_COMPUTE_TYPE=${ASR_COMPUTE_TYPE:-auto}
+      - HF_HUB_DISABLE_XET=1
 
   api:
     build:
@@ -120,6 +121,8 @@ services:
       - /app/node_modules
       - ${STORAGE_HOST_PATH:-C:/SmartClassStorage}:/var/lib/smartclass-storage
     environment:
+      - HOST_IP=${HOST_IP:-localhost}
+      - LIVEKIT_PUBLIC_URL=${LIVEKIT_PUBLIC_URL:-ws://${HOST_IP:-localhost}:7880}
       - STORAGE_DRIVER=${STORAGE_DRIVER:-local}
       - STORAGE_LOCAL_ROOT=${STORAGE_LOCAL_ROOT:-/var/lib/smartclass-storage}
       - ASR_BASE_URL=${ASR_BASE_URL:-http://asr:8000}
@@ -136,7 +139,7 @@ services:
       searxng:
         condition: service_started
     command: >
-      sh -c "(which ffmpeg >/dev/null 2>&1 || (apt-get update -y && apt-get install -y ffmpeg fonts-dejavu-core)) && mkdir -p /var/lib/smartclass-storage/recordings && chmod -R 2775 /var/lib/smartclass-storage && npm install && npx prisma generate && npx prisma migrate deploy && npm run dev"
+      sh -c "(which ffmpeg >/dev/null 2>&1 || (apt-get update -y && apt-get install -y ffmpeg fonts-dejavu-core)) && mkdir -p /var/lib/smartclass-storage/recordings && chmod -R 777 /var/lib/smartclass-storage && npm install && npx prisma generate && npx prisma db push --accept-data-loss && npm run dev"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health/live').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 5s

@@ -69,14 +69,18 @@ final authRefreshProvider = Provider<AuthRefreshNotifier>((ref) {
 });
 
 final hasSeenSplashProvider = StateProvider<bool>((ref) => false);
+final hasStoredSessionProvider = StateProvider<bool>((ref) => false);
 final pendingEmailProvider = StateProvider<String?>((ref) => null);
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ref.watch(authRefreshProvider);
   final hasSeenSplash = ref.watch(hasSeenSplashProvider);
+  final hasStoredSession = ref.read(hasStoredSessionProvider);
 
   return GoRouter(
-    initialLocation: hasSeenSplash ? '/home' : '/splash',
+    initialLocation: !hasSeenSplash
+        ? '/splash'
+        : (hasStoredSession ? '/home' : '/login'),
     debugLogDiagnostics: true,
     refreshListenable: refresh,
     redirect: (context, state) {
@@ -479,8 +483,29 @@ class MainScaffold extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authAsync = ref.watch(authStateProvider);
+    final auth = authAsync.valueOrNull;
+
+    // Never flash the Student portal shell or MissingRoleView ("Qui êtes-vous ?")
+    // while session restoration is still in progress or before GoRouter redirects
+    // an unauthenticated user to /login.
+    if (authAsync.isLoading || auth == null || !auth.isAuthenticated) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return Scaffold(
+        backgroundColor:
+            isDark ? const Color(0xFF090E17) : const Color(0xFFF8FAFC),
+        body: const Center(
+          child: SizedBox(
+            width: 32,
+            height: 32,
+            child: CircularProgressIndicator(strokeWidth: 2.6),
+          ),
+        ),
+      );
+    }
+
     final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
-    final role = ref.watch(authStateProvider).valueOrNull?.role;
+    final role = auth.role;
 
     if (isDesktop) {
       return WebMainScaffold(body: child, role: role);
@@ -992,30 +1017,42 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
 
   Future<void> _restoreSession() async {
     final tokens = _ref.read(tokenStorageProvider);
+    final accessToken = await tokens.readAccessToken();
     final refreshToken = await tokens.readRefreshToken();
 
-    // 1. First attempt: validate active session using current tokens / cookies
-    try {
-      final user = await _repo.getMe();
-      final profile = await tokens.readAcademicProfile(
-        user.id.isNotEmpty ? user.id : user.email,
-      );
-      _emit(
-        AsyncValue.data(
-          _fromUser(
-            user,
-            authenticated: true,
-            institution: profile['institution'],
-            faculty: profile['faculty'],
-            major: profile['major'],
-            studentId: profile['studentId'],
-            bio: profile['bio'],
-          ),
-        ),
-      );
+    // Fast path: if no tokens are stored locally at all, don't block startup
+    // on a guaranteed 401 network call — go straight to unauthenticated state.
+    if ((accessToken == null || accessToken.isEmpty) &&
+        (refreshToken == null || refreshToken.isEmpty)) {
+      _emit(const AsyncValue.data(AuthState()), forceNotifyRouter: true);
       return;
-    } catch (_) {
-      // Access token may be expired or absent; proceed to refresh if available
+    }
+
+    // 1. First attempt: validate active session using current access token
+    if (accessToken != null && accessToken.isNotEmpty) {
+      try {
+        final user = await _repo.getMe();
+        final profile = await tokens.readAcademicProfile(
+          user.id.isNotEmpty ? user.id : user.email,
+        );
+        _emit(
+          AsyncValue.data(
+            _fromUser(
+              user,
+              authenticated: true,
+              institution: profile['institution'],
+              faculty: profile['faculty'],
+              major: profile['major'],
+              studentId: profile['studentId'],
+              bio: profile['bio'],
+            ),
+          ),
+          forceNotifyRouter: true,
+        );
+        return;
+      } catch (_) {
+        // Access token may be expired; proceed to refresh if available
+      }
     }
 
     // 2. Second attempt: rotate session using refresh token if present
@@ -1038,6 +1075,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
               bio: profile['bio'],
             ),
           ),
+          forceNotifyRouter: true,
         );
         return;
       } catch (_) {
@@ -1047,7 +1085,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     }
 
     // 3. No valid session found
-    _emit(const AsyncValue.data(AuthState()));
+    _emit(const AsyncValue.data(AuthState()), forceNotifyRouter: true);
   }
 
   /// Called by [ApiClient] when the session can no longer be refreshed.

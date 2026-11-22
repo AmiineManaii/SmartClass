@@ -1,19 +1,29 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Central configuration for the SmartClass backend API.
 ///
 /// Mirrors `Backend/.env.example` (PORT=3000) and `contracts/README.md`:
 /// modules live under `/api/v1`, health probes at the root `/health/*`.
-/// The base URL is read from the app `.env` (`API_BASE_URL`) and can be
-/// overridden at build time: `flutter run --dart-define=API_BASE_URL=...`
+/// The base URL is read from the app `.env` (`API_BASE_URL` or `HOST_IP`) and
+/// can be overridden at build time: `flutter run --dart-define=API_BASE_URL=...`
 class ApiConfig {
   static String get baseUrl {
     const override = String.fromEnvironment('API_BASE_URL');
     if (override.isNotEmpty) return override;
 
+    // On Flutter Web served from localhost/127.0.0.1, connect directly to the
+    // local backend so Wi-Fi/DHCP IP changes never break local web testing.
+    if (kIsWeb && (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1')) {
+      return 'http://${Uri.base.host}:3000';
+    }
+
     if (dotenv.isInitialized) {
       final fromEnv = dotenv.maybeGet('API_BASE_URL');
       if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
+
+      final hostIp = dotenv.maybeGet('HOST_IP');
+      if (hostIp != null && hostIp.isNotEmpty) return 'http://$hostIp:3000';
     }
 
     return 'http://localhost:3000';

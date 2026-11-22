@@ -63,6 +63,7 @@ const main = async (): Promise<void> => {
   // 2. Teachers
   const teacherHash = await argon2.hash('Teacher123!', { type: argon2.argon2id });
   const teacherDefs = [
+    { email: 'teacher@smartclass.com', firstName: 'Teacher', lastName: 'SmartClass' },
     { email: 'amine.mansouri@univ-smartclass.fr', firstName: 'Amine', lastName: 'Mansouri' },
     { email: 'laurent.valette@univ-smartclass.fr', firstName: 'Laurent', lastName: 'Valette' },
   ];
@@ -74,15 +75,21 @@ const main = async (): Promise<void> => {
       update: {
         passwordHash: teacherHash,
         role: 'TEACHER',
+        teacherApprovalStatus: 'APPROVED',
         emailVerified: true,
         onboardingCompleted: true,
+        status: 'ACTIVE',
+        failedLoginAttempts: 0,
+        lockedUntil: null,
       },
       create: {
         ...t,
         passwordHash: teacherHash,
         role: 'TEACHER',
+        teacherApprovalStatus: 'APPROVED',
         emailVerified: true,
         onboardingCompleted: true,
+        status: 'ACTIVE',
       },
     });
     teachers.push(teacher);
@@ -91,6 +98,7 @@ const main = async (): Promise<void> => {
   // 3. Students
   const studentHash = await argon2.hash('Student123!', { type: argon2.argon2id });
   const studentDefs = [
+    { email: 'student@smartclass.com', firstName: 'Student', lastName: 'SmartClass' },
     { email: 'salma.idrissi@univ-smartclass.fr', firstName: 'Salma', lastName: 'Idrissi' },
     { email: 'karim.bennani@univ-smartclass.fr', firstName: 'Karim', lastName: 'Bennani' },
     { email: 'yasmine.belkacem@univ-smartclass.fr', firstName: 'Yasmine', lastName: 'Belkacem' },
@@ -105,6 +113,9 @@ const main = async (): Promise<void> => {
         role: 'STUDENT',
         emailVerified: true,
         onboardingCompleted: true,
+        status: 'ACTIVE',
+        failedLoginAttempts: 0,
+        lockedUntil: null,
       },
       create: {
         ...s,
@@ -112,6 +123,7 @@ const main = async (): Promise<void> => {
         role: 'STUDENT',
         emailVerified: true,
         onboardingCompleted: true,
+        status: 'ACTIVE',
       },
     });
     students.push(student);

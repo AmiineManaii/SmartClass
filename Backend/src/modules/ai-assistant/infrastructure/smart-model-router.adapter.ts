@@ -416,7 +416,7 @@ export class SmartModelRouterAdapter implements SmartModelRouterPort {
 
     return this.semaphore.runExclusive(async () => {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 90_000);
+      const timer = setTimeout(() => controller.abort(), 180_000);
       try {
         const mime = input.mimeType ?? 'image/jpeg';
         const dataUrl = input.imageBase64.startsWith('data:')

@@ -290,8 +290,8 @@ class LiveRoomControls extends ConsumerWidget {
                               if (wasRecording) {
                                 SmartToast.info(
                                   context,
-                                  context.tr('rec_stopped_toast'),
-                                  title: 'Enregistrement',
+                                  'Enregistrement sauvegardé. L\'analyse IA (frames + transcription) tourne en arrière-plan — ouvrez le Studio IA après la séance pour suivre la progression en direct.',
+                                  title: 'Analyse IA démarrée',
                                 );
                               } else {
                                 SmartToast.success(

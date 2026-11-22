@@ -289,18 +289,81 @@ class LiveRoomLeaveHelper {
     );
 
     if (action == 'end_all') {
+      // Show a sleek non-dismissible closing indicator while the backend closes
+      // the room for everyone and finalizes any active recording.
       if (context.mounted) {
-        SmartToast.success(
-          context,
-          'Séance clôturée pour tous les participants.',
-          title: 'Séance terminée',
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => PopScope(
+            canPop: false,
+            child: AlertDialog(
+              backgroundColor: const Color(0xFF0F172A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+                side: const BorderSide(color: Color(0xFF334155)),
+              ),
+              content: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Flexible(
+                      child: Text(
+                        isRecording
+                            ? 'Clôture du cours et lancement de l\'analyse IA...'
+                            : 'Clôture de la séance pour tous...',
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         );
       }
+
+      bool endedOk = false;
       try {
-        await controller.endRoomForEveryone();
+        endedOk = await controller.endRoomForEveryone();
       } catch (e) {
         debugPrint('[LiveRoomLeaveHelper] endRoomForEveryone error: $e');
       }
+
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        if (endedOk) {
+          SmartToast.success(
+            context,
+            isRecording
+                ? 'Séance clôturée pour tous. L\'analyse IA démarre.'
+                : 'Séance clôturée définitivement pour tous les participants.',
+            title: 'Séance terminée',
+          );
+        } else {
+          SmartToast.warning(
+            context,
+            'Vous avez été déconnecté, vérifiez le statut dans Directs & Réunions.',
+            title: 'Clôture en attente',
+          );
+        }
+      }
+
       if (sessionId != null && isRecording) {
         router.go('/videoconference/$sessionId/review');
       } else {

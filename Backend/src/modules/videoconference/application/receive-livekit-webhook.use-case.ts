@@ -6,6 +6,8 @@ import { getEnv } from '../../../config/env.js';
 import { UnauthorizedError } from '../../../shared/errors/app-error.js';
 import { logger } from '../../../shared/infrastructure/logger.js';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class ReceiveLiveKitWebhookUseCase {
   private readonly receiver: WebhookReceiver;
   private readonly processedEventIds = new Set<string>();
@@ -66,10 +68,11 @@ export class ReceiveLiveKitWebhookUseCase {
     }
 
     const userId = event.participant?.identity;
+    const isRealUser = !!userId && UUID_RE.test(userId); // skips egress bots (EG_*) etc.
 
     switch (event.event) {
       case 'participant_joined':
-        if (userId) {
+        if (isRealUser && userId) {
           const now = new Date();
           await this.participantRepository.recordJoin(session.id, userId, now);
           try {
@@ -88,7 +91,7 @@ export class ReceiveLiveKitWebhookUseCase {
         break;
 
       case 'participant_left':
-        if (userId) {
+        if (isRealUser && userId) {
           const now = new Date();
           await this.participantRepository.recordLeave(session.id, userId, now);
           try {

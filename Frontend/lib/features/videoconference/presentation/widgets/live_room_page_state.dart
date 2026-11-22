@@ -45,9 +45,16 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage> {
       return _buildTerminalScreen(
         icon: Icons.check_circle_outline_rounded,
         title: context.tr('session_ended'),
-        message: 'Cette session de cours est désormais terminée.',
+        message: roomState.isHost
+            ? 'Séance terminée. Si vous avez enregistré le cours, l\'analyse IA est en cours — ouvrez le Studio IA pour suivre la progression en direct.'
+            : 'Cette session de cours est désormais terminée.',
         buttonText: context.tr('back'),
         onPressed: () => context.go('/videoconference'),
+        secondaryButtonText:
+            roomState.isHost ? 'Suivre l\'analyse IA (Studio)' : null,
+        onSecondaryPressed: roomState.isHost
+            ? () => context.go('/videoconference/${widget.sessionId}/review')
+            : null,
       );
     }
 
@@ -136,6 +143,8 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage> {
     required String message,
     required String buttonText,
     required VoidCallback onPressed,
+    String? secondaryButtonText,
+    VoidCallback? onSecondaryPressed,
   }) {
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F19),
@@ -162,11 +171,25 @@ class _LiveRoomPageState extends ConsumerState<LiveRoomPage> {
                 style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
               ),
               const SizedBox(height: 24),
-              AppButton(
-                text: buttonText,
-                variant: AppButtonVariant.primary,
-                onPressed: onPressed,
-              ),
+              if (secondaryButtonText != null &&
+                  onSecondaryPressed != null) ...[
+                AppButton(
+                  text: secondaryButtonText,
+                  variant: AppButtonVariant.primary,
+                  onPressed: onSecondaryPressed,
+                ),
+                const SizedBox(height: 12),
+                AppButton(
+                  text: buttonText,
+                  variant: AppButtonVariant.secondary,
+                  onPressed: onPressed,
+                ),
+              ] else
+                AppButton(
+                  text: buttonText,
+                  variant: AppButtonVariant.primary,
+                  onPressed: onPressed,
+                ),
             ],
           ),
         ),

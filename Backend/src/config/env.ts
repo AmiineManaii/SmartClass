@@ -74,6 +74,8 @@ const envSchema = z.object({
   SEARXNG_URL: z.string().default('http://searxng:8080'),
   // Model for search prompt reformulation (sam860/lucy:1.7b)
   OLLAMA_REFORMULATE_MODEL: z.string().default('sam860/lucy:1.7b'),
+  // Single LAN Host IP (used as default for LIVEKIT_PUBLIC_URL when unset)
+  HOST_IP: z.string().optional().default(''),
   // LiveKit WebRTC SFU configuration
   LIVEKIT_URL: z.string().optional().default(''),
   LIVEKIT_PUBLIC_URL: z.string().optional().default(''),

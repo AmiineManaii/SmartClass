@@ -1,6 +1,24 @@
 import '../../domain/entities/video_session.dart';
 
 class VideoSessionModel {
+  static VideoSessionRecordingSummary? _parseRecordingSummary(dynamic raw) {
+    if (raw is! Map) return null;
+    final map = Map<String, dynamic>.from(raw);
+    return VideoSessionRecordingSummary(
+      status: map['status'] as String? ?? 'NOT_STARTED',
+      hasVideo: map['hasVideo'] == true,
+      hasLessonPackage: map['hasLessonPackage'] == true,
+      errorCode: map['errorCode'] as String?,
+      errorMessage: map['errorMessage'] as String?,
+      jobStatus: map['jobStatus'] as String?,
+      jobStage: map['jobStage'] as String?,
+      jobProgress: (map['jobProgress'] as num?)?.toInt(),
+      jobStartedAt: map['jobStartedAt'] != null
+          ? DateTime.tryParse(map['jobStartedAt'].toString())
+          : null,
+    );
+  }
+
   static VideoSession fromJson(Map<String, dynamic> json) {
     return VideoSession(
       id: json['id'] as String? ?? '',
@@ -33,6 +51,7 @@ class VideoSessionModel {
           : DateTime.now(),
       className: json['className'] as String?,
       participantCount: (json['participantCount'] as num?)?.toInt(),
+      recordingSummary: _parseRecordingSummary(json['recordingSummary']),
     );
   }
 

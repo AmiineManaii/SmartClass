@@ -671,6 +671,10 @@ class MediaProcessingJobEntity extends Equatable {
   final String stage;
   final String status;
   final int progressPercent;
+  final String? errorMessage;
+  final DateTime? startedAt;
+  final DateTime? completedAt;
+  final List<StageLogItem> stageLogs;
 
   const MediaProcessingJobEntity({
     required this.id,
@@ -678,21 +682,50 @@ class MediaProcessingJobEntity extends Equatable {
     required this.stage,
     required this.status,
     required this.progressPercent,
+    this.errorMessage,
+    this.startedAt,
+    this.completedAt,
+    this.stageLogs = const [],
   });
 
+  bool get isActive => status == 'QUEUED' || status == 'RUNNING';
+  bool get isFailed => status == 'FAILED';
+
   factory MediaProcessingJobEntity.fromJson(Map<String, dynamic> json) {
+    final rawLogs = json['stageLogs'] as List<dynamic>? ?? const [];
     return MediaProcessingJobEntity(
       id: json['id'] as String? ?? '',
       jobType: json['jobType'] as String? ?? 'PIPELINE',
       stage: json['stage'] as String? ?? 'VALIDATION',
       status: json['status'] as String? ?? 'COMPLETED',
       progressPercent:
-          (json['progressPercent'] ?? json['progress'] as num?)?.toInt() ?? 100,
+          (json['progressPercent'] ?? json['progress'] as num?)?.toInt() ?? 0,
+      errorMessage: json['errorMessage'] as String?,
+      startedAt: json['startedAt'] != null
+          ? DateTime.tryParse(json['startedAt'].toString())
+          : null,
+      completedAt: json['completedAt'] != null
+          ? DateTime.tryParse(json['completedAt'].toString())
+          : null,
+      stageLogs: rawLogs
+          .whereType<Map<String, dynamic>>()
+          .map(StageLogItem.fromJson)
+          .toList(),
     );
   }
 
   @override
-  List<Object?> get props => [id, jobType, stage, status, progressPercent];
+  List<Object?> get props => [
+        id,
+        jobType,
+        stage,
+        status,
+        progressPercent,
+        errorMessage,
+        startedAt,
+        completedAt,
+        stageLogs,
+      ];
 }
 
 class TeacherReviewWorkspaceEntity extends Equatable {
@@ -729,6 +762,18 @@ class TeacherReviewWorkspaceEntity extends Equatable {
     final rawSlides =
         (json['slides'] ?? json['slideFrames'] ?? const []) as List<dynamic>;
     final rawJobs = (json['jobs'] as List<dynamic>? ?? const []);
+    final parsedJobs = rawJobs
+        .whereType<Map<String, dynamic>>()
+        .map(MediaProcessingJobEntity.fromJson)
+        .toList();
+    // Backend nests the active/latest job under recording.latestJob
+    if (parsedJobs.isEmpty && recJson?['latestJob'] is Map<String, dynamic>) {
+      parsedJobs.add(
+        MediaProcessingJobEntity.fromJson(
+          recJson!['latestJob'] as Map<String, dynamic>,
+        ),
+      );
+    }
     final pkgJson = json['lessonPackage'] as Map<String, dynamic>?;
 
     return TeacherReviewWorkspaceEntity(
@@ -753,10 +798,7 @@ class TeacherReviewWorkspaceEntity extends Equatable {
           .whereType<Map<String, dynamic>>()
           .map(SlideSegmentEntity.fromJson)
           .toList(),
-      jobs: rawJobs
-          .whereType<Map<String, dynamic>>()
-          .map(MediaProcessingJobEntity.fromJson)
-          .toList(),
+      jobs: parsedJobs,
       versions: (json['versions'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(LessonPackageVersionEntity.fromJson)
@@ -765,8 +807,15 @@ class TeacherReviewWorkspaceEntity extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [sessionId, sessionTitle, recording, transcript, lessonPackage, versions];
+  List<Object?> get props => [
+        sessionId,
+        sessionTitle,
+        recording,
+        transcript,
+        lessonPackage,
+        jobs,
+        versions,
+      ];
 }
 
 typedef TeacherReviewWorkspace = TeacherReviewWorkspaceEntity;

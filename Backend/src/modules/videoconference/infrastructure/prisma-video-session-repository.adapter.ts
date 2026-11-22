@@ -19,6 +19,21 @@ export class PrismaVideoSessionRepositoryAdapter implements VideoSessionReposito
         ? `${row.host.firstName} ${row.host.lastName}`
         : null;
 
+    const latestJob = Array.isArray(row.recording?.jobs) ? row.recording.jobs[0] : null;
+    const recordingSummary = row.recording
+      ? {
+          status: String(row.recording.status),
+          hasVideo: Boolean(row.recording.storageKey),
+          hasLessonPackage: Boolean(row.recording.lessonPackage),
+          errorCode: (row.recording.errorCode as string | null) ?? null,
+          errorMessage: (row.recording.errorMessage as string | null) ?? null,
+          jobStatus: latestJob?.status ? String(latestJob.status) : null,
+          jobStage: latestJob?.stage ? String(latestJob.stage) : null,
+          jobProgress: typeof latestJob?.progress === 'number' ? latestJob.progress : null,
+          jobStartedAt: latestJob?.startedAt instanceof Date ? latestJob.startedAt : null,
+        }
+      : null;
+
     return {
       id: row.id,
       classGroupId: row.classGroupId,
@@ -38,6 +53,7 @@ export class PrismaVideoSessionRepositoryAdapter implements VideoSessionReposito
       timetableSlotId: row.timetableSlotId,
       courseId: row.courseId,
       cancelReason: row.cancelReason,
+      recordingSummary,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -74,6 +90,28 @@ export class PrismaVideoSessionRepositoryAdapter implements VideoSessionReposito
     return this.mapToDomain(created);
   }
 
+  private readonly recordingSummaryInclude = {
+    select: {
+      status: true,
+      storageKey: true,
+      errorCode: true,
+      errorMessage: true,
+      lessonPackage: {
+        select: { id: true },
+      },
+      jobs: {
+        orderBy: { createdAt: 'desc' as const },
+        take: 1,
+        select: {
+          status: true,
+          stage: true,
+          progress: true,
+          startedAt: true,
+        },
+      },
+    },
+  };
+
   public async findById(id: string): Promise<VideoSession | null> {
     const row = await this.prisma.videoSession.findUnique({
       where: { id },
@@ -81,6 +119,7 @@ export class PrismaVideoSessionRepositoryAdapter implements VideoSessionReposito
         host: {
           select: { firstName: true, lastName: true },
         },
+        recording: this.recordingSummaryInclude,
       },
     });
 
@@ -308,6 +347,7 @@ export class PrismaVideoSessionRepositoryAdapter implements VideoSessionReposito
           host: {
             select: { firstName: true, lastName: true },
           },
+          recording: this.recordingSummaryInclude,
         },
         orderBy: { startsAt: 'desc' },
         skip: filter.offset,

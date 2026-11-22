@@ -106,6 +106,28 @@ If running PostgreSQL locally or via Docker:
 | `npm run typecheck` | Validates TypeScript types (`tsc --noEmit`) |
 | `npm run db:migrate` | Runs database migrations in development (`prisma migrate dev`) |
 | `npm run db:deploy` | Applies pending migrations in production (`prisma migrate deploy`) |
+| `npm run db:seed` | Populates demo accounts (ADMIN, TEACHER, STUDENT) & timetable slots |
+
+---
+
+## 🔐 Demo Accounts & Role Credentials
+
+| Role | Email | Password | Name | Status |
+|---|---|---|---|---|
+| **ADMIN** | `admin@smartclass.com` | `Admin123!` | Admin SmartClass | Active • Verified |
+| **ADMIN** | `admin@smartclass.local` | `Admin123!` | Admin SmartClass | Active • Verified |
+| **TEACHER** | `teacher@smartclass.com` | `Teacher123!` | Teacher SmartClass | Active • Approved |
+| **TEACHER** | `amine.mansouri@univ-smartclass.fr` | `Teacher123!` | Pr. Amine Mansouri | Active • Approved |
+| **TEACHER** | `laurent.valette@univ-smartclass.fr` | `Teacher123!` | Pr. Laurent Valette | Active • Approved |
+| **STUDENT** | `student@smartclass.com` | `Student123!` | Student SmartClass | Active • Verified |
+| **STUDENT** | `salma.idrissi@univ-smartclass.fr` | `Student123!` | Salma Idrissi | Active • Verified |
+| **STUDENT** | `karim.bennani@univ-smartclass.fr` | `Student123!` | Karim Bennani | Active • Verified |
+| **STUDENT** | `yasmine.belkacem@univ-smartclass.fr` | `Student123!` | Yasmine Belkacem | Active • Verified |
+
+To re-seed demo accounts at any time:
+```bash
+npm run db:seed
+```
 
 ---
 

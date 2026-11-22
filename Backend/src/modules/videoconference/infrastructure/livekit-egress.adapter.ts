@@ -50,10 +50,9 @@ export class LiveKitEgressAdapter implements EgressServicePort {
     const absoluteTarget = this.storage.resolveSafePath(params.storageKey);
     const targetDir = path.dirname(absoluteTarget);
     await fs.mkdir(targetDir, { recursive: true });
-    try {
-      await fs.chmod(targetDir, 0o2775);
-      await fs.chmod(path.dirname(targetDir), 0o2775);
-    } catch {}
+    await fs.chmod(targetDir, 0o777).catch(() => {});
+    await fs.chmod(path.dirname(targetDir), 0o777).catch(() => {});
+    await fs.rm(absoluteTarget, { force: true }).catch(() => {});
 
     const fileOutput = new EncodedFileOutput({
       fileType: EncodedFileType.MP4,
@@ -79,7 +78,7 @@ export class LiveKitEgressAdapter implements EgressServicePort {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[LiveKitEgressAdapter] Failed to start RoomCompositeEgress: ${msg}`);
-      throw new Error(`Impossible de démarrer l'enregistrement LiveKit Egress: ${msg}`);
+      throw new Error(`Impossible de démarrer l'enregistrement LiveKit Egress: ${msg}`, { cause: err });
     }
   }
 
@@ -94,9 +93,7 @@ export class LiveKitEgressAdapter implements EgressServicePort {
   }): Promise<StopEgressResult> {
     const targetPath = this.storage.resolveSafePath(params.storageKey);
     const targetDir = path.dirname(targetPath);
-    try {
-      await fs.chmod(targetDir, 0o2775);
-    } catch {}
+    await fs.chmod(targetDir, 0o777).catch(() => {});
 
     // 1. Send stop command to LiveKit Egress
     if (params.egressId && !params.egressId.startsWith('egress_local_')) {
@@ -110,10 +107,12 @@ export class LiveKitEgressAdapter implements EgressServicePort {
     let fileStat = await this.storage.stat(params.storageKey);
     let egressFailureError: string | null = null;
 
-    // 2. Poll Egress status until COMPLETE, FAILED, or timeout (max 12s)
+    // 2. Poll Egress status until COMPLETE, FAILED, or timeout (max ~120s)
+    // Skip polling when running in explicit local/fallback recovery mode (egress_local_*).
+    const MAX_EGRESS_WAIT_ATTEMPTS = 120;
     let attempts = 0;
-    while ((!fileStat || fileStat.sizeBytes < 10_000) && attempts < 12) {
-      if (params.egressId && !params.egressId.startsWith('egress_local_')) {
+    if (params.egressId && !params.egressId.startsWith('egress_local_')) {
+      while ((!fileStat || fileStat.sizeBytes < 10_000) && attempts < MAX_EGRESS_WAIT_ATTEMPTS) {
         try {
           const list = await this.client.listEgress({ egressId: params.egressId });
           const info = list.find((e) => e.egressId === params.egressId);
@@ -132,15 +131,30 @@ export class LiveKitEgressAdapter implements EgressServicePort {
               break;
             }
           }
-        } catch {}
-      }
+        } catch {
+          // Non-fatal Egress status poll failure
+        }
 
-      await new Promise((r) => setTimeout(r, 1000));
-      fileStat = await this.storage.stat(params.storageKey);
-      attempts++;
+        await new Promise((r) => setTimeout(r, 1000));
+        fileStat = await this.storage.stat(params.storageKey);
+        attempts++;
+      }
     }
 
-    // 3. Fallback: If Egress did not produce a file but the client provided real captured media, transcode it
+    // 3. Fallback A: If Egress did not produce a file, use browser pre-uploaded client_capture.mp4 if available
+    if (!fileStat || fileStat.sizeBytes < 10_000) {
+      const clientCaptureKey = path.posix.join(path.posix.dirname(params.storageKey), 'client_capture.mp4');
+      const clientCaptureStat = await this.storage.stat(clientCaptureKey);
+      if (clientCaptureStat && clientCaptureStat.sizeBytes >= 10_000) {
+        await fs.copyFile(this.storage.resolveSafePath(clientCaptureKey), targetPath);
+        fileStat = await this.storage.stat(params.storageKey);
+        console.warn(
+          `[LiveKitEgressAdapter] Egress file unavailable; used browser capture fallback (${clientCaptureKey})`,
+        );
+      }
+    }
+
+    // 3b. Fallback B: If still missing and the client provided inline mediaBase64, transcode it
     if ((!fileStat || fileStat.sizeBytes < 10_000) && params.mediaBase64 && params.mediaBase64.length > 200) {
       await this.tryTranscodeUploadedMedia(
         params.storageKey,
@@ -195,8 +209,8 @@ export class LiveKitEgressAdapter implements EgressServicePort {
   private async tryTranscodeUploadedMedia(
     storageKey: string,
     mediaBase64: string,
-    sessionTitle: string,
-    subject: string,
+    _sessionTitle: string,
+    _subject: string,
   ): Promise<void> {
     const targetPath = this.storage.resolveSafePath(storageKey);
     const rawUploadPath = path.join(path.dirname(targetPath), `raw_capture_${Date.now()}.webm`);
@@ -232,7 +246,7 @@ export class LiveKitEgressAdapter implements EgressServicePort {
           '+faststart',
           targetPath,
         ],
-        { timeout: 45_000 },
+        { timeout: 600_000 },
       );
     } catch (err: unknown) {
       console.error(

@@ -60,18 +60,14 @@ class _TabSessionList extends ConsumerWidget {
                   return false;
                 },
                 child: isWide
-                    ? GridView.builder(
+                    ? ListView.separated(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 14,
-                          mainAxisExtent: 242,
-                        ),
-                        itemCount: filtered.length + (state.isLoadingMore ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index >= filtered.length) {
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        itemCount: ((filtered.length + 1) ~/ 2) + (state.isLoadingMore ? 1 : 0),
+                        separatorBuilder: (_, _) => const SizedBox(height: 16),
+                        itemBuilder: (context, rowIndex) {
+                          final rowCount = (filtered.length + 1) ~/ 2;
+                          if (rowIndex >= rowCount) {
                             return const Center(
                               child: Padding(
                                 padding: EdgeInsets.all(16.0),
@@ -79,10 +75,27 @@ class _TabSessionList extends ConsumerWidget {
                               ),
                             );
                           }
-                          final session = filtered[index];
-                          return VideoSessionCard(
-                            session: session,
-                            isTeacher: isTeacher,
+                          final leftIndex = rowIndex * 2;
+                          final rightIndex = leftIndex + 1;
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: VideoSessionCard(
+                                  session: filtered[leftIndex],
+                                  isTeacher: isTeacher,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: rightIndex < filtered.length
+                                    ? VideoSessionCard(
+                                        session: filtered[rightIndex],
+                                        isTeacher: isTeacher,
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
+                            ],
                           );
                         },
                       )
@@ -90,7 +103,7 @@ class _TabSessionList extends ConsumerWidget {
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         itemCount: filtered.length + (state.isLoadingMore ? 1 : 0),
-                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        separatorBuilder: (_, _) => const SizedBox(height: 14),
                         itemBuilder: (context, index) {
                           if (index >= filtered.length) {
                             return const Center(

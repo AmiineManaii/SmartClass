@@ -59,6 +59,7 @@ export const stopRecordingBodySchema = z
       .optional(),
     mediaBase64: z.string().max(40_000_000).optional(),
     mimeType: z.string().max(100).optional(),
+    useFallbackCapture: z.boolean().optional(),
   })
   .optional();
 

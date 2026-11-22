@@ -134,6 +134,7 @@ export class RecordingController {
         }>;
         mediaBase64?: string;
         mimeType?: string;
+        useFallbackCapture?: boolean;
       };
       const result = await this.deps.stopRecordingUseCase.execute(user, id, {
         capturePayload: body,
@@ -165,9 +166,10 @@ export class RecordingController {
         }
       }
 
-      const storageKey = `recordings/${id}/lecture.mp4`;
-      const targetPath = this.deps.storage.resolveSafePath(storageKey);
+      const captureKey = `recordings/${id}/client_capture.mp4`;
+      const targetPath = this.deps.storage.resolveSafePath(captureKey);
       await fs.mkdir(path.dirname(targetPath), { recursive: true });
+      await fs.chmod(path.dirname(targetPath), 0o777).catch(() => {});
       const rawUploadPath = path.join(path.dirname(targetPath), `raw_capture_${Date.now()}.webm`);
 
       if (Buffer.isBuffer(req.body) && req.body.length > 0) {
@@ -212,7 +214,7 @@ export class RecordingController {
             '+faststart',
             targetPath,
           ],
-          { timeout: 90_000 },
+          { timeout: 600_000 },
         );
       } catch {
         // 2. Second attempt: if stream was audio-only without a video track, create a lecture canvas with audio
@@ -228,7 +230,7 @@ export class RecordingController {
               '-f',
               'lavfi',
               '-i',
-              'color=c=0x0f172a:s=1280x720:r=15:d=30',
+              'color=c=0x0f172a:s=1280x720:r=15',
               '-i',
               rawUploadPath,
               '-shortest',
@@ -252,7 +254,7 @@ export class RecordingController {
               '+faststart',
               targetPath,
             ],
-            { timeout: 90_000 },
+            { timeout: 600_000 },
           );
         } catch {
           // Fallback: copy file
@@ -263,22 +265,11 @@ export class RecordingController {
       await fs.unlink(rawUploadPath).catch(() => {});
       const targetStat = await fs.stat(targetPath);
 
-      if (this.deps.recordingRepository) {
-        const rec = await this.deps.recordingRepository.findBySessionId(id);
-        if (rec) {
-          await this.deps.recordingRepository.updateRecording(rec.id, {
-            storageKey,
-            sizeBytes: targetStat.size,
-            durationSeconds: Math.max(rec.durationSeconds ?? 30, 20),
-          });
-        }
-      }
-
       res.status(200).json({
         data: {
           success: true,
           sizeBytes: targetStat.size,
-          storageKey,
+          storageKey: captureKey,
         },
       });
     } catch (err) {
