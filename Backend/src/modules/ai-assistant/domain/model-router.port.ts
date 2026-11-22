@@ -1,7 +1,15 @@
-import type { ChatCompletionInput, ChatCompletionResult, StreamCompletionUsage } from './ai-gateway.port.js';
+import type { AiGatewayPort, ChatCompletionInput, ChatCompletionResult, StreamCompletionUsage } from './ai-gateway.port.js';
+import type { ImageGeneratorPort } from './image-generator.port.js';
+import type { SearchPort } from './search.port.js';
+import type { UrlFetcherPort } from './url-fetcher.port.js';
 
 export type ModelRole =
   | 'ORCHESTRATION'
+  | 'COURSE_GENERATION'
+  | 'OUTLINE_GENERATION'
+  | 'SECTION_GENERATION'
+  | 'EXAM_GENERATION'
+  | 'STRUCTURED_JSON'
   | 'LESSON_GENERATION'
   | 'LESSON_PACKAGE_GENERATION'
   | 'SPEECH_POST_PROCESSING'
@@ -12,6 +20,12 @@ export type ModelRole =
   | 'TUTOR_RAG'
   | 'AI_TUTOR_RAG'
   | 'QUALITY_VALIDATION';
+
+export interface RoleGatewayOptions {
+  searchService?: SearchPort;
+  imageGenerator?: ImageGeneratorPort;
+  urlFetcher?: UrlFetcherPort;
+}
 
 export interface LocalModelMetadata {
   name: string;
@@ -36,15 +50,22 @@ export interface ModelInventoryReport {
   available: boolean;
   inspectedAt: string;
   primaryModel: string;
-  secondaryModel: string;
+  secondaryModel: string | null;
+  secondaryInstalled: boolean;
   gpuBudgetVramMb: number;
   maxConcurrentGpuTasks: number;
+  activeGpuTasks: number;
   installedModels: LocalModelMetadata[];
+  installedEmbeddingModels: string[];
   roleAssignments: {
     primaryTextModel: string;
     secondaryFastModel: string;
+    secondaryInstalled: boolean;
     visionModel: string | null;
+    structuredModel: string;
+    tutorModel: string;
     embeddingModel: string;
+    embeddingRuntime: 'cpu' | 'gpu';
     transcriptionEngine: string;
   };
 }
@@ -61,15 +82,26 @@ export interface VisionCompletionInput {
 export interface SmartModelRouterPort {
   /**
    * Inspects the live Ollama server (`/api/tags` and `/api/show`), records
-   * capabilities of both installed generation models, and assigns roles.
+   * capabilities of installed generation/embedding models, and assigns roles.
    */
   inspectInventory(forceRefresh?: boolean): Promise<ModelInventoryReport>;
   inspectModels(forceRefresh?: boolean): Promise<ModelInventoryReport>;
 
   /**
+   * Acquires the shared GPU execution semaphore for any local GPU inference task.
+   */
+  runOnGpu<T>(fn: () => Promise<T>): Promise<T>;
+
+  /**
+   * Creates an AiGatewayPort bound to `role` that resolves installed primary/secondary
+   * models dynamically and serializes through the shared GPU semaphore.
+   */
+  createGatewayForRole(role: ModelRole, gatewayOptions?: RoleGatewayOptions): AiGatewayPort;
+
+  /**
    * Executes a chat completion routed to the best local model for `role`,
    * serialized through the GPU concurrency semaphore with automatic fallback
-   * to the secondary local model if the primary fails.
+   * to an installed secondary local model if available.
    */
   completeForRole(
     role: ModelRole,

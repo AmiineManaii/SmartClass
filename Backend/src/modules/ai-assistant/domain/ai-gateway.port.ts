@@ -1,3 +1,5 @@
+import type { ModelInventoryReport } from './model-router.port.js';
+
 export type GenerateMode = 'topic' | 'text' | 'url' | 'pdf';
 
 export type GenerateLevel = 'concis' | 'equilibre' | 'detaille';
@@ -69,10 +71,21 @@ export interface StreamCompletionUsage {
   model: string;
 }
 
+export interface AiEmbeddingStatus {
+  available: boolean;
+  model: string;
+  numGpu: number;
+  dimension: number;
+  latencyMs: number | null;
+  runtime: 'cpu' | 'gpu';
+}
+
 export interface AiGatewayStatus {
   available: boolean;
   model: string;
   latencyMs: number | null;
+  router?: ModelInventoryReport;
+  embeddings?: AiEmbeddingStatus;
 }
 
 export interface AiGatewayPort {

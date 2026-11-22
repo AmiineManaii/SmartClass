@@ -136,6 +136,8 @@ components:
                 - RECORDING_PROCESSING_FAILED
                 - LESSON_PACKAGE_NOT_READY
                 - STORAGE_ACCESS_DENIED
+                - KNOWLEDGE_DOCUMENT_NOT_FOUND
+                - EMBEDDING_SERVICE_UNAVAILABLE
               description: Stable error code (never renamed, mirrors Backend error-codes.ts)
             message:
               type: string

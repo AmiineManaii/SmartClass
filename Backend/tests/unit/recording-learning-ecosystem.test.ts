@@ -768,6 +768,7 @@ describe('SmartClass Lecture Recording, 7-Stage AI Pipeline, Review Studio & Stu
         {
           primaryModel: 'gemma4:e4b',
           fallbackModel: 'hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1',
+          installedModels: ['gemma4:e4b', 'hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1'],
           maxConcurrentGpu: 1,
         },
       );
@@ -787,6 +788,50 @@ describe('SmartClass Lecture Recording, 7-Stage AI Pipeline, Review Studio & Stu
       });
       expect(fallbackRes.modelUsed).toBe('hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1');
       expect(fallbackRes.fallbackUsed).toBe(true);
+    });
+
+    it('keeps optional secondary inactive when only gemma4:e4b is installed (zero ghost 404 calls)', async () => {
+      const invokedModels: string[] = [];
+      const router = new SmartModelRouterAdapter(
+        (model: string): AiGatewayPort => ({
+          async chatCompletion(): Promise<ChatCompletionResult> {
+            invokedModels.push(model);
+            return {
+              content: `OK via ${model}`,
+              model,
+              promptTokens: 10,
+              completionTokens: 5,
+              toolsUsed: false,
+            };
+          },
+          async streamCompletion() {
+            invokedModels.push(model);
+            return { model, promptTokens: 5, completionTokens: 5 };
+          },
+          async checkHealth() {
+            return { available: true, model, latencyMs: 5 };
+          },
+        }),
+        {
+          primaryModel: 'gemma4:e4b',
+          fallbackModel: 'hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1',
+          installedModels: ['gemma4:e4b', 'embeddinggemma-2:270m'],
+          maxConcurrentGpu: 1,
+        },
+      );
+
+      const inv = await router.inspectInventory();
+      expect(inv.secondaryInstalled).toBe(false);
+      expect(inv.secondaryModel).toBeNull();
+      expect(inv.installedEmbeddingModels).toEqual(['embeddinggemma-2:270m']);
+
+      const res = await router.generateForRole('QUIZ_FLASHCARDS', {
+        systemPrompt: 'System',
+        messages: [{ role: 'user', content: 'Generate quiz' }],
+      });
+      expect(res.modelUsed).toBe('gemma4:e4b');
+      expect(res.fallbackUsed).toBe(false);
+      expect(invokedModels).toEqual(['gemma4:e4b']);
     });
 
     it('computes L2-normalized 768-dim lexical vectors and valid VTT/SRT subtitles', () => {

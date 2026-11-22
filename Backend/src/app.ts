@@ -20,6 +20,8 @@ import type { AiModuleOptions } from './modules/ai-assistant/index.js';
 import type { GroupsModuleOptions } from './modules/groups/index.js';
 import type { ExamsModuleOptions } from './modules/exams/index.js';
 import type { VideoconferenceModuleOptions } from './modules/videoconference/index.js';
+import type { KnowledgeModuleOptions } from './modules/knowledge/index.js';
+import type { SmartModelRouterPort } from './modules/ai-assistant/index.js';
 import { createApiRouter } from './routes.js';
 
 export interface CreateAppOptions {
@@ -31,6 +33,8 @@ export interface CreateAppOptions {
   groupsModuleOptions?: GroupsModuleOptions;
   examsModuleOptions?: ExamsModuleOptions;
   videoconferenceModuleOptions?: VideoconferenceModuleOptions;
+  knowledgeModuleOptions?: KnowledgeModuleOptions;
+  modelRouter?: SmartModelRouterPort;
   rateLimiterOptions?: RateLimiterCustomOptions;
   skipRateLimit?: boolean;
   skipLogging?: boolean;
@@ -254,6 +258,12 @@ Ne réponds jamais autre chose que la requête.`,
     groupsModuleOptions: options.groupsModuleOptions,
     examsModuleOptions: options.examsModuleOptions,
     videoconferenceModuleOptions: options.videoconferenceModuleOptions,
+    knowledgeModuleOptions: options.knowledgeModuleOptions,
+    modelRouter: options.modelRouter,
+    onLifecycleReady: (hooks) => {
+      app.locals.onStartup = hooks.initialize;
+      app.locals.onShutdown = hooks.shutdown;
+    },
   });
   if (rateLimiter) {
     app.use('/api/v1', rateLimiter as unknown as RequestHandler, apiRouter);

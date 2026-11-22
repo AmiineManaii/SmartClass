@@ -52,7 +52,8 @@ npx --yes @redocly/cli@latest lint contracts/*.yaml
 | courses | `courses.openapi.yaml` | `/api/v1/courses` | ✅ implemented (drafts + validated outline, validation, reading, publish gate 409, student study workspace: AI summaries/flashcards + course-scoped tutor that refuses off-course questions) |
 | exams | `exams.openapi.yaml` | `/api/v1/exams` | ✅ implemented (teacher authoring/import/AI, server-timed attempts, backend grading, surveillance events with automatic decisions, recordings/replay, fraud reporting) |
 | videoconference | `videoconference.openapi.yaml` | `/api/v1/videoconference` | ✅ implemented (timetable, session CRUD, LiveKit WebRTC, token issuance, moderation, persistent in-call chat, SSE push events, dashboard feed, LiveKit Egress lecture recording, 7-stage AI media pipeline, Teacher Review & Publishing Studio, Student Replay Workspace, personalized Summaries/Quizzes/Flashcards, and source-grounded Lesson AI Tutor) |
-| ai-assistant | `ai-assistant.openapi.yaml` | `/api/v1/ai` | ✅ implemented (course generation via local LLM + section-by-section build, refine with vector memory, SDXL section illustration with LLM-optimized prompts) |
+| ai-assistant | `ai-assistant.openapi.yaml` | `/api/v1/ai` | ✅ implemented (course generation via local LLM + section-by-section build, refine with vector memory, SDXL section illustration with LLM-optimized prompts, shared two-model router telemetry) |
+| knowledge | `knowledge.openapi.yaml` | `/api/v1/knowledge` | ✅ implemented (Unified SmartClass Knowledge Engine: structure-aware chunking, SHA-256 deduplication, CPU EmbeddingGemma + pgvector HNSW + PostgreSQL FTS hybrid RRF/MMR retrieval, strict teacher/student authorization, explicit FTS_ONLY fallback & startup recovery) |
 | collaboration | not created yet | `/api/v1/collaboration` | 📋 planned |
 | ai-assistant | not created yet | `/api/v1/ai-assistant` | 📋 planned |
 | notifications | not created yet | `/api/v1/notifications` | 📋 planned |

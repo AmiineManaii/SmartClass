@@ -5,9 +5,7 @@ import {
 } from '../../../shared/errors/app-error.js';
 import { ErrorCodes } from '../../../shared/errors/error-codes.js';
 import type { SmartModelRouterPort } from '../../ai-assistant/index.js';
-import {
-  computeDeterministicLexicalVector,
-} from '../../ai-assistant/index.js';
+import type { KnowledgeRetrievalPort } from '../../knowledge/index.js';
 import type { ClassAccessPort } from '../domain/class-access.port.js';
 import type {
   GeneratedFlashcard,
@@ -36,20 +34,28 @@ import {
   type RecordingOverviewDto,
 } from './recording-workflow.use-cases.js';
 
-const cosineSimilarity = (a: number[], b: number[]): number => {
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-  const len = Math.min(a.length, b.length);
-  for (let i = 0; i < len; i++) {
-    const va = a[i] ?? 0;
-    const vb = b[i] ?? 0;
-    dot += va * vb;
-    normA += va * va;
-    normB += vb * vb;
+const normalizeLexicalTokens = (text: string): string[] =>
+  text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((t) => t.length >= 2);
+
+const computeLexicalMatchScore = (query: string, candidateText: string): number => {
+  const cleanQuery = query.trim().toLowerCase();
+  if (!cleanQuery) return 0;
+  const lower = candidateText.toLowerCase();
+  const exactBonus = lower.includes(cleanQuery) ? 0.55 : 0;
+  const qTokens = [...new Set(normalizeLexicalTokens(cleanQuery))];
+  if (qTokens.length === 0) return Number(exactBonus.toFixed(4));
+  const cTokens = new Set(normalizeLexicalTokens(lower));
+  let matched = 0;
+  for (const t of qTokens) {
+    if (cTokens.has(t)) matched++;
   }
-  if (normA === 0 || normB === 0) return 0;
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+  const recall = matched / qTokens.length;
+  return Number(Math.min(1, exactBonus + recall * 0.45).toFixed(4));
 };
 
 export interface StudentLessonWorkspaceDto {
@@ -194,6 +200,7 @@ export class SearchLessonContentUseCase {
     private readonly sessionRepository: VideoSessionRepositoryPort,
     private readonly recordingRepository: RecordingRepositoryPort,
     private readonly classAccessPort: ClassAccessPort,
+    private readonly knowledgeRetrieval?: KnowledgeRetrievalPort,
   ) {}
 
   public async execute(
@@ -209,10 +216,56 @@ export class SearchLessonContentUseCase {
       this.classAccessPort,
     );
 
-    const cleanQuery = query.trim().toLowerCase();
+    const cleanQuery = query.trim();
     if (!cleanQuery) return [];
 
-    const queryVec = computeDeterministicLexicalVector(cleanQuery);
+    if (this.knowledgeRetrieval) {
+      try {
+        const kbResult = await this.knowledgeRetrieval.search({
+          actor: { id: user.id, role: user.role ?? 'STUDENT' },
+          query: cleanQuery,
+          k: 20,
+          filters: {
+            sourceTypes: [
+              'LECTURE_TRANSCRIPT',
+              'LECTURE_SLIDE',
+              'LECTURE_PACKAGE',
+              'RECORDING_SOURCE_DOC',
+            ],
+            sourceIds: [recording.id],
+          },
+        });
+        if (kbResult.hits.length > 0) {
+          return kbResult.hits.map((hit) => {
+            const mappedType: LessonSearchHit['sourceType'] =
+              hit.sourceType === 'LECTURE_TRANSCRIPT'
+                ? 'TRANSCRIPT'
+                : hit.sourceType === 'LECTURE_SLIDE'
+                  ? 'SLIDE'
+                  : hit.sectionTitle?.startsWith('Définition')
+                    ? 'DEFINITION'
+                    : hit.sectionTitle?.startsWith('Concept')
+                      ? 'CONCEPT'
+                      : 'CHAPTER';
+            const ts = hit.startSeconds ?? 0;
+            return {
+              id: hit.chunkId,
+              sourceType: mappedType,
+              title: hit.sectionTitle ?? hit.title,
+              snippet: hit.content,
+              timestampSeconds: ts,
+              formattedTimestamp: formatClockTimestamp(ts),
+              chapterTitle: hit.sectionTitle ?? null,
+              sourcePage: hit.sourcePage,
+              score: hit.score,
+            };
+          });
+        }
+      } catch {
+        // Explicit fallback to local lexical match below
+      }
+    }
+
     const [transcript, chapters, slides, pkg] = await Promise.all([
       this.recordingRepository.getTranscript(recording.id),
       this.recordingRepository.listChapters(recording.id),
@@ -222,12 +275,7 @@ export class SearchLessonContentUseCase {
 
     const hits: LessonSearchHit[] = [];
 
-    const scoreCandidate = (text: string): number => {
-      const lower = text.toLowerCase();
-      const exactBonus = lower.includes(cleanQuery) ? 0.55 : 0;
-      const semScore = cosineSimilarity(queryVec, computeDeterministicLexicalVector(lower));
-      return Number((exactBonus + semScore * 0.45).toFixed(4));
-    };
+    const scoreCandidate = (text: string): number => computeLexicalMatchScore(cleanQuery, text);
 
     const findChapterTitleAt = (ts: number): string | null => {
       const ch = chapters.find((c) => c.startSeconds <= ts && c.endSeconds >= ts) ?? chapters[0];
@@ -873,6 +921,7 @@ export class AskLessonAiTutorUseCase {
     private readonly recordingRepository: RecordingRepositoryPort,
     private readonly classAccessPort: ClassAccessPort,
     private readonly modelRouter: SmartModelRouterPort,
+    private readonly knowledgeRetrieval?: KnowledgeRetrievalPort,
   ) {}
 
   public async execute(
@@ -925,38 +974,78 @@ export class AskLessonAiTutorUseCase {
       content: input.question.trim(),
     });
 
-    // Build source-grounded RAG context and citations from the actual lesson
+    // Build source-grounded RAG context and citations from the Unified Knowledge Engine
+    // (hybrid pgvector CPU embeddings + FTS RRF), falling back to honest lexical scoring
+    // when unified indexing has not yet run for the session.
     const citations: TutorSourceCitation[] = [];
-    const qVec = computeDeterministicLexicalVector(input.question);
+    if (this.knowledgeRetrieval) {
+      try {
+        const kbResult = await this.knowledgeRetrieval.search({
+          actor: { id: user.id, role: user.role ?? 'STUDENT' },
+          query: input.question,
+          k: 5,
+          filters: {
+            sourceTypes: [
+              'LECTURE_TRANSCRIPT',
+              'LECTURE_SLIDE',
+              'LECTURE_PACKAGE',
+              'RECORDING_SOURCE_DOC',
+            ],
+            sourceIds: [recording.id],
+          },
+        });
+        for (const hit of kbResult.hits) {
+          const ts = hit.startSeconds ?? 0;
+          const citationType: TutorSourceCitation['type'] =
+            hit.sourceType === 'LECTURE_TRANSCRIPT'
+              ? 'TRANSCRIPT'
+              : hit.sourceType === 'LECTURE_SLIDE'
+                ? 'SLIDE'
+                : 'CHAPTER';
+          citations.push({
+            type: citationType,
+            label: `${hit.sectionTitle ?? hit.title} [${formatClockTimestamp(ts)}]`,
+            excerpt: hit.content.slice(0, 400),
+            timestampSeconds: ts,
+            chapterTitle: hit.sectionTitle ?? null,
+            slideNumber: hit.slideNumber,
+            sourcePage: hit.sourcePage,
+          });
+        }
+      } catch {
+        // Explicit fallback to local transcript/chapter retrieval below
+      }
+    }
 
-    const rankedSegments = [...(transcript?.segments ?? [])]
-      .map((seg) => {
-        const proximityBoost =
-          input.currentTimestampSeconds !== undefined &&
-          Math.abs(seg.startSeconds - input.currentTimestampSeconds) <= 45
-            ? 0.35
-            : 0;
-        const sim =
-          cosineSimilarity(qVec, computeDeterministicLexicalVector(seg.text)) + proximityBoost;
-        return { seg, sim };
-      })
-      .sort((a, b) => b.sim - a.sim)
-      .slice(0, 3);
+    if (citations.length === 0) {
+      const rankedSegments = [...(transcript?.segments ?? [])]
+        .map((seg) => {
+          const proximityBoost =
+            input.currentTimestampSeconds !== undefined &&
+            Math.abs(seg.startSeconds - input.currentTimestampSeconds) <= 45
+              ? 0.35
+              : 0;
+          const sim = computeLexicalMatchScore(input.question, seg.text) + proximityBoost;
+          return { seg, sim };
+        })
+        .sort((a, b) => b.sim - a.sim)
+        .slice(0, 3);
 
-    for (const item of rankedSegments) {
-      const ch =
-        chapters.find(
-          (c) => c.startSeconds <= item.seg.startSeconds && c.endSeconds >= item.seg.startSeconds,
-        ) ?? chapters[0];
-      citations.push({
-        type: 'TRANSCRIPT',
-        label: `Transcription [${formatClockTimestamp(item.seg.startSeconds)}]`,
-        excerpt: item.seg.text,
-        timestampSeconds: Math.floor(item.seg.startSeconds),
-        chapterTitle: ch?.title ?? null,
-        slideNumber: null,
-        sourcePage: ch?.sourcePage ?? null,
-      });
+      for (const item of rankedSegments) {
+        const ch =
+          chapters.find(
+            (c) => c.startSeconds <= item.seg.startSeconds && c.endSeconds >= item.seg.startSeconds,
+          ) ?? chapters[0];
+        citations.push({
+          type: 'TRANSCRIPT',
+          label: `Transcription [${formatClockTimestamp(item.seg.startSeconds)}]`,
+          excerpt: item.seg.text,
+          timestampSeconds: Math.floor(item.seg.startSeconds),
+          chapterTitle: ch?.title ?? null,
+          slideNumber: null,
+          sourcePage: ch?.sourcePage ?? null,
+        });
+      }
     }
 
     const activeChapter =

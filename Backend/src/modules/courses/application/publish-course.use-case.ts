@@ -7,6 +7,7 @@ import type { Role } from '../../auth/index.js';
 import type { CourseDetail } from '../domain/course.entity.js';
 import type { CourseRepositoryPort } from '../domain/course-repository.port.js';
 import type { CourseSectionRepositoryPort } from '../domain/course-section-repository.port.js';
+import type { KnowledgeIndexerPort } from '../../knowledge/domain/knowledge-indexer.port.js';
 
 export interface PublishCourseDTO {
   requesterId: string;
@@ -26,6 +27,7 @@ export class PublishCourseUseCase {
   constructor(
     private readonly courses: CourseRepositoryPort,
     private readonly sections?: CourseSectionRepositoryPort,
+    private readonly knowledgeIndexer?: KnowledgeIndexerPort,
   ) {}
 
   public async execute(dto: PublishCourseDTO): Promise<CourseDetail> {
@@ -49,6 +51,36 @@ export class PublishCourseUseCase {
       }
     }
 
-    return this.courses.updateStatus(dto.courseId, 'PUBLISHED');
+    const published = await this.courses.updateStatus(dto.courseId, 'PUBLISHED');
+
+    if (this.knowledgeIndexer) {
+      this.knowledgeIndexer.enqueueIndex({
+        sourceType: 'COURSE',
+        sourceId: published.id,
+        authorId: published.authorId,
+        title: published.title,
+        subject: published.subject,
+        visibility: 'CLASS_PUBLISHED',
+        trustTier: 'VERIFIED',
+        classGroupIds: published.classGroupIds,
+        content: published.content,
+        metadata: {
+          courseId: published.id,
+          level: published.level,
+          difficulty: published.difficulty,
+          format: published.format,
+        },
+      });
+      await this.knowledgeIndexer
+        .syncCourseLifecycle({
+          courseId: published.id,
+          visibility: 'CLASS_PUBLISHED',
+          trustTier: 'VERIFIED',
+          classGroupIds: published.classGroupIds,
+        })
+        .catch(() => undefined);
+    }
+
+    return published;
   }
 }

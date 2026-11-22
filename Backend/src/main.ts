@@ -30,6 +30,11 @@ const startServer = (): void => {
       dbLatencyMs = Math.round(performance.now() - start);
       dbStatus = 'CONNECTED';
       logger.info({ latencyMs: dbLatencyMs }, 'Database connection established successfully');
+
+      const onStartup = app.locals.onStartup as (() => Promise<void>) | undefined;
+      if (onStartup) {
+        await onStartup();
+      }
     } catch (err) {
       logger.error({ err }, 'Failed to establish database connection during startup');
     }
@@ -69,7 +74,13 @@ const startServer = (): void => {
       });
       logger.info('HTTP server closed successfully.');
 
-      // 2. Disconnect database connections
+      // 2. Drain background Knowledge Engine indexing queue cleanly
+      const onShutdown = app.locals.onShutdown as (() => Promise<void>) | undefined;
+      if (onShutdown) {
+        await onShutdown();
+      }
+
+      // 3. Disconnect database connections
       await disconnectPrisma();
       logger.info('Database connections closed.');
 

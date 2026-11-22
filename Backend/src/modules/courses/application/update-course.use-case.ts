@@ -3,6 +3,7 @@ import type { Role } from '../../auth/index.js';
 import type { CourseDetail, CourseDifficulty, CourseFormat, CourseLevel } from '../domain/course.entity.js';
 import type { CourseRepositoryPort } from '../domain/course-repository.port.js';
 import type { GroupRepositoryPort } from '../../groups/domain/group-repository.port.js';
+import type { KnowledgeIndexerPort } from '../../knowledge/domain/knowledge-indexer.port.js';
 
 export interface UpdateCourseDTO {
   requesterId: string;
@@ -22,6 +23,7 @@ export class UpdateCourseUseCase {
   constructor(
     private readonly courses: CourseRepositoryPort,
     private readonly groups?: GroupRepositoryPort,
+    private readonly knowledgeIndexer?: KnowledgeIndexerPort,
   ) {}
 
   public async execute(dto: UpdateCourseDTO): Promise<CourseDetail> {
@@ -52,7 +54,7 @@ export class UpdateCourseUseCase {
       }
     }
 
-    return this.courses.update(dto.courseId, {
+    const updated = await this.courses.update(dto.courseId, {
       title: dto.title,
       subject: dto.subject,
       content: dto.content,
@@ -61,6 +63,27 @@ export class UpdateCourseUseCase {
       format: dto.format,
       classGroupIds: dto.classGroupIds,
     });
+
+    const isPublished = updated.status === 'PUBLISHED';
+    this.knowledgeIndexer?.enqueueIndex({
+      sourceType: 'COURSE',
+      sourceId: updated.id,
+      authorId: updated.authorId,
+      title: updated.title,
+      subject: updated.subject,
+      visibility: isPublished ? 'CLASS_PUBLISHED' : 'PRIVATE_AUTHOR',
+      trustTier: isPublished ? 'VERIFIED' : 'DRAFT_AI',
+      classGroupIds: updated.classGroupIds,
+      content: updated.content,
+      metadata: {
+        courseId: updated.id,
+        level: updated.level,
+        difficulty: updated.difficulty,
+        format: updated.format,
+      },
+    });
+
+    return updated;
   }
 }
 

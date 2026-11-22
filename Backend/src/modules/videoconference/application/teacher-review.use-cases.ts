@@ -7,6 +7,7 @@ import {
 import { ErrorCodes } from '../../../shared/errors/error-codes.js';
 import type { StoragePort } from '../../../shared/storage/storage.port.js';
 import type { ModelInventoryReport, SmartModelRouterPort } from '../../ai-assistant/index.js';
+import type { KnowledgeIndexerPort } from '../../knowledge/index.js';
 import type { ClassAccessPort } from '../domain/class-access.port.js';
 import type { LiveEventsPublisherPort } from '../domain/live-events-publisher.port.js';
 import type {
@@ -145,6 +146,54 @@ export interface UpdateLessonReviewInput {
   quizzes?: GeneratedQuizQuestion[];
 }
 
+const enqueueLessonPackageKnowledge = (
+  indexer: KnowledgeIndexerPort | undefined,
+  params: {
+    ownerId: string;
+    sessionTitle: string;
+    sessionSubject: string | null;
+    sessionId: string;
+    classGroupId: string;
+    recordingId: string;
+    recordingStatus: string;
+    generalSummary: string;
+    structuredNotes: string;
+    keyConcepts: LessonConcept[];
+    definitions: LessonDefinition[];
+    formulasAndRules: string[];
+    importantExamples: LessonExample[];
+    importantMoments: ImportantMoment[];
+  },
+): void => {
+  if (!indexer || !params.ownerId) return;
+  const isPublished = params.recordingStatus === 'PUBLISHED';
+  const isVerified = params.recordingStatus === 'APPROVED' || isPublished;
+  indexer.enqueueIndex({
+    sourceType: 'LECTURE_PACKAGE',
+    sourceId: params.recordingId,
+    authorId: params.ownerId,
+    title: `${params.sessionTitle} — Synthèse & Notes`,
+    subject: params.sessionSubject,
+    visibility: isPublished ? 'CLASS_PUBLISHED' : 'PRIVATE_AUTHOR',
+    trustTier: isVerified ? 'VERIFIED' : 'DRAFT_AI',
+    classGroupIds: isPublished ? [params.classGroupId] : [],
+    lessonPackage: {
+      generalSummary: params.generalSummary,
+      structuredNotes: params.structuredNotes,
+      keyConcepts: params.keyConcepts,
+      definitions: params.definitions,
+      formulasAndRules: params.formulasAndRules,
+      examples: params.importantExamples,
+      importantMoments: params.importantMoments,
+    },
+    metadata: {
+      recordingId: params.recordingId,
+      sessionId: params.sessionId,
+      classGroupId: params.classGroupId,
+    },
+  });
+};
+
 export class UpdateLessonReviewPackageUseCase {
   constructor(
     private readonly sessionRepository: VideoSessionRepositoryPort,
@@ -153,6 +202,7 @@ export class UpdateLessonReviewPackageUseCase {
     private readonly storage: StoragePort,
     private readonly modelRouter: SmartModelRouterPort,
     private readonly auditService?: AuditServicePort,
+    private readonly knowledgeIndexer?: KnowledgeIndexerPort,
   ) {}
 
   public async execute(
@@ -282,6 +332,26 @@ export class UpdateLessonReviewPackageUseCase {
       },
     });
 
+    const latestPkg = await this.recordingRepository.getLessonPackage(recording.id);
+    if (latestPkg) {
+      enqueueLessonPackageKnowledge(this.knowledgeIndexer, {
+        ownerId: recording.hostId ?? session.hostId ?? '',
+        sessionTitle: session.title,
+        sessionSubject: session.subject,
+        sessionId: session.id,
+        classGroupId: recording.classGroupId,
+        recordingId: recording.id,
+        recordingStatus: recording.status,
+        generalSummary: latestPkg.generalSummary,
+        structuredNotes: latestPkg.structuredNotes,
+        keyConcepts: latestPkg.keyConcepts,
+        definitions: latestPkg.definitions,
+        formulasAndRules: latestPkg.formulasAndRules,
+        importantExamples: latestPkg.importantExamples,
+        importantMoments: latestPkg.importantMoments,
+      });
+    }
+
     const getReview = new GetLessonReviewPackageUseCase(
       this.sessionRepository,
       this.recordingRepository,
@@ -305,6 +375,7 @@ export class RegenerateLessonSectionUseCase {
     private readonly recordingRepository: RecordingRepositoryPort,
     private readonly classAccessPort: ClassAccessPort,
     private readonly modelRouter: SmartModelRouterPort,
+    private readonly knowledgeIndexer?: KnowledgeIndexerPort,
   ) {}
 
   public async execute(
@@ -598,6 +669,23 @@ export class RegenerateLessonSectionUseCase {
       },
     );
 
+    enqueueLessonPackageKnowledge(this.knowledgeIndexer, {
+      ownerId: recording.hostId ?? session.hostId ?? '',
+      sessionTitle: session.title,
+      sessionSubject: session.subject,
+      sessionId: session.id,
+      classGroupId: recording.classGroupId,
+      recordingId: recording.id,
+      recordingStatus: recording.status,
+      generalSummary,
+      structuredNotes,
+      keyConcepts: existingPkg.keyConcepts,
+      definitions: existingPkg.definitions,
+      formulasAndRules: existingPkg.formulasAndRules,
+      importantExamples: existingPkg.importantExamples,
+      importantMoments: existingPkg.importantMoments,
+    });
+
     const getReview = new GetLessonReviewPackageUseCase(
       this.sessionRepository,
       this.recordingRepository,
@@ -614,6 +702,7 @@ export class ApproveLessonPackageUseCase {
     private readonly recordingRepository: RecordingRepositoryPort,
     private readonly classAccessPort: ClassAccessPort,
     private readonly auditService?: AuditServicePort,
+    private readonly knowledgeIndexer?: KnowledgeIndexerPort,
   ) {}
 
   public async execute(user: UserContext, sessionId: string): Promise<RecordingOverviewDto> {
@@ -663,6 +752,15 @@ export class ApproveLessonPackageUseCase {
       status: recording.status === 'PUBLISHED' ? 'PUBLISHED' : 'APPROVED',
     });
 
+    await this.knowledgeIndexer
+      ?.syncRecordingLifecycle({
+        recordingId: recording.id,
+        visibility: updated.status === 'PUBLISHED' ? 'CLASS_PUBLISHED' : 'PRIVATE_AUTHOR',
+        trustTier: 'VERIFIED',
+        classGroupIds: updated.status === 'PUBLISHED' ? [session.classGroupId] : [],
+      })
+      .catch(() => undefined);
+
     await this.auditService?.record({
       userId: user.id,
       action: 'lesson_package.approved',
@@ -683,6 +781,7 @@ export class PublishLessonPackageUseCase {
     private readonly classAccessPort: ClassAccessPort,
     private readonly auditService?: AuditServicePort,
     private readonly eventsPublisher?: LiveEventsPublisherPort,
+    private readonly knowledgeIndexer?: KnowledgeIndexerPort,
   ) {}
 
   public async execute(user: UserContext, sessionId: string): Promise<RecordingOverviewDto> {
@@ -734,6 +833,33 @@ export class PublishLessonPackageUseCase {
       publishedAt: now,
     });
 
+    if (this.knowledgeIndexer) {
+      await this.knowledgeIndexer
+        .syncRecordingLifecycle({
+          recordingId: recording.id,
+          visibility: 'CLASS_PUBLISHED',
+          trustTier: 'VERIFIED',
+          classGroupIds: [session.classGroupId],
+        })
+        .catch(() => undefined);
+      enqueueLessonPackageKnowledge(this.knowledgeIndexer, {
+        ownerId: recording.hostId ?? session.hostId ?? '',
+        sessionTitle: session.title,
+        sessionSubject: session.subject,
+        sessionId: session.id,
+        classGroupId: session.classGroupId,
+        recordingId: recording.id,
+        recordingStatus: 'PUBLISHED',
+        generalSummary: pkg.generalSummary,
+        structuredNotes: pkg.structuredNotes,
+        keyConcepts: pkg.keyConcepts,
+        definitions: pkg.definitions,
+        formulasAndRules: pkg.formulasAndRules,
+        importantExamples: pkg.importantExamples,
+        importantMoments: pkg.importantMoments,
+      });
+    }
+
     await this.auditService?.record({
       userId: user.id,
       action: 'lesson_package.published',
@@ -770,6 +896,7 @@ export class UnpublishLessonPackageUseCase {
     private readonly recordingRepository: RecordingRepositoryPort,
     private readonly classAccessPort: ClassAccessPort,
     private readonly auditService?: AuditServicePort,
+    private readonly knowledgeIndexer?: KnowledgeIndexerPort,
   ) {}
 
   public async execute(user: UserContext, sessionId: string): Promise<RecordingOverviewDto> {
@@ -796,6 +923,15 @@ export class UnpublishLessonPackageUseCase {
       status: 'READY_FOR_REVIEW',
       publishedAt: null,
     });
+
+    await this.knowledgeIndexer
+      ?.syncRecordingLifecycle({
+        recordingId: recording.id,
+        visibility: 'PRIVATE_AUTHOR',
+        trustTier: 'DRAFT_AI',
+        classGroupIds: [],
+      })
+      .catch(() => undefined);
 
     await this.auditService?.record({
       userId: user.id,

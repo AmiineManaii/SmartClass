@@ -5,6 +5,7 @@ import type { CourseSectionRepositoryPort } from '../../courses/domain/course-se
 import type { CourseSection } from '../../courses/domain/course-section.entity.js';
 import type { CourseRepositoryPort } from '../../courses/domain/course-repository.port.js';
 import type { AiGatewayPort, GenerateDifficulty, GenerateLevel } from '../domain/ai-gateway.port.js';
+import type { KnowledgeIndexerPort } from '../../knowledge/index.js';
 import { FETCH_URL_TOOL, WEB_SEARCH_TOOL } from '../domain/ai-tools.js';
 import { buildSectionPrompt, COURSE_PROMPT_VERSION } from '../domain/course-prompt.js';
 import { loadOwnedCourse } from './course-access.js';
@@ -51,6 +52,7 @@ export class GenerateSectionUseCase {
     private readonly courses: CourseRepositoryPort,
     private readonly sectionRepository: CourseSectionRepositoryPort,
     private readonly memory: SectionMemoryService,
+    private readonly knowledgeIndexer?: KnowledgeIndexerPort,
   ) {}
 
   public async stream(
@@ -147,6 +149,23 @@ export class GenerateSectionUseCase {
       content: finalContent,
       // A regenerated VALIDATED section must be re-approved (RG4).
       status: 'GENERATED',
+    });
+
+    this.knowledgeIndexer?.enqueueIndex({
+      sourceType: 'COURSE_SECTION',
+      sourceId: saved.id,
+      authorId: course.authorId,
+      title: `${course.title} — ${saved.title}`,
+      subject: course.subject,
+      visibility: course.status === 'PUBLISHED' ? 'CLASS_PUBLISHED' : 'PRIVATE_AUTHOR',
+      trustTier: 'DRAFT_AI',
+      classGroupIds: course.classGroupIds,
+      content: finalContent,
+      metadata: {
+        courseId: course.id,
+        sectionKey: saved.sectionKey,
+        order: saved.order,
+      },
     });
 
     return {

@@ -40,6 +40,13 @@ const envSchema = z.object({
   AI_MODEL: z.string().default('hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1'),
   // Fallback Ollama model when the primary model is unreachable or errors.
   AI_FALLBACK_MODEL: z.string().default('hf.co/unsloth/Qwen3.5-9B-GGUF:UD-Q2_K_XL'),
+  // Optional role-specific model overrides for SmartModelRouter.
+  AI_PRIMARY_MODEL: z.string().optional().default(''),
+  AI_SECONDARY_MODEL: z.string().optional().default(''),
+  AI_VISION_MODEL: z.string().optional().default(''),
+  AI_STRUCTURED_MODEL: z.string().optional().default(''),
+  AI_TUTOR_MODEL: z.string().optional().default(''),
+  AI_MAX_CONCURRENT_JOBS: z.coerce.number().int().positive().default(1),
   AI_API_KEY: z.string().optional().default(''),
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(300000),
   AI_STATUS_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
@@ -54,9 +61,10 @@ const envSchema = z.object({
     .default(true),
   AI_MAX_TOOL_ITERATIONS: z.coerce.number().int().positive().default(10),
   // Local embedding server (Ollama, RG27 — no third-party LLM APIs).
-  // EmbeddingGemma outputs 768-dim vectors (course_passages.embedding).
+  // EmbeddingGemma outputs 768-dim vectors (knowledge_chunks.embedding).
   EMBEDDING_BASE_URL: z.string().default('http://host.docker.internal:11434'),
-  EMBEDDING_MODEL: z.string().default('embeddinggemma-2'),
+  EMBEDDING_MODEL: z.string().default('embeddinggemma-2:270m'),
+  EMBEDDING_NUM_GPU: z.coerce.number().int().min(0).default(0),
   EMBEDDING_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
   // Optional Ollama official API key for cloud search/inference upgrade.
   OLLAMA_API_KEY: z.string().optional().default(''),

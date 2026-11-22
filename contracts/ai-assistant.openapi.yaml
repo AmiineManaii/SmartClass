@@ -76,16 +76,50 @@ paths:
                         type: boolean
                       model:
                         type: string
-                        example: hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1
+                        example: gemma4:e4b
                       latencyMs:
                         type:
                           - integer
                           - 'null'
+                      router:
+                        type: object
+                        description: Shared two-model SmartModelRouter inventory & GPU semaphore state
+                        additionalProperties: true
+                      embeddings:
+                        type: object
+                        description: CPU-pinned EmbeddingGemma runtime status
+                        properties:
+                          available:
+                            type: boolean
+                          model:
+                            type: string
+                            example: embeddinggemma-2:270m
+                          numGpu:
+                            type: integer
+                            example: 0
+                          dimension:
+                            type: integer
+                            example: 768
+                          latencyMs:
+                            type:
+                              - integer
+                              - 'null'
+                          runtime:
+                            type: string
+                            enum: [cpu, gpu]
+                        additionalProperties: false
               example:
                 data:
                   available: true
-                  model: hf.co/unsloth/Qwen3.5-4B-GGUF:Q4_1
+                  model: gemma4:e4b
                   latencyMs: 42
+                  embeddings:
+                    available: true
+                    model: embeddinggemma-2:270m
+                    numGpu: 0
+                    dimension: 768
+                    latencyMs: 18
+                    runtime: cpu
         '401':
           $ref: './common.yaml#/components/responses/Unauthorized'
         '403':

@@ -7,7 +7,10 @@ import {
 } from '../auth/index.js';
 import { createRateLimiter } from '../../shared/http/rate-limiter.js';
 import { ipKeyGenerator } from 'express-rate-limit';
-import type { AiGatewayPort } from './domain/ai-gateway.port.js';
+import { getEnv } from '../../config/env.js';
+import type { AiEmbeddingStatus, AiGatewayPort } from './domain/ai-gateway.port.js';
+import type { SmartModelRouterPort } from './domain/model-router.port.js';
+import { EMBEDDING_DIMENSION } from './domain/embedding.port.js';
 import type { UrlFetcherPort } from './domain/url-fetcher.port.js';
 import type { EmbeddingPort } from './domain/embedding.port.js';
 import type { SectionMemoryPort } from './domain/section-memory.port.js';
@@ -43,11 +46,14 @@ import { createAiRouter } from './presentation/ai.routes.js';
 
 import type { SearchPort } from './domain/search.port.js';
 import type { SectionImageJobStorePort } from './domain/section-image-job.port.js';
+import type { KnowledgeIndexerPort } from '../knowledge/index.js';
 import { HybridSearchAdapter } from './infrastructure/hybrid-search.adapter.js';
 import { InMemorySectionImageJobStore } from './infrastructure/in-memory-section-image-job.store.js';
 
 export interface AiModuleOptions {
   gateway?: AiGatewayPort;
+  modelRouter?: SmartModelRouterPort;
+  checkEmbeddings?: () => Promise<AiEmbeddingStatus>;
   searchService?: SearchPort;
   urlFetcher?: UrlFetcherPort;
   pdfExtractor?: PdfTextExtractorPort;
@@ -55,6 +61,7 @@ export interface AiModuleOptions {
   sectionRepository?: CourseSectionRepositoryPort;
   embedding?: EmbeddingPort;
   sectionMemory?: SectionMemoryPort;
+  knowledgeIndexer?: KnowledgeIndexerPort;
   imageGenerator?: ImageGeneratorPort;
   imagePromptOptimizer?: ImagePromptOptimizerPort;
   imageJobStore?: SectionImageJobStorePort;
@@ -73,7 +80,14 @@ export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
   const urlFetcher = options.urlFetcher ?? new NativeUrlFetcher();
   const imageGenerator = options.imageGenerator ?? new ComfyUIImageAdapter();
   const gateway =
-    options.gateway ?? new OpenAICompatibleGateway({ searchService, imageGenerator, urlFetcher });
+    options.gateway ??
+    (options.modelRouter
+      ? options.modelRouter.createGatewayForRole('COURSE_GENERATION', {
+          searchService,
+          imageGenerator,
+          urlFetcher,
+        })
+      : new OpenAICompatibleGateway({ searchService, imageGenerator, urlFetcher }));
   const pdfExtractor = options.pdfExtractor ?? new UnpdfTextExtractor();
   const courseRepository = options.courseRepository ?? new PrismaCourseRepositoryAdapter();
   const sectionRepository = options.sectionRepository ?? new PrismaCourseSectionRepositoryAdapter();
@@ -83,9 +97,28 @@ export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
   const memoryService = new SectionMemoryService(sectionMemory, embedding);
   const imagePromptOptimizer = options.imagePromptOptimizer ?? new LlmImagePromptOptimizer(gateway);
 
+  const checkEmbeddings =
+    options.checkEmbeddings ??
+    (async (): Promise<AiEmbeddingStatus> => {
+      const env = getEnv();
+      const status = await embedding.checkHealth();
+      return {
+        available: status.available,
+        model: status.model,
+        numGpu: env.EMBEDDING_NUM_GPU,
+        dimension: EMBEDDING_DIMENSION,
+        latencyMs: status.latencyMs,
+        runtime: env.EMBEDDING_NUM_GPU === 0 ? 'cpu' : 'gpu',
+      };
+    });
+
   const generateCourseUseCase = new GenerateCourseUseCase(gateway, urlFetcher);
   const improvePdfUseCase = new ImprovePdfUseCase(pdfExtractor, gateway);
-  const getAiStatusUseCase = new GetAiStatusUseCase(gateway);
+  const getAiStatusUseCase = new GetAiStatusUseCase(
+    gateway,
+    options.modelRouter,
+    options.gateway && !options.modelRouter ? undefined : checkEmbeddings,
+  );
   const generateOutlineUseCase = new GenerateOutlineUseCase(gateway);
   const refineSectionUseCase = new RefineSectionUseCase(gateway, courseRepository, memoryService);
   const getCourseBuildUseCase = new GetCourseBuildUseCase(courseRepository, sectionRepository);
@@ -94,6 +127,7 @@ export const createAiModule = (options: AiModuleOptions = {}): AiModule => {
     courseRepository,
     sectionRepository,
     memoryService,
+    options.knowledgeIndexer,
   );
   const validateSectionUseCase = new ValidateSectionUseCase(
     courseRepository,

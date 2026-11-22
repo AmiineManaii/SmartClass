@@ -1,0 +1,831 @@
+openapi: 3.1.0
+info:
+  title: SmartClass — Unified Knowledge Engine API
+  version: 1.0.0
+  description: >
+    Unified RAG Core indexing and retrieval endpoints across generated courses,
+    course sections, recorded lecture transcripts, Vision slides, lesson packages,
+    and uploaded source documents (RG27: 100% self-hosted CPU EmbeddingGemma +
+    PostgreSQL pgvector HNSW + PostgreSQL Full-Text Search GIN).
+servers:
+  - url: /api/v1
+tags:
+  - name: knowledge
+    description: Unified Knowledge Engine indexing, hybrid retrieval, lifecycle & diagnostics
+
+paths:
+  /knowledge/search:
+    post:
+      operationId: searchKnowledge
+      tags:
+        - knowledge
+      summary: Hybrid semantic + full-text knowledge retrieval
+      description: >
+        Retrieves top-k relevant structure-aware chunks authorized for the caller.
+        TEACHER is strictly scoped to own private drafts and verified assets;
+        STUDENT is strictly scoped to CLASS_PUBLISHED + VERIFIED content belonging
+        to enrolled classes (never exam answer keys or teacher drafts);
+        ADMIN may query across scopes. Degrades explicitly to FTS_ONLY with
+        `degradedReason` when the CPU embedding runtime is unavailable.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchKnowledgeRequest'
+            example:
+              query: Explication du cycle CRISP-DM et nettoyage de données
+              k: 6
+              filters:
+                sourceTypes:
+                  - COURSE
+                  - LECTURE_TRANSCRIPT
+      responses:
+        '200':
+          description: Ranked knowledge hits with explicit search mode metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SearchKnowledgeResult'
+                additionalProperties: false
+              example:
+                data:
+                  query: Explication du cycle CRISP-DM
+                  searchMode: HYBRID
+                  degradedReason: null
+                  embeddingLatencyMs: 47
+                  searchLatencyMs: 9
+                  totalLatencyMs: 56
+                  candidateCount: 12
+                  hits:
+                    - chunkId: 11111111-1111-4111-8111-111111111111
+                      documentId: 22222222-2222-4222-8222-222222222222
+                      sourceType: LECTURE_TRANSCRIPT
+                      sourceId: 33333333-3333-4333-8333-333333333333
+                      title: Data Science 101 — Transcription
+                      subject: Data Science
+                      visibility: CLASS_PUBLISHED
+                      trustTier: VERIFIED
+                      sectionTitle: Cycle CRISP-DM
+                      headingPath: Cycle CRISP-DM
+                      content: Le cycle CRISP-DM commence par la compréhension métier...
+                      contextHeader: "[Type: LECTURE_TRANSCRIPT | Titre: Data Science 101]"
+                      startSeconds: 14
+                      endSeconds: 48
+                      sourcePage: null
+                      slideNumber: null
+                      score: 0.9621
+                      vectorScore: 0.842
+                      ftsScore: 0.415
+                      metadata: {}
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+
+  /knowledge/documents:
+    get:
+      operationId: listKnowledgeDocuments
+      tags:
+        - knowledge
+      summary: List authorized indexed knowledge documents
+      description: >
+        Returns paginated knowledge documents visible to the caller according to
+        their role and enrollment scope.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - $ref: './common.yaml#/components/parameters/PageParam'
+        - $ref: './common.yaml#/components/parameters/LimitParam'
+        - name: sourceType
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/KnowledgeSourceType'
+        - name: indexStatus
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/KnowledgeIndexStatus'
+        - name: subject
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 160
+      responses:
+        '200':
+          description: Paginated list of knowledge documents
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KnowledgeDocument'
+                  meta:
+                    $ref: './common.yaml#/components/schemas/PaginationOffsetMeta'
+                additionalProperties: false
+              example:
+                data: []
+                meta:
+                  page: 1
+                  limit: 20
+                  total: 0
+                  totalPages: 0
+                  hasNextPage: false
+                  hasPreviousPage: false
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+
+  /knowledge/documents/{id}:
+    get:
+      operationId: getKnowledgeDocument
+      tags:
+        - knowledge
+      summary: Get knowledge document metadata
+      description: >
+        Retrieves indexing metadata and lifecycle flags for one knowledge document,
+        enforcing strict author/class authorization.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Knowledge document metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/KnowledgeDocument'
+                additionalProperties: false
+              example:
+                data:
+                  id: 22222222-2222-4222-8222-222222222222
+                  sourceType: COURSE
+                  sourceId: 44444444-4444-4444-8444-444444444444
+                  authorId: 55555555-5555-4555-8555-555555555555
+                  title: Introduction au Machine Learning
+                  subject: Data Science
+                  language: fr
+                  visibility: PRIVATE_AUTHOR
+                  trustTier: DRAFT_AI
+                  classGroupIds: []
+                  contentHash: abc123
+                  indexStatus: INDEXED
+                  embeddingModel: embeddinggemma-2:270m
+                  embeddingDims: 768
+                  chunkCount: 6
+                  errorMessage: null
+                  indexedAt: '2026-11-22T15:00:00.000Z'
+                  metadata: {}
+                  createdAt: '2026-11-22T15:00:00.000Z'
+                  updatedAt: '2026-11-22T15:00:00.000Z'
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+
+    delete:
+      operationId: deleteKnowledgeDocument
+      tags:
+        - knowledge
+      summary: Remove a knowledge document and its chunks
+      description: >
+        Deletes a knowledge document and cascading chunks. Restricted to the
+        document author (approved teacher) or an administrator.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deletion confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - id
+                      - deleted
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      deleted:
+                        type: boolean
+                    additionalProperties: false
+                additionalProperties: false
+              example:
+                data:
+                  id: 22222222-2222-4222-8222-222222222222
+                  deleted: true
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+
+  /knowledge/reindex:
+    post:
+      operationId: reindexKnowledge
+      tags:
+        - knowledge
+      summary: Backfill or re-index knowledge sources
+      description: >
+        Re-indexes existing courses, validated sections, and processed video
+        lecture assets owned by the teacher (or globally for ADMIN). Skips
+        unchanged SHA-256 hashes unless `force: true`.
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReindexKnowledgeRequest'
+            example:
+              sourceTypes:
+                - LECTURE_TRANSCRIPT
+                - LECTURE_PACKAGE
+              force: false
+      responses:
+        '200':
+          description: Reindexing summary counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ReindexKnowledgeSummary'
+                additionalProperties: false
+              example:
+                data:
+                  processedCount: 4
+                  indexedCount: 4
+                  pendingEmbeddingCount: 0
+                  failedCount: 0
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+        '404':
+          $ref: './common.yaml#/components/responses/NotFound'
+        '422':
+          $ref: './common.yaml#/components/responses/ValidationError'
+
+  /knowledge/status:
+    get:
+      operationId: getKnowledgeStatus
+      tags:
+        - knowledge
+      summary: Knowledge Engine observability & embedding runtime telemetry
+      description: >
+        Reports CPU EmbeddingGemma health, background indexing queue depth,
+        document/chunk counts by source type and trust tier, and 24h search
+        mode breakdown (HYBRID vs degraded FTS_ONLY).
+      security:
+        - bearerAuth: []
+      x-status: implemented
+      responses:
+        '200':
+          description: Knowledge Engine diagnostics snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/KnowledgeStatusReport'
+                additionalProperties: false
+              example:
+                data:
+                  embeddingHealth:
+                    available: true
+                    model: embeddinggemma-2:270m
+                    numGpu: 0
+                    dimension: 768
+                    latencyMs: 24
+                    runtime: cpu
+                  queue:
+                    pending: 0
+                    running: false
+                  counts:
+                    totalDocuments: 8
+                    totalChunks: 42
+                    embeddedChunks: 42
+                    pendingEmbeddingDocuments: 0
+                    failedDocuments: 0
+                    bySourceType:
+                      LECTURE_TRANSCRIPT: 4
+                    byStatus:
+                      INDEXED: 8
+                    byTrustTier:
+                      DRAFT_AI: 6
+                      VERIFIED: 2
+                    byVisibility:
+                      PRIVATE_AUTHOR: 6
+                      CLASS_PUBLISHED: 2
+                  recentRetrievals:
+                    totalLast24h: 15
+                    hybridCount: 15
+                    ftsOnlyCount: 0
+                    vectorOnlyCount: 0
+        '401':
+          $ref: './common.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: './common.yaml#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      $ref: './common.yaml#/components/securitySchemes/bearerAuth'
+
+  schemas:
+    KnowledgeSourceType:
+      type: string
+      enum:
+        - COURSE
+        - COURSE_SECTION
+        - LECTURE_TRANSCRIPT
+        - LECTURE_SLIDE
+        - LECTURE_PACKAGE
+        - RECORDING_SOURCE_DOC
+        - UPLOADED_DOCUMENT
+
+    KnowledgeVisibility:
+      type: string
+      enum:
+        - PRIVATE_AUTHOR
+        - CLASS_PUBLISHED
+        - INSTITUTION_SHARED
+
+    KnowledgeTrustTier:
+      type: string
+      enum:
+        - DRAFT_AI
+        - VERIFIED
+
+    KnowledgeIndexStatus:
+      type: string
+      enum:
+        - PENDING
+        - INDEXING
+        - INDEXED
+        - PENDING_EMBEDDING
+        - FAILED
+
+    KnowledgeSearchMode:
+      type: string
+      enum:
+        - HYBRID
+        - FTS_ONLY
+        - VECTOR_ONLY
+
+    SearchKnowledgeRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 1500
+        k:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 6
+        preferredMode:
+          $ref: '#/components/schemas/KnowledgeSearchMode'
+        filters:
+          type: object
+          properties:
+            sourceTypes:
+              type: array
+              minItems: 1
+              maxItems: 7
+              items:
+                $ref: '#/components/schemas/KnowledgeSourceType'
+            sourceIds:
+              type: array
+              minItems: 1
+              maxItems: 25
+              items:
+                type: string
+                minLength: 1
+            subject:
+              type: string
+              minLength: 1
+              maxLength: 160
+            classGroupIds:
+              type: array
+              minItems: 1
+              maxItems: 25
+              items:
+                type: string
+                format: uuid
+            trustTiers:
+              type: array
+              minItems: 1
+              maxItems: 2
+              items:
+                $ref: '#/components/schemas/KnowledgeTrustTier'
+          additionalProperties: false
+      additionalProperties: false
+
+    SearchKnowledgeHit:
+      type: object
+      required:
+        - chunkId
+        - documentId
+        - sourceType
+        - sourceId
+        - title
+        - subject
+        - visibility
+        - trustTier
+        - sectionTitle
+        - headingPath
+        - content
+        - contextHeader
+        - startSeconds
+        - endSeconds
+        - sourcePage
+        - slideNumber
+        - score
+        - vectorScore
+        - ftsScore
+        - metadata
+      properties:
+        chunkId:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        sourceType:
+          $ref: '#/components/schemas/KnowledgeSourceType'
+        sourceId:
+          type: string
+        title:
+          type: string
+        subject:
+          type:
+            - string
+            - 'null'
+        visibility:
+          $ref: '#/components/schemas/KnowledgeVisibility'
+        trustTier:
+          $ref: '#/components/schemas/KnowledgeTrustTier'
+        sectionTitle:
+          type:
+            - string
+            - 'null'
+        headingPath:
+          type:
+            - string
+            - 'null'
+        content:
+          type: string
+        contextHeader:
+          type: string
+        startSeconds:
+          type:
+            - integer
+            - 'null'
+        endSeconds:
+          type:
+            - integer
+            - 'null'
+        sourcePage:
+          type:
+            - integer
+            - 'null'
+        slideNumber:
+          type:
+            - integer
+            - 'null'
+        score:
+          type: number
+        vectorScore:
+          type:
+            - number
+            - 'null'
+        ftsScore:
+          type:
+            - number
+            - 'null'
+        metadata:
+          type: object
+          additionalProperties: true
+      additionalProperties: false
+
+    SearchKnowledgeResult:
+      type: object
+      required:
+        - query
+        - searchMode
+        - degradedReason
+        - embeddingLatencyMs
+        - searchLatencyMs
+        - totalLatencyMs
+        - candidateCount
+        - hits
+      properties:
+        query:
+          type: string
+        searchMode:
+          $ref: '#/components/schemas/KnowledgeSearchMode'
+        degradedReason:
+          type:
+            - string
+            - 'null'
+        embeddingLatencyMs:
+          type:
+            - integer
+            - 'null'
+        searchLatencyMs:
+          type: integer
+        totalLatencyMs:
+          type: integer
+        candidateCount:
+          type: integer
+        hits:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchKnowledgeHit'
+      additionalProperties: false
+
+    KnowledgeDocument:
+      type: object
+      required:
+        - id
+        - sourceType
+        - sourceId
+        - authorId
+        - title
+        - subject
+        - language
+        - visibility
+        - trustTier
+        - classGroupIds
+        - contentHash
+        - indexStatus
+        - embeddingModel
+        - embeddingDims
+        - chunkCount
+        - errorMessage
+        - indexedAt
+        - metadata
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        sourceType:
+          $ref: '#/components/schemas/KnowledgeSourceType'
+        sourceId:
+          type: string
+        authorId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        subject:
+          type:
+            - string
+            - 'null'
+        language:
+          type: string
+        visibility:
+          $ref: '#/components/schemas/KnowledgeVisibility'
+        trustTier:
+          $ref: '#/components/schemas/KnowledgeTrustTier'
+        classGroupIds:
+          type: array
+          items:
+            type: string
+        contentHash:
+          type: string
+        indexStatus:
+          $ref: '#/components/schemas/KnowledgeIndexStatus'
+        embeddingModel:
+          type:
+            - string
+            - 'null'
+        embeddingDims:
+          type: integer
+        chunkCount:
+          type: integer
+        errorMessage:
+          type:
+            - string
+            - 'null'
+        indexedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    ReindexKnowledgeRequest:
+      type: object
+      properties:
+        sourceTypes:
+          type: array
+          minItems: 1
+          maxItems: 7
+          items:
+            $ref: '#/components/schemas/KnowledgeSourceType'
+        documentId:
+          type: string
+          format: uuid
+        force:
+          type: boolean
+          default: false
+      additionalProperties: false
+
+    ReindexKnowledgeSummary:
+      type: object
+      required:
+        - processedCount
+        - indexedCount
+        - pendingEmbeddingCount
+        - failedCount
+      properties:
+        processedCount:
+          type: integer
+        indexedCount:
+          type: integer
+        pendingEmbeddingCount:
+          type: integer
+        failedCount:
+          type: integer
+      additionalProperties: false
+
+    KnowledgeStatusReport:
+      type: object
+      required:
+        - embeddingHealth
+        - queue
+        - counts
+        - recentRetrievals
+      properties:
+        embeddingHealth:
+          type: object
+          required:
+            - available
+            - model
+            - numGpu
+            - dimension
+            - latencyMs
+            - runtime
+          properties:
+            available:
+              type: boolean
+            model:
+              type: string
+            numGpu:
+              type: integer
+            dimension:
+              type: integer
+            latencyMs:
+              type:
+                - integer
+                - 'null'
+            runtime:
+              type: string
+              enum: [cpu, gpu]
+          additionalProperties: false
+        queue:
+          type: object
+          required:
+            - pending
+            - running
+          properties:
+            pending:
+              type: integer
+            running:
+              type: boolean
+          additionalProperties: false
+        counts:
+          type: object
+          required:
+            - totalDocuments
+            - totalChunks
+            - embeddedChunks
+            - pendingEmbeddingDocuments
+            - failedDocuments
+            - bySourceType
+            - byStatus
+            - byTrustTier
+            - byVisibility
+          properties:
+            totalDocuments:
+              type: integer
+            totalChunks:
+              type: integer
+            embeddedChunks:
+              type: integer
+            pendingEmbeddingDocuments:
+              type: integer
+            failedDocuments:
+              type: integer
+            bySourceType:
+              type: object
+              additionalProperties:
+                type: integer
+            byStatus:
+              type: object
+              additionalProperties:
+                type: integer
+            byTrustTier:
+              type: object
+              additionalProperties:
+                type: integer
+            byVisibility:
+              type: object
+              additionalProperties:
+                type: integer
+          additionalProperties: false
+        recentRetrievals:
+          type: object
+          required:
+            - totalLast24h
+            - hybridCount
+            - ftsOnlyCount
+            - vectorOnlyCount
+          properties:
+            totalLast24h:
+              type: integer
+            hybridCount:
+              type: integer
+            ftsOnlyCount:
+              type: integer
+            vectorOnlyCount:
+              type: integer
+          additionalProperties: false
+      additionalProperties: false

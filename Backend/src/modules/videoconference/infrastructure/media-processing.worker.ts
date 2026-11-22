@@ -10,6 +10,7 @@ import type {
   SmartModelRouterPort,
 } from '../../ai-assistant/index.js';
 import { UnpdfTextExtractor } from '../../ai-assistant/index.js';
+import type { KnowledgeIndexerPort } from '../../knowledge/index.js';
 import type { LiveEventsPublisherPort } from '../domain/live-events-publisher.port.js';
 import type {
   GeneratedFlashcard,
@@ -82,6 +83,7 @@ export interface MediaProcessingWorkerDeps {
   modelRouter: SmartModelRouterPort;
   liveEventsPublisher: LiveEventsPublisherPort;
   pdfExtractor?: PdfTextExtractorPort;
+  knowledgeIndexer?: KnowledgeIndexerPort;
 }
 
 export class MediaProcessingWorker {
@@ -545,7 +547,7 @@ export class MediaProcessingWorker {
         chapters,
         sourceDocText,
         primaryModel: inventory.primaryModel,
-        secondaryModel: inventory.secondaryModel,
+        secondaryModel: inventory.roleAssignments.secondaryFastModel,
       });
 
       await advanceStage(
@@ -553,12 +555,15 @@ export class MediaProcessingWorker {
         'QUALITY_VALIDATION',
         97,
         'Validation qualité de la structure pédagogique et cohérence des horodatages...',
-        inventory.secondaryModel,
+        inventory.roleAssignments.secondaryFastModel,
       );
 
       await this.deps.recordingRepository.updateRecording(recording.id, {
         status: 'READY_FOR_REVIEW',
-        aiModelUsed: `${inventory.primaryModel} + ${inventory.secondaryModel}`,
+        aiModelUsed:
+          inventory.secondaryInstalled && inventory.secondaryModel
+            ? `${inventory.primaryModel} + ${inventory.secondaryModel}`
+            : inventory.primaryModel,
         errorCode: null,
         errorMessage: null,
       });
@@ -570,6 +575,101 @@ export class MediaProcessingWorker {
         'Traitement IA terminé. Le cours est prêt pour la révision enseignant.',
         inventory.primaryModel,
       );
+
+      if (this.deps.knowledgeIndexer) {
+        const ownerId =
+          recording.hostId ??
+          (await this.deps.sessionRepository.findById(recording.sessionId))?.hostId ??
+          '';
+        if (ownerId) {
+          const baseMeta = {
+            recordingId: recording.id,
+            sessionId: recording.sessionId,
+            classGroupId: recording.classGroupId,
+          };
+          if (transcript.segments.length > 0 || transcript.fullText.trim()) {
+            this.deps.knowledgeIndexer.enqueueIndex({
+              sourceType: 'LECTURE_TRANSCRIPT',
+              sourceId: recording.id,
+              authorId: ownerId,
+              title: `${sessionTitle} — Transcription`,
+              subject: sessionSubject,
+              language: transcript.language || 'fr',
+              visibility: 'PRIVATE_AUTHOR',
+              trustTier: 'DRAFT_AI',
+              classGroupIds: [],
+              content: transcript.fullText,
+              transcriptSegments: transcript.segments,
+              chapters: chapters.map((ch) => ({
+                orderIndex: ch.orderIndex,
+                title: ch.title,
+                summary: ch.summary,
+                startSeconds: ch.startSeconds,
+                endSeconds: ch.endSeconds,
+                keyConcepts: ch.keyConcepts,
+                sourcePage: ch.sourcePage,
+              })),
+              metadata: baseMeta,
+            });
+          }
+          if (slideFrames.length > 0) {
+            this.deps.knowledgeIndexer.enqueueIndex({
+              sourceType: 'LECTURE_SLIDE',
+              sourceId: recording.id,
+              authorId: ownerId,
+              title: `${sessionTitle} — Diapositives`,
+              subject: sessionSubject,
+              language: transcript.language || 'fr',
+              visibility: 'PRIVATE_AUTHOR',
+              trustTier: 'DRAFT_AI',
+              classGroupIds: [],
+              slides: slideFrames.map((s, idx) => ({
+                slideNumber: idx + 1,
+                timestampSeconds: s.timestampSeconds,
+                ocrText: s.ocrText,
+                visualSummary: s.visualSummary,
+                sourcePage: s.sourcePage,
+              })),
+              metadata: baseMeta,
+            });
+          }
+          this.deps.knowledgeIndexer.enqueueIndex({
+            sourceType: 'LECTURE_PACKAGE',
+            sourceId: recording.id,
+            authorId: ownerId,
+            title: `${sessionTitle} — Synthèse & Notes`,
+            subject: sessionSubject,
+            language: transcript.language || 'fr',
+            visibility: 'PRIVATE_AUTHOR',
+            trustTier: 'DRAFT_AI',
+            classGroupIds: [],
+            lessonPackage: {
+              generalSummary: lessonPackage.generalSummary,
+              structuredNotes: lessonPackage.structuredNotes,
+              keyConcepts: lessonPackage.keyConcepts,
+              definitions: lessonPackage.definitions,
+              formulasAndRules: lessonPackage.formulasAndRules,
+              examples: lessonPackage.importantExamples,
+              importantMoments: lessonPackage.importantMoments,
+            },
+            metadata: baseMeta,
+          });
+          if (sourceDocText.trim().length > 0) {
+            this.deps.knowledgeIndexer.enqueueIndex({
+              sourceType: 'RECORDING_SOURCE_DOC',
+              sourceId: recording.id,
+              authorId: ownerId,
+              title: recording.sourceDocTitle ?? `${sessionTitle} — Support de cours`,
+              subject: sessionSubject,
+              visibility: 'PRIVATE_AUTHOR',
+              trustTier: 'DRAFT_AI',
+              classGroupIds: [],
+              content: sourceDocText,
+              metadata: baseMeta,
+            });
+          }
+        }
+      }
 
       await this.deps.liveEventsPublisher.publishToClass(recording.classGroupId, {
         type: 'recording.ready-for-review',

@@ -24,6 +24,7 @@ import {
   SmartModelRouterAdapter,
   type SmartModelRouterPort,
 } from '../ai-assistant/index.js';
+import type { KnowledgeIndexerPort, KnowledgeRetrievalPort } from '../knowledge/index.js';
 
 import { PrismaTimetableRepositoryAdapter } from './infrastructure/prisma-timetable-repository.adapter.js';
 import { PrismaVideoSessionRepositoryAdapter } from './infrastructure/prisma-video-session-repository.adapter.js';
@@ -107,6 +108,8 @@ export interface VideoconferenceModuleOptions {
   egressService?: EgressServicePort;
   storage?: StoragePort;
   modelRouter?: SmartModelRouterPort;
+  knowledgeIndexer?: KnowledgeIndexerPort;
+  knowledgeRetrieval?: KnowledgeRetrievalPort;
   tokenService?: TokenServicePort;
   liveEventsHub?: InMemoryLiveEventsHub;
   authenticateMiddleware?: RequestHandler;
@@ -160,6 +163,7 @@ export const createVideoconferenceModule = (
     storage,
     modelRouter,
     liveEventsPublisher: liveEventsHub,
+    knowledgeIndexer: options.knowledgeIndexer,
   });
 
   const startRecordingUseCase = new StartRecordingUseCase(
@@ -212,6 +216,7 @@ export const createVideoconferenceModule = (
     classAccessPort,
     storage,
     auditService,
+    options.knowledgeIndexer,
   );
 
   const resolveMediaStreamUseCase = new ResolveRecordingMediaStreamUseCase(
@@ -234,6 +239,7 @@ export const createVideoconferenceModule = (
     storage,
     modelRouter,
     auditService,
+    options.knowledgeIndexer,
   );
 
   const regenerateSectionUseCase = new RegenerateLessonSectionUseCase(
@@ -241,6 +247,7 @@ export const createVideoconferenceModule = (
     recordingRepository,
     classAccessPort,
     modelRouter,
+    options.knowledgeIndexer,
   );
 
   const approveLessonUseCase = new ApproveLessonPackageUseCase(
@@ -248,6 +255,7 @@ export const createVideoconferenceModule = (
     recordingRepository,
     classAccessPort,
     auditService,
+    options.knowledgeIndexer,
   );
 
   const publishLessonUseCase = new PublishLessonPackageUseCase(
@@ -256,6 +264,7 @@ export const createVideoconferenceModule = (
     classAccessPort,
     auditService,
     liveEventsHub,
+    options.knowledgeIndexer,
   );
 
   const unpublishLessonUseCase = new UnpublishLessonPackageUseCase(
@@ -263,6 +272,7 @@ export const createVideoconferenceModule = (
     recordingRepository,
     classAccessPort,
     auditService,
+    options.knowledgeIndexer,
   );
 
   const getStudentWorkspaceUseCase = new GetPublishedLessonWorkspaceUseCase(
@@ -275,6 +285,7 @@ export const createVideoconferenceModule = (
     sessionRepository,
     recordingRepository,
     classAccessPort,
+    options.knowledgeRetrieval,
   );
 
   const updateStudentProgressUseCase = new UpdateStudentProgressUseCase(
@@ -313,6 +324,7 @@ export const createVideoconferenceModule = (
     recordingRepository,
     classAccessPort,
     modelRouter,
+    options.knowledgeRetrieval,
   );
 
   const getTimetableWeekUseCase = new GetTimetableWeekUseCase(timetableRepository);

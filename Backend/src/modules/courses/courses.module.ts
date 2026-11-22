@@ -35,6 +35,8 @@ import { CoursesController } from './presentation/courses.controller.js';
 import { createCoursesRouter } from './presentation/courses.routes.js';
 
 import type { GroupRepositoryPort } from '../groups/domain/group-repository.port.js';
+import type { KnowledgeIndexerPort, KnowledgeRetrievalPort } from '../knowledge/index.js';
+import { KnowledgeCourseRetrievalBridge } from '../knowledge/index.js';
 
 export interface CoursesModuleOptions {
   courseRepository?: CourseRepositoryPort;
@@ -42,6 +44,8 @@ export interface CoursesModuleOptions {
   groupRepository?: GroupRepositoryPort;
   studyRepository?: CourseStudyRepositoryPort;
   passageRetrieval?: CoursePassageRetrievalPort;
+  knowledgeIndexer?: KnowledgeIndexerPort;
+  knowledgeRetrieval?: KnowledgeRetrievalPort;
   modelRouter?: SmartModelRouterPort;
   tokenService?: TokenServicePort;
   authenticateMiddleware?: RequestHandler;
@@ -59,19 +63,38 @@ export const createCoursesModule = (options: CoursesModuleOptions = {}): Courses
     options.sectionRepository ?? new PrismaCourseSectionRepositoryAdapter();
   const groupRepository = options.groupRepository;
 
-  const saveCourseUseCase = new SaveCourseUseCase(courseRepository, groupRepository);
-  const updateCourseUseCase = new UpdateCourseUseCase(courseRepository, groupRepository);
+  const saveCourseUseCase = new SaveCourseUseCase(
+    courseRepository,
+    groupRepository,
+    options.knowledgeIndexer,
+  );
+  const updateCourseUseCase = new UpdateCourseUseCase(
+    courseRepository,
+    groupRepository,
+    options.knowledgeIndexer,
+  );
   const listMyCoursesUseCase = new ListMyCoursesUseCase(courseRepository);
   const listPublishedCoursesUseCase = new ListPublishedCoursesUseCase(courseRepository, groupRepository);
   const getCourseUseCase = new GetCourseUseCase(courseRepository, groupRepository);
-  const publishCourseUseCase = new PublishCourseUseCase(courseRepository, sectionRepository);
-  const unpublishCourseUseCase = new UnpublishCourseUseCase(courseRepository);
-  const deleteCourseUseCase = new DeleteCourseUseCase(courseRepository);
+  const publishCourseUseCase = new PublishCourseUseCase(
+    courseRepository,
+    sectionRepository,
+    options.knowledgeIndexer,
+  );
+  const unpublishCourseUseCase = new UnpublishCourseUseCase(
+    courseRepository,
+    options.knowledgeIndexer,
+  );
+  const deleteCourseUseCase = new DeleteCourseUseCase(courseRepository, options.knowledgeIndexer);
 
   // Student study slice: summaries, flashcards and the course-scoped tutor.
   const studyRepository = options.studyRepository ?? new PrismaCourseStudyRepositoryAdapter();
+  const legacyPassageRetrieval = new PrismaCoursePassageRetrievalAdapter();
   const passageRetrieval =
-    options.passageRetrieval ?? new PrismaCoursePassageRetrievalAdapter();
+    options.passageRetrieval ??
+    (options.knowledgeRetrieval
+      ? new KnowledgeCourseRetrievalBridge(options.knowledgeRetrieval, legacyPassageRetrieval)
+      : legacyPassageRetrieval);
   const modelRouter = options.modelRouter ?? new SmartModelRouterAdapter();
   const getCourseStudyUseCase = new GetCourseStudyWorkspaceUseCase(
     courseRepository,

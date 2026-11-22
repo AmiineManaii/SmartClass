@@ -1,8 +1,16 @@
 import { Router } from 'express';
+import { getEnv } from './config/env.js';
 import { createAuthModule, type AuthModuleOptions, type Role } from './modules/auth/index.js';
 import { createUsersModule, type UsersModuleOptions } from './modules/users/index.js';
 import { createAdminModule, type AdminModuleOptions } from './modules/admin/index.js';
-import { createAiModule, type AiModuleOptions } from './modules/ai-assistant/index.js';
+import {
+  createAiModule,
+  OllamaEmbeddingAdapter,
+  PrismaSectionMemoryAdapter,
+  SmartModelRouterAdapter,
+  type AiModuleOptions,
+  type SmartModelRouterPort,
+} from './modules/ai-assistant/index.js';
 import { createGroupsModule, type GroupsModuleOptions } from './modules/groups/index.js';
 import { createCoursesModule, type CoursesModuleOptions } from './modules/courses/index.js';
 import { createExamsModule, type ExamsModuleOptions } from './modules/exams/index.js';
@@ -10,6 +18,11 @@ import {
   createVideoconferenceModule,
   type VideoconferenceModuleOptions,
 } from './modules/videoconference/index.js';
+import {
+  createKnowledgeModule,
+  KnowledgeSectionMemoryBridge,
+  type KnowledgeModuleOptions,
+} from './modules/knowledge/index.js';
 
 export interface ApiRouterOptions {
   authModuleOptions?: AuthModuleOptions;
@@ -20,10 +33,25 @@ export interface ApiRouterOptions {
   coursesModuleOptions?: CoursesModuleOptions;
   examsModuleOptions?: ExamsModuleOptions;
   videoconferenceModuleOptions?: VideoconferenceModuleOptions;
+  knowledgeModuleOptions?: KnowledgeModuleOptions;
+  modelRouter?: SmartModelRouterPort;
+  onLifecycleReady?: (hooks: {
+    initialize: () => Promise<void>;
+    shutdown: () => Promise<void>;
+  }) => void;
 }
 
 export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
   const router = Router();
+  const env = getEnv();
+
+  // Single shared SmartModelRouter + GpuTaskSemaphore(AI_MAX_CONCURRENT_JOBS)
+  // guarding the local RTX 4060 GPU across all AI features.
+  const sharedModelRouter =
+    options.modelRouter ??
+    new SmartModelRouterAdapter(undefined, {
+      maxConcurrentGpu: env.AI_MAX_CONCURRENT_JOBS,
+    });
 
   // 1. Authentication module (/api/v1/auth)
   const authModule = createAuthModule(options.authModuleOptions);
@@ -35,10 +63,12 @@ export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
     authenticateMiddleware: authModule.authenticateMiddleware,
     requireAdminMiddleware: authModule.requireRoleMiddleware(['ADMIN'] as Role[]),
   };
+  const approvedTeacherMiddleware = authModule.requireApprovedTeacherMiddleware([
+    'TEACHER',
+    'ADMIN',
+  ] as Role[]);
 
   // 2. Users directory + role management (/api/v1/users).
-  // Role endpoints need the auth internals (token issuance on role change),
-  // shared from the auth module rather than duplicated.
   const usersModule = createUsersModule({
     ...options.usersModuleOptions,
     ...adminGuard,
@@ -54,28 +84,66 @@ export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
   });
   router.use('/admin', adminModule.router);
 
-  // 2c. AI course generation (local LLM gateway, teachers only).
-  const aiModule = createAiModule({
-    ...options.aiModuleOptions,
-    authenticateMiddleware: adminGuard.authenticateMiddleware,
-    requireTeacherMiddleware: authModule.requireApprovedTeacherMiddleware(['TEACHER', 'ADMIN'] as Role[]),
-  });
-  router.use('/ai', aiModule.router);
-
-  // 3. Class groups (/api/v1/groups)
+  // 3. Class groups (/api/v1/groups) - initialized early so Knowledge & Courses can use membership
   const groupsModule = createGroupsModule({
     ...options.groupsModuleOptions,
     ...adminGuard,
   });
   router.use('/groups', groupsModule.router);
 
+  // 3a. Unified SmartClass Knowledge Engine (/api/v1/knowledge)
+  const knowledgeModule = createKnowledgeModule({
+    ...options.knowledgeModuleOptions,
+    groupRepository: options.knowledgeModuleOptions?.groupRepository ?? groupsModule.groupRepository,
+    authenticateMiddleware: adminGuard.authenticateMiddleware,
+    requireTeacherMiddleware: approvedTeacherMiddleware,
+  });
+  router.use('/knowledge', knowledgeModule.router);
+  options.onLifecycleReady?.({
+    initialize: knowledgeModule.initialize,
+    shutdown: knowledgeModule.shutdown,
+  });
+
+  // 2c. AI course generation (/api/v1/ai, teachers only).
+  // Keep explicit custom gateway mocks in hermetic integration tests isolated.
+  const useCustomHermeticGateway = Boolean(
+    options.aiModuleOptions?.gateway && !options.aiModuleOptions?.modelRouter,
+  );
+  const sectionMemoryBridge =
+    options.aiModuleOptions?.sectionMemory ??
+    new KnowledgeSectionMemoryBridge(
+      knowledgeModule.indexer,
+      knowledgeModule.repository,
+      new PrismaSectionMemoryAdapter(undefined, new OllamaEmbeddingAdapter()),
+    );
+
+  const aiModule = createAiModule({
+    ...options.aiModuleOptions,
+    modelRouter: useCustomHermeticGateway
+      ? undefined
+      : (options.aiModuleOptions?.modelRouter ?? sharedModelRouter),
+    checkEmbeddings: useCustomHermeticGateway
+      ? undefined
+      : (options.aiModuleOptions?.checkEmbeddings ??
+          (() => knowledgeModule.embedding.checkHealth())),
+    sectionMemory: sectionMemoryBridge,
+    knowledgeIndexer: options.aiModuleOptions?.knowledgeIndexer ?? knowledgeModule.indexer,
+    authenticateMiddleware: adminGuard.authenticateMiddleware,
+    requireTeacherMiddleware: approvedTeacherMiddleware,
+  });
+  router.use('/ai', aiModule.router);
+
   // 3b. Generated courses (/api/v1/courses): teacher drafts + validation,
-  // published reading for every authenticated user.
+  // published reading for enrolled class members.
   const coursesModule = createCoursesModule({
     ...options.coursesModuleOptions,
     groupRepository: groupsModule.groupRepository,
+    modelRouter: options.coursesModuleOptions?.modelRouter ?? sharedModelRouter,
+    knowledgeIndexer: options.coursesModuleOptions?.knowledgeIndexer ?? knowledgeModule.indexer,
+    knowledgeRetrieval:
+      options.coursesModuleOptions?.knowledgeRetrieval ?? knowledgeModule.retrieval,
     authenticateMiddleware: adminGuard.authenticateMiddleware,
-    requireTeacherMiddleware: authModule.requireApprovedTeacherMiddleware(['TEACHER', 'ADMIN'] as Role[]),
+    requireTeacherMiddleware: approvedTeacherMiddleware,
   });
   router.use('/courses', coursesModule.router);
 
@@ -83,12 +151,10 @@ export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
   // server grading and anti-fraud monitoring. Admin fraud slice stays scoped.
   const examsModule = createExamsModule({
     ...options.examsModuleOptions,
+    modelRouter: options.examsModuleOptions?.modelRouter ?? sharedModelRouter,
     authenticateMiddleware: adminGuard.authenticateMiddleware,
     requireAdminMiddleware: adminGuard.requireAdminMiddleware,
-    requireTeacherMiddleware: authModule.requireApprovedTeacherMiddleware([
-      'TEACHER',
-      'ADMIN',
-    ] as Role[]),
+    requireTeacherMiddleware: approvedTeacherMiddleware,
     requireStudentMiddleware: authModule.requireRoleMiddleware(['STUDENT'] as Role[]),
   });
   router.use('/exams', examsModule.router);
@@ -98,17 +164,14 @@ export const createApiRouter = (options: ApiRouterOptions = {}): Router => {
     ...options.videoconferenceModuleOptions,
     ...adminGuard,
     groupRepository: groupsModule.groupRepository,
-    requireApprovedTeacherMiddleware: authModule.requireApprovedTeacherMiddleware([
-      'TEACHER',
-      'ADMIN',
-    ] as Role[]),
+    modelRouter: options.videoconferenceModuleOptions?.modelRouter ?? sharedModelRouter,
+    knowledgeIndexer:
+      options.videoconferenceModuleOptions?.knowledgeIndexer ?? knowledgeModule.indexer,
+    knowledgeRetrieval:
+      options.videoconferenceModuleOptions?.knowledgeRetrieval ?? knowledgeModule.retrieval,
+    requireApprovedTeacherMiddleware: approvedTeacherMiddleware,
   });
   router.use('/videoconference', videoconferenceModule.router);
-
-  // Future bounded context modules will be mounted here:
-  // router.use('/collaboration', collaborationRoutes);
-  // router.use('/ai-assistant', aiAssistantRoutes);
-  // router.use('/notifications', notificationRoutes);
 
   return router;
 };

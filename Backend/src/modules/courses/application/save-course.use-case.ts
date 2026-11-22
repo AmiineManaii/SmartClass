@@ -9,6 +9,7 @@ import type {
 } from '../domain/course.entity.js';
 import type { CourseRepositoryPort } from '../domain/course-repository.port.js';
 import type { GroupRepositoryPort } from '../../groups/domain/group-repository.port.js';
+import type { KnowledgeIndexerPort } from '../../knowledge/domain/knowledge-indexer.port.js';
 
 export interface SaveCourseDTO {
   requesterId: string;
@@ -29,6 +30,7 @@ export class SaveCourseUseCase {
   constructor(
     private readonly courses: CourseRepositoryPort,
     private readonly groups?: GroupRepositoryPort,
+    private readonly knowledgeIndexer?: KnowledgeIndexerPort,
   ) {}
 
   public async execute(dto: SaveCourseDTO): Promise<CourseDetail> {
@@ -51,7 +53,7 @@ export class SaveCourseUseCase {
       }
     }
 
-    return this.courses.save({
+    const saved = await this.courses.save({
       title: dto.title.trim(),
       subject: dto.subject?.trim() ? dto.subject.trim() : null,
       content: dto.content,
@@ -62,6 +64,26 @@ export class SaveCourseUseCase {
       classGroupIds: dto.classGroupIds,
       outline: dto.outline ?? null,
     });
+
+    this.knowledgeIndexer?.enqueueIndex({
+      sourceType: 'COURSE',
+      sourceId: saved.id,
+      authorId: saved.authorId,
+      title: saved.title,
+      subject: saved.subject,
+      visibility: 'PRIVATE_AUTHOR',
+      trustTier: 'DRAFT_AI',
+      classGroupIds: saved.classGroupIds,
+      content: saved.content,
+      metadata: {
+        courseId: saved.id,
+        level: saved.level,
+        difficulty: saved.difficulty,
+        format: saved.format,
+      },
+    });
+
+    return saved;
   }
 }
 

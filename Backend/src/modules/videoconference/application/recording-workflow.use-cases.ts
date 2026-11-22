@@ -9,6 +9,7 @@ import { ErrorCodes } from '../../../shared/errors/error-codes.js';
 import type { StoragePort } from '../../../shared/storage/storage.port.js';
 import type { PdfTextExtractorPort } from '../../ai-assistant/index.js';
 import { UnpdfTextExtractor } from '../../ai-assistant/index.js';
+import type { KnowledgeIndexerPort } from '../../knowledge/index.js';
 import type { ClassAccessPort } from '../domain/class-access.port.js';
 import type { EgressServicePort } from '../domain/egress-service.port.js';
 import type { LiveEventsPublisherPort } from '../domain/live-events-publisher.port.js';
@@ -541,6 +542,7 @@ export class DeleteRecordingUseCase {
     private readonly classAccessPort: ClassAccessPort,
     private readonly storage: StoragePort,
     private readonly auditService?: AuditServicePort,
+    private readonly knowledgeIndexer?: KnowledgeIndexerPort,
   ) {}
 
   public async execute(user: UserContext, sessionId: string): Promise<{ deleted: boolean }> {
@@ -570,6 +572,8 @@ export class DeleteRecordingUseCase {
     await this.recordingRepository.updateRecording(recording.id, {
       status: 'DELETED',
     });
+
+    await this.knowledgeIndexer?.removeByRecordingId(recording.id).catch(() => undefined);
 
     await this.auditService?.record({
       userId: user.id,

@@ -219,6 +219,7 @@ model User {
   examAttempts            ExamAttempt[]
   examEvents              ExamEvent[]
   examRecordings          ExamRecording[]
+  knowledgeDocuments      KnowledgeDocument[]
 
   @@index([email])
   @@index([role])
@@ -1155,4 +1156,124 @@ model CourseTutorMessage {
 
   @@index([conversationId, createdAt])
   @@map("course_tutor_messages")
+}
+
+// ---------------------------------------------------------------------------
+// Unified SmartClass Knowledge Engine (RAG Core)
+// ---------------------------------------------------------------------------
+
+enum KnowledgeSourceType {
+  COURSE
+  COURSE_SECTION
+  LECTURE_TRANSCRIPT
+  LECTURE_SLIDE
+  LECTURE_PACKAGE
+  RECORDING_SOURCE_DOC
+  UPLOADED_DOCUMENT
+}
+
+enum KnowledgeVisibility {
+  PRIVATE_AUTHOR
+  CLASS_PUBLISHED
+  INSTITUTION_SHARED
+}
+
+enum KnowledgeTrustTier {
+  DRAFT_AI
+  VERIFIED
+}
+
+enum KnowledgeIndexStatus {
+  PENDING
+  INDEXING
+  INDEXED
+  PENDING_EMBEDDING
+  FAILED
+}
+
+enum KnowledgeSearchMode {
+  HYBRID
+  FTS_ONLY
+  VECTOR_ONLY
+}
+
+model KnowledgeDocument {
+  id             String               @id @default(uuid()) @db.Uuid
+  sourceType     KnowledgeSourceType  @map("source_type")
+  sourceId       String               @map("source_id")
+  authorId       String               @map("author_id") @db.Uuid
+  title          String
+  subject        String?
+  language       String               @default("fr")
+  visibility     KnowledgeVisibility  @default(PRIVATE_AUTHOR)
+  trustTier      KnowledgeTrustTier   @default(DRAFT_AI) @map("trust_tier")
+  classGroupIds  String[]             @default([]) @map("class_group_ids")
+  contentHash    String               @map("content_hash")
+  indexStatus    KnowledgeIndexStatus @default(PENDING) @map("index_status")
+  embeddingModel String?              @map("embedding_model")
+  embeddingDims  Int                  @default(768) @map("embedding_dims")
+  chunkCount     Int                  @default(0) @map("chunk_count")
+  errorMessage   String?              @map("error_message")
+  indexedAt      DateTime?            @map("indexed_at") @db.Timestamptz
+  metadata       Json                 @default("{}")
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+
+  author User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  chunks KnowledgeChunk[]
+
+  @@unique([sourceType, sourceId])
+  @@index([authorId])
+  @@index([visibility, trustTier])
+  @@index([indexStatus])
+  @@index([sourceType])
+  @@map("knowledge_documents")
+}
+
+model KnowledgeChunk {
+  id            String                       @id @default(uuid()) @db.Uuid
+  documentId    String                       @map("document_id") @db.Uuid
+  chunkIndex    Int                          @map("chunk_index")
+  sectionTitle  String?                      @map("section_title")
+  headingPath   String?                      @map("heading_path")
+  content       String                       @db.Text
+  contextHeader String                       @default("") @map("context_header")
+  tokenEstimate Int                          @default(0) @map("token_estimate")
+  startSeconds  Int?                         @map("start_seconds")
+  endSeconds    Int?                         @map("end_seconds")
+  sourcePage    Int?                         @map("source_page")
+  slideNumber   Int?                         @map("slide_number")
+  contentHash   String                       @map("content_hash")
+  embedding     Unsupported("vector(768)")?
+  metadata      Json                         @default("{}")
+  createdAt     DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime                     @updatedAt @map("updated_at") @db.Timestamptz
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chunkIndex])
+  @@index([documentId])
+  @@map("knowledge_chunks")
+}
+
+model KnowledgeRetrievalLog {
+  id                 String              @id @default(uuid()) @db.Uuid
+  userId             String              @map("user_id") @db.Uuid
+  userRole           Role                @map("user_role")
+  query              String              @db.Text
+  queryHash          String              @map("query_hash")
+  searchMode         KnowledgeSearchMode @map("search_mode")
+  degradedReason     String?             @map("degraded_reason")
+  filters            Json                @default("{}")
+  candidateCount     Int                 @default(0) @map("candidate_count")
+  returnedCount      Int                 @default(0) @map("returned_count")
+  topScore           Float?              @map("top_score")
+  embeddingLatencyMs Int?                @map("embedding_latency_ms")
+  searchLatencyMs    Int                 @default(0) @map("search_latency_ms")
+  totalLatencyMs     Int                 @default(0) @map("total_latency_ms")
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, createdAt])
+  @@index([searchMode, createdAt])
+  @@map("knowledge_retrieval_logs")
 }

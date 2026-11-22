@@ -9,7 +9,7 @@ import {
 import { getEnv } from '../../config/env.js';
 import type { StoragePort } from '../../shared/storage/storage.port.js';
 import { LocalStorageAdapter } from '../../shared/storage/local-storage.adapter.js';
-import type { AiGatewayPort } from '../ai-assistant/index.js';
+import type { AiGatewayPort, SmartModelRouterPort } from '../ai-assistant/index.js';
 import { OpenAICompatibleGateway } from '../ai-assistant/index.js';
 import type { FraudRepositoryPort } from './domain/fraud-repository.port.js';
 import type { ExamRepositoryPort } from './domain/exam-repository.port.js';
@@ -53,6 +53,7 @@ export interface ExamsModuleOptions {
   examRepository?: ExamRepositoryPort;
   storage?: StoragePort;
   aiGateway?: AiGatewayPort;
+  modelRouter?: SmartModelRouterPort;
   aiModelCatalog?: ExamAiModelCatalogPort;
   tokenService?: TokenServicePort;
   authenticateMiddleware?: RequestHandler;
@@ -76,10 +77,12 @@ export const createExamsModule = (options: ExamsModuleOptions = {}): ExamsModule
   const env = getEnv();
   const aiGateway =
     options.aiGateway ??
-    new OpenAICompatibleGateway({
-      model: env.AI_MODEL,
-      fallbackModel: env.AI_MODEL,
-    });
+    (options.modelRouter
+      ? options.modelRouter.createGatewayForRole('EXAM_GENERATION')
+      : new OpenAICompatibleGateway({
+          model: env.AI_MODEL,
+          fallbackModel: env.AI_MODEL,
+        }));
   const aiModelCatalog = options.aiModelCatalog ?? new OllamaExamModelCatalogAdapter();
 
   const listFraudReportsUseCase = new ListFraudReportsUseCase(fraudRepository);

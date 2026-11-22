@@ -6,16 +6,18 @@ import {
   type EmbeddingStatus,
 } from '../domain/embedding.port.js';
 
-/** Ollama /api/embeddings response body. */
+/** Ollama /api/embed or /api/embeddings response body. */
 interface OllamaEmbeddingResponse {
+  embeddings?: number[][];
   embedding?: number[];
   error?: string;
 }
 
 /**
- * Embeddings from a self-hosted Ollama server (RG27: no third-party LLM
- * APIs). Uses the native `/api/embeddings` endpoint, which is the most
- * broadly supported across Ollama models including EmbeddingGemma.
+ * Embeddings from a self-hosted Ollama server (RG27: no third-party LLM APIs).
+ * Uses `/api/embed` with `options: { num_gpu: EMBEDDING_NUM_GPU }` so
+ * EmbeddingGemma stays pinned to CPU (`num_gpu: 0`) without evicting the
+ * GPU-resident LLM, falling back to `/api/embeddings` only on HTTP 404.
  */
 export class OllamaEmbeddingAdapter implements EmbeddingPort {
   public async embed(text: string): Promise<number[]> {
@@ -23,17 +25,47 @@ export class OllamaEmbeddingAdapter implements EmbeddingPort {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), env.EMBEDDING_TIMEOUT_MS);
     try {
-      const response = await fetch(`${env.EMBEDDING_BASE_URL}/api/embeddings`, {
+      const response = await fetch(`${env.EMBEDDING_BASE_URL}/api/embed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: env.EMBEDDING_MODEL, prompt: text }),
+        body: JSON.stringify({
+          model: env.EMBEDDING_MODEL,
+          input: text,
+          truncate: true,
+          options: { num_gpu: env.EMBEDDING_NUM_GPU },
+        }),
         signal: controller.signal,
       });
+
+      if (response.status === 404) {
+        const legacyRes = await fetch(`${env.EMBEDDING_BASE_URL}/api/embeddings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: env.EMBEDDING_MODEL,
+            prompt: text,
+            options: { num_gpu: env.EMBEDDING_NUM_GPU },
+          }),
+          signal: controller.signal,
+        });
+        if (!legacyRes.ok) {
+          throw new Error(`Ollama embeddings HTTP ${legacyRes.status}`);
+        }
+        const legacyBody = (await legacyRes.json().catch(() => null)) as OllamaEmbeddingResponse | null;
+        const legacyVec = legacyBody?.embedding;
+        if (!Array.isArray(legacyVec) || legacyVec.length !== EMBEDDING_DIMENSION) {
+          throw new Error(
+            `Ollama returned embedding of dim ${Array.isArray(legacyVec) ? legacyVec.length : 'none'}, expected ${EMBEDDING_DIMENSION}`,
+          );
+        }
+        return legacyVec.map((n) => (typeof n === 'number' ? n : 0));
+      }
+
       if (!response.ok) {
         throw new Error(`Ollama embeddings HTTP ${response.status}`);
       }
       const body = (await response.json().catch(() => null)) as OllamaEmbeddingResponse | null;
-      const vector = body?.embedding;
+      const vector = Array.isArray(body?.embeddings) ? body.embeddings[0] : body?.embedding;
       if (!Array.isArray(vector) || vector.length !== EMBEDDING_DIMENSION) {
         throw new Error(
           `Ollama returned embedding of dim ${Array.isArray(vector) ? vector.length : 'none'}, expected ${EMBEDDING_DIMENSION}`,
@@ -63,9 +95,8 @@ export class OllamaEmbeddingAdapter implements EmbeddingPort {
 }
 
 /**
- * Computes a deterministic 768-dimensional L2-normalized lexical/trigram feature
- * vector when the dedicated Ollama embedding model is not pulled locally, so
- * pgvector similarity search and RAG remain 100% operational offline.
+ * @deprecated Kept only for backward compatibility with legacy unit tests.
+ * Active semantic retrieval uses real CPU embeddings and explicit FTS_ONLY fallback.
  */
 export const computeDeterministicLexicalVector = (text: string): number[] => {
   const vec = new Float64Array(EMBEDDING_DIMENSION);

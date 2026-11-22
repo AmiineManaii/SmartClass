@@ -202,6 +202,21 @@ export class ImportFormatUnsupportedError extends AppError {
   }
 }
 
+export class KnowledgeDocumentNotFoundError extends AppError {
+  constructor(message = 'Knowledge document not found', details: unknown[] = []) {
+    super(message, 404, ErrorCodes.KNOWLEDGE_DOCUMENT_NOT_FOUND, details);
+  }
+}
+
+export class EmbeddingServiceUnavailableError extends AppError {
+  constructor(
+    message = 'Local CPU embedding runtime is currently unavailable',
+    details: unknown[] = [],
+  ) {
+    super(message, 503, ErrorCodes.EMBEDDING_SERVICE_UNAVAILABLE, details);
+  }
+}
+
 export class InternalError extends AppError {
   constructor(message = 'Internal server error', details: unknown[] = []) {
     super(message, 500, ErrorCodes.INTERNAL_ERROR, details, false);
